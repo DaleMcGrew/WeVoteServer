@@ -53,6 +53,7 @@
   "_comment":                       "sendgrid-django API settings",
   "EMAIL_BACKEND":                  "sgbackend.SendGridBackend",
   "SENDGRID_API_KEY":               "",
+  "SENDGRID_EMAIL_VALIDATION_API_KEY": "",
 
   "_comment":                       "emails separated by spaces for error alerts",
   "ADMIN_EMAIL_ADDRESSES":          "",

@@ -187,8 +187,15 @@ def get_voter_contact_email_value(voter_contact_email=None, best_option='', fall
         return getattr(voter_contact_email, fallback_option)
 
 
-def voter_contact_list_retrieve_for_api(voter_we_vote_id=''):  # voterContactListRetrieve
+def voter_contact_list_retrieve_for_api(voter_we_vote_id='', check_for_invalid_emails=False):  # voterContactListRetrieve
     status = ''
+
+    # This process could take 1-3 minutes, so we do it as a background process
+    if positive_value_exists(check_for_invalid_emails):
+        from email_outbound.controllers import augment_emails_for_voter_with_sendgrid
+        augment_results = augment_emails_for_voter_with_sendgrid(voter_we_vote_id=voter_we_vote_id)
+        status += augment_results['status']
+
     voter_manager = VoterManager()
     voter_contact_results = voter_manager.retrieve_voter_contact_email_list(
         imported_by_voter_we_vote_id=voter_we_vote_id)

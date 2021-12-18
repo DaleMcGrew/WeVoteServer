@@ -849,6 +849,7 @@ def election_list_view(request):
     state_code = request.GET.get('state_code', '')
     election_search = request.GET.get('election_search', '')
     refresh_states = positive_value_exists(request.GET.get('refresh_states', False))
+    show_all_elections_more = positive_value_exists(request.GET.get('show_all_elections_more', False))
     show_all_elections_this_year = request.GET.get('show_all_elections_this_year', False)
     show_election_statistics = request.GET.get('show_election_statistics', False)
     show_ignored_elections = request.GET.get('show_ignored_elections', False)
@@ -908,7 +909,11 @@ def election_list_view(request):
 
             election_list_query = election_list_query.filter(final_filters)
 
-    election_list = election_list_query[:200]
+    if show_all_elections_more:
+        election_limit = 1000
+    else:
+        election_limit = 200
+    election_list = election_list_query[:election_limit]
     election_list_modified = []
     ballot_returned_list_manager = BallotReturnedListManager()
     candidate_list_manager = CandidateListManager()
@@ -1022,6 +1027,7 @@ def election_list_view(request):
         'election_search':              election_search,
         'google_civic_election_id':     google_civic_election_id,
         'show_all_elections':           show_all_elections,
+        'show_all_elections_more':      show_all_elections_more,
         'show_all_elections_this_year': show_all_elections_this_year,
         'show_election_statistics':     show_election_statistics,
         'show_ignored_elections':       show_ignored_elections,
@@ -1041,6 +1047,7 @@ def nationwide_election_list_view(request):
     google_civic_election_id = convert_to_int(request.GET.get('google_civic_election_id', 0))
     state_code = request.GET.get('state_code', '')
     election_search = request.GET.get('election_search', '')
+    show_all_elections_more = request.GET.get('show_all_elections_more', False)
     show_all_elections_this_year = request.GET.get('show_all_elections_this_year', False)
     show_election_statistics = request.GET.get('show_election_statistics', False)
     show_ignored_elections = request.GET.get('show_ignored_elections', False)
@@ -1257,7 +1264,11 @@ def nationwide_election_list_view(request):
 
                 election_list_query = election_list_query.filter(final_filters)
 
-        election_list = election_list_query[:200]
+        if show_all_elections_more:
+            election_limit = 1000
+        else:
+            election_limit = 200
+        election_list = election_list_query[:election_limit]
 
     election_list_modified = []
     ballot_returned_list_manager = BallotReturnedListManager()

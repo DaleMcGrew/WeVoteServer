@@ -162,7 +162,6 @@ class VoterManager(BaseUserManager):
             open_people_middle_name=None,
             open_people_state_code=None,
             open_people_zip_code=None,
-            sendgrid_id=None,
             snovio_id=None,
             snovio_locality=None,
             snovio_source_state=None,
@@ -842,7 +841,7 @@ class VoterManager(BaseUserManager):
             # Filter based on when record was last augmented
             if checked_against_open_people_more_than_x_days_ago == 0:
                 # Don't limit by if/when data was retrieved previously
-                pass
+                list_query = list_query.filter(is_invalid=False)
             elif checked_against_open_people_more_than_x_days_ago is not None:
                 # Only retrieve the record if it hasn't been retrieved, or was retrieved more than x days ago
                 the_date_x_days_ago = now() - timedelta(days=checked_against_open_people_more_than_x_days_ago)
@@ -850,8 +849,10 @@ class VoterManager(BaseUserManager):
                     Q(checked_against_open_people=False) |
                     Q(date_last_checked_against_open_people__isnull=True) |
                     Q(date_last_checked_against_open_people__lt=the_date_x_days_ago))
+                list_query = list_query.filter(is_invalid=False)
             elif checked_against_sendgrid_more_than_x_days_ago == 0:
                 # Don't limit by if/when SendGrid data was retrieved previously
+                # Do not limit by "is_invalid"
                 pass
             elif checked_against_sendgrid_more_than_x_days_ago is not None:
                 # Only retrieve the record if it hasn't been retrieved, or was retrieved more than x days ago
@@ -860,9 +861,10 @@ class VoterManager(BaseUserManager):
                     Q(checked_against_sendgrid=False) |
                     Q(date_last_checked_against_sendgrid__isnull=True) |
                     Q(date_last_checked_against_sendgrid__lt=the_date_x_days_ago))
+                # Do not limit by "is_invalid"
             elif checked_against_snovio_more_than_x_days_ago == 0:
                 # Don't limit by if/when SnovIO data was retrieved previously
-                pass
+                list_query = list_query.filter(is_invalid=False)
             elif checked_against_snovio_more_than_x_days_ago is not None:
                 # Only retrieve the record if it hasn't been retrieved, or was retrieved more than x days ago
                 the_date_x_days_ago = now() - timedelta(days=checked_against_snovio_more_than_x_days_ago)
@@ -870,9 +872,10 @@ class VoterManager(BaseUserManager):
                     Q(checked_against_snovio=False) |
                     Q(date_last_checked_against_snovio__isnull=True) |
                     Q(date_last_checked_against_snovio__lt=the_date_x_days_ago))
+                list_query = list_query.filter(is_invalid=False)
             elif checked_against_targetsmart_more_than_x_days_ago == 0:
                 # Don't limit by if/when TargetSmart data was retrieved previously
-                pass
+                list_query = list_query.filter(is_invalid=False)
             elif checked_against_targetsmart_more_than_x_days_ago is not None:
                 # Only retrieve the record if it hasn't been retrieved, or was retrieved more than x days ago
                 the_date_x_days_ago = now() - timedelta(days=checked_against_targetsmart_more_than_x_days_ago)
@@ -880,6 +883,7 @@ class VoterManager(BaseUserManager):
                     Q(checked_against_targetsmart=False) |
                     Q(date_last_checked_against_targetsmart__isnull=True) |
                     Q(date_last_checked_against_targetsmart__lt=the_date_x_days_ago))
+                list_query = list_query.filter(is_invalid=False)
 
             # Limit the records we retrieve to this email list
             if email_address_text_list is not None and len(email_address_text_list) > 0:
@@ -925,7 +929,7 @@ class VoterManager(BaseUserManager):
         }
         return results
 
-    def retrieve_voter_contact_email_list(self, imported_by_voter_we_vote_id='', read_only=True):
+    def retrieve_voter_contact_email_list(self, imported_by_voter_we_vote_id='', include_invalid=False, read_only=True):
         success = True
         status = ""
         voter_contact_email_list = []
@@ -935,6 +939,13 @@ class VoterManager(BaseUserManager):
                 list_query = VoterContactEmail.objects.using('readonly').all()
             else:
                 list_query = VoterContactEmail.objects.all()
+            # Only include "is_invalid" emails if we specifically ask for them
+            if positive_value_exists(include_invalid):
+                # Do not limit by is_invalid
+                pass
+            else:
+                # Only return the ones which are NOT invalid
+                list_query = list_query.filter(is_invalid=False)
             if positive_value_exists(imported_by_voter_we_vote_id):
                 list_query = list_query.filter(imported_by_voter_we_vote_id=imported_by_voter_we_vote_id)
             else:
@@ -3282,6 +3293,7 @@ class VoterContactEmail(models.Model):
     has_data_from_google_people_api = models.BooleanField(default=False)
     ignore_contact = models.BooleanField(default=False)
     imported_by_voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
+    is_invalid = models.BooleanField(db_index=True, default=False)
     last_name = models.CharField(max_length=255, default=None, null=True)
     middle_name = models.CharField(max_length=255, default=None, null=True)
     state_code = models.CharField(max_length=2, default=None, null=True, db_index=True)

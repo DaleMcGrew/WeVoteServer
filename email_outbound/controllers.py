@@ -7,10 +7,12 @@ from .models import EmailAddress, EmailManager, EmailOutboundDescription, EmailS
     GENERIC_EMAIL_TEMPLATE, LINK_TO_SIGN_IN_TEMPLATE, SendGridApiCounterManager, \
     SIGN_IN_CODE_EMAIL_TEMPLATE, TO_BE_PROCESSED, VERIFY_EMAIL_ADDRESS_TEMPLATE
 from config.base import get_environment_variable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from exception.models import handle_exception
 import json
 from organization.controllers import transform_web_app_url
 from organization.models import OrganizationManager, INDIVIDUAL
+from ratelimit import limits, sleep_and_retry
 import requests
 from validate_email import validate_email
 from voter.models import VoterContactEmail, VoterDeviceLinkManager, VoterManager
@@ -20,7 +22,9 @@ from wevote_functions.functions import is_voter_device_id_valid, positive_value_
 logger = wevote_functions.admin.get_logger(__name__)
 
 SENDGRID_API_KEY = get_environment_variable("SENDGRID_API_KEY", no_exception=True)
-SENDGRID_EMAIL_VALIDATION_URL = "https://api.sendgrid.com/v3/"
+SENDGRID_EMAIL_VALIDATION_API_KEY = get_environment_variable("SENDGRID_EMAIL_VALIDATION_API_KEY", no_exception=True)
+SENDGRID_EMAIL_VALIDATION_URL = "https://api.sendgrid.com/v3/validations/email"
+SENDGRID_LIMIT_PER_SECOND = 7
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
 
@@ -120,90 +124,104 @@ def augment_email_address_list(email_address_list, voter):
     return results
 
 
-# 2021-09-30 SendGrid email verification requires Pro account which costs $90/month - Not turned on currently
-# TODO: This function needs to be finished
+# 2021-09-30 SendGrid email verification requires Pro account which costs $90/month - Turned on as of 2021-12
 def augment_emails_for_voter_with_sendgrid(voter_we_vote_id=''):
     status = ''
     success = True
 
+    api_counter_manager = SendGridApiCounterManager()
     voter_manager = VoterManager()
     # Augment all voter contacts with data from SendGrid
     voter_contact_results = voter_manager.retrieve_voter_contact_email_list(
-        imported_by_voter_we_vote_id=voter_we_vote_id)
-    if voter_contact_results['voter_contact_email_list_found']:
-        email_addresses_returned_list = voter_contact_results['email_addresses_returned_list']
+        imported_by_voter_we_vote_id=voter_we_vote_id,
+        include_invalid=True)
+    if not voter_contact_results['voter_contact_email_list_found']:
+        status += "NO_EMAILS_TO_AUGMENT_WITH_SENDGRID "
+        results = {
+            'success': success,
+            'status': status,
+        }
+        return results
 
-        # Get list of emails which need to be augmented (updated) with data from SendGrid
-        contact_email_augmented_list_as_dict = {}
-        results = voter_manager.retrieve_contact_email_augmented_list(
-            email_address_text_list=email_addresses_returned_list,
-            read_only=False,
-        )
-        if results['contact_email_augmented_list_found']:
-            # We retrieve all existing so we don't need 200 queries within update_or_create_contact_email_augmented
-            contact_email_augmented_list_as_dict = results['contact_email_augmented_list_as_dict']
+    all_emails_text_list = voter_contact_results['email_addresses_returned_list']
 
-        # Make sure we have an augmented entry for each email
-        for email_address_text in email_addresses_returned_list:
-            voter_manager.update_or_create_contact_email_augmented(
-                email_address_text=email_address_text,
-                existing_contact_email_augmented_dict=contact_email_augmented_list_as_dict)
+    # Note: We rely on email_outbound/controller.py augment_emails_for_voter_with_we_vote_data having
+    #  created a contact_email_augmented entry for every one of these emails previously
 
-        # Get list of emails which need to be augmented (updated) with data from TargetSmart
-        results = voter_manager.retrieve_contact_email_augmented_list(
-            checked_against_sendgrid_more_than_x_days_ago=15,
-            email_address_text_list=email_addresses_returned_list,
-            read_only=False,
-        )
-        if results['contact_email_augmented_list_found']:
-            contact_email_augmented_list = results['contact_email_augmented_list']
-            contact_email_augmented_list_as_dict = results['contact_email_augmented_list_as_dict']
-            email_addresses_returned_list = results['email_addresses_returned_list']
-            email_addresses_remaining_list = email_addresses_returned_list
+    # Get list of emails which need to be augmented (updated) with data from SendGrid
+    results = voter_manager.retrieve_contact_email_augmented_list(
+        checked_against_sendgrid_more_than_x_days_ago=365,
+        email_address_text_list=all_emails_text_list,
+        read_only=False,
+    )
+    contact_email_augmented_list = results['contact_email_augmented_list']
+    contact_email_augmented_list_as_dict = results['contact_email_augmented_list_as_dict']
+    email_addresses_returned_list = results['email_addresses_returned_list']
+    email_addresses_remaining_list = email_addresses_returned_list
 
-            # Now reach out to SendGrid, in blocks of 200
-            failed_api_count = 0
-            loop_count = 0
-            safety_valve_triggered = False
-            while len(email_addresses_remaining_list) > 0 and not safety_valve_triggered:
-                loop_count += 1
-                safety_valve_triggered = loop_count >= 250
-                email_addresses_for_query = email_addresses_remaining_list[:200]
-                email_addresses_remaining_list = \
-                    list(set(email_addresses_remaining_list) - set(email_addresses_for_query))
-                sendgrid_augmented_email_list_dict = {}
-                sendgrid_results = query_sendgrid_api_to_augment_email_list(email_list=email_addresses_for_query)
-                if not sendgrid_results['success']:
-                    failed_api_count += 1
-                    if failed_api_count >= 3:
-                        safety_valve_triggered = True
-                        status += "SENDGRID_API_FAILED_3_TIMES "
-                elif sendgrid_results['augmented_email_list_found']:
-                    # A dict of results from TargetSmart, with email_address_text as the key
-                    sendgrid_augmented_email_list_dict = sendgrid_results['augmented_email_list_dict']
+    if len(email_addresses_remaining_list) == 0:
+        status += "NO_MORE_EMAILS_TO_CHECK_AGAINST_SENDGRID "
+    else:
+        # Now reach out to SendGrid, in blocks of 200
+        failed_api_count = 0
+        loop_count = 0
+        safety_valve_triggered = False
+        number_of_outer_loop_executions_allowed = 60  # 2100 total = 60 loops * 35 number_executed_per_block
+        number_executed_per_block = 35  # 7 per second * 5 seconds
+        while len(email_addresses_remaining_list) > 0 and not safety_valve_triggered:
+            loop_count += 1
+            safety_valve_triggered = loop_count >= number_of_outer_loop_executions_allowed
+            email_address_list_chunk = email_addresses_remaining_list[:number_executed_per_block]
+            email_addresses_remaining_list = list(set(email_addresses_remaining_list) - set(email_address_list_chunk))
 
-                    # Update our cached augmented data
-                    for contact_email_augmented in contact_email_augmented_list:
-                        if contact_email_augmented.email_address_text in sendgrid_augmented_email_list_dict:
-                            augmented_email = \
-                                sendgrid_augmented_email_list_dict[contact_email_augmented.email_address_text]
-                            sendgrid_id = augmented_email['sendgrid_id'] \
-                                if 'sendgrid_id' in augmented_email else None
+            if len(email_address_list_chunk) == 0:
+                break
+
+            sendgrid_results = query_sendgrid_api_to_augment_email_list(email_list=email_address_list_chunk)
+            number_of_items_sent_in_query = sendgrid_results['number_of_items_sent_in_query']
+            if not sendgrid_results['success']:
+                failed_api_count += 1
+                if failed_api_count >= 3:
+                    safety_valve_triggered = True
+                    status += "SENDGRID_API_FAILED_3_TIMES "
+            elif sendgrid_results['email_results_found']:
+                # A dict of results from Sendgrid, with email_address_text as the key
+                email_results_dict = sendgrid_results['email_results_dict']
+
+                # Update our cached augmented data
+                for contact_email_augmented in contact_email_augmented_list:
+                    if contact_email_augmented.email_address_text in email_results_dict:
+                        augmented_email = email_results_dict[contact_email_augmented.email_address_text]
+                        augmented_email_found = positive_value_exists(augmented_email['augmented_email_found']) \
+                            if 'augmented_email_found' in augmented_email else False
+                        if augmented_email_found:
+                            is_invalid = positive_value_exists(augmented_email['is_invalid']) \
+                                if 'is_invalid' in augmented_email else None
                             results = voter_manager.update_or_create_contact_email_augmented(
                                 checked_against_sendgrid=True,
                                 email_address_text=contact_email_augmented.email_address_text,
                                 existing_contact_email_augmented_dict=contact_email_augmented_list_as_dict,
-                                sendgrid_id=sendgrid_id,
+                                is_invalid=is_invalid,
                             )
-                            if results['success']:
-                                # Now update all of the VoterContactEmail entries, irregardless of whose contact it is
-                                try:
-                                    number_updated = VoterContactEmail.objects.filter(
-                                        email_address_text__iexact=contact_email_augmented.email_address_text) \
-                                        .update(state_code='')
-                                    status += "NUMBER_OF_VOTER_CONTACT_EMAIL_UPDATED: " + str(number_updated) + " "
-                                except Exception as e:
-                                    status += "NUMBER_OF_VOTER_CONTACT_EMAIL_NOT_UPDATED: " + str(e) + " "
+                            if not results['success']:
+                                status += results['status']
+                            # And update the VoterContactEmail
+                            defaults = {
+                                'is_invalid': contact_email_augmented.is_invalid,
+                            }
+                            try:
+                                number_updated = VoterContactEmail.objects.filter(
+                                    email_address_text__iexact=contact_email_augmented.email_address_text) \
+                                    .update(**defaults)
+                                status += "NUMBER_OF_VOTER_CONTACT_EMAIL_UPDATED-SENDGRID: " + str(number_updated) + " "
+                            except Exception as e:
+                                status += "NUMBER_OF_VOTER_CONTACT_EMAIL_NOT_UPDATED-SENDGRID: " + str(e) + " "
+
+            # Use SendGrid API call counter to track the number of queries we are doing each day
+            if positive_value_exists(number_of_items_sent_in_query):
+                api_counter_manager.create_counter_entry(
+                    'EmailVerificationAPI',
+                    number_of_items_sent_in_query=number_of_items_sent_in_query)
 
     results = {
         'success': success,
@@ -580,82 +598,140 @@ def move_email_address_entries_to_another_voter(from_voter_we_vote_id, to_voter_
     return results
 
 
-# 2021-09-30 SendGrid email verification requires Pro account which costs $90/month - Not turned on currently
-# TODO: This function needs to be finished
+# 2021-09-30 SendGrid email verification requires Pro account which costs $90/month - Turned on as of 2021-12
 def query_sendgrid_api_to_augment_email_list(email_list=None):
     success = True
     status = ""
-    augmented_email_list_dict = {}
-    augmented_email_list_found = False
-    json_from_sendgrid = {}
+    email_results_dict = {}
+    email_results_found = False
+    number_of_items_sent_in_query = 0
 
-    if email_list is None or len(email_list) == 0:
-        status += "MISSING_EMAIL_LIST "
+    if email_list is None or not len(email_list) > 0:
+        status += "MISSING_EMAIL_LIST_FOR_SENDGRID "
         success = False
         results = {
-            'success': success,
-            'status': status,
-            'augmented_email_list_found':  augmented_email_list_found,
-            'augmented_email_list_dict': augmented_email_list_dict,
+            'success':                          success,
+            'status':                           status,
+            'email_results_found':              email_results_found,
+            'email_results_dict':               email_results_dict,
+            'number_of_items_sent_in_query':    number_of_items_sent_in_query,
         }
         return results
 
-    number_of_items_sent_in_query = len(email_list)
+    # Linear for testing
+    # for one_email in email_list:
+    #     one_result = {}
+    #     number_of_items_sent_in_query += 1
+    #     try:
+    #         one_result = query_and_extract_from_sendgrid_email_verification_api(email=one_email)
+    #         email_address = one_result['email_address_text']
+    #         email_address = email_address.lower()
+    #         email_results_dict[email_address] = one_result
+    #         if one_result['augmented_email_found']:
+    #             email_results_found = True
+    #     except Exception as e:
+    #         status += one_result['status'] if 'status' in one_result else ''
+    #         status += "CRASHING_ERROR: " + str(e) + ' '
 
-    try:
-        api_key = SENDGRID_API_KEY
-        emails_param = ",".join(email_list)
-        # Get the ballot info at this address
-        response = requests.post(
-            SENDGRID_EMAIL_VALIDATION_URL,
-            headers={
-                "Authorization": "Bearer " + api_key,
-                "Content-Type": "application/json",
-            },
-            params={
-                "emails": emails_param,
-            })
-        json_from_sendgrid = json.loads(response.text)
+    # Multi-thread for production
+    threads = []
+    with ThreadPoolExecutor(max_workers=7) as executor:
+        for email in email_list:
+            threads.append(executor.submit(query_and_extract_from_sendgrid_email_verification_api, email))
+            number_of_items_sent_in_query += 1
 
-        if 'message' in json_from_sendgrid:
-            status += json_from_sendgrid['message'] + " "
-            if json_from_sendgrid['message'].strip() in ['Failed', 'Forbidden']:
-                success = False
-
-        # Use TargetSmart API call counter to track the number of queries we are doing each day
-        api_counter_manager = SendGridApiCounterManager()
-        api_counter_manager.create_counter_entry(
-            'email-search',
-            number_of_items_sent_in_query=number_of_items_sent_in_query)
-    except Exception as e:
-        success = False
-        status += 'QUERY_SENDGRID_EMAIL_SEARCH_API_FAILED: ' + str(e) + ' '
-        handle_exception(e, logger=logger, exception_message=status)
-
-    if 'results' in json_from_sendgrid:
-        results_list_from_sendgrid = json_from_sendgrid['results']
-        for augmented_email in results_list_from_sendgrid:
-            email_address_text = augmented_email['vb.email_address']
-            if positive_value_exists(email_address_text):
-                sendgrid_id = augmented_email['vb.voterbase_id']
-                sendgrid_source_state = augmented_email['vb.vf_source_state']
-                # Last voted?
-                # Political party?
-                # Full address so we can find their ballot?
-                augmented_email_dict = {
-                    'email_address_text':       email_address_text,
-                    'sendgrid_id':           sendgrid_id,
-                    'sendgrid_source_state': sendgrid_source_state,
-                }
-                augmented_email_list_dict[email_address_text.lower()] = augmented_email_dict
+        for task in as_completed(threads):
+            try:
+                one_result = task.result()
+                email_address = one_result['email_address_text']
+                email_address = email_address.lower()
+                email_results_dict[email_address] = one_result
+                if one_result['augmented_email_found']:
+                    email_results_found = True
+            except Exception as e:
+                status += one_result['status'] if 'status' in one_result else ''
+                status += "CRASHING_ERROR: " + str(e) + ' '
 
     results = {
-        'success': success,
-        'status': status,
-        'augmented_email_list_found': augmented_email_list_found,
-        'augmented_email_list_dict': augmented_email_list_dict,
+        'success':                          success,
+        'status':                           status,
+        'email_results_found':              email_results_found,
+        'email_results_dict':               email_results_dict,
+        'number_of_items_sent_in_query':    number_of_items_sent_in_query,
     }
     return results
+
+
+@sleep_and_retry
+@limits(calls=SENDGRID_LIMIT_PER_SECOND, period=1)
+def query_and_extract_from_sendgrid_email_verification_api(email=''):
+    success = True
+    status = ""
+    augmented_email_found = False
+    json_from_sendgrid = {}
+
+    if not positive_value_exists(email):
+        status += "MISSING_EMAIL_FROM_SENDGRID "
+        success = False
+        results = {
+            'success':                  success,
+            'status':                   status,
+            'augmented_email_found':    augmented_email_found,
+            'is_invalid':               None,
+        }
+        return results
+
+    try:
+        json_from_sendgrid = query_sendgrid_email_verification_api(email=email)
+
+        if 'errors' in json_from_sendgrid:
+            success = False
+            status += "[ERRORS: " + str(json_from_sendgrid['errors']) + "] "
+    except Exception as e:
+        success = False
+        status += 'QUERY_SENDGRID_EMAIL_VERIFICATION_API_FAILED: ' + str(e) + ' '
+        handle_exception(e, logger=logger, exception_message=status)
+
+    if success:
+        print(str(json_from_sendgrid))
+        result = json_from_sendgrid['result'] if 'result' in json_from_sendgrid else {}
+        augmented_email_found = 'result' in json_from_sendgrid
+        verdict = result['verdict'] if 'verdict' in result else ''
+        is_invalid = verdict in ['Invalid']
+    else:
+        augmented_email_found = False
+        is_invalid = False
+
+    results = {
+        'success':                  success,
+        'status':                   status,
+        'augmented_email_found':    augmented_email_found,
+        'email_address_text':       email,
+        'is_invalid':               is_invalid,
+    }
+    return results
+
+
+@sleep_and_retry
+@limits(calls=SENDGRID_LIMIT_PER_SECOND, period=1)
+def query_sendgrid_email_verification_api(email=''):
+    try:
+        url = SENDGRID_EMAIL_VALIDATION_URL
+        payload = "{\"email\":\"" + email + "\"}"
+        headers = {
+            'authorization': "Bearer " + SENDGRID_EMAIL_VALIDATION_API_KEY,
+            'content-type': "application/json",
+        }
+        response = requests.request("POST", url, data=payload, headers=headers)
+        if response.status_code == 503:
+            print("ERROR_QUERY_SENDGRID_EMAIL: " + str(response.status_code) + ": " + str(response.text))
+            return {}
+        else:
+            structured_json = json.loads(response.text)
+    except Exception as e:
+        print("ERROR_QUERY_SENDGRID_EMAIL_VERIFICATION: " + str(e))
+        return {}
+    return structured_json
 
 
 def schedule_email_with_email_outbound_description(email_outbound_description, send_status=TO_BE_PROCESSED):

@@ -7,6 +7,7 @@ from config.base import get_environment_variable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from exception.models import handle_exception, handle_record_found_more_than_one_exception
 import json
+from ratelimit import limits, sleep_and_retry
 import requests
 from requests.structures import CaseInsensitiveDict
 from voter.controllers_contacts import assemble_contact_display_name
@@ -21,6 +22,7 @@ logger = wevote_functions.admin.get_logger(__name__)
 
 OPEN_PEOPLE_USERNAME = get_environment_variable("OPEN_PEOPLE_USERNAME", no_exception=True)
 OPEN_PEOPLE_PASSWORD = get_environment_variable("OPEN_PEOPLE_PASSWORD", no_exception=True)
+OPEN_PEOPLE_LIMIT_PER_SECOND = 100
 
 
 def augment_emails_for_voter_with_open_people(voter_we_vote_id=''):
@@ -35,14 +37,14 @@ def augment_emails_for_voter_with_open_people(voter_we_vote_id=''):
     voter_contact_results = voter_manager.retrieve_voter_contact_email_list(
         imported_by_voter_we_vote_id=voter_we_vote_id)
     if not voter_contact_results['voter_contact_email_list_found']:
-        status += "NO_EMAILS_TO_AUGMENT "
+        status += "NO_EMAILS_TO_AUGMENT_WITH_OPEN_PEOPLE "
         results = {
             'success': success,
             'status': status,
         }
         return results
 
-    email_addresses_returned_list = voter_contact_results['email_addresses_returned_list']
+    all_emails_text_list = voter_contact_results['email_addresses_returned_list']
 
     # Note: We rely on email_outbound/controller.py augment_emails_for_voter_with_we_vote_data having
     #  created a contact_email_augmented entry for every one of these emails previously
@@ -51,7 +53,7 @@ def augment_emails_for_voter_with_open_people(voter_we_vote_id=''):
     # Get list of emails which need to be augmented (updated) with data from Open People
     results = voter_manager.retrieve_contact_email_augmented_list(
         checked_against_open_people_more_than_x_days_ago=30,
-        email_address_text_list=email_addresses_returned_list,
+        email_address_text_list=all_emails_text_list,
         read_only=False,
     )
     contact_email_augmented_list = results['contact_email_augmented_list']
@@ -70,8 +72,8 @@ def augment_emails_for_voter_with_open_people(voter_we_vote_id=''):
         status += "VALID_OPEN_PEOPLE_AUTHENTICATION_TOKEN_NOT_FOUND "
         print(status)
     else:
-        # Now reach out to Open People, with outer limit of 2000, but in blocks of 100 which must complete
-        #  and be saved before the next block of 100 is started
+        # Now reach out to Open People, with outer limit of 2000, but in blocks which must complete
+        #  and be saved before the next block is started
         failed_api_count = 0
         loop_count = 0
         safety_valve_triggered = False
@@ -154,7 +156,7 @@ def augment_emails_for_voter_with_open_people(voter_we_vote_id=''):
     # #########
     # Finally, retrieve all of the augmented data we have collected and update VoterContactEmail entries
     results = voter_manager.retrieve_contact_email_augmented_list(
-        email_address_text_list=email_addresses_returned_list,
+        email_address_text_list=all_emails_text_list,
         read_only=True,
     )
     if results['success'] and results['contact_email_augmented_list_found']:
@@ -244,6 +246,8 @@ def fetch_open_people_authentication_token():
     return authentication_token
 
 
+@sleep_and_retry
+@limits(calls=OPEN_PEOPLE_LIMIT_PER_SECOND, period=1)
 def query_open_people_email_search(email='', authentication_token=''):
     headers = CaseInsensitiveDict()
     headers["accept"] = "text/plain"
@@ -278,6 +282,8 @@ def query_open_people_for_authentication_token():
     return structured_json
 
 
+@sleep_and_retry
+@limits(calls=OPEN_PEOPLE_LIMIT_PER_SECOND, period=1)
 def query_open_people_phone_search(phone_number='', authentication_token=''):
     headers = CaseInsensitiveDict()
     headers["accept"] = "text/plain"
@@ -296,15 +302,15 @@ def query_open_people_phone_search(phone_number='', authentication_token=''):
     return structured_json
 
 
-def query_open_people_email_from_list(email_list=[], authentication_token=''):
+def query_open_people_email_from_list(email_list=None, authentication_token=''):
     success = True
     status = ""
     email_results_dict = {}
     email_results_found = False
     number_of_items_sent_in_query = 0
 
-    if not len(email_list) > 0:
-        status += "MISSING_EMAIL_LIST "
+    if email_list is None or not len(email_list) > 0:
+        status += "MISSING_EMAIL_LIST_FOR_OPEN_PEOPLE "
         success = False
         results = {
             'success':                          success,
@@ -363,6 +369,8 @@ def query_open_people_email_from_list(email_list=[], authentication_token=''):
     return results
 
 
+@sleep_and_retry
+@limits(calls=OPEN_PEOPLE_LIMIT_PER_SECOND, period=1)
 def query_and_extract_from_open_people_email_address_search(email='', authentication_token=''):
     success = True
     status = ""
@@ -372,7 +380,7 @@ def query_and_extract_from_open_people_email_address_search(email='', authentica
     name_dict_with_highest_score = {}
 
     if not positive_value_exists(email):
-        status += "MISSING_EMAIL "
+        status += "MISSING_EMAIL_FROM_OPEN_PEOPLE "
         success = False
         results = {
             'success':                  success,

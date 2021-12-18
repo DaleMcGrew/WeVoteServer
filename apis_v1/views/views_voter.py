@@ -2918,7 +2918,9 @@ def voter_contact_list_retrieve_view(request):  # voterContactListRetrieve
     voter_contact_email_list = []
 
     if hasattr(voter, 'we_vote_id'):
-        retrieve_results = voter_contact_list_retrieve_for_api(voter_we_vote_id=voter.we_vote_id)
+        check_for_invalid_emails = request.GET.get('check_for_invalid_emails', False)
+        retrieve_results = voter_contact_list_retrieve_for_api(
+            voter_we_vote_id=voter.we_vote_id, check_for_invalid_emails=check_for_invalid_emails)
         voter_contact_email_list = retrieve_results['voter_contact_email_list']
         voter_contact_email_google_count = retrieve_results['voter_contact_email_google_count']
 
@@ -2958,11 +2960,6 @@ def voter_contact_list_save_view(request):  # voterContactListSave
     from email_outbound.controllers import augment_emails_for_voter_with_we_vote_data
     augment_results = augment_emails_for_voter_with_we_vote_data(voter_we_vote_id=voter.we_vote_id)
     status += augment_results['status']
-
-    # 2021-09-30 Requires Pro account which costs $90/month
-    # from email_outbound.controllers import augment_emails_for_voter_with_sendgrid
-    # augment_results = augment_emails_for_voter_with_sendgrid(voter_we_vote_id=voter.we_vote_id)
-    # status += augment_results['status']
 
     # Did not find any matches out of 750 sent and costs $39/month
     # from import_export_snovio.controllers import augment_emails_for_voter_with_snovio
