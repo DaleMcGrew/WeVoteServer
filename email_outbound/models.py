@@ -7,8 +7,9 @@ from django.apps import apps
 from django.db import models
 from django.core.mail import EmailMultiAlternatives, get_connection
 from config.base import get_environment_variable
-from wevote_functions.functions import convert_to_int, extract_email_addresses_from_string, generate_random_string, \
+from wevote_functions.functions import convert_to_int, generate_random_string, \
     positive_value_exists
+from wevote_functions.functions_email import extract_email_addresses_from_string
 from wevote_settings.models import fetch_next_we_vote_id_email_integer, fetch_site_unique_id_prefix
 
 CAMPAIGNX_NEWS_ITEM_TEMPLATE = 'CAMPAIGNX_NEWS_ITEM_TEMPLATE'

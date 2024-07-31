@@ -1082,26 +1082,6 @@ def convert_level_to_race_office_level(level):
         return ''
 
 
-def extract_email_addresses_from_string(incoming_string):
-    """
-    Thanks to https://gist.github.com/dideler/5219706
-    :param incoming_string:
-    :return:
-    """
-    string_lower_case = incoming_string.lower()
-    regex = re.compile((r"([a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`"
-                        r"{|}~-]+)*(@|\sat\s)(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(\.|"
-                        r"\sdot\s))+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)"))
-
-    collection_of_emails = (email[0] for email in re.findall(regex, string_lower_case) if not email[0].startswith('//'))
-
-    list_of_emails = []
-    for email in collection_of_emails:
-        list_of_emails.append(email)
-
-    return list_of_emails
-
-
 def extract_title_from_full_name(full_name):
     """
     See documentation here: https://github.com/derek73/python-nameparser

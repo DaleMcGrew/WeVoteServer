@@ -1830,9 +1830,10 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         # Working with We Vote Positions, figure out if organization_is_following_politician and attach that variable
         #  with a value of True to the position, if so.
         try:
-            politician_position_query = PositionEntered.objects.using('readonly').all()
-            politician_position_list = politician_position_query.filter(
+            politician_position_query = PositionEntered.objects.using('readonly').order_by('-position_year').all()
+            politician_position_query = politician_position_query.filter(
                 politician_we_vote_id__iexact=politician_on_stage.we_vote_id)
+            politician_position_list = list(politician_position_query)
         except Exception as e:
             politician_position_list = []
 
