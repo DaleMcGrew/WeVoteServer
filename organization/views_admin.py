@@ -3663,6 +3663,7 @@ def compare_two_organizations_for_merge_view(request):
         organization_merge_conflict_values,
         remove_duplicate_process)
 
+
 @login_required
 def find_and_merge_duplicate_organizations_view(request):
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
