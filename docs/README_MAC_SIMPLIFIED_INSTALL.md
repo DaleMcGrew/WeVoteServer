@@ -78,7 +78,7 @@ Feel free to add any other PyCharm tools that you would like!  When done press '
 
     <img width="700" src="https://raw.githubusercontent.com/wevote/WeVoteServer/develop/docs/images/CustomizePyCharm2021.png"> 
 
-14.  If you are using one of the newer Macs with Apple Silicon processor, he installer offers the "Apple Silicon Version" which is better and more stable -- take it if it is offered!
+14.  If you are using one of the newer Macs with Apple Silicon processor, the installer offers the "Apple Silicon Version" which is better and more stable -- take it if it is offered!
 
 15. If the Apple top menu, shows "Git" skip this step.  If it says "VCS", the follow this step to configure Git
 
@@ -168,7 +168,7 @@ Then confirm that the default python is now version 3.11 or later.
      Python 2.7.18
      stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % export PATH="/opt/homebrew/opt/python@3.11/libexec/bin:$PATH"
      stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % python --version                                            
-     Python 3.11.4
+     Python 3.13.1
      stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
      ```
 
@@ -236,15 +236,22 @@ PyCharm and opening a new one.
 this step.  To see if postgres is already running, check with lsof in a terminal window `lsof -i -P | grep -i "listen" | grep postgres`:
 
     ```
-    (venv) $ lsof -i -P | grep -i "listen" | grep postgres
+    lsof -i -P | grep -i "listen" | grep postgres
+    ```
+
+    Results:
+    ```
     postgres  13254 admin    5u  IPv6 0x35032d9cf207f247      0t0  TCP localhost:5432 (LISTEN)
     postgres  13254 admin    6u  IPv4 0x35032d9d01cd2647      0t0  TCP localhost:5432 (LISTEN)
-    (venv) $
     ```  
  
     If the output shows postgres has already been installed and is listening on port 5432.  Stop and fix this,  
     otherwise you would install a second postgres instance running on port 5433, and the result would be hours of "port 
-    assignment" mess to clean up. 
+    assignment" mess to clean up.
+
+    ```
+    brew services stop postgresql
+    ```
    
     **If that lsof line returns nothing**, then you don't currently have postgres running, and you can continue on to the next step.
 
@@ -262,23 +269,22 @@ this step.  To see if postgres is already running, check with lsof in a terminal
    
 3. Install PostgreSQL by running the following command:
 
-    `(venv) $ brew install postgresql`
+    `brew install postgresql`
 
 4. Start PostgreSQL (this is actually instructing the macOS [launchd](https://en.wikipedia.org/wiki/Launchd) to start 
     Postgres every time you start your Mac):
 
-    `(venv) $ brew services start postgresql`
+    `brew services start postgresql`
 
 5. Create a default database, and a default user, and then log into the 'psql postgres' PostgreSQL command interpreter ("postgres=#" is the command prompt, you should not have to type this in):
 
-    _New way: November 2021, using Postgres 14.0_
+    _New way: November 2021, using Postgres 14.0_  TODO 7/8:  CREATE ROLE postgres WITH SUPERUSER CREATEDB CREATEROLE LOGIN ENCRYPTED PASSWORD ‘stevePG’;
     ```
    (PycharmEnvironments) stevepodell@Steves-MacBook-Pro-32GB-Oct-2109 ~ % psql postgres
    psql (14.0)
    Type "help" for help.
    
-   postgres=# createdb
-   postgres=# createuser -s postgres    (TODO 7/8:  CREATE ROLE postgres WITH SUPERUSER CREATEDB CREATEROLE LOGIN ENCRYPTED PASSWORD ‘stevePG’;
+   postgres=# createuser -s postgres;
    postgres=# \du
                                         List of roles
       Role name  |                         Attributes                         | Member of 
@@ -446,28 +452,52 @@ this step.  To see if postgres is already running, check with lsof in a terminal
 
     Python print commands, only send their output to this log.  Python logger commands send the output
     to both this runtime log, and the log file that we created a few steps back.  On the production servers in AWS, these 
-    log lines can be searched using Splunk (ask Dale for Splunk access if you could use it.)
+    log lines can be searched using the AWS CloudWatch console (ask Dale for CloundWatch access if you need it.)
 
-1.  Now, with the server still running, open a terminal window, and create an account for yourself to login to the 
-    management pages of the WeVoteServer.
-    
-    At WeVote, we call end users "voters".  This new "voter" will have all the 
-    rights that you (as a developer) need to log in to 
-    [http://localhost:8000/admin/](http://localhost:8000/admin/).  Once logged in you can start synchronizing data (downloading ballot and issue 
-    data from the master server in the cloud, to your local server).
-    
-   The usage is:  `python manage.py create_dev_user first_name last_name email password`
+## Set up an admin account in your local WeVoteServer database
+
+1a.  Now, create an account for yourself to login to the management pages of the WeVoteServer.
+
+    At WeVote, we call end users "voters".  
+
+    The usage is:  `python manage.py create_dev_user first_name last_name email password`
 
     ```
-    (3.11.8) admin$ python manage.py create_dev_user Samuel Adams samuel@adams.com ale 
-    Creating developer first name=Samuel, last name=Adams, email=samuel@adams.com
+    (3.11.8) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % python manage.py create_dev_user Samuel Adams samuel@adams.com ale
+    Creating developer first name=Samuel, last name=Adams, email=samuel@adams.com, password =ale
     End of create_dev_user
-    (3.11.8) admin$ 
+    (3.11.8) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
     ```
+    This new "voter" will have all the rights that you (as a developer) need to log in to 
+    [http://localhost:8000/admin/](http://localhost:8000/admin/).  Once logged in you can start synchronizing data (downloading ballot and issue 
+     data from the master server in the cloud, to your local server).
     
-1.  Navigate to [http://localhost:8000/admin/](http://localhost:8000/admin/) and sign in with your new username/password  (for example mine is stevepodell/stevePG.).    
+1b. If you run into problems with this script, there is an alternate way to give your local account admin permissions. 
 
-1.  **Your local instance of the WeVoteServer is now setup and running** (although there is no election 
+i.  Open the file `WeVoteServer/voter/controllers_voter_create.py` and edit the variables to your own information.
+
+ii. Edit the default information in this file (first_name, last_name, etc.) to be personalized for yourself, with your own information:
+
+```
+first_name = "Samuel"
+last_name = "Adams"
+email = "samuel@adams.com"
+password = "GoodAle1776"
+```
+
+iii. Set `allow_create` to True, so when you run the script, changes can be made to your local database.
+
+```
+allow_create = True
+```
+
+iv. Visit http://localhost:8000/voter/create_dev_user 
+    or https://wevotedeveloper.com:8000/voter/create_dev_user Once you have visited
+    that page, you should have a new admin account you can sign in with.
+
+2.  Navigate to [http://localhost:8000/admin/](http://localhost:8000/admin/) and sign in with your new username/password.  (in the example above the user email is `samuel@adams.com` and the password is `ale`).    
+
+3.  **Your local instance of the WeVoteServer is now setup and running** (although there is no election 
     data stored in your Postgres instance, for it to serve to clients at this point).
 
 ## Import some ballot data from the live production API Server

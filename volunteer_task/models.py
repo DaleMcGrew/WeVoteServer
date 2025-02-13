@@ -21,7 +21,7 @@ VOLUNTEER_ACTION_ELECTION_RETRIEVE_STARTED = 9
 VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS = 10  # Candidate or Politician
 VOLUNTEER_ACTION_MATCH_CANDIDATES_TO_POLITICIANS = 11
 VOLUNTEER_ACTION_PHOTO_BULK_RETRIEVE = 12
-
+VOLUNTEER_ACTION_ORGANIZATION_DEDUPLICATION = 13
 
 class VolunteerTaskCompleted(models.Model):
     # This is volunteer action_constant (as opposed to Analytics action_constant)
@@ -250,5 +250,7 @@ def display_action_constant_human_readable(action_constant):
         return "PHOTO_BULK_RETRIEVE"
     if action_constant == VOLUNTEER_ACTION_VOTER_GUIDE_POSSIBILITY_CREATED:
         return "VOTER_GUIDE_POSSIBILITY_CREATED"
+    if action_constant == VOLUNTEER_ACTION_ORGANIZATION_DEDUPLICATION:
+        return "ORGANIZATION_DEDUPLICATION"
 
     return "VOLUNTEER_ACTION_CONSTANT: " + str(action_constant)

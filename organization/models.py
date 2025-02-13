@@ -174,6 +174,10 @@ ORGANIZATION_UNIQUE_IDENTIFIERS = [
     'wikipedia_thumbnail_width',
     'youtube_url',
 ]
+ORGANIZATION_UNIQUE_ATTRIBUTES_TO_BE_CLEARED = [
+    'vote_smart_id',
+    'fb_username',
+]
 
 # These are values used in features_provided_bitmap
 # Mirrored in WebApp/src/js/constants/VoterConstants.js
@@ -2404,6 +2408,78 @@ class OrganizationManager(models.Manager):
         }
         return results
 
+    def retrieve_organizations_are_not_duplicates_list(organization_we_vote_id, read_only=True):
+        """
+        Get a list of other organization_we_vote_id's that are not duplicates
+        :param organization_we_vote_id:
+        :param read_only:
+        :return:
+        """
+        # Note that the direction of the linkage does not matter
+        organizations_are_not_duplicates_list1 = []
+        organizations_are_not_duplicates_list2 = []
+        status = ""
+        try:
+            if positive_value_exists(read_only):
+                organizations_are_not_duplicates_list_query = \
+                    OrganizationsAreNotDuplicates.objects.using('readonly').filter(
+                        organization1_we_vote_id=organization_we_vote_id,
+                    )
+            else:
+                organizations_are_not_duplicates_list_query = OrganizationsAreNotDuplicates.objects.filter(
+                    organization1_we_vote_id=organization_we_vote_id,
+                )
+            organizations_are_not_duplicates_list1 = list(organizations_are_not_duplicates_list_query)
+            success = True
+            status += "ORGANIZATIONS_NOT_DUPLICATES_LIST_UPDATED_OR_CREATED1 "
+        except OrganizationsAreNotDuplicates.DoesNotExist:
+            # No data found. Try again below
+            success = True
+            status += 'NO_ORGANIZATIONS_NOT_DUPLICATES_LIST_RETRIEVED_DoesNotExist1 '
+        except Exception as e:
+            success = False
+            status += "ORGANIZATIONS_NOT_DUPLICATES_LIST_NOT_UPDATED_OR_CREATED1: " + str(e) + ' '
+
+        if success:
+            try:
+                if positive_value_exists(read_only):
+                    organizations_are_not_duplicates_list_query = \
+                        OrganizationsAreNotDuplicates.objects.using('readonly').filter(
+                            organization2_we_vote_id=organization_we_vote_id,
+                        )
+                else:
+                    organizations_are_not_duplicates_list_query = \
+                        OrganizationsAreNotDuplicates.objects.filter(
+                            organization2_we_vote_id=organization_we_vote_id,
+                        )
+                organizations_are_not_duplicates_list2 = list(organizations_are_not_duplicates_list_query)
+                success = True
+                status += "ORGANIZATIONS_NOT_DUPLICATES_LIST_UPDATED_OR_CREATED2 "
+            except OrganizationsAreNotDuplicates.DoesNotExist:
+                success = True
+                status += 'NO_ORGANIZATIONS_NOT_DUPLICATES_LIST_RETRIEVED2_DoesNotExist2 '
+            except Exception as e:
+                success = False
+                status += "ORGANIZATIONS_NOT_DUPLICATES_LIST_NOT_UPDATED_OR_CREATED2: " + str(e) + ' '
+
+        organizations_are_not_duplicates_list = \
+            organizations_are_not_duplicates_list1 + organizations_are_not_duplicates_list2
+        organizations_are_not_duplicates_list_found = positive_value_exists(len(organizations_are_not_duplicates_list))
+        organizations_are_not_duplicates_list_we_vote_ids = []
+        for one_entry in organizations_are_not_duplicates_list:
+            if one_entry.organization1_we_vote_id != organization_we_vote_id:
+                organizations_are_not_duplicates_list_we_vote_ids.append(one_entry.organization1_we_vote_id)
+            elif one_entry.organization2_we_vote_id != organization_we_vote_id:
+                organizations_are_not_duplicates_list_we_vote_ids.append(one_entry.organization2_we_vote_id)
+        results = {
+            'success':                                          success,
+            'status':                                           status,
+            'organizations_are_not_duplicates_list_found':        organizations_are_not_duplicates_list_found,
+            'organizations_are_not_duplicates_list':              organizations_are_not_duplicates_list,
+            'organizations_are_not_duplicates_list_we_vote_ids':  organizations_are_not_duplicates_list_we_vote_ids,
+        }
+        return results
+
 
 class OrganizationListManager(models.Manager):
     """
@@ -3572,6 +3648,46 @@ class Organization(models.Model):
         else:
             return ''
 
+class OrganizationsAreNotDuplicates(models.Model):
+    """
+    When checking for duplicates, there are times when we want to explicitly mark two organizations as NOT duplicates
+    """
+    MultipleObjectsReturned = None
+    DoesNotExist = None
+    objects = None
+    organization1_we_vote_id = models.CharField(
+        verbose_name="first organization we are tracking", max_length=255, null=True, unique=False, db_index=True)
+    organization2_we_vote_id = models.CharField(
+        verbose_name="second organization we are tracking", max_length=255, null=True, unique=False, db_index=True)
+   
+    def fetch_other_organization_we_vote_id(self, one_we_vote_id):
+        if one_we_vote_id == self.organization1_we_vote_id:
+            return self.organization2_we_vote_id
+        elif one_we_vote_id == self.organization2_we_vote_id:
+            return self.organization1_we_vote_id
+        else:
+            # If the we_vote_id passed in wasn't found, don't return another we_vote_id
+            return ""
+
+
+class OrganizationsArePossibleDuplicates(models.Model):
+    """
+    When checking for duplicates, there are times when we want to explicitly mark two organizations as possible duplicates
+    """
+
+
+    organization1_we_vote_id = models.CharField(max_length=255, null=True, unique=False, db_index=True)
+    organization2_we_vote_id = models.CharField(max_length=255, null=True, unique=False, db_index=True)
+    state_code = models.CharField(max_length=2, null=True)
+   
+    def fetch_other_organization_we_vote_id(self, one_we_vote_id):
+        if one_we_vote_id == self.organization1_we_vote_id:
+            return self.organization2_we_vote_id
+        elif one_we_vote_id == self.organization2_we_vote_id:
+            return self.organization1_we_vote_id
+        else:
+            # If the we_vote_id passed in wasn't found, don't return another we_vote_id
+            return ""
 
 class OrganizationChangeLog(models.Model):  # OrganizationLogEntry would be another name
     """

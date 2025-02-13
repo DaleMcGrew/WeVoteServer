@@ -6,6 +6,8 @@
 {%  block content %}
 {% load humanize %}
 {% load template_filters %}
+{% include "admin_tools/speed_statistics_banner.html" with performance_dict=performance_dict %}
+
 <a href="{% url 'politician:politician_list' %}?state_code={{ state_code }}">
     &lt; Back to Politicians</a>
 
