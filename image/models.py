@@ -7,7 +7,9 @@ from datetime import date
 from django.db import models
 from exception.models import handle_record_found_more_than_one_exception, handle_exception, \
     handle_record_not_saved_exception, handle_record_not_deleted_exception
-from PIL import Image, ImageOps
+from cairosvg import svg2png
+from pathlib import Path
+from PIL import ExifTags, GifImagePlugin, Image, ImageOps
 from urllib.request import urlretrieve
 from urllib.error import HTTPError
 from wevote_functions.functions import convert_to_int, positive_value_exists
@@ -44,6 +46,8 @@ AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
 AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
 AWS_STORAGE_BUCKET_NAME = get_environment_variable("AWS_STORAGE_BUCKET_NAME")
 AWS_STORAGE_SERVICE = "s3"
+
+GifImagePlugin.LOADING_STRATEGY = GifImagePlugin.LoadingStrategy.RGB_ALWAYS
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -2077,7 +2081,7 @@ class WeVoteImageManager(models.Manager):
             image_type='',
             image_offset_x=0,
             image_offset_y=0,
-            convert_image_to_jpg=True):
+            save_gif_as_webp=False):
         """
         Resize image and save it to the same location
         Note re the facebook background:  We are scaling and sizing here to match the size of the html pane on the
@@ -2088,33 +2092,77 @@ class WeVoteImageManager(models.Manager):
         :param image_type:
         :param image_offset_x:
         :param image_offset_y:
-        :param convert_image_to_jpg:
         :return:
-        """
+        """        
+        image_dir = "/tmp/"
+        image_src = image_dir + image_local_path
+        image_dst = image_dir
+        image = None
+        resized_image_created = False
+        
+        path_obj = Path(image_src)
+        image_stem = path_obj.stem.lower()
+        input_format = path_obj.suffix
+        if input_format:
+            input_format = input_format[1:].lower()
+        else:
+            return resized_image_created
+        output_format = input_format
+        format_map = {
+            "svg": "png",
+            "tiff": "png"
+        }
+
+        if input_format in format_map:
+            output_format = format_map[input_format]
+            image_name = f"{image_stem}.{output_format}"
+            image_dst += image_name
+            if input_format == "svg":
+                svg2png(url=image_src, write_to=image_dst)
+            else:
+                image = Image.open(image_src)
+                image.save(image_dst)
+        
+        elif input_format == "gif":
+            if save_gif_as_webp:
+                output_format = "webp"
+                image_name = f"{image_stem}.{output_format}"
+                image_dst += image_name
+            else:
+                image_dst = image_src
+            image = Image.open(image_src)
+            image.save(image_dst, save_all=True)
+        
+        else:
+            image_dst = image_src
+        
         try:
-            image_local_path = "/tmp/" + image_local_path
-            original_image = Image.open(image_local_path)
-            image = ImageOps.exif_transpose(original_image)
-            if image_type == TWITTER_BACKGROUND_IMAGE_NAME or image_type == TWITTER_BANNER_IMAGE_NAME:
-                image = image.resize((image_width, image_height), Image.Resampling.LANCZOS)
-            elif image_type == FACEBOOK_BACKGROUND_IMAGE_NAME:
-                centering_x = 0.5
-                centering_y = ((image.height - image_offset_y) * 0.5) / image.height
-                image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS,
-                                     centering=(centering_x, centering_y))
-            else:
-                image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS, centering=(0.5, 0.5))
-            if convert_image_to_jpg:
-                image = image.convert('RGB')
-                image.save(image_local_path, quality=95, subsampling=0)
-            else:
-                image.save(image_local_path)
-            resized_image_created = True
+            image = Image.open(image_dst)
         except Exception as e:
-            resized_image_created = False
             exception_message = "resize_we_vote_master_image failed"
             handle_exception(e, logger=logger, exception_message=exception_message)
 
+        # Remove sensitive data
+        # See https://web.mit.edu/Graphics/src/Image-ExifTool-6.99/html/TagNames/GPS.html
+        exif = image.getexif()
+        gps_ifd = exif.get_ifd(ExifTags.IFD.GPSInfo)
+        gps_ifd.clear()
+
+        # Resize
+        centering_x = 0.5
+        centering_y = None
+
+        if image_type == TWITTER_BACKGROUND_IMAGE_NAME or image_type == TWITTER_BANNER_IMAGE_NAME:
+            image = image.resize((image_width, image_height), Image.Resampling.LANCZOS)
+        elif image_type == FACEBOOK_BACKGROUND_IMAGE_NAME:
+            centering_y = ((image.height - image_offset_y) * 0.5) / image.height
+            image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS, centering=(centering_x, centering_y))
+        else:
+            centering_y = centering_x
+            image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS, centering=(centering_x, centering_y))
+        
+        image.save(image_dst, save_all=True)
+        resized_image_created = True
         return resized_image_created
 
     @staticmethod
