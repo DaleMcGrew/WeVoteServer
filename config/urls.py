@@ -56,6 +56,9 @@ urlpatterns = [
             include(('google_custom_search.urls', 'google_custom_search'), namespace="google_custom_search")),
     re_path(r'^health/', views.health_view),  # A simple health check to make sure the site is running
     re_path(r'^image/', include(('image.urls', 'image'), namespace="image")),
+    re_path(r'^import_export_apple_app_store/',
+            include(('import_export_apple_app_store.urls', 'import_export_apple_app_store'),
+                    namespace="import_export_apple_app_store")),
     re_path(r'^import_export_batches/',
             include(('import_export_batches.urls', 'import_export_batches'), namespace="import_export_batches")),
     re_path(r'^import_export_bigquery/',
