@@ -1895,8 +1895,7 @@ def candidate_new_search_process_view(request):
         if not required_variables_found:
             messages.add_message(request, messages.ERROR,
                                  'No politician found. Please make sure you have entered '
-                                 '1) Candidate Name with State, or '
-                                 '2) Twitter Handle with State')
+                                 'candidate name with state')
         else:
             messages.add_message(request, messages.INFO, 'No politicians found that match your search.')
 
