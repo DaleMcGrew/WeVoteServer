@@ -1,5 +1,34 @@
-from locust import HttpUser, task, constant
+import logging
+import os
 import random
+from locust import HttpUser, task, constant, events
+
+# --- Configure Logs ---
+DIR = os.path.dirname(os.path.abspath(__file__))
+log_dir = os.path.join(DIR, "logs")
+os.makedirs(log_dir, exist_ok=True)
+
+# Create the full path to your log file
+log_file_path = os.path.join(log_dir, "response.log")
+
+# Logger for requests
+logger = logging.getLogger("logger")
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler(log_file_path)
+formatter = logging.Formatter('%(asctime)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+# --- Event Listener ---
+@events.request.add_listener
+def log_success( url, exception, response_time, response_length, **kwargs):
+    if exception:
+        logger.info(f"Request to {url} failed with exception {exception} | Response time: {response_time} ms | Response length: {response_length}")
+    else:
+        logger.info(
+            f"Request: {url}  | Response time: {response_time} ms | Response length: {response_length}"
+        )
+
 
 class PoliticianPageLoadTest(HttpUser):
     wait_time = constant(0)
