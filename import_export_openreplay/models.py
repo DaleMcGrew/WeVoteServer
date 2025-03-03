@@ -2,6 +2,10 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
+
+#Package requirements error: "Django==5.0.11 djange-bootstrap3==15.0.0 are not satisfied
+
+
 from django.db import models
 import uuid
 
