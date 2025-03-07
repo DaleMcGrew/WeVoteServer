@@ -2099,6 +2099,7 @@ class WeVoteImageManager(models.Manager):
         image_dst = image_dir
         image = None
         resized_image_created = False
+        status = ''
         
         path_obj = Path(image_src)
         image_stem = path_obj.stem.lower()
@@ -2106,7 +2107,12 @@ class WeVoteImageManager(models.Manager):
         if input_format:
             input_format = input_format[1:].lower()
         else:
-            return resized_image_created
+            status += "NO_INPUT_FORMAT_PROVIDED "
+            results = {
+                'status':                   status,
+                'resized_image_created':    False,
+            }
+            return results
         output_format = input_format
         format_map = {
             "svg": "png",
@@ -2139,7 +2145,7 @@ class WeVoteImageManager(models.Manager):
         try:
             image = Image.open(image_dst)
         except Exception as e:
-            exception_message = "resize_we_vote_master_image failed"
+            exception_message = "RESIZE_WE_VOTE_MASTER_IMAGE_FAILED_OPENING: " + str(e) + " "
             handle_exception(e, logger=logger, exception_message=exception_message)
 
         # Remove sensitive data
@@ -2156,14 +2162,24 @@ class WeVoteImageManager(models.Manager):
             image = image.resize((image_width, image_height), Image.Resampling.LANCZOS)
         elif image_type == FACEBOOK_BACKGROUND_IMAGE_NAME:
             centering_y = ((image.height - image_offset_y) * 0.5) / image.height
-            image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS, centering=(centering_x, centering_y))
+            image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS,
+                                 centering=(centering_x, centering_y))
         else:
             centering_y = centering_x
-            image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS, centering=(centering_x, centering_y))
+            image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS,
+                                 centering=(centering_x, centering_y))
         
-        image.save(image_dst, save_all=True)
-        resized_image_created = True
-        return resized_image_created
+        try:
+            image.save(image_dst, save_all=True)
+            resized_image_created = True
+        except Exception as e:
+            status += "IMAGE_SAVE_FAILED: " + str(e) + " "
+            resized_image_created = False
+        results = {
+            'status':                   status,
+            'resized_image_created':    resized_image_created,
+        }
+        return results
 
     @staticmethod
     def store_image_locally(image_url_https, image_local_path):
