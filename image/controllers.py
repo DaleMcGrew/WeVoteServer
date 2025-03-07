@@ -3409,13 +3409,15 @@ def cache_resized_image_locally(
             return error_results
 
         status += " IMAGE_STORED_LOCALLY "
-        resized_image_created = we_vote_image_manager.resize_we_vote_master_image(
+        resize_results = we_vote_image_manager.resize_we_vote_master_image(
             image_local_path=we_vote_image_file_name,
             image_width=image_width,
             image_height=image_height,
             image_type=image_type,
             image_offset_x=image_offset_x,
             image_offset_y=image_offset_y)
+        resized_image_created = resize_results['resized_image_created']
+        status += "RESIZED_IMAGE_CREATED_STATUS: " + str(resize_results['status'])
         if not resized_image_created:
             status += " IMAGE_NOT_STORED_LOCALLY2 "
             error_results = {
