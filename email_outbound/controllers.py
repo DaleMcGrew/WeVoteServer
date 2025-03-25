@@ -2,21 +2,23 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from .functions import merge_message_content_with_template
-from .models import EmailAddress, EmailManager, EmailOutboundDescription, EmailScheduled,\
-    GENERIC_EMAIL_TEMPLATE, LINK_TO_SIGN_IN_TEMPLATE, SendGridApiCounterManager, \
-    SIGN_IN_CODE_EMAIL_TEMPLATE, TO_BE_PROCESSED, VERIFY_EMAIL_ADDRESS_TEMPLATE
+import json
+
+import requests
+
+import wevote_functions.admin
 from config.base import get_environment_variable
 from exception.models import handle_exception
-import json
 from organization.controllers import transform_web_app_url
 from organization.models import OrganizationManager, INDIVIDUAL
-import requests
-from validate_email import validate_email
 from voter.models import VoterContactEmail, VoterDeviceLinkManager, VoterManager
-import wevote_functions.admin
 from wevote_functions.functions import extract_first_name_from_full_name, extract_last_name_from_full_name, \
     is_voter_device_id_valid, positive_value_exists
+from wevote_functions.validate_email import validate_email
+from .functions import merge_message_content_with_template
+from .models import EmailAddress, EmailManager, EmailOutboundDescription, EmailScheduled, \
+    GENERIC_EMAIL_TEMPLATE, LINK_TO_SIGN_IN_TEMPLATE, SendGridApiCounterManager, \
+    SIGN_IN_CODE_EMAIL_TEMPLATE, TO_BE_PROCESSED, VERIFY_EMAIL_ADDRESS_TEMPLATE
 
 logger = wevote_functions.admin.get_logger(__name__)
 

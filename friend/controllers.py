@@ -2,13 +2,12 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
+import json
+
 from django.db.models import F, Q
 from django.utils.timezone import localtime, now
-from .models import ACCEPTED, CurrentFriend, FriendInvitationVoterLink, FriendManager, CURRENT_FRIENDS, FriendInvitationEmailLink, \
-    DELETE_INVITATION_EMAIL_SENT_BY_ME, DELETE_INVITATION_VOTER_SENT_BY_ME, FRIEND_INVITATION_SECRET_KEY_LENGTH, \
-    FRIEND_INVITATIONS_PROCESSED, \
-    FRIEND_INVITATIONS_SENT_BY_ME, FRIEND_INVITATIONS_SENT_TO_ME, FRIEND_INVITATIONS_WAITING_FOR_VERIFICATION, \
-    IGNORE_SUGGESTION, MutualFriend, SuggestedFriend, SUGGESTED_FRIEND_LIST, UNFRIEND_CURRENT_FRIEND
+
+import wevote_functions.admin
 from config.base import get_environment_variable
 from email_outbound.controllers import schedule_email_with_email_outbound_description, schedule_verification_email
 from email_outbound.models import EmailAddress, EmailManager, EMAIL_SECRET_KEY_LENGTH, \
@@ -17,15 +16,19 @@ from email_outbound.models import EmailAddress, EmailManager, EMAIL_SECRET_KEY_L
     WAITING_FOR_VERIFICATION
 from follow.models import FollowIssueList
 from import_export_facebook.models import FacebookManager
-import json
 from organization.controllers import transform_web_app_url
 from organization.models import OrganizationManager, INDIVIDUAL
 from position.models import PositionMetricsManager
-from validate_email import validate_email
 from voter.models import Voter, VoterManager
-import wevote_functions.admin
 from wevote_functions.functions import generate_random_string, is_voter_device_id_valid, positive_value_exists
 from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
+from wevote_functions.validate_email import validate_email
+from .models import ACCEPTED, CurrentFriend, FriendInvitationVoterLink, FriendManager, CURRENT_FRIENDS, \
+    FriendInvitationEmailLink, \
+    DELETE_INVITATION_EMAIL_SENT_BY_ME, DELETE_INVITATION_VOTER_SENT_BY_ME, FRIEND_INVITATION_SECRET_KEY_LENGTH, \
+    FRIEND_INVITATIONS_PROCESSED, \
+    FRIEND_INVITATIONS_SENT_BY_ME, FRIEND_INVITATIONS_SENT_TO_ME, FRIEND_INVITATIONS_WAITING_FOR_VERIFICATION, \
+    IGNORE_SUGGESTION, MutualFriend, SuggestedFriend, SUGGESTED_FRIEND_LIST, UNFRIEND_CURRENT_FRIEND
 
 logger = wevote_functions.admin.get_logger(__name__)
 

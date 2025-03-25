@@ -145,79 +145,54 @@ the following command:
 22. Install the latest version of Python
 
      ```
-     $ brew install python
+     $ brew install python@3.13
      ```
-    (As of May 2024)  This should have installed Python 3.11
-     If an older version of Python has been installed, and the installation fails, you will see the following error:
-     ```
-     Error: python@3.9 3.9.1_1 is already installed
-     To upgrade to 3.11.4, run:
-       brew upgrade python@3.11
-     Steve@Vickies-MacBook-Pro-2037 WeVoteServer % 
-     ```
-     In which case you run the suggested upgrade command, in this example it would be `brew upgrade python@3.11`, then finally export the path as shown below.
+    (As of March 2025)  This should have installed Python 3.13.2 (or higher)
+     If an older version of Python has been installed, and the installation fails, you may see an error
+     
+     In which case you run the suggested upgrade command, in this example it would be `brew upgrade python@3.13`, then finally export the path as shown below.
      ```
      $ export PATH="/usr/local/opt/python/libexec/bin:$PATH"
      ```
-23. Test that the newly installed Python is in the path. macOS comes with Python 2 preinstalled, so
-if the reported version is 2, then add the newly loaded python to the path with the export command. 
-Then confirm that the default python is now version 3.11 or later.
+    
+23. Create a new (or the first) virtual environment
 
-     ```
-     stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % python --version
-     Python 2.7.18
-     stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % export PATH="/opt/homebrew/opt/python@3.11/libexec/bin:$PATH"
-     stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % python --version                                            
-     Python 3.13.1
-     stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
-     ```
+   "PyCharm makes it possible to use the virtualenv tool to create a project-specific isolated virtual environment. The main purpose of virtual environments is to manage settings and dependencies of a particular project regardless of other Python projects. virtualenv tool comes bundled with PyCharm, so the user does not need to install it."
 
-24. If python --version fails,
+Follow the Pycharm instructions for creating a virtual environment, then come back to these instructions to finish your installation.
+
+https://www.jetbrains.com/help/pycharm/creating-virtual-environment.html
+
+24. Test that the newly installed Python is in the path.  Open a new terminal window in the
+PyCharm IDE, and your new vitural environment should show in the beginning of the prompt.
+```
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % python --version 
+Python 3.13.2
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
+```
+25. If python --version fails,
     try 
     ```
     ln -s /opt/homebrew/bin/python3 /opt/homebrew/bin/python
     ```
-needed to install postgres before the requirements because psyco3-3 binary requires pg_config which is not installed yet.
 
-25. Set up a Virtual Environment with the new Python Interpreter.  
-Navigate to: PyCharm/Settings/Project: WeVoteServer/Python Interpreter.
-
-    <img width="800" src="https://raw.githubusercontent.com/wevote/WeVoteServer/develop/docs/images/NoVENV.png"> 
-
-26. Click the Gear icon, then select "Add", then choose "Add Local Interpreter".  PyCharm will detect the latest interpreter from the PATH environment variable, 
-    and pre-populate the dialog.  Check the two checkboxes `Inherit global site-packages` and `make available to all projects`.
-   
-    <img width="800" src="https://raw.githubusercontent.com/wevote/WeVoteServer/develop/docs/images/Py3-11Selected.png"> 
-
-    Confirm that the 'Base interpreter' field shows us using the Python version that you just downloaded, and it knows the location for pip, setuptools, and wheel (3 python utilities).
-    Then press Ok.
-   
-    ![ScreenShot](images/VenvCompleted.png)
-
-27. Confirm that the new virtual environment is in effect, by closing all open Terminal windows within
-PyCharm and opening a new one.
-
-    <img width="700" src="https://raw.githubusercontent.com/wevote/WeVoteServer/develop/docs/images/VenvConfirm2.png"> 
-
-    If you see '(venv)' at the beginning of the command line, all is well.
-   
-28. Install OpenSSL, the pyopenssl and https clients:
+26. Install OpenSSL, the pyopenssl and https clients:
  
-     `(3.11.8) $ brew install openssl`
+     `(venv3.13.2) $ brew install openssl`
      If it is already installed, no worries!
 
-29. Link libssl and libcrypto so that pip can find them. If this step fails you can continue with the rest of the installation:
+27. Link libssl and libcrypto so that pip can find them. If this step fails you can continue with the rest of the installation:
      ```
      $ ln -s /usr/local/opt/openssl/lib/libcrypto.dylib /usr/local/lib/libcrypto.dylib
      $ ln -s /usr/local/opt/openssl/lib/libssl.dylib /usr/local/lib/libssl.dylib
      ```
 30. Install libmagic. If this fails you can continue with the rest of the installation:
 
-     `(3.11.8) $ brew install libmagic`
+     `(venv3.13.2) $ brew install libmagic`
 
 31. Install all the other Python packages required by the WeVoteServer project (there are a lot of them!)
 
-     `(3.11.8) $ pip3 install -r requirements.txt`
+     `(venv3.13.2) $ pip3 install -r requirements.txt`
 
      This is a big operation that loads a number of wheels definitions and then compiles them.   Wheels are
      linux/macOS binary libraries based on c language packages and compiled with gcc. 
@@ -230,9 +205,9 @@ PyCharm and opening a new one.
      almost done.  If this installation fails, you might need to comment out all lines in the requirements.txt file that have the comment `# recommend engine` on the end of the line, and then run the command above again.
 
 
-## Install and set up PostgreSQL and pgAdmin4
+<H2>Install and set up PostgreSQL and pgAdmin4</H2>
 
-1. If you are sure that Postgres has not already been installed, and is not currently running on this Mac, you can skip
+If you are sure that Postgres has not already been installed, and is not currently running on this Mac, you can skip
 this step.  To see if postgres is already running, check with lsof in a terminal window `lsof -i -P | grep -i "listen" | grep postgres`:
 
     ```
@@ -267,93 +242,135 @@ this step.  To see if postgres is already running, check with lsof in a terminal
     **If you have to keep some data that is already stored in the Postgres instance on your Mac** that you absolutely need to 
     retain, then you will need to manually upgrade Postgres.  This is a ton of work, and is rarely necessary.
    
-3. Install PostgreSQL by running the following command:
 
-    `brew install postgresql`
+<H2>Install or update postgres</H2>
 
-4. Start PostgreSQL (this is actually instructing the macOS [launchd](https://en.wikipedia.org/wiki/Launchd) to start 
-    Postgres every time you start your Mac):
+Most developers install postgres using Homebrew, if you installed it some other way, there may be some things to figure out... :pensive:
 
-    `brew services start postgresql`
+We need to get PostgreSQL (postgres) and pgAdmin 4 installed.
 
-5. Create a default database, and a default user, and then log into the 'psql postgres' PostgreSQL command interpreter ("postgres=#" is the command prompt, you should not have to type this in):
+Possible steps:
+ * [If you know you have postgres installed, and it is running, and you have pgAdmin running:](#if-you-know-you-have-postgres-installed-and-it-is-running-and-you-have-pgadmin-running)
+ * [If you are unsure if postgres is installed:](#if-you-are-unsure-if-postgres-is-installed)
+ * [If you have never installed Postgres for any other project, including school projects:](#if-you-have-never-installed-postgres-for-any-other-project-including-school-projects)
+ * [If you need to install pgAdmin4 a Mac based browser app for the postgres database:](#if-you-need-to-install-pgadmin4-a-mac-based-browser-app-for-the-postgres-database)
 
-    _New way: November 2021, using Postgres 14.0_  TODO 7/8:  CREATE ROLE postgres WITH SUPERUSER CREATEDB CREATEROLE LOGIN ENCRYPTED PASSWORD ‘stevePG’;
-    ```
-   (PycharmEnvironments) stevepodell@Steves-MacBook-Pro-32GB-Oct-2109 ~ % psql postgres
-   psql (14.0)
-   Type "help" for help.
-   
-   postgres=# createuser -s postgres;
-   postgres=# \du
-                                        List of roles
-      Role name  |                         Attributes                         | Member of 
-    -------------+------------------------------------------------------------+-----------
-     stevepodell | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
-    
-   postgres=# create database WeVoteServerDB;
-   CREATE DATABASE
-   postgres=# grant all privileges on database WeVoteServerDB to postgres;
-   GRANT
-   postgres=# \l
-                                        List of databases
-          Name      |    Owner    | Encoding | Collate | Ctype |      Access privileges      
-   ----------------+-------------+----------+---------+-------+-----------------------------
-     WeVoteServerDB | stevepodell | UTF8     | C       | C     |                   (TODO 7/8/22 these don't match the latest setup) 
-     postgres       | stevepodell | UTF8     | C       | C     | 
-     template0      | stevepodell | UTF8     | C       | C     | =c/stevepodell             +
-                    |             |          |         |       | stevepodell=CTc/stevepodell
-     template1      | stevepodell | UTF8     | C       | C     | =c/stevepodell             +
-                    |             |          |         |       | stevepodell=CTc/stevepodell
-     wevoteserverdb | stevepodell | UTF8     | C       | C     | =Tc/stevepodell            +
-                    |             |          |         |       | stevepodell=CTc/stevepodell+
-                    |             |          |         |       | postgres=CTc/stevepodell
-   (5 rows)
-   postgres=#
-   ```
-   brew created a superuser 'stevepodell' with no password, you can add a password within psql if you wish.
 
-   _old way ..._
 
-    ```   
-    (venv) $ createdb
-    (venv) $ createuser -s postgres
-    (venv) $ psql
-    psql (11.1)
-    Type "help" for help.
-    
-    admin=# 
-    ```
+### If you know you have postgres installed and it is running, and you have pgAdmin running
 
-    The `psql` command starts a PostgresSQL command session which is started in the bash terminal window. Within this 
-    PostgresSQL command session type the following Postgres commands... ("admin" is just an example password, use whatever
-    password you would like to go with your postgres role name.)
+Within pgAdmin 4, under the server that you have running (which will probably be named WeVoterServer if you worked on other WeVote projects)...
 
-    ```
-    admin=# ALTER USER postgres WITH PASSWORD 'admin';
-    ALTER ROLE
-    admin=# \du
-                                       List of roles
-     Role name |                         Attributes                         | Member of 
-    -----------+------------------------------------------------------------+-----------
-     admin     | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
-     postgres  | Superuser, Create role, Create DB                          | {}
-    
-    admin-# \q
-    (venv) $
-    ```
+1) On the left hand 'Servers' Right Click on Databases
+2) On the right-click menu, select 'Create'
+3) In the 'Database...' field, enter "WeVoteServerDB"
 
-    That `\du` command confirms that we have a 'postgres' role.  The `\q` command quits psql.
+That's it, you are ready to continue on setting up the WeVoteServer
 
-6. Now you are ready to install pgAdmin4 (a powerful WYSIWYG database administration tool that is open source 
- and built by volunteers (Many thanks to the pgAdmin team!)). Run:
+This picture shows the WeVoteServer in Postgres that was previously setup for the WeVoteServerDB (Python API Server), with an additional database
+that you just created for WeConnectDB.  (No problem at all, if you don't have a WeVoteServerDB)
 
-   `(venv) $ brew install --cask pgadmin4`
-    
-   This can take a few minutes to complete.  When `brew install --cask pgadmin4` finishes, it prints out `Moving App 'pgAdmin 4.app' to '/Applications/pgAdmin 4.app'.`
+<br><img src="images/PgAdminObjectExplorer.jpg" alt="Alt Text" width="600" >
 
-   The latest pgAdmin4 has a webapp architecture (it is not a compiled program).  The app you start from the Application folder is actually a 
-   single purpose web server, and the UI for the app appears.  (7/8/22 needs a new )
+
+
+Next step: [Use the Prisma ORM to migrate the WeVoteServer table definitions to the WeConnectDB database:](#use-the-prisma-orm-to-migrate-the-WeVoteServer-table-definitions-to-the-weconnectdb-database)
+
+
+### If you are unsure if postgres is installed
+
+1) Determine if postgres is installed by entering `which postgres` in a terminal window (at the bottom of Webstorm)  
+if you see a path to postgres, it is installed (and hopefully you will see homebrew in that path -- which makes things easier)
+
+<br><img src="images/WhichPostgres.png" alt="Alt Text" width="600" style="box-shadow: 2px 4px #888888; border: 1px solid">
+
+This command line result shows that postgres has been installed by homebrew, if no path to postgres is displayed, then postgres has not been previously installed
+
+If postgres is installed, determine if it is already running with the macOS command 'pgrep -l postgres'
+
+```
+stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % pgrep -l postgres
+2472 postgres
+2474 postgres
+...
+43971 postgres
+43972 postgres
+43973 postgres
+43974 postgres
+43977 postgres
+stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
+```
+
+If you see a number of different macOS processes running, that means that postgres is running. 
+
+If this is the case go back to [If you know you have postgres installed and it is running and you have pgAdmin running:](#if-you-know-you-have-postgres-installed-and-it-is-running-and-you-have-pgadmin-running)
+
+If postgres is installed, but not running, in a terminal within WebStorm, start postgres running as a daemon service:
+```
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer %  brew services start postgresql@14
+==> Successfully started `postgresql@14` (label: homebrew.mxcl.postgresql@14)
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
+```
+
+Next confirm that you have pgAdmin 4 installed.  In spotlight type 'pgAdmin 4.app' if you find it, start it up.
+Otherwise, go to [If you need to install pgAdmin4 a Mac based browser app for the postgres database:](#if-you-need-to-install-pgadmin4-a-mac-based-browser-app-for-the-postgres-database)
+After installing pgAdmin 4, go to [If you know you have postgres installed and it is running and you have pgAdmin running] and follow those directions.
+
+### If you have never installed Postgres for any other project including school projects
+Use home brew to install postgres Version 14, the point version does not matter.  It can take a few minutes for brew to complete.
+```
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % brew install postgresql@14
+... Homebrew logs a whole bunch of lines about updating formulas, fetching, downloading, and pouring formulae...
+... then finally it logs ...
+This formula has created a default database cluster with:
+  initdb --locale=C -E UTF-8 /usr/local/var/postgresql@14
+
+To start postgresql@14 now and restart at login:
+  brew services start postgresql@14
+Or, if you don't want/need a background service you can just run:
+  /usr/local/opt/postgresql@14/bin/postgres -D /usr/local/var/postgresql@14
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
+```
+Those lines at the end provide useful information.  
+* initdb was run to create a bare minimum database for postgres, so it can store privileges, logins, and other configuration info.
+* if you want to run postgres as a daemon service (so it is always running in the background), you can use this command in 
+  a webstorm terminal window <br />`brew services start postgresql@14`<br /> and then ever your Mac is running, postgres will then be running
+  (If you want to stop it running as a background service just type <br />`brew services stop postgresql@14`)
+* Alternatively, if you just want to be able to turn on postgres when you want it (and not have it run as a daemon service) use this command in a Webstorm terminal<br/>
+  `/usr/local/opt/postgresql@14/bin/postgres -D /usr/local/var/postgresql@14` <br />and when you are done, press Ctrl+C in that terminal
+  window to stop postgres.
+
+Now start postgres running as a daemon service:
+```
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer %  brew services start postgresql@14
+==> Successfully started `postgresql@14` (label: homebrew.mxcl.postgresql@14)
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
+```
+
+### If you need to install pgAdmin4 a Mac based browser app for the postgres database
+Skip this step if pgAdmin 4 is already installed!
+
+```
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % brew install --cask pgadmin4
+```
+This will take a few minutes, when it completes launch the app from Launch Pad or Spotlight
+
+Register the server as WeVoteServer
+
+<img src="images/RegisterTheServer.png" alt="Alt Text" width="600" >
+
+And in the Connection tab set the Host name as localhost — also add any easy to remember postgres Username and Password, then save
+
+<img src="images/RegisterPgAdminHost.png" alt="Alt Text" width="600" >
+<br><br>
+
+Your database is now registered with pgAdmin 4!
+
+(If you already had Postgres installed, you will have other databases on the Databases list, this is not a problem, just continue
+with this step to create a new one for the WeVoteServer.)
+
+On the left pane "Object Explorer" right click on "Databases" and add the "WeVoteServerDB".  An empty "WeVoteServerDB" has been created.
+
 
 7. Use Spotlight to find and launch the pgAdmin4 app.  Once launched, the pgAdmin4 webapp will display in a new tab within Chrome.
    On that new tab, click on the "Add new Servers" button and choose "Create > Server"
@@ -391,9 +408,9 @@ this step.  To see if postgres is already running, check with lsof in a terminal
 1. Create an empty log file on your computer to match the one expected by the app as configured in the environment_variables.json file:
 
     ```
-    (venv) $ sudo mkdir /var/log/wevote/
-    (venv) $ sudo touch /var/log/wevote/wevoteserver.log
-    (venv) $ sudo chmod -R 0777 /var/log/wevote/
+    (venv3.13.2) $ sudo mkdir /var/log/wevote/
+    (venv3.13.2) $ sudo touch /var/log/wevote/wevoteserver.log
+    (venv3.13.2) $ sudo chmod -R 0777 /var/log/wevote/
     ```
 
     As configured by default in our configuration code from GitHub, only errors get written to the log.
@@ -413,15 +430,15 @@ this step.  To see if postgres is already running, check with lsof in a terminal
    Run 'makemigrations' to gather all the schema information that is needed to initialize the WeVoteServer database:
 
     ```
-    (venv) $ python manage.py makemigrations
-    (venv) $ python manage.py makemigrations wevote_settings
+    (venv3.13.2) $ python manage.py makemigrations
+    (venv3.13.2) $ python manage.py makemigrations wevote_settings
     ```
      (January 28, 2019:  that second makemigrations for the wevote_settings table should not be necessary, but as of today, 
      it is necessary.  That second makemigrations line will be harmless, if it becomes unnecessary at some point.)
    
 1. Run 'migrate'.  Django "migrate is responsible for applying and un-applying migrations."
 
-    `(venv) $ python manage.py migrate`
+    `(venv3.13.2) $ python manage.py migrate`
  
 ## Set up a PyCharm run configuration
 
@@ -463,10 +480,10 @@ this step.  To see if postgres is already running, check with lsof in a terminal
     The usage is:  `python manage.py create_dev_user first_name last_name email password`
 
     ```
-    (3.11.8) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % python manage.py create_dev_user Samuel Adams samuel@adams.com ale
+    (venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % python manage.py create_dev_user Samuel Adams samuel@adams.com ale
     Creating developer first name=Samuel, last name=Adams, email=samuel@adams.com, password =ale
     End of create_dev_user
-    (3.11.8) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
+    (venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
     ```
     This new "voter" will have all the rights that you (as a developer) need to log in to 
     [http://localhost:8000/admin/](http://localhost:8000/admin/).  Once logged in you can start synchronizing data (downloading ballot and issue 
@@ -541,7 +558,7 @@ Explanation from the python-social-auth docs: "[If you define a redirect URL in 
 
 First we have to make a small change to /etc/hosts.  This is the before:
 ```
-    (venv2) stevepodell@StevesM1Dec2021 WeVoteServer % cat /etc/hosts
+    (venv3.13.2) stevepodell@StevesM1Dec2021 WeVoteServer % cat /etc/hosts
     ##
     # Host Database
     #
@@ -551,12 +568,12 @@ First we have to make a small change to /etc/hosts.  This is the before:
     127.0.0.1       localhost
     255.255.255.255 broadcasthost
     ::1             localhost
-    (venv2) stevepodell@StevesM1Dec2021 WeVoteServer % 
+    (venv3.13.2) stevepodell@StevesM1Dec2021 WeVoteServer % 
 ```
 Add a local domain alias `wevotedeveloper.com` for the [Facebook Valid OAuth Redirect URIs](https://developers.facebook.com/apps/1097389196952441/fb-login/settings/). 
 To do this you need to add `wevotedeveloper.com` to your `127.0.0.1` line in /etc/hosts.  After the change:
 ```
-    (venv2) stevepodell@StevesM1Dec2021 WeVoteServer % cat /etc/hosts
+    (venv3.13.2) stevepodell@StevesM1Dec2021 WeVoteServer % cat /etc/hosts
     ##
     # Host Database
     #
@@ -566,7 +583,7 @@ To do this you need to add `wevotedeveloper.com` to your `127.0.0.1` line in /et
     127.0.0.1       localhost wevotedeveloper.com
     255.255.255.255 broadcasthost
     ::1             localhost
-    (venv2) stevepodell@StevesM1Dec2021 WeVoteServer % 
+    (venv3.13.2) stevepodell@StevesM1Dec2021 WeVoteServer % 
 ```
 
 You will need to elevate your privileges with sudo to make this edit to this linux system file ... ` % sudo vi /etc/hosts` You can do with any other editor that you would prefer, as long as it can be run with sudo.
@@ -774,30 +791,30 @@ In order to run all these AWS features locally on your Mac, do the following:
 1) Download the docker CLI from https://docs.docker.com/desktop/install/mac-install/
 2) Find the downloaded file, and substitute your Downloads path into following set of commands
    ```
-    (venv2) WeVoteServer % sudo hdiutil attach '/Users/stevepodell/Downloads/Docker (1).dmg'
-    (venv2) WeVoteServer % sudo /Volumes/Docker/Docker.app/Contents/MacOS/install
-    (venv2) WeVoteServer % sudo hdiutil detach /Volumes/Docker
+    (venv3.13.2) WeVoteServer % sudo hdiutil attach '/Users/stevepodell/Downloads/Docker (1).dmg'
+    (venv3.13.2) WeVoteServer % sudo /Volumes/Docker/Docker.app/Contents/MacOS/install
+    (venv3.13.2) WeVoteServer % sudo hdiutil detach /Volumes/Docker
    ```
 3) MacOS modal dialog that appears, allow docker to make some symbolic links -- allow this.
 4) Once the Docker Desktop starts, and shows as running, typing 'docker -v' at the command line, to confirm that the CLI portion is running
    ```
-    (venv2) stevepodell@StevesM1Dec2021 tmp % docker -v
+    (venv3.13.2) stevepodell@StevesM1Dec2021 tmp % docker -v
     Docker version 20.10.21, build baeda1f
-    (venv2) stevepodell@StevesM1Dec2021 tmp % 
+    (venv3.13.2) stevepodell@StevesM1Dec2021 tmp % 
    ```
 5) Check to see if awslocal is installed
     ```
-   ( venv2) stevepodell@StevesM1Dec2021 WeVoteServer % awslocal --version
+   (venv3.13.2) stevepodell@StevesM1Dec2021 WeVoteServer % awslocal --version
     aws-cli/2.9.13 Python/3.11.4 Darwin/22.3.0 exe/x86_64 prompt/off
-    (venv2) stevepodell@StevesM1Dec2021 WeVoteServer % 
+    (venv3.13.2) stevepodell@StevesM1Dec2021 WeVoteServer % 
    ```
 6) if aws (awslocal) is not available at the command line, follow instructions at
    https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html#getting-started-install-instructions
 7) Check to see if you have localstack installed
     ```
-    (venv2) stevepodell@StevesM1Dec2021 WeVoteServer % localstack --version
+    (venv3.13.2) stevepodell@StevesM1Dec2021 WeVoteServer % localstack --version
     1.3.1
-    (venv2) stevepodell@StevesM1Dec2021 WeVoteServer % 
+    (venv3.13.2) stevepodell@StevesM1Dec2021 WeVoteServer % 
    ```
 8) If you do not already have localstack installed
     ```
