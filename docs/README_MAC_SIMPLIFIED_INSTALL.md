@@ -270,7 +270,7 @@ That's it, you are ready to continue on setting up the WeVoteServer
 This picture shows the WeVoteServer in Postgres that was previously setup for the WeConnectDB (Node API Server, weconnect-server), 
 with an additional database that you just created for WeVoteServerDB.  (No problem at all, if you don't have a WeConnectDB)
 
-<br><img src="images/PgAdminObjectExplorer.jpg" alt="Alt Text" width="600" >
+<br><img src="images/PgAdminObjectExplorer.jpg" alt="Alt Text" width="400"  style="box-shadow: 2px 4px #888888; border: 1px solid">
 
 
 
@@ -371,7 +371,7 @@ with this step to create a new one for the WeVoteServer.)
 
 On the left pane "Object Explorer" right click on "Databases" and add the "WeVoteServerDB".  An empty "WeVoteServerDB" has been created.
 
-## Initialize empty tables in the WeVoteServerDB 
+## Initialize the table structures within the WeVoteServerDB 
 
 1. Create an empty log file on your computer to match the one expected by the app as configured in the environment_variables.json file:
 
