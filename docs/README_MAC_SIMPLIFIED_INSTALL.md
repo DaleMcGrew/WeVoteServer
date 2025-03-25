@@ -274,7 +274,7 @@ with an additional database that you just created for WeVoteServerDB.  (No probl
 
 
 
-Next step: [Initialize empty tables in the WeVoteServerDB:](#initialize-empty-tables-in-the-wevoteserverdb)
+Next step: [Initialize empty tables in the WeVoteServerDB:](##initialize-empty-tables-in-the-wevoteserverdb)
 
 
 ### If you are unsure if postgres is installed
