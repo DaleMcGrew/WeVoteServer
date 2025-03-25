@@ -348,7 +348,7 @@ Now start postgres running as a daemon service:
 ```
 
 ### If you need to install pgAdmin4 a Mac based browser app for the postgres database
-Skip this step if pgAdmin 4 is already installed!
+Skip this step if pgAdmin 4 is already installed and configured!
 
 ```
 (venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % brew install --cask pgadmin4
