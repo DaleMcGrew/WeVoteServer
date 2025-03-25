@@ -268,13 +268,13 @@ Within pgAdmin 4, under the server that you have running (which will probably be
 That's it, you are ready to continue on setting up the WeVoteServer
 
 This picture shows the WeVoteServer in Postgres that was previously setup for the WeVoteServerDB (Python API Server), with an additional database
-that you just created for WeConnectDB.  (No problem at all, if you don't have a WeVoteServerDB)
+that you just created for WeVoteServerDB.  (No problem at all, if you don't have a WeConnectDB)
 
 <br><img src="images/PgAdminObjectExplorer.jpg" alt="Alt Text" width="600" >
 
 
 
-Next step: [Use the Prisma ORM to migrate the WeVoteServer table definitions to the WeConnectDB database:](#use-the-prisma-orm-to-migrate-the-WeVoteServer-table-definitions-to-the-weconnectdb-database)
+Next step: [Initialize empty tables in the WeVoteServerDB:](#initialize-empty-tables-in-the-wevoteserverdb)
 
 
 ### If you are unsure if postgres is installed
@@ -371,39 +371,7 @@ with this step to create a new one for the WeVoteServer.)
 
 On the left pane "Object Explorer" right click on "Databases" and add the "WeVoteServerDB".  An empty "WeVoteServerDB" has been created.
 
-
-7. Use Spotlight to find and launch the pgAdmin4 app.  Once launched, the pgAdmin4 webapp will display in a new tab within Chrome.
-   On that new tab, click on the "Add new Servers" button and choose "Create > Server"
-   
-   <img width="800" src="https://raw.githubusercontent.com/wevote/WeVoteServer/develop/docs/images/CreateServerInPgAdmin2.png"> 
-
-8. On the first tab of the "Create - Server" dialog, add into the Name field: WeVoteServer
-
-   <img width="500" src="https://raw.githubusercontent.com/wevote/WeVoteServer/develop/docs/images/CreateServerDialog.png"> 
-
-9. Switch to "Connection" tab, and enter the following information:
-   * Host name: localhost
-   * Port: 5432
-   * Maintenance database: postgres
-   * User name: postgres
-   * Password: <your private password for the postgres user>  (mine is stevePG)
-   * Save password: checked
-
-    ![ScreenShot](images/CreateServerConnection2.png)
-
-10. Press Save
-
-11. Create the Database by right-clicking on Databases in the server tree on the left. Then select  
-    Create > Database on the cascading menu
-    <img width="800" src="https://raw.githubusercontent.com/wevote/WeVoteServer/develop/docs/images/CreateDatabase.png"> 
-
-12. Name the new database WeVoteServerDB and press save.
-
-    <img width="800" src="https://raw.githubusercontent.com/wevote/WeVoteServer/develop/docs/images/NameDatabase.png"> 
-   
-    <!-- owner is 'admin' in the picture, but defaulted to 'postgres' in my install -->
-
-## Initialize an empty WeVoteServerDB
+## Initialize empty tables in the WeVoteServerDB 
 
 1. Create an empty log file on your computer to match the one expected by the app as configured in the environment_variables.json file:
 
@@ -423,7 +391,7 @@ On the left pane "Object Explorer" right click on "Databases" and add the "WeVot
     code that is only used by the admin pages by developers.  You can also write your log files at the DEBUG level, and then they
     won't execute on the production server.
 
-1. "Migrations are Django’s way of propagating changes you make to your software models into your local postgres database schema."
+2. "Migrations are Django’s way of propagating changes you make to your software models into your local postgres database schema."
    Everytime you create a table, change a field name or description, you are changing the model, and those changes need to 
    be incorporated into the on-disk database schema.
 
@@ -436,7 +404,7 @@ On the left pane "Object Explorer" right click on "Databases" and add the "WeVot
      (January 28, 2019:  that second makemigrations for the wevote_settings table should not be necessary, but as of today, 
      it is necessary.  That second makemigrations line will be harmless, if it becomes unnecessary at some point.)
    
-1. Run 'migrate'.  Django "migrate is responsible for applying and un-applying migrations."
+3. Run 'migrate'.  Django "migrate is responsible for applying and un-applying migrations."
 
     `(venv3.13.2) $ python manage.py migrate`
  
