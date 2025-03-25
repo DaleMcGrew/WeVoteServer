@@ -270,7 +270,7 @@ That's it, you are ready to continue on setting up the WeVoteServer
 This picture shows the WeVoteServer in Postgres that was previously setup for the WeConnectDB (Node API Server, weconnect-server), 
 with an additional database that you just created for WeVoteServerDB.  (No problem at all, if you don't have a WeConnectDB)
 
-<br><img src="images/PgAdminObjectExplorer.jpg" alt="Alt Text" width="400"  style="box-shadow: 2px 4px #888888; border: 1px solid">
+<br><img src="images/PgAdminObjectExplorer.jpg" alt="Alt Text" width="400"  style="1px solid lightgrey">
 
 
 
@@ -282,7 +282,7 @@ Next step: [Initialize empty tables in the WeVoteServerDB:](#initialize-empty-ta
 1) Determine if postgres is installed by entering `which postgres` in a terminal window (at the bottom of Webstorm)  
 if you see a path to postgres, it is installed (and hopefully you will see homebrew in that path -- which makes things easier)
 
-<br><img src="images/WhichPostgres.png" alt="Alt Text" width="600" style="box-shadow: 2px 4px #888888; border: 1px solid">
+<br><img src="images/WhichPostgres.png" alt="Alt Text" width="600" style="1px solid lightgrey">
 
 This command line result shows that postgres has been installed by homebrew, if no path to postgres is displayed, then postgres has not been previously installed
 
