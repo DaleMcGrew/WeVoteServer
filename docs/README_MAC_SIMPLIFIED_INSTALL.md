@@ -267,8 +267,8 @@ Within pgAdmin 4, under the server that you have running (which will probably be
 
 That's it, you are ready to continue on setting up the WeVoteServer
 
-This picture shows the WeVoteServer in Postgres that was previously setup for the WeVoteServerDB (Python API Server), with an additional database
-that you just created for WeVoteServerDB.  (No problem at all, if you don't have a WeConnectDB)
+This picture shows the WeVoteServer in Postgres that was previously setup for the WeConnectDB (Node API Server, weconnect-server), 
+with an additional database that you just created for WeVoteServerDB.  (No problem at all, if you don't have a WeConnectDB)
 
 <br><img src="images/PgAdminObjectExplorer.jpg" alt="Alt Text" width="600" >
 
@@ -512,7 +512,9 @@ You only need to do this if you are going to be working on Login with Facebook o
 
 ### If you have not created a secure certificate to run WebApp on your Mac in SSL/HTTPS mode, do this first
 
-The following link takes you to a page in the WebApp docs, you will have to manually navigate back here when you are done.
+Prior to starting the app in SSL, you need to get the SSL certificates that allow the server to run in 'https' mode.
+We don't want to publish these certificates in our git repository, but you can get them from anyone on your team or from Dale.
+The file names are `wevotedeveloper.com.crt` and `wevotedeveloper.com_key.txt` -- put them in the weconnect-server/cert directory.
 
 [Installing Secure Certificate](https://github.com/wevote/WebApp/blob/develop/docs/working/SECURE_CERTIFICATE.md)
 
@@ -556,8 +558,6 @@ To do this you need to add `wevotedeveloper.com` to your `127.0.0.1` line in /et
 
 You will need to elevate your privileges with sudo to make this edit to this linux system file ... ` % sudo vi /etc/hosts` You can do with any other editor that you would prefer, as long as it can be run with sudo.
 
-Note July 2022:  The auto generated certificate that is made by runsslserver generates warnings in browsers (not really a problem),
-but may stop the JavaScript builtin fetch() function from completing.  The browser extension has to use fetch.
 
 ### Server setup changes
 In your environment_variables.json
