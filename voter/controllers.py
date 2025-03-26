@@ -13,7 +13,6 @@ from PIL import Image, ImageOps
 from django.db.models import F
 from django.http import HttpResponse
 from django.utils.timezone import now
-from validate_email import validate_email
 
 import wevote_functions.admin
 from activity.controllers import delete_activity_comments_for_voter, delete_activity_notices_for_voter, \
@@ -25,6 +24,7 @@ from analytics.models import AnalyticsManager, ACTION_FACEBOOK_AUTHENTICATION_EX
     ACTION_GOOGLE_AUTHENTICATION_EXISTS, \
     ACTION_TWITTER_AUTHENTICATION_EXISTS, ACTION_EMAIL_AUTHENTICATION_EXISTS
 from aws.controllers import submit_web_function_job
+from campaign.controllers import delete_campaign_supporter
 from campaign.controllers import move_campaignx_to_another_voter
 from email_outbound.controllers import delete_email_address_entries_for_voter, \
     move_email_address_entries_to_another_voter, schedule_verification_email, \
@@ -73,8 +73,7 @@ from voter_guide.controllers import delete_voter_guides_for_voter, duplicate_vot
     move_voter_guides_to_another_voter
 from wevote_functions.functions import generate_voter_device_id, is_voter_device_id_valid, positive_value_exists
 from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
-from campaign.controllers import delete_campaign_supporter
-
+from wevote_functions.validate_email import validate_email
 
 logger = wevote_functions.admin.get_logger(__name__)
 

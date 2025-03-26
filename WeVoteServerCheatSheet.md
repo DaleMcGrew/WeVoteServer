@@ -1,12 +1,30 @@
 ## A Cheat sheet, containing some commands that might help you out
 Feel free to add to this!
 
+#### Unable to write to the log file
+`PermissionError: [Errno 13] Permission denied: '/var/log/wevote'`
+
+`(3.11.8) stevepodell@Steves-MBP-M1-Dec2021 log % cd /var/log` 
+`(3.11.8) stevepodell@Steves-MBP-M1-Dec2021 log % ls -la`
+Didn't find a wevote directory
+`(3.11.8) stevepodell@Steves-MBP-M1-Dec2021 log % sudo mkdir wevote`
+Make the directory 
+`(3.11.8) stevepodell@Steves-MBP-M1-Dec2021 log % sudo chown stevepodell:staff wevote`
+Give it access to yourself at your (non sudo) privilege level.  Be sure to substitue your Mac user name for 'stevepodell'
+
 #### Stopping postgres loaded by brew, and not setup as a daemon
 ```
 (WeVoteServerPy3.7) Steves-MacBook-Pro-32GB-Oct-2018:WeVoteServer stevepodell$ pg_ctl -D /usr/local/var/postgres11.1_1 stop -s -m fast
 ```
 
 #### Starting postgres loaded by brew, and not setup as a daemon
+````
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer %  brew services start postgresql@14
+Service `postgresql@14` already started, use `brew services restart postgresql@14` to restart.
+(venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
+````
+
+
 ```
 (WeVoteServerPy3.7) Steves-MacBook-Pro-32GB-Oct-2018:WeVoteServer stevepodell$ "/Applications/Postgres.app/Contents/Versions/9.6/bin/psql" -p5433 -d "postgres"
 or
