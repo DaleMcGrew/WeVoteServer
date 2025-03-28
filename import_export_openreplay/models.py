@@ -2,27 +2,26 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-
-#Package requirements error: "Django==5.0.11 djange-bootstrap3==15.0.0 are not satisfied
-
+# Package requirements error: "Django==5.0.11 djange-bootstrap3==15.0.0 are not satisfied
 
 from django.db import models
-import uuid
+# import uuid
 
-from numpy.ma.core import true_divide
+# from numpy.ma.core import true_divide
+#
+# import wevote_functions.admin
+# from wevote_functions.functions import convert_to_int, positive_value_exists
 
-import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, positive_value_exists
 
 # SESSIONS
 class OpenReplaySession(models.Model):
-    session_id = models.UUIDField(primary_key=True, editable=False)
+    session_id = models.UUIDField(editable=False, null=True)  # primary_key=True,
     errors_count = models.PositiveIntegerField(null=True)
     events_count = models.PositiveIntegerField(null=True)
     pages_count = models.PositiveIntegerField(null=True)
     project_id = models.CharField(max_length=255, null=True)
     user_uuid = models.UUIDField(max_length=36, null=True)
-    user_id = models.CharField(max_length=25)
+    user_id = models.CharField(max_length=25, null=True)
     user_agent = models.TextField(null=True, blank=True, help_text="Full User-Agent string")
     user_os = models.CharField(max_length=100, null=True, blank=True)
     user_browser = models.CharField(max_length=150, null=True, blank=True)
@@ -52,8 +51,10 @@ class OpenReplaySession(models.Model):
 
 # EVENTS
 class OpenReplayEvent(models.Model):
-    event_id = models.BigAutoField(primary_key=True)
-    session = models.ForeignKey(OpenReplaySession, on_delete=models.CASCADE, related_name='events')
+    # Dale Mar 28, 2025 -- the following field caused problems with deployment on our production server.
+    # event_id = models.BigAutoField(null=True)  # primary_key=True,
+    # Dale Mar 28, 2025 I would like to avoid ForeignKeys.
+    # session = models.ForeignKey(OpenReplaySession, on_delete=models.CASCADE, related_name='events', null=True)
     message_id = models.CharField(max_length=255, null=True, blank=True)
     label = models.TextField(null=True)
     value = models.TextField(null=True)
@@ -85,7 +86,8 @@ class OpenReplayEvent(models.Model):
     type = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
-        return f"Event: {self.label} (Session: {self.session.session_id})"
+        return f"Event: {self.label}"  # (Session: {self.session.session_id})"
+
 # Id INTEGER,
 # sessionId VARCHAR(255),
 # messageId  VARCHAR(255) ,
