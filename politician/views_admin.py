@@ -1188,6 +1188,8 @@ def politician_list_view(request):
         'election_list':                election_list,
         'exclude_politician_analysis_done': exclude_politician_analysis_done,
         'google_civic_election_id':     google_civic_election_id,
+        'has_previous_page':            has_previous_page,
+        'has_next_page':                has_next_page,
         'hide_pagination':              hide_pagination,
         'hide_politicians_with_photos': hide_politicians_with_photos,
         'messages_on_stage':            messages_on_stage,
