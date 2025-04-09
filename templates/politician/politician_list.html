@@ -123,11 +123,11 @@
 <!-- Pagination Section -->
 {% if not hide_pagination %}
 <span class="float-right">
-    {% if previous_page_url %}
-    <a href="{{ previous_page_url }}" onclick="displayLoadingBanner()">Previous page</a> |
+    {% if has_previous_page %}
+        <a href="{{ previous_page_url }}" onclick="displayLoadingBanner()">Previous page</a>
     {% endif %}
     Page {{ current_page_number|add:1 }}
-    {% if next_page_url %}
+    {% if has_next_page %}
         | <a href="{{ next_page_url }}" onclick="displayLoadingBanner()">Next page</a>
     {% endif %}
 </span>
