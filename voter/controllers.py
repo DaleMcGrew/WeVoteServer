@@ -9,7 +9,8 @@ from io import BytesIO
 from time import time
 
 import robot_detection
-from PIL import Image, ImageOps
+from cairosvg import svg2png
+from PIL import Image, ImageFile, ImageOps
 from django.db.models import F
 from django.http import HttpResponse
 from django.utils.timezone import now
@@ -77,6 +78,7 @@ from wevote_functions.validate_email import validate_email
 
 logger = wevote_functions.admin.get_logger(__name__)
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 def add_state_code_for_display_to_voter_list(voter_we_vote_id_list=None):
     if voter_we_vote_id_list is None:
@@ -4749,12 +4751,21 @@ def voter_save_photo_from_file_reader(
     if voter_photo_binary_file:
         try:
             byte_data = base64.b64decode(voter_photo_binary_file)
-            image_data = BytesIO(byte_data)
-            original_image = Image.open(image_data)
-            format_to_cache = original_image.format
-            python_image_library_image = ImageOps.exif_transpose(original_image)
-            python_image_library_image.thumbnail(
-                (PROFILE_IMAGE_ORIGINAL_MAX_WIDTH, PROFILE_IMAGE_ORIGINAL_MAX_HEIGHT), Image.Resampling.LANCZOS)
+            if "svg" in img_dict["type"]:
+                byte_data = svg2png(bytestring=byte_data)
+            image_data_source = BytesIO(byte_data)
+            image = None
+            if "gif" in img_dict["type"] or "tiff" in img_dict["type"]:
+                image = Image.open(image_data_source)
+                image_data_destination = BytesIO()
+                image.save(image_data_destination, format="WEBP", save_all=True, loop=0)
+                image = Image.open(image_data_destination)
+            else:
+                image = Image.open(image_data_source)
+            format_to_cache = image.format
+            python_image_library_image = ImageOps.exif_transpose(image)
+            image_copy = python_image_library_image.copy()
+            image_copy.thumbnail((PROFILE_IMAGE_ORIGINAL_MAX_WIDTH, PROFILE_IMAGE_ORIGINAL_MAX_HEIGHT), Image.Resampling.LANCZOS)
             python_image_library_image.format = format_to_cache
             image_data_found = True
         except Exception as e:
