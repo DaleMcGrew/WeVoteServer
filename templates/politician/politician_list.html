@@ -124,7 +124,7 @@
 {% if not hide_pagination %}
 <span class="float-right">
     {% if has_previous_page %}
-        <a href="{{ previous_page_url }}" onclick="displayLoadingBanner()">Previous page</a>
+        <a href="{{ previous_page_url }}" onclick="displayLoadingBanner()">Previous page</a> |
     {% endif %}
     Page {{ current_page_number|add:1 }}
     {% if has_next_page %}
