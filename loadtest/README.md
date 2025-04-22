@@ -21,6 +21,8 @@ Then paste it in "loadtest/test_variables.json".
 cp loadtest/test_variables_template.json loadtest/test_variables.json
 ```
 
+[Link to Politician Page Loadtest](../docs/README_LOCUST_LOADTEST.md)
+
 [//]: #
 [Locust]: <http://locust.io>
 [install Locust]: <http://docs.locust.io/en/latest/installation.html>
