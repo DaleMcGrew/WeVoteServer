@@ -25,6 +25,7 @@ from email_outbound.controllers import voter_email_address_retrieve_for_api, vot
     voter_email_address_verify_for_api
 from email_outbound.models import EmailManager
 from follow.controllers import voter_issue_follow_for_api
+from follow.models import FollowIssueList
 from geoip.controllers import voter_location_retrieve_from_ip_for_api
 from image.controllers import TWITTER, FACEBOOK, cache_master_and_resized_image, create_resized_images
 from import_export_ballotpedia.controllers import voter_ballot_items_retrieve_from_ballotpedia_for_api_v4
@@ -32,6 +33,7 @@ from import_export_facebook.controllers import voter_facebook_sign_in_retrieve_f
     voter_facebook_sign_in_save_auth_for_api, voter_facebook_save_to_current_account_for_api
 from import_export_google_civic.controllers import voter_ballot_items_retrieve_from_google_civic_for_api
 from import_export_twitter.controllers import voter_twitter_save_to_current_account_for_api
+from issue.models import IssueManager
 from organization.models import Organization, OrganizationManager
 from position.controllers import voter_all_positions_retrieve_for_api, \
     voter_position_retrieve_for_api, voter_position_comment_save_for_api, voter_position_visibility_save_for_api
@@ -1469,6 +1471,22 @@ def voter_issue_follow_view(request):  # issueFollow
                                         ignore_value=ignore_value, user_agent_string=user_agent_string,
                                         user_agent_object=user_agent_object)
     result['google_civic_election_id'] = google_civic_election_id
+
+    try:
+        # Update the issue_followers_count in the issue table now that a new person has followed or unfollowed an issue
+        issue_manager = IssueManager()
+        results = issue_manager.retrieve_issue(
+            issue_we_vote_id=issue_we_vote_id,
+            read_only=False)
+        if results['issue_found']:
+            issue = results['issue']
+            follow_issue_list_manager = FollowIssueList()
+            issue.issue_followers_count = \
+                follow_issue_list_manager.fetch_follow_issue_count_by_issue_we_vote_id(issue_we_vote_id)
+            issue.save()
+    except Exception as e:
+        result['status'] += " COULD_NOT_UPDATE_ISSUE_FOLLOWERS_COUNT: " + str(e) + " "
+
     return HttpResponse(json.dumps(result), content_type='application/json')
 
 
