@@ -1,4 +1,6 @@
 [Back to Install Table of Contents](README_API_INSTALL.md)
+
+[Link to WeVote Server load test](../loadtest/README.md)
 # LoadTest 
 ## Install Locust
   [Install Locust](https://docs.locust.io/en/latest/installation.html)
