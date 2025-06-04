@@ -2839,8 +2839,7 @@ class OrganizationListManager(models.Manager):
             return results
 
         if not len(organization_ids_followed_by_voter):
-            status += 'NO_ORGANIZATIONS_FOUND_NO_ORGANIZATIONS_IN_LIST '
-            success = False
+            status += 'NO_ORGANIZATIONS_FOUND_BY_ID_NO_ORGANIZATIONS_IN_LIST '
             results = {
                 'success':                      success,
                 'status':                       status,
@@ -3208,11 +3207,12 @@ class OrganizationListManager(models.Manager):
     @staticmethod
     def retrieve_organizations_by_organization_we_vote_id_list(
             list_of_organization_we_vote_ids=[],
-            limit=200,
+            limit=100,
             read_only=True):
         organization_list = []
         organization_list_found = False
         status = ''
+        success = True
 
         if not type(list_of_organization_we_vote_ids) is list:
             status += 'NO_ORGANIZATIONS_FOUND_MISSING_ORGANIZATION_LIST '
@@ -3227,7 +3227,6 @@ class OrganizationListManager(models.Manager):
 
         if not len(list_of_organization_we_vote_ids):
             status += 'NO_ORGANIZATIONS_FOUND_NO_ORGANIZATIONS_IN_LIST '
-            success = False
             results = {
                 'success':                      success,
                 'status':                       status,
@@ -3244,9 +3243,10 @@ class OrganizationListManager(models.Manager):
             organization_queryset = organization_queryset.filter(
                 we_vote_id__in=list_of_organization_we_vote_ids)
             organization_queryset = organization_queryset.order_by('-twitter_followers_count')
+            organization_followers_count = organization_queryset.count()
             if positive_value_exists(limit):
                 organization_queryset = organization_queryset[:limit]
-            organization_list = organization_queryset
+            organization_list = list(organization_queryset)
 
             if len(organization_list):
                 organization_list_found = True
