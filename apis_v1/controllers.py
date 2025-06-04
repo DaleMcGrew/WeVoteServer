@@ -116,7 +116,9 @@ def organization_dislike(  # organizationDislike
         voter = position_results['voter']
         voter_id = position_results['voter_id']
     final_results_dict = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],
@@ -172,7 +174,9 @@ def organization_stop_disliking(  # organizationStopDisliking
     voter = results['voter']
     voter_id = results['voter_id']
     final_results_dict = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],
@@ -262,6 +266,8 @@ def organization_follow(  # organizationFollow
         voter = position_results['voter']
         voter_id = position_results['voter_id']
     final_results_dict = {
+        'organization_dislike_count': results['organization_dislike_count'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_we_vote_id': results['organization_we_vote_id'],
         'organization_twitter_handle': organization_twitter_handle,
@@ -320,7 +326,9 @@ def organization_stop_following(  # organizationStopFollowing
     voter = results['voter']
     voter_id = results['voter_id']
     final_results_dict = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],
@@ -377,7 +385,9 @@ def organization_stop_ignoring(
     voter = results['voter']
     voter_id = results['voter_id']
     final_results_dict = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],
@@ -432,7 +442,9 @@ def organization_follow_ignore(  # organizationFollowIgnore
         voter_id=voter_id)
     status += results['status']
     final_results_dict = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],

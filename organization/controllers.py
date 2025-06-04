@@ -2056,8 +2056,10 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
     if organization_follow_based_on_issue is None:
         organization_follow_based_on_issue = False
 
-    final_results_dict = {
+    error_results_dict = {
+        'organization_dislike_count': 0,
         'organization_follow_based_on_issue': organization_follow_based_on_issue,
+        'organization_followers_count': 0,
         'organization_id': organization_id,
         'organization_we_vote_id': organization_we_vote_id,
         'organization_we_vote_id_that_is_following': "",
@@ -2070,6 +2072,7 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
         'voter_linked_organization_we_vote_id': "",  # For backward compatibility
     }
 
+    voter_manager = VoterManager()
     if hasattr(voter, 'we_vote_id') and positive_value_exists(voter.we_vote_id):
         voter_we_vote_id = voter.we_vote_id
         is_signed_in = voter.is_signed_in()
@@ -2077,22 +2080,21 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
     else:
         if not positive_value_exists(voter_device_id):
             status += "VALID_VOTER_DEVICE_ID_MISSING "
-            final_results_dict['status'] = status
-            return final_results_dict
+            error_results_dict['status'] = status
+            return error_results_dict
 
         if not positive_value_exists(voter_id):
             voter_id = fetch_voter_id_from_voter_device_link(voter_device_id)
         if not positive_value_exists(voter_id):
             status += "VALID_VOTER_ID_MISSING "
-            final_results_dict['status'] = status
-            return final_results_dict
+            error_results_dict['status'] = status
+            return error_results_dict
 
-        voter_manager = VoterManager()
         results = voter_manager.retrieve_voter_by_id(voter_id)
         if not results['voter_found']:
             status += "VOTER_NOT_FOUND "
-            final_results_dict['status'] = status
-            return final_results_dict
+            error_results_dict['status'] = status
+            return error_results_dict
 
         voter = results['voter']
         voter_we_vote_id = voter.we_vote_id
@@ -2125,17 +2127,21 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
 
     if not positive_value_exists(organization_id) and not positive_value_exists(organization_we_vote_id):
         status += "VALID_ORGANIZATION_ID_MISSING "
-        final_results_dict['status'] = status
-        return final_results_dict
+        error_results_dict['status'] = status
+        return error_results_dict
 
     is_bot = user_agent_object.is_bot or robot_detection.is_robot(user_agent_string)
     analytics_manager = AnalyticsManager()
+    calculate_dislike_and_followers_count = False
     campaign_counts_changed = False
     follow_organization_manager = FollowOrganizationManager()
+    organization_dislike_count = 0
+    organization_followers_count = 0
     if follow_kind == FOLLOWING:
         results = follow_organization_manager.toggle_on_voter_following_organization(
             voter_id, organization_id, organization_we_vote_id, voter_linked_organization_we_vote_id)
         if results['follow_organization_found']:
+            calculate_dislike_and_followers_count = True
             campaign_counts_changed = True
             status += 'FOLLOWING '
             success = True
@@ -2165,6 +2171,7 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
         results = follow_organization_manager.toggle_on_voter_disliking_organization(
             voter_id, organization_id, organization_we_vote_id, voter_linked_organization_we_vote_id)
         if results['follow_organization_found']:
+            calculate_dislike_and_followers_count = True
             campaign_counts_changed = True
             status += 'DISLIKING '
             success = True
@@ -2194,6 +2201,7 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
         results = follow_organization_manager.toggle_ignore_voter_following_organization(
             voter_id, organization_id, organization_we_vote_id, voter_linked_organization_we_vote_id)
         if results['follow_organization_found']:
+            calculate_dislike_and_followers_count = True
             status += 'IGNORING '
             success = True
             state_code = ''
@@ -2222,6 +2230,7 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
         results = follow_organization_manager.toggle_off_voter_disliking_organization(
             voter_id, organization_id, organization_we_vote_id, voter_linked_organization_we_vote_id)
         if results['follow_organization_found']:
+            calculate_dislike_and_followers_count = True
             campaign_counts_changed = True
             status += 'STOPPED_FOLLOWING '
             success = True
@@ -2251,6 +2260,7 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
         results = follow_organization_manager.toggle_off_voter_following_organization(
             voter_id, organization_id, organization_we_vote_id, voter_linked_organization_we_vote_id)
         if results['follow_organization_found']:
+            calculate_dislike_and_followers_count = True
             campaign_counts_changed = True
             status += 'STOPPED_FOLLOWING '
             success = True
@@ -2280,6 +2290,7 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
         results = follow_organization_manager.toggle_off_voter_ignoring_organization(
             voter_id, organization_id, organization_we_vote_id, voter_linked_organization_we_vote_id)
         if results['follow_organization_found']:
+            calculate_dislike_and_followers_count = True
             status += 'STOPPED_IGNORING '
             success = True
             state_code = ''
@@ -2324,6 +2335,19 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
             status += count_results['status']
             status += "COULD_NOT_UPDATE_CAMPAIGNX_SUPPORTERS_COUNT "
 
+    if calculate_dislike_and_followers_count:
+        follow_organization_list_manager = FollowOrganizationList()
+        organization_we_vote_ids_followers = \
+            follow_organization_list_manager.retrieve_followers_organization_by_organization_we_vote_id_simple_id_array(
+                organization_we_vote_id=organization_we_vote_id, return_we_vote_id=True)
+        organization_followers_count = len(organization_we_vote_ids_followers)
+
+        organization_dislike_list = \
+            follow_organization_list_manager.retrieve_followers_organization_by_organization_we_vote_id_simple_id_array(
+                organization_we_vote_id=organization_we_vote_id, return_we_vote_id=True,
+                following_status=FOLLOW_DISLIKE)
+        organization_dislike_count = len(organization_dislike_list)
+
     if positive_value_exists(voter_id):
         number_of_organizations_followed = \
             follow_organization_manager.fetch_follow_organization_count(voter_id=voter_id)
@@ -2331,7 +2355,9 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
         voter_manager.update_organizations_interface_status(voter_we_vote_id, number_of_organizations_followed)
 
     final_results_dict = {
+        'organization_dislike_count': organization_dislike_count,
         'organization_follow_based_on_issue': organization_follow_based_on_issue,
+        'organization_followers_count': organization_followers_count,
         'organization_id': organization_id,
         'organization_we_vote_id': organization_we_vote_id,
         'organization_we_vote_id_that_is_following': voter_linked_organization_we_vote_id,

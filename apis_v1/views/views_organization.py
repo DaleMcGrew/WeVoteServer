@@ -87,7 +87,9 @@ def organization_dislike_api_view(request):  # organizationDislike
     )
     status += results['status']
     json_data = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],
@@ -126,7 +128,9 @@ def organization_follow_api_view(request):  # organizationFollow
     )
     status += results['status']
     json_data = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],
@@ -159,7 +163,9 @@ def organization_stop_disliking_api_view(request):  # organizationStopDisliking
         user_agent_object=user_agent_object)
     status += results['status']
     json_data = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],
@@ -192,7 +198,9 @@ def organization_stop_following_api_view(request):  # organizationStopFollowing
         user_agent_object=user_agent_object)
     status += results['status']
     json_data = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],
@@ -225,7 +233,9 @@ def organization_stop_ignoring_api_view(request):  # organizationStopIgnoring
         user_agent_object=user_agent_object)
     status += results['status']
     json_data = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],
@@ -259,7 +269,9 @@ def organization_follow_ignore_api_view(request):  # organizationFollowIgnore
         user_agent_object=user_agent_object)
     status += results['status']
     json_data = {
+        'organization_dislike_count': results['organization_dislike_count'],
         'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
         'organization_twitter_handle': organization_twitter_handle,
         'organization_we_vote_id': results['organization_we_vote_id'],

@@ -1567,18 +1567,18 @@ class FollowOrganizationList(models.Model):
     def retrieve_followers_organization_by_organization_we_vote_id_simple_id_array(
             organization_we_vote_id='',
             return_we_vote_id=False,
-            auto_followed_from_twitter_suggestion=False):
+            following_status=FOLLOWING):
         """
         Retrieve the organization_id (or organization_we_vote_id) for each voter that follows organization_we_vote_id.
         :param organization_we_vote_id:
         :param return_we_vote_id:
-        :param auto_followed_from_twitter_suggestion:
+        :param following_status:
         :return:
         """
         follow_organization_list_manager = FollowOrganizationList()
         followers_organization_list = \
             follow_organization_list_manager.retrieve_follow_organization_by_organization_we_vote_id(
-                organization_we_vote_id, read_only=True)
+                organization_we_vote_id, following_status=following_status, read_only=True)
         followers_organization_list_simple_array = []
         if len(followers_organization_list):
             for follow_organization in followers_organization_list:
@@ -1630,10 +1630,11 @@ class FollowOrganizationList(models.Model):
             return follow_organization_list
 
     @staticmethod
-    def retrieve_follow_organization_by_organization_we_vote_id(organization_we_vote_id, read_only=False):
+    def retrieve_follow_organization_by_organization_we_vote_id(
+            organization_we_vote_id, following_status=FOLLOWING, read_only=False):
         # Retrieve a list of follow_organization entries for this organization
         follow_organization_list_found = False
-        following_status = FOLLOWING
+
         follow_organization_list = {}
         try:
             if positive_value_exists(read_only):
