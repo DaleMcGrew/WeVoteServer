@@ -17,31 +17,15 @@ Only [Docker Desktop](https://docs.docker.com/get-docker/) is required.
 2. Set environment variables in `.env`
 
     ```
-    # api
-    DATABASE_PASSWORD="secret"
-    DJANGO_SUPERUSER_EMAIL="dev@test.com"
-    DJANGO_SUPERUSER_PASSWORD="secret"
-
-    # db
-    POSTGRES_PASSWORD="secret"
+    DATABASE_PASSWORD    
+    DJANGO_SUPERUSER_EMAIL
+    DJANGO_SUPERUSER_PASSWORD
+    POSTGRES_DB
+    POSTGRES_PASSWORD
+    POSTGRES_USER
     ```
 
-3. Configure PostgreSQL in `config.sql`
-
-    ```sql
-    ALTER SYSTEM SET listen_addresses = '*';
-    ```
-    This setting allows other containers to access the database
-
-4. [Open the following ports](https://www.wikihow.com/Open-Ports), if they are not already open:
-
-    - 4566 to access AWS
-    
-    - 5432 to access the database
-
-    - 8000 to access the API
-
-5. Create and start containers
+3. Create and start containers
 
     ```
     docker compose up --detach
@@ -52,7 +36,7 @@ Only [Docker Desktop](https://docs.docker.com/get-docker/) is required.
     ```
     Access the API at [http://localhost:8000/](http://localhost:8000/)
 
-6. Stop and remove containers
+4. Stop and remove containers
 
     ```
     docker compose down
@@ -70,13 +54,7 @@ Only [Docker Desktop](https://docs.docker.com/get-docker/) is required.
 
     - [Networking](https://docs.docker.com/compose/networking/)
 
-2. Docker Desktop
-
-    - [Why does Docker Desktop for Linux run a VM?](https://docs.docker.com/desktop/faqs/linuxfaqs/#why-does-docker-desktop-for-linux-run-a-vm)
-
-3. PostgreSQL
-
-    - [Config](https://www.postgresql.org/docs/12/config-setting.html#CONFIG-SETTING-SQL-COMMAND-INTERACTION)
+2. PostgreSQL
 
     - [Official Docker Image](https://hub.docker.com/_/postgres)
 

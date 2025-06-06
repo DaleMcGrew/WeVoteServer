@@ -1,0 +1,58 @@
+FROM python:3.11-alpine3.19
+
+RUN echo "@community https://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories \
+    && apk --no-cache update \
+    && apk --allow-untrusted --no-cache add \
+    bash \
+    build-base \
+    cmake \
+    git \
+    meson \
+    nano \
+    openssl \
+    postgresql16-client \
+    python3 \
+    python3-dev \
+    python3-tkinter@community \
+    py3-pip@community \
+    py3-virtualenv@community \
+    sudo@community \
+    # CairoSVG
+    cairo \
+    cairo-dev \
+    cairo-tools \
+    # Pillow
+    freetype-dev \
+    fribidi-dev \
+    harfbuzz-dev \
+    jpeg-dev \
+    lcms2-dev \
+    libavif-dev \
+    libimagequant-dev@community \
+    libwebp-dev \
+    libwebp-tools \
+    openjpeg-dev \
+    tcl-dev \
+    tiff-dev \
+    tk-dev \
+    zlib-dev
+
+RUN adduser -D --uid 1001 wevote \
+    && mkdir --parents /var/log/wevote /wevote \
+    && chown --recursive wevote:wevote /var/log/wevote /wevote
+
+WORKDIR /wevote
+
+USER wevote
+
+COPY . .
+
+RUN virtualenv venv
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK="1"
+
+ENV PIP_NO_CACHE_DIR="1"
+
+EXPOSE 8000
+
+CMD ["bash", "entrypoint.dev.sh"]
