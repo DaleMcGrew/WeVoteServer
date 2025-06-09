@@ -1059,7 +1059,10 @@ def retrieve_issues_under_ballot_items_list(all_issue_we_vote_ids, google_civic_
 
     # Now we loop through all of these positions and assemble a list of ballot_item_we_vote_ids for all positions
     for one_position in public_position_list:
-        if positive_value_exists(one_position.candidate_campaign_we_vote_id):
+        if positive_value_exists(one_position.candidate_campaign_we_vote_id) \
+                and one_position.candidate_campaign_we_vote_id not in ballot_item_we_vote_ids_list:
+            # if one_position.candidate_campaign_we_vote_id == "wv87cand2314844":
+            #     print("Lateefah Simon found")
             ballot_item_we_vote_ids_list.append(one_position.candidate_campaign_we_vote_id)
 
             # If there is a position on the voter's ballot, we want to retrieve the issues from the organization
@@ -1100,7 +1103,8 @@ def retrieve_issues_under_ballot_items_list(all_issue_we_vote_ids, google_civic_
                         oppose_issue_we_vote_id_list[one_position.candidate_campaign_we_vote_id].append(
                             issue_we_vote_id)
 
-        elif positive_value_exists(one_position.contest_measure_we_vote_id):
+        elif positive_value_exists(one_position.contest_measure_we_vote_id) \
+                and one_position.contest_measure_we_vote_id not in ballot_item_we_vote_ids_list:
             ballot_item_we_vote_ids_list.append(one_position.contest_measure_we_vote_id)
 
     for one_ballot_item_we_vote_id in ballot_item_we_vote_ids_list:
