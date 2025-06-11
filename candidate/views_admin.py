@@ -443,8 +443,8 @@ def candidate_list_view(request):
     no_supporters = request.GET.get('no_supporters', False)
     page = convert_to_int(request.GET.get('page', 0))
     page = page if positive_value_exists(page) else 0  # Prevent negative pages
-    # run_scripts = positive_value_exists(request.GET.get('run_scripts', False))
-    run_scripts = True
+    run_scripts = positive_value_exists(request.GET.get('run_scripts', False))
+    # run_scripts = True
     show_all = positive_value_exists(request.GET.get('show_all', False))
     show_all_elections = positive_value_exists(request.GET.get('show_all_elections', False))
     show_candidates_without_twitter = positive_value_exists(request.GET.get('show_candidates_without_twitter', False))

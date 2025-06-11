@@ -1306,13 +1306,14 @@ def organization_delete_process_view(request):
         organization = results['organization']
 
         organization_link_to_issue_list = OrganizationLinkToIssueList()
-        link_list = organization_link_to_issue_list.retrieve_issue_list_by_organization_we_vote_id(
+        link_to_issue_results = organization_link_to_issue_list.retrieve_link_to_issue_list_by_organization_we_vote_id(
             organization_we_vote_id=organization.we_vote_id,
             show_hidden_issues=True,
             read_only=False)
+        link_to_issue_list = link_to_issue_results['link_to_issue_list']
         link_to_issue_could_not_be_deleted = False
-        if len(link_list) > 0:
-            for one_link in link_list:
+        if len(link_to_issue_list) > 0:
+            for one_link in link_to_issue_list:
                 try:
                     one_link.delete()
                 except Exception as e:
@@ -2348,8 +2349,9 @@ def organization_position_list_view(request, organization_id=0, organization_we_
             organization_position_list_found = True
 
         link_issue_list_manager = OrganizationLinkToIssueList()
-        organization_link_issue_list = link_issue_list_manager. \
-            retrieve_issue_list_by_organization_we_vote_id(organization_we_vote_id, read_only=True)
+        link_to_issue_results = link_issue_list_manager. \
+            retrieve_link_to_issue_list_by_organization_we_vote_id(organization_we_vote_id, read_only=True)
+        organization_link_issue_list = link_to_issue_results['link_to_issue_list']
         issue_manager = IssueManager()
         for link_issue in organization_link_issue_list:
             issue_object = issue_manager.fetch_issue_from_we_vote_id(link_issue.issue_we_vote_id)
