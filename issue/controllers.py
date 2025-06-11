@@ -833,7 +833,7 @@ def issues_under_ballot_items_retrieve_for_api(  # issuesUnderBallotItemsRetriev
 
     for issue in issue_list:
         # Exclude Political Party Issues due to speed concerns
-        if issue.we_vote_id in ['wv02issue94', 'wv02issue95', 'wv02issue96','wv02issue97']:
+        if issue.we_vote_id in ['wv02issue94', 'wv02issue95', 'wv02issue96', 'wv02issue97']:
             continue
         all_issue_we_vote_ids.append(issue.we_vote_id)
 
@@ -1058,31 +1058,40 @@ def retrieve_issues_under_ballot_items_list(all_issue_we_vote_ids, google_civic_
         read_only=True)
 
     # Now we loop through all of these positions and assemble a list of ballot_item_we_vote_ids for all positions
+    visible_issue_we_vote_ids = []
     for one_position in public_position_list:
-        if positive_value_exists(one_position.candidate_campaign_we_vote_id) \
-                and one_position.candidate_campaign_we_vote_id not in ballot_item_we_vote_ids_list:
+        if positive_value_exists(one_position.candidate_campaign_we_vote_id):
             # if one_position.candidate_campaign_we_vote_id == "wv87cand2314844":
             #     print("Lateefah Simon found")
-            ballot_item_we_vote_ids_list.append(one_position.candidate_campaign_we_vote_id)
+            if one_position.candidate_campaign_we_vote_id not in ballot_item_we_vote_ids_list:
+                ballot_item_we_vote_ids_list.append(one_position.candidate_campaign_we_vote_id)
 
             # If there is a position on the voter's ballot, we want to retrieve the issues from the organization
             #  taking the position
             if one_position.is_support_or_positive_rating() or one_position.is_oppose_or_negative_rating():
-                if one_position.organization_we_vote_id not in cached_issue_we_vote_ids_under_each_organization:
+                if one_position.organization_we_vote_id and \
+                        one_position.organization_we_vote_id not in cached_issue_we_vote_ids_under_each_organization:
                     # Only retrieve this once per organization
+                    issue_we_vote_id_list_results = \
+                        organization_link_to_issue_list.retrieve_issue_we_vote_id_list_by_organization_we_vote_id(
+                            one_position.organization_we_vote_id, visible_issue_we_vote_ids=visible_issue_we_vote_ids)
+                    issue_we_vote_id_list = issue_we_vote_id_list_results['issue_we_vote_id_list']
+                    if issue_we_vote_id_list_results['success'] and \
+                            len(issue_we_vote_id_list_results['visible_issue_we_vote_ids']) > 0:
+                        # Reuse this list so we aren't doing redundant db lookups
+                        visible_issue_we_vote_ids = issue_we_vote_id_list_results['visible_issue_we_vote_ids']
                     cached_issue_we_vote_ids_under_each_organization[one_position.organization_we_vote_id] = \
-                        organization_link_to_issue_list.fetch_issue_we_vote_id_list_by_organization_we_vote_id(
-                            one_position.organization_we_vote_id)
+                        issue_we_vote_id_list
 
-                # Deprecate in late 2022
-                if one_position.candidate_campaign_we_vote_id not in issue_we_vote_id_list_by_ballot_item_list:
-                    issue_we_vote_id_list_by_ballot_item_list[one_position.candidate_campaign_we_vote_id] = []
-                for issue_we_vote_id in \
-                        cached_issue_we_vote_ids_under_each_organization[one_position.organization_we_vote_id]:
-                    if issue_we_vote_id not in \
-                            issue_we_vote_id_list_by_ballot_item_list[one_position.candidate_campaign_we_vote_id]:
-                        issue_we_vote_id_list_by_ballot_item_list[one_position.candidate_campaign_we_vote_id].append(
-                            issue_we_vote_id)
+                # # Deprecate in late 2022
+                # if one_position.candidate_campaign_we_vote_id not in issue_we_vote_id_list_by_ballot_item_list:
+                #     issue_we_vote_id_list_by_ballot_item_list[one_position.candidate_campaign_we_vote_id] = []
+                # for issue_we_vote_id in \
+                #         cached_issue_we_vote_ids_under_each_organization[one_position.organization_we_vote_id]:
+                #     if issue_we_vote_id not in \
+                #             issue_we_vote_id_list_by_ballot_item_list[one_position.candidate_campaign_we_vote_id]:
+                #         issue_we_vote_id_list_by_ballot_item_list[one_position.candidate_campaign_we_vote_id].append(
+                #             issue_we_vote_id)
 
             if one_position.is_support_or_positive_rating():
                 if one_position.candidate_campaign_we_vote_id not in support_issue_we_vote_id_list:
@@ -1108,9 +1117,9 @@ def retrieve_issues_under_ballot_items_list(all_issue_we_vote_ids, google_civic_
             ballot_item_we_vote_ids_list.append(one_position.contest_measure_we_vote_id)
 
     for one_ballot_item_we_vote_id in ballot_item_we_vote_ids_list:
-        issue_we_vote_id_list_for_one_ballot_item = \
-            issue_we_vote_id_list_by_ballot_item_list[one_ballot_item_we_vote_id] \
-            if one_ballot_item_we_vote_id in issue_we_vote_id_list_by_ballot_item_list else []
+        # issue_we_vote_id_list_for_one_ballot_item = \
+        #     issue_we_vote_id_list_by_ballot_item_list[one_ballot_item_we_vote_id] \
+        #     if one_ballot_item_we_vote_id in issue_we_vote_id_list_by_ballot_item_list else []
         oppose_by_ballot_item_list = \
             oppose_issue_we_vote_id_list[one_ballot_item_we_vote_id] \
             if one_ballot_item_we_vote_id in oppose_issue_we_vote_id_list else []
@@ -1118,9 +1127,9 @@ def retrieve_issues_under_ballot_items_list(all_issue_we_vote_ids, google_civic_
             support_issue_we_vote_id_list[one_ballot_item_we_vote_id] \
             if one_ballot_item_we_vote_id in support_issue_we_vote_id_list else []
         one_ballot_item = {
-            "ballot_item_we_vote_id":   one_ballot_item_we_vote_id,  # DEPRECATE in late 2022
+            # "ballot_item_we_vote_id":   one_ballot_item_we_vote_id,  # DEPRECATE in late 2022
             "ballot_item":              one_ballot_item_we_vote_id,
-            "issue_we_vote_id_list":    issue_we_vote_id_list_for_one_ballot_item,  # DEPRECATE in late 2022
+            # "issue_we_vote_id_list":    issue_we_vote_id_list_for_one_ballot_item,  # DEPRECATE in late 2022
             "oppose":                   oppose_by_ballot_item_list,
             "support":                  support_by_ballot_item_list,
         }

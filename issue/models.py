@@ -208,9 +208,9 @@ class IssueListManager(models.Manager):
 
             if len(issue_list):
                 issue_list_found = True
-                status = 'ISSUES_RETRIEVED'
+                status = 'ISSUES_RETRIEVED '
             else:
-                status = 'NO_ISSUES_RETRIEVED'
+                status = 'NO_ISSUES_RETRIEVED '
             success = True
         except Issue.DoesNotExist:
             # No issues found. Not a problem.
@@ -730,81 +730,118 @@ class OrganizationLinkToIssueList(models.Manager):
     # A way to retrieve all the organization and issue linking information
 
     @staticmethod
-    def retrieve_issue_list_by_organization_we_vote_id(
+    def retrieve_link_to_issue_list_by_organization_we_vote_id(
             organization_we_vote_id,
             show_hidden_issues=False,
+            visible_issue_we_vote_ids=[],
             read_only=False):
-        # Retrieve a list of active issues linked to organization
-        link_issue_list_found = False
-        link_active = True
-        link_issue_list = {}
+        """
+        Retrieve a list of active issues linked to organization
+        """
+        link_to_issue_list = []
+        status = ''
+        success = True
 
         if not positive_value_exists(organization_we_vote_id):
-            link_issue_list = {}
-            return link_issue_list
+            status += "RETRIEVE_LINK_TO_ISSUE_MISSING_ORGANIZATION_WE_VOTE_ID "
+            return {
+                'link_to_issue_list':   link_to_issue_list,
+                'status':               status,
+                'success':              False,
+                'visible_issue_we_vote_ids': visible_issue_we_vote_ids,
+            }
+
+        # Get a complete list of visible issues if missing
+        if visible_issue_we_vote_ids and len(visible_issue_we_vote_ids) > 0:
+            pass
+        else:
+            issue_list_manager = IssueListManager()
+            visible_issue_we_vote_ids = issue_list_manager.fetch_visible_issue_we_vote_ids()
 
         try:
             if read_only:
-                link_issue_query = OrganizationLinkToIssue.objects.using('readonly').all()
+                link_to_issue_query = OrganizationLinkToIssue.objects.using('readonly').all()
             else:
-                link_issue_query = OrganizationLinkToIssue.objects.all()
+                link_to_issue_query = OrganizationLinkToIssue.objects.all()
             # 2024-09-01 Removed __iexact
-            link_issue_query = link_issue_query.filter(organization_we_vote_id=organization_we_vote_id)
-            link_issue_query = link_issue_query.filter(link_active=link_active)
-            link_issue_list = list(link_issue_query)
-            if len(link_issue_list):
-                link_issue_list_found = True
+            link_to_issue_query = link_to_issue_query.filter(organization_we_vote_id=organization_we_vote_id)
+            if not show_hidden_issues:
+                link_to_issue_query = link_to_issue_query.filter(link_active=True)  # Limit to active
+            link_to_issue_list = list(link_to_issue_query)
         except Exception as e:
-            pass
+            status += "COULD_NOT_RETRIEVE_LINK_TO_ISSUE: " + str(e) + " "
+            success = False
 
-        if link_issue_list_found:
-            if show_hidden_issues:
-                return link_issue_list
-            else:
-                link_issue_list_filtered = []
-                # Get a complete list of visible issues
-                issue_list_manager = IssueListManager()
-                visible_issue_we_vote_ids = issue_list_manager.fetch_visible_issue_we_vote_ids()
-                for link_issue in link_issue_list:
-                    if link_issue.issue_we_vote_id in visible_issue_we_vote_ids:
-                        link_issue_list_filtered.append(link_issue)
-                return link_issue_list_filtered
+        if show_hidden_issues:
+            pass
         else:
-            link_issue_list = {}
-            return link_issue_list
+            link_to_issue_list_filtered = []
+            for link_issue in link_to_issue_list:
+                if link_issue.issue_we_vote_id in visible_issue_we_vote_ids:
+                    link_to_issue_list_filtered.append(link_issue)
+            link_to_issue_list = link_to_issue_list_filtered
+
+        results = {
+            'status':                       status,
+            'success':                      success,
+            'link_to_issue_list':           link_to_issue_list,
+            'visible_issue_we_vote_ids':    visible_issue_we_vote_ids,
+        }
+        return results
 
     @staticmethod
     def retrieve_issue_blocked_list_by_organization_we_vote_id(organization_we_vote_id, read_only=False):
         # Retrieve a list of issues bocked for an organization
-        link_issue_list_found = False
+        link_to_issue_list_found = False
         link_blocked = True
-        link_issue_list = {}
+        link_to_issue_list = {}
         try:
             if read_only:
-                link_issue_query = OrganizationLinkToIssue.objects.using('readonly').all()
+                link_to_issue_query = OrganizationLinkToIssue.objects.using('readonly').all()
             else:
-                link_issue_query = OrganizationLinkToIssue.objects.all()
+                link_to_issue_query = OrganizationLinkToIssue.objects.all()
             # 2024-09-01 Removed __iexact
-            link_issue_query = link_issue_query.filter(organization_we_vote_id=organization_we_vote_id)
-            link_issue_query = link_issue_query.filter(link_blocked=link_blocked)
-            link_issue_list = list(link_issue_query)
-            if len(link_issue_list):
-                link_issue_list_found = True
+            link_to_issue_query = link_to_issue_query.filter(organization_we_vote_id=organization_we_vote_id)
+            link_to_issue_query = link_to_issue_query.filter(link_blocked=link_blocked)
+            link_to_issue_list = list(link_to_issue_query)
+            if len(link_to_issue_list):
+                link_to_issue_list_found = True
         except Exception as e:
             pass
 
-        if link_issue_list_found:
-            return link_issue_list
+        if link_to_issue_list_found:
+            return link_to_issue_list
         else:
-            link_issue_list = {}
-            return link_issue_list
+            link_to_issue_list = {}
+            return link_to_issue_list
 
-    def fetch_issue_we_vote_id_list_by_organization_we_vote_id(self, organization_we_vote_id):
-        link_issue_we_vote_id_list = []
-        link_issue_list = self.retrieve_issue_list_by_organization_we_vote_id(organization_we_vote_id, read_only=True)
-        for issue in link_issue_list:
-            link_issue_we_vote_id_list.append(issue.issue_we_vote_id)
-        return link_issue_we_vote_id_list
+    def fetch_issue_we_vote_id_list_by_organization_we_vote_id(
+            self, organization_we_vote_id, visible_issue_we_vote_ids=[]):
+        issue_we_vote_id_list = []
+        issue_results = self.retrieve_link_to_issue_list_by_organization_we_vote_id(
+            organization_we_vote_id, visible_issue_we_vote_ids=visible_issue_we_vote_ids, read_only=True)
+        link_to_issue_list = issue_results['link_to_issue_list']
+        for issue in link_to_issue_list:
+            issue_we_vote_id_list.append(issue.issue_we_vote_id)
+        return issue_we_vote_id_list
+
+    def retrieve_issue_we_vote_id_list_by_organization_we_vote_id(
+            self, organization_we_vote_id, visible_issue_we_vote_ids=[]):
+        issue_we_vote_id_list = []
+        issue_results = self.retrieve_link_to_issue_list_by_organization_we_vote_id(
+            organization_we_vote_id, visible_issue_we_vote_ids=visible_issue_we_vote_ids, read_only=True)
+        link_to_issue_list = issue_results['link_to_issue_list']
+        for issue in link_to_issue_list:
+            issue_we_vote_id_list.append(issue.issue_we_vote_id)
+        if issue_results['success']:
+            visible_issue_we_vote_ids = issue_results['visible_issue_we_vote_ids']
+        results = {
+            'status':                   issue_results['status'],
+            'success':                  issue_results['success'],
+            'issue_we_vote_id_list':    issue_we_vote_id_list,
+            'visible_issue_we_vote_ids':    visible_issue_we_vote_ids,
+        }
+        return results
 
     def fetch_organization_we_vote_id_list_by_issue_we_vote_id_list(self, issue_we_vote_id_list):
         organization_we_vote_id_list = []
@@ -816,34 +853,34 @@ class OrganizationLinkToIssueList(models.Manager):
 
     @staticmethod
     def fetch_issue_count_for_organization(organization_id=0, organization_we_vote_id=''):
-        link_issue_list_count = 0
+        link_to_issue_list_count = 0
         try:
-            link_issue_list = OrganizationLinkToIssue.objects.using('readonly').all()
+            link_to_issue_list = OrganizationLinkToIssue.objects.using('readonly').all()
             # 2024-09-01 Removed __iexact
-            link_issue_list = link_issue_list.filter(organization_we_vote_id=organization_we_vote_id)
-            link_issue_list = link_issue_list.filter(link_active=True)
-            link_issue_list_count = link_issue_list.count()
+            link_to_issue_list = link_to_issue_list.filter(organization_we_vote_id=organization_we_vote_id)
+            link_to_issue_list = link_to_issue_list.filter(link_active=True)
+            link_to_issue_list_count = link_to_issue_list.count()
 
         except Exception as e:
             pass
 
-        return link_issue_list_count
+        return link_to_issue_list_count
 
     @staticmethod
     def fetch_organization_count_for_issue(issue_we_vote_id=''):
         link_active = True
-        link_issue_list_count = 0
+        link_to_issue_list_count = 0
         try:
-            link_issue_list = OrganizationLinkToIssue.objects.using('readonly').all()
+            link_to_issue_list = OrganizationLinkToIssue.objects.using('readonly').all()
             # 2024-09-01 Removed __iexact
-            link_issue_list = link_issue_list.filter(issue_we_vote_id=issue_we_vote_id)
-            link_issue_list = link_issue_list.filter(link_active=link_active)
-            link_issue_list_count = link_issue_list.count()
+            link_to_issue_list = link_to_issue_list.filter(issue_we_vote_id=issue_we_vote_id)
+            link_to_issue_list = link_to_issue_list.filter(link_active=link_active)
+            link_to_issue_list_count = link_to_issue_list.count()
 
         except Exception as e:
             pass
 
-        return link_issue_list_count
+        return link_to_issue_list_count
 
     @staticmethod
     def fetch_linked_organization_count(issue_we_vote_id=''):
@@ -1061,8 +1098,8 @@ class OrganizationLinkToIssueManager(models.Manager):
             status += 'LINK_ISSUE_RETRIEVE_FAILED ' + str(results['status']) + ' '
         if positive_value_exists(link_issue_on_stage_we_vote_id) and issue_found and issue_count_update_allowed:
             # If a link issue was saved, update the linked_organization_count
-            organization_link_issue_list_manager = OrganizationLinkToIssueList()
-            linked_organization_count = organization_link_issue_list_manager.fetch_linked_organization_count(
+            organization_link_to_issue_list_manager = OrganizationLinkToIssueList()
+            linked_organization_count = organization_link_to_issue_list_manager.fetch_linked_organization_count(
                 link_issue_on_stage_we_vote_id)
             try:
                 issue.linked_organization_count = linked_organization_count

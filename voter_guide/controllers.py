@@ -2375,6 +2375,8 @@ def voter_guides_to_follow_retrieve_for_api(  # voterGuidesToFollowRetrieve
         position_manager = PositionManager()
         position = PositionEntered()
         pledge_to_vote_manager = PledgeToVoteManager()
+        visible_issue_we_vote_ids = []
+        organization_link_to_issue_list = OrganizationLinkToIssueList()
         for voter_guide in voter_guide_list:
             if positive_value_exists(voter_guide.organization_we_vote_id) \
                     and positive_value_exists(linked_organization_we_vote_id) \
@@ -2397,10 +2399,12 @@ def voter_guides_to_follow_retrieve_for_api(  # voterGuidesToFollowRetrieve
             else:
                 ballot_item_we_vote_ids_this_org_opposes = []
 
-            organization_link_to_issue_list = OrganizationLinkToIssueList()
-            issue_we_vote_ids_linked = \
-                organization_link_to_issue_list.fetch_issue_we_vote_id_list_by_organization_we_vote_id(
-                    voter_guide.organization_we_vote_id)
+            issue_we_vote_ids_linked_results = \
+                organization_link_to_issue_list.retrieve_issue_we_vote_id_list_by_organization_we_vote_id(
+                    voter_guide.organization_we_vote_id, visible_issue_we_vote_ids=visible_issue_we_vote_ids)
+            if len(issue_we_vote_ids_linked_results['visible_issue_we_vote_ids']) > 0:
+                visible_issue_we_vote_ids = issue_we_vote_ids_linked_results['visible_issue_we_vote_ids']
+            issue_we_vote_ids_linked = issue_we_vote_ids_linked_results['issue_we_vote_id_list']
 
             pledge_to_vote_we_vote_id = ""
             pledge_results = pledge_to_vote_manager.retrieve_pledge_to_vote(
@@ -2919,6 +2923,8 @@ def voter_guides_upcoming_retrieve_for_api(  # voterGuidesUpcomingRetrieve && vo
     status += voter_guide_results['status']
 
     organization_manager = OrganizationManager()
+    organization_link_to_issue_list = OrganizationLinkToIssueList()
+    visible_issue_we_vote_ids = []
     for voter_guide in voter_guide_list:
         organization_we_vote_id = voter_guide.organization_we_vote_id
         google_civic_election_id = voter_guide.google_civic_election_id
@@ -2993,10 +2999,12 @@ def voter_guides_upcoming_retrieve_for_api(  # voterGuidesUpcomingRetrieve && vo
                 not len(ballot_item_we_vote_ids_this_org_opposes):
             continue
 
-        organization_link_to_issue_list = OrganizationLinkToIssueList()
-        issue_we_vote_ids_linked = \
-            organization_link_to_issue_list.fetch_issue_we_vote_id_list_by_organization_we_vote_id(
-                voter_guide.organization_we_vote_id)
+        issue_we_vote_ids_linked_results = \
+            organization_link_to_issue_list.retrieve_issue_we_vote_id_list_by_organization_we_vote_id(
+                voter_guide.organization_we_vote_id, visible_issue_we_vote_ids=visible_issue_we_vote_ids)
+        if len(issue_we_vote_ids_linked_results['visible_issue_we_vote_ids']) > 0:
+            visible_issue_we_vote_ids = issue_we_vote_ids_linked_results['visible_issue_we_vote_ids']
+        issue_we_vote_ids_linked = issue_we_vote_ids_linked_results['issue_we_vote_id_list']
         if voter_guide.last_updated:
             last_updated = voter_guide.last_updated.strftime('%Y-%m-%d %H:%M')
         else:
