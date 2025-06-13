@@ -1,7 +1,0 @@
-FROM postgres:12.0-alpine
-
-USER postgres
-
-EXPOSE 5432
-
-COPY config.sql /docker-entrypoint-initdb.d/

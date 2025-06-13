@@ -1,8 +1,8 @@
-#!/usr/bin/env sh
+#!/usr/local/bin/bash
 
-if [ ! -e ./config/environment_variables.json ]; then
-    cp ./config/environment_variables-template.json ./config/environment_variables.json
-fi
+. venv/bin/activate
+pip install --requirement requirements.dev.txt
+python set_env_variables.py
 python manage.py makemigrations
 python manage.py migrate
 python manage.py createsuperuser --no-input || echo "Superuser already created."

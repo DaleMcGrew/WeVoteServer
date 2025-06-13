@@ -1,0 +1,108 @@
+name: wevote
+
+services:
+  db:
+    environment:
+      POSTGRES_DB: /run/secrets/postgres_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: /run/secrets/postgres_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    image: postgres:16-alpine
+    networks:
+      - back_end
+    restart: unless-stopped
+    secrets:
+      - postgres_db
+      - postgres_password
+    user: postgres
+    volumes:
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./pg_ident.conf:/etc/postgresql/pg_ident.conf:ro
+      - postgres_data:/var/lib/postgresql/data
+    
+  aws:
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+    image: localstack/localstack
+    networks:
+      - back_end
+    profiles:
+      - optional
+    volumes:
+      - localstack:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+  
+  api:
+    build:
+      dockerfile: Dockerfile.dev
+    depends_on:
+      caddy:
+        condition: service_started
+        restart: true
+      db:
+        condition: service_healthy
+        restart: true
+    environment:
+      COMPOSE_FILE: compose.dev.yaml
+      DATABASE_HOST: db
+      DATABASE_PASSWORD: /run/secrets/db_password
+      DATABASE_PORT: "5432"
+      DJANGO_SUPERUSER_EMAIL: /run/secrets/django_admin_email
+      DJANGO_SUPERUSER_PASSWORD: /run/secrets/django_admin_password
+    networks:
+      - back_end
+    ports:
+      - "127.0.0.1:8000:8000"
+    secrets:
+      - db_password
+      - django_admin_email
+      - django_admin_password
+
+  caddy:
+    image: caddy:2.10
+    networks:
+      - back_end
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8443:8443"
+    restart: unless-stopped
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_config:/config
+      - caddy_data:/data
+
+
+networks:
+  back_end:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.host_binding_ipv4: "127.0.0.1"
+
+secrets:
+  postgres_db:
+    environment: POSTGRES_DB
+  postgres_user:
+    environment: POSTGRES_USER
+  postgres_password:
+    environment: POSTGRES_PASSWORD
+  db_password:
+    environment: DATABASE_PASSWORD
+  django_admin_email:
+    environment: DJANGO_SUPERUSER_EMAIL
+  django_admin_password:
+    environment: DJANGO_SUPERUSER_PASSWORD
+
+volumes:
+  caddy_config:
+  caddy_data:
+  localstack:
+  postgres_data:

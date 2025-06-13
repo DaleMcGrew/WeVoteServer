@@ -39,6 +39,6 @@ RUN python -m pip install -r /tmp/requirements.txt --no-cache-dir
 
 EXPOSE 8000
 WORKDIR /wevote
-CMD ["/wevote/docker/entrypoint_api_server.sh"]
+CMD ["bash", "entrypoint.sh"]
 
 
