@@ -156,23 +156,6 @@
     </div>
 </div>
 
-<div class="form-group">
-    <label for="politician_we_vote_id_id" class="col-sm-3 control-label">
-        Politician We Vote Id
-    </label>
-    <div class="col-sm-8">
-        <input type="text" name="politician_we_vote_id" id="politician_we_vote_id_id" class="form-control"
-               value="{% if organization %}{{ organization.politician_we_vote_id|default_if_none:"" }}{% else %}{{ politician_we_vote_id|default_if_none:"" }}{% endif %}" />
-        {% if organization.politician_we_vote_id %}
-            <a href="{% url 'politician:politician_we_vote_id_edit' organization.politician_we_vote_id %}?" target="_blank">
-            view politician&nbsp;<span class="glyphicon glyphicon-new-window"></span>
-            </a>&nbsp;&nbsp;
-        {% else %}
-        &nbsp;&nbsp;&nbsp;&nbsp;(<a href="{% url 'organization:organization_politician_match' %}?organization_id={{ organization.id }}">match to politician</a>)
-        {% endif %}
-    </div>
-</div>
-
 {% if organization_types %}
 <div class="form-group">
     <label for="organization_type_id" class="col-sm-3 control-label">Endorser Type</label>
@@ -189,6 +172,23 @@
     </div>
 </div>
 {% endif %} {# End of if organization_types #}
+
+<div class="form-group" id="politician_we_vote_id_div">
+    <label for="politician_we_vote_id_id" class="col-sm-3 control-label">
+        Politician We Vote Id
+    </label>
+    <div class="col-sm-8">
+        <input type="text" name="politician_we_vote_id" id="politician_we_vote_id_id" class="form-control"
+               value="{% if organization %}{{ organization.politician_we_vote_id|default_if_none:"" }}{% else %}{{ politician_we_vote_id|default_if_none:"" }}{% endif %}" />
+        {% if organization.politician_we_vote_id %}
+            <a href="{% url 'politician:politician_we_vote_id_edit' organization.politician_we_vote_id %}?" target="_blank">
+            view politician&nbsp;<span class="glyphicon glyphicon-new-window"></span>
+            </a>&nbsp;&nbsp;
+        {% else %}
+        &nbsp;&nbsp;&nbsp;&nbsp;(<a href="{% url 'organization:organization_politician_match' %}?organization_id={{ organization.id }}">match to politician</a>)
+        {% endif %}
+    </div>
+</div>
 
 <div class="form-group">
     <label for="organization_website_id" class="col-sm-3 control-label">Endorser Website
@@ -223,6 +223,20 @@
     <div class="col-sm-8">
     <input type="text" name="organization_email" id="organization_email_id" class="form-control"
            value="{% if organization %}{{ organization.organization_email|default_if_none:"" }}{% else %}{{ organization_email }}{% endif %}" />
+    </div>
+</div>
+
+<div class="form-group">
+    <label for="bluesky_handle_id" class="col-sm-3 control-label">
+        Bluesky
+        {% if organization.bluesky_handle and bluesky_url %}
+            <a href="{{ bluesky_url }}" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a>
+        {% endif %}
+    </label>
+    <div class="col-sm-8">
+        <input type="text" name="bluesky_handle" id="bluesky_handle_id" class="form-control"
+               value="{% if organization %}{{ organization.bluesky_handle|default_if_none:'' }}{% else %}{{ bluesky_handle }}{% endif %}"
+        />
     </div>
 </div>
 
@@ -295,6 +309,20 @@
 {#            <label for="organization_instagram_updates_failing_id" style="font-weight: normal !important;">Instagram Updates Failing. <span style="color: darkgray">Our automated Instagram data update script had trouble retrieving a handle. Uncheck when fixed.</span></label>#}
         {% endif %}
 
+    </div>
+</div>
+
+<div class="form-group">
+    <label for="tiktok_url_id" class="col-sm-3 control-label">
+        TikTok
+        {% if organization.tiktok_url %}
+            <a href="{{ organization.tiktok_url }}" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a>
+        {% endif %}
+    </label>
+    <div class="col-sm-8">
+        <input type="text" name="tiktok_url" id="tiktok_url_id" class="form-control"
+               value="{% if organization %}{{ organization.tiktok_url|default_if_none:'' }}{% else %}{{ tiktok_url }}{% endif %}"
+        />
     </div>
 </div>
 
@@ -464,6 +492,24 @@
 <!--    const new_href = initial_href + '&reverse_path=' + revEncoded;-->
 <!--    $('#facebook_a_tag').attr('href', new_href);-->
   });
+</script>
+<script>
+$(document).ready(function() {
+    function togglePoliticianField() {
+        var organizationType = $('#organization_type_id').val();
+        if (organizationType === 'PF') {
+            $('#politician_we_vote_id_div').show();
+        } else {
+            $('#politician_we_vote_id_div').hide();
+        }
+    }
+
+    // Call the function on page load
+    togglePoliticianField();
+
+    // Call the function whenever the organization type changes
+    $('#organization_type_id').change(togglePoliticianField);
+});
 </script>
 {% endblock %}
 

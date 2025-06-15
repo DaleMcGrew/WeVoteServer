@@ -58,7 +58,7 @@ from voter.models import fetch_voter_from_voter_device_link, VoterDeviceLinkMana
 from voter_guide.models import VoterGuide
 from wevote_functions.functions import convert_to_int, \
     extract_instagram_handle_from_text_string, extract_twitter_handle_from_text_string, \
-    get_voter_api_device_id, get_voter_device_id, list_intersection, \
+    get_voter_api_device_id, get_voter_device_id, list_intersection, normalize_bluesky_handle, normalize_tiktok_url, \
     positive_value_exists, STATE_CODE_MAP, display_full_name_with_correct_capitalization, \
     extract_state_from_ocd_division_id
 from wevote_functions.functions_date import convert_we_vote_date_string_to_date_as_integer, \
@@ -1297,62 +1297,89 @@ def candidate_list_view(request):
 
     # #############################################################
     # Get candidates in the elections we care about - used below
+    t0 = time()
     if positive_value_exists(google_civic_election_id):
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_election_list(
             google_civic_election_id_list=[google_civic_election_id])
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
     else:
         # Only look at candidates for this year
+        current_year = datetime.now().year
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(
-            year_list=[2024])
+            year_list=[current_year])
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
+    t1 = time()
+    performance_snapshot = {
+        'name': 'RetrieveCandidateWeVoteIdListFromElectionOrYearList',
+        'description': 'Get candidates in the elections or the year we care about',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
 
     # How many candidates with ballotpedia_candidate_url's don't have ballotpedia_photo_url?
+    t0 = time()
     ballotpedia_urls_without_picture_urls = fetch_ballotpedia_urls_to_retrieve_for_photos_count(
         candidate_we_vote_id_list=candidate_we_vote_id_list,
         state_code=state_code,
     )
+    t1 = time()
+    performance_snapshot = {
+        'name': 'FetchBallotpediaUrlsToRetrieveForPhotosCount',
+        'description': 'How many candidates with ballotpedia_candidate_url\'s don\'t have ballotpedia_photo_url?',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
 
     # How many candidates with ballotpedia_candidate_url's have never been checked for links we can use?
+    t0 = time()
     ballotpedia_urls_to_retrieve_for_links = fetch_ballotpedia_urls_to_retrieve_for_links_count(
         candidate_we_vote_id_list=candidate_we_vote_id_list,
         state_code=state_code,
     )
+    t1 = time()
+    performance_snapshot = {
+        'name': 'FetchBallotpediaUrlsToRetrieveForLinksCount',
+        'description': 'Determine how many ballotpedia_urls need to be retrieved for links',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
 
     # How many facebook_url's don't have facebook_profile_image_url_https
     # SELECT * FROM public.candidate_candidatecampaign where google_civic_election_id = '1000052' and facebook_url
     #     is not null and facebook_profile_image_url_https is null
-    t0 = time()
+    facebook_urls_retrieve_on = False
     facebook_urls_without_picture_urls = 0
-    try:
-        count_queryset = CandidateCampaign.objects.using('readonly').all()
-        count_queryset = count_queryset.filter(we_vote_id__in=candidate_we_vote_id_list)
-        count_queryset = count_queryset.exclude(facebook_photo_url_is_broken=True)
-        count_queryset = count_queryset.exclude(facebook_photo_url_is_placeholder=True)
-        count_queryset = count_queryset.exclude(facebook_url_is_broken=True)
-        if positive_value_exists(state_code):
-            count_queryset = count_queryset.filter(state_code__iexact=state_code)
+    if facebook_urls_retrieve_on:
+        t0 = time()
+        try:
+            count_queryset = CandidateCampaign.objects.using('readonly').all()
+            count_queryset = count_queryset.filter(we_vote_id__in=candidate_we_vote_id_list)
+            count_queryset = count_queryset.exclude(facebook_photo_url_is_broken=True)
+            count_queryset = count_queryset.exclude(facebook_photo_url_is_placeholder=True)
+            count_queryset = count_queryset.exclude(facebook_url_is_broken=True)
+            if positive_value_exists(state_code):
+                count_queryset = count_queryset.filter(state_code__iexact=state_code)
 
-        # Exclude candidates without facebook_url
-        count_queryset = count_queryset.exclude(
-            Q(facebook_url__isnull=True) | Q(facebook_url__iexact=''))
+            # Exclude candidates without facebook_url
+            count_queryset = count_queryset.exclude(
+                Q(facebook_url__isnull=True) | Q(facebook_url__iexact=''))
 
-        # Find candidates that don't have a photo (i.e. that are null or '')
-        count_queryset = count_queryset. \
-            filter(Q(facebook_profile_image_url_https__isnull=True) | Q(facebook_profile_image_url_https__exact=''))
+            # Find candidates that don't have a photo (i.e. that are null or '')
+            count_queryset = count_queryset. \
+                filter(Q(facebook_profile_image_url_https__isnull=True) | Q(facebook_profile_image_url_https__exact=''))
 
-        # candidates_to_review = list(count_queryset)
-        facebook_urls_without_picture_urls = count_queryset.count()
-    except Exception as e:
-        logger.error("Find facebook URLs without facebook pictures in candidate: ", e)
+            # candidates_to_review = list(count_queryset)
+            facebook_urls_without_picture_urls = count_queryset.count()
+        except Exception as e:
+            logger.error("Find facebook URLs without facebook pictures in candidate: ", e)
 
-    t1 = time()
-    performance_snapshot = {
-        'name': 'DetermineFacebookUrlWithoutPhoto',
-        'description': 'Determine how many facebook_url do not have facebook_profile_image_url',
-        'time_difference': t1-t0,
-    }
-    performance_list.append(performance_snapshot)
+        t1 = time()
+        performance_snapshot = {
+            'name': 'DetermineFacebookUrlWithoutPhoto',
+            'description': 'Determine how many facebook_url do not have facebook_profile_image_url',
+            'time_difference': t1-t0,
+        }
+        performance_list.append(performance_snapshot)
 
     # How many candidates with wikipedia_candidate_url's don't have wikipedia_photo_url?
     wikipedia_urls_without_picture_urls = 0
@@ -2334,7 +2361,6 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
     ballotpedia_office_id = request.GET.get('ballotpedia_office_id', False)
     ballotpedia_person_id = request.GET.get('ballotpedia_person_id', False)
     ballotpedia_race_id = request.GET.get('ballotpedia_race_id', False)
-    vote_smart_id = request.GET.get('vote_smart_id', False)
     linkedin_url = request.GET.get('linkedin_url', False)
     maplight_id = request.GET.get('maplight_id', False)
     page = request.GET.get('page', 0)
@@ -2345,6 +2371,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
     withdrawal_date = request.GET.get('withdrawal_date', False)
     withdrawn_from_election = positive_value_exists(request.GET.get('withdrawn_from_election', False))
     do_not_display_on_ballot = positive_value_exists(request.GET.get('do_not_display_on_ballot', False))
+    vote_smart_id = request.GET.get('vote_smart_id', False)
     vote_usa_office_id = request.GET.get('vote_usa_office_id', False)
     vote_usa_politician_id = request.GET.get('vote_usa_politician_id', False)
     youtube_url = request.GET.get('youtube_url', False)
@@ -2644,6 +2671,13 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
                 'name':     'ballotpedia_race_id',
                 'value':     ballotpedia_race_id if ballotpedia_race_id else candidate_on_stage.ballotpedia_race_id
             },
+            'bluesky_handle_dict':
+            {
+                'label':    'Bluesky',
+                'id':       'bluesky_handle_id',
+                'name':     'bluesky_handle',
+                'value':     candidate_on_stage.bluesky_handle
+            },
             'candidate':                        candidate_on_stage,
             'candidate_email_dict':              
             {
@@ -2742,6 +2776,13 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
                 'id':       'state_code_id',
                 'name':     'state_code',
                 'value':     state_code if state_code else candidate_on_stage.state_code
+            },
+            'tiktok_url_dict':
+            {
+                'label':    'TikTok',
+                'id':       'tiktok_url_id',
+                'name':     'tiktok_url',
+                'value':     candidate_on_stage.tiktok_url
             },
             'twitter_link_possibility_list':    twitter_link_possibility_list,
             'twitter_url_dict':
@@ -2924,6 +2965,9 @@ def candidate_edit_process_view(request):
     ballotpedia_office_id = request.POST.get('ballotpedia_office_id', False)
     ballotpedia_person_id = request.POST.get('ballotpedia_person_id', False)
     ballotpedia_race_id = request.POST.get('ballotpedia_race_id', False)
+    bluesky_handle = request.POST.get('bluesky_handle', False)
+    if positive_value_exists(bluesky_handle):
+        bluesky_handle = normalize_bluesky_handle(bluesky_handle)
     candidate_analysis_comment = request.POST.get('candidate_analysis_comment', '')
     if positive_value_exists(candidate_analysis_comment):
         change_description += "ANALYSIS_COMMENT: " + candidate_analysis_comment + " "
@@ -2991,6 +3035,7 @@ def candidate_edit_process_view(request):
     remove_duplicate_process = request.POST.get('remove_duplicate_process', False)
     select_for_marking_twitter_link_possibility_ids = request.POST.getlist('select_for_marking_checks[]')
     state_code = request.POST.get('state_code', False)
+    tiktok_url = request.POST.get('tiktok_url', False)
     twitter_handle_updates_failing = request.POST.get('twitter_handle_updates_failing', False)
     twitter_handle_updates_failing = positive_value_exists(twitter_handle_updates_failing)
     twitter_handle2_updates_failing = request.POST.get('twitter_handle2_updates_failing', False)
@@ -3075,14 +3120,12 @@ def candidate_edit_process_view(request):
             state_code_from_candidate = candidate_on_stage.state_code
             candidate_on_stage_found = True
     t1 = time()
-
     performance_snapshot = {
         'name': 'CandidateQuery',
         'description': 'Measures time to fetch candidate details from the database and initialize related variables. '
                        'Includes querying CandidateCampaign and setting state and year values',
         'time_difference': t1 - t0,
     }
-
     performance_list.append(performance_snapshot)
 
     # ##################################
@@ -3103,14 +3146,12 @@ def candidate_edit_process_view(request):
             change_description += "REMOVED: Link to Office " + candidate_to_office_link.contest_office_we_vote_id + " "
             change_description_changed = True
     t1 = time()
-
     performance_snapshot = {
         'name': 'CandidateToOfficeLinkList',
         'description': 'Measures time to retrieve and delete Candidate-to-Office links. '
                        'Includes processing user input and updating change logs',
         'time_difference': t1 - t0,
     }
-
     performance_list.append(performance_snapshot)
 
     candidate_to_office_link_add_election = request.POST.get('candidate_to_office_link_add_election', False)
@@ -3556,6 +3597,19 @@ def candidate_edit_process_view(request):
                 candidate_on_stage.ballotpedia_person_id = convert_to_int(ballotpedia_person_id)
             if ballotpedia_race_id is not False:
                 candidate_on_stage.ballotpedia_race_id = convert_to_int(ballotpedia_race_id)
+            if bluesky_handle is not False:
+                change_results = change_tracking(
+                    existing_value=candidate_on_stage.bluesky_handle,
+                    new_value=bluesky_handle,
+                    changes_found_dict=changes_found_dict,
+                    changes_found_key_base='is_bluesky',
+                    changes_found_key_name='Bluesky',
+                )
+                changes_found_dict = change_results['changes_found_dict']
+                if change_results['change_description_changed']:
+                    change_description += change_results['change_description']
+                    change_description_changed = True
+                candidate_on_stage.bluesky_handle = bluesky_handle
             if candidate_analysis_done != candidate_on_stage.candidate_analysis_done:
                 change_description += "CHANGED: ANALYSIS_DONE (" + str(candidate_analysis_done) + ") "
                 change_description_changed = True
@@ -3703,6 +3757,20 @@ def candidate_edit_process_view(request):
                 except Exception as e:
                     state_code_filtered = None
                     status += "PROBLEM_WITH_STATE_CODE: " + str(e) + " "
+            if tiktok_url is not False:
+                tiktok_url = normalize_tiktok_url(tiktok_url)
+                change_results = change_tracking(
+                    existing_value=candidate_on_stage.tiktok_url,
+                    new_value=tiktok_url,
+                    changes_found_dict=changes_found_dict,
+                    changes_found_key_base='is_tiktok',
+                    changes_found_key_name='Tiktok',
+                )
+                changes_found_dict = change_results['changes_found_dict']
+                if change_results['change_description_changed']:
+                    change_description += change_results['change_description']
+                    change_description_changed = True
+                candidate_on_stage.tiktok_url = tiktok_url
             if twitter_url is not False:
                 candidate_on_stage.twitter_url = twitter_url
 

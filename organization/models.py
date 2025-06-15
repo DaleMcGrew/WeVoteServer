@@ -3309,6 +3309,8 @@ class Organization(models.Model):
     # This is the master linkage, and we keep a copy in the Politician record too.
     politician_we_vote_id = models.CharField(max_length=255, null=True, blank=True)
 
+    bluesky_handle = models.TextField(blank=True, null=True)
+
     # Facebook session information
     facebook_id = models.BigIntegerField(verbose_name="facebook big integer id", null=True, blank=True)
     facebook_email = models.EmailField(verbose_name='facebook email address', max_length=255, unique=False,
@@ -3322,6 +3324,8 @@ class Organization(models.Model):
     facebook_photo_url = models.TextField(blank=True, null=True)
     facebook_photo_url_is_placeholder = models.BooleanField(default=False)
     facebook_url_is_broken = models.BooleanField(default=False)
+
+    tiktok_url = models.TextField(blank=True, null=True)
 
     # Twitter information
     twitter_user_id = models.BigIntegerField(verbose_name="twitter id", null=True, blank=True)

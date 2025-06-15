@@ -22,6 +22,8 @@ VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS = 10  # Candidate or Politician
 VOLUNTEER_ACTION_MATCH_CANDIDATES_TO_POLITICIANS = 11
 VOLUNTEER_ACTION_PHOTO_BULK_RETRIEVE = 12
 VOLUNTEER_ACTION_ORGANIZATION_DEDUPLICATION = 13
+VOLUNTEER_ACTION_ORGANIZATION_AUGMENTATION = 14
+
 
 class VolunteerTaskCompleted(models.Model):
     # This is volunteer action_constant (as opposed to Analytics action_constant)
@@ -199,6 +201,8 @@ class VolunteerWeeklyMetrics(models.Model):
     duplicate_politician_analysis = models.PositiveIntegerField(default=0)
     election_retrieve_started = models.PositiveIntegerField(default=0)
     match_candidates_to_politicians = models.PositiveIntegerField(default=0)
+    organizations_augmented = models.PositiveIntegerField(default=0)
+    organizations_deduplicated = models.PositiveIntegerField(default=0)
     politicians_augmented = models.PositiveIntegerField(default=0)
     politicians_deduplicated = models.PositiveIntegerField(default=0)
     politicians_photo_added = models.PositiveIntegerField(default=0)
@@ -250,6 +254,8 @@ def display_action_constant_human_readable(action_constant):
         return "PHOTO_BULK_RETRIEVE"
     if action_constant == VOLUNTEER_ACTION_VOTER_GUIDE_POSSIBILITY_CREATED:
         return "VOTER_GUIDE_POSSIBILITY_CREATED"
+    if action_constant == VOLUNTEER_ACTION_ORGANIZATION_AUGMENTATION:
+        return "ORGANIZATION_AUGMENTATION"
     if action_constant == VOLUNTEER_ACTION_ORGANIZATION_DEDUPLICATION:
         return "ORGANIZATION_DEDUPLICATION"
 

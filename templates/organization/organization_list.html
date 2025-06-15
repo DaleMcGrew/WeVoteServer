@@ -60,9 +60,9 @@
     <select id="state_code_id" name="state_code">
         <option value="" {% if '' == state_code %} selected="selected"{% endif %}>
         {% if '' == state_code %}
-            -- Filter by State Served --
+            -- State Served --
         {% else %}
-            -- Show All States Served --
+            -- All States Served --
         {% endif %}
         </option>
     {% for key, state in state_list %}
@@ -78,9 +78,9 @@
     <select id="organization_type_filter_id" name="organization_type_filter">
         <option value="" {% if '' ==  organization_type_filter %} selected="selected" {% endif %}>
         {% if '' ==  organization_type_filter %}
-            -- Filter by Endorser Type --
+            -- Endorser Type --
         {% else %}
-            -- Show All Endorser Types --
+            -- All Endorser Types --
         {% endif %}
         </option>
     {% for key, organization_type in organization_types %}
@@ -102,13 +102,13 @@
     {#  #}
     <label for="show_twitter_updates_failing_id">
       <input type="checkbox" name="show_twitter_updates_failing" id="show_twitter_updates_failing_id" value="1"
-             {% if show_twitter_updates_failing %}checked{% endif %} /> Show Twitter Failing&nbsp;&nbsp;&nbsp;
+             {% if show_twitter_updates_failing %}checked{% endif %} /> Twitter Failing&nbsp;&nbsp;&nbsp;
     </label>
 
     {#  #}
     <label for="show_organizations_to_be_analyzed_id">
       <input type="checkbox" name="show_organizations_to_be_analyzed" id="show_organizations_to_be_analyzed_id" value="1"
-             {% if show_organizations_to_be_analyzed %}checked{% endif %} /> To Be Analyzed
+             {% if show_organizations_to_be_analyzed %}checked{% endif %} /> To Analyze
     </label>
 
     &nbsp;&nbsp;&nbsp;&nbsp;
@@ -116,7 +116,7 @@
     <select id="limit_to_opinions_in_this_year_id" name="limit_to_opinions_in_this_year">
         <option value="0" {% if 0 == limit_to_opinions_in_this_year|convert_to_int %} selected="selected"{% endif %}>
         {% if 0 == limit_to_opinions_in_this_year %}
-            -- Opinions in This Year --
+            -- Opinions in Year --
         {% else %}
             -- Do Not Limit by Year --
         {% endif %}
@@ -134,7 +134,7 @@
     <select id="limit_to_opinions_in_state_code_id" name="limit_to_opinions_in_state_code">
         <option value="" {% if '' == limit_to_opinions_in_state_code %} selected="selected"{% endif %}>
         {% if '' == limit_to_opinions_in_state_code %}
-            -- Opinions in This State --
+            -- Opinions in State --
         {% else %}
             -- Do Not Limit by State --
         {% endif %}
@@ -149,6 +149,25 @@
     {% endif %}{# End of if state_list #}
 
     <br />
+
+<div id="jump_to_name_by_letter_id">
+    Jump to name starting with: 
+    {% for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" %}
+        <a href="#" onclick="selectLetter('{{ letter }}'); return false;" 
+           {% if letter_selected == letter %}style="font-weight: bold;"{% endif %}>
+            {{ letter }}
+        </a>
+        {% if not forloop.last %} | {% endif %}
+    {% endfor %}
+    | <a href="#" onclick="selectLetter('#'); return false;"
+         {% if letter_selected == '#' %}style="font-weight: bold;"{% endif %}>
+        Number
+      </a>
+    {% if letter_selected %}
+        | <a href="#" onclick="clearLetterSelection(); return false;">Clear</a>
+    {% endif %}
+    <input type="hidden" name="letter_selected" id="letter_selected_id" value="{{ letter_selected }}">
+</div>
 
 {% if issue_list %}
     <p>Values/Issues to filter [OR] :
@@ -283,10 +302,22 @@
         $('#FilterPopupMessage').show();
     }
 
+    function clearLetterSelection() {
+        displayLoadingBanner();
+        document.getElementById('letter_selected_id').value = '';
+        document.forms['state_code_form'].submit();
+    }
+
     function clearSearch() {
         displayLoadingBanner();
         $('#organization_search_id').val('');
         $('form[name="state_code_form"]').submit();
+    }
+
+    function selectLetter(letter) {
+        displayLoadingBanner();
+        document.getElementById('letter_selected_id').value = letter;
+        document.forms['state_code_form'].submit();
     }
 
     function showAllStates() {

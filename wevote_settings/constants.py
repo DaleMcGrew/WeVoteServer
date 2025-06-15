@@ -1,6 +1,6 @@
 # wevote_settings/constants.py
 
-ELECTION_YEARS_AVAILABLE = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
+ELECTION_YEARS_AVAILABLE = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
 
 # When we update IS_BATTLEGROUND_YEARS_AVAILABLE, update at the same time:
 #  OfficeHeld.is_battleground_race_2019 (etc.), Politician, and Representative

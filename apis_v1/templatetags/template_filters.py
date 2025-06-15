@@ -32,9 +32,10 @@ def get_date_from_date_as_integer(value):
         return functions_date.convert_date_as_integer_to_date(value_integer)
     return value
 
+
 @register.filter(name="get_value_from_dict")
-def get_value_from_dict(dict_variable, dict_key):
-    return dict_variable[dict_key]
+def get_value_from_dict(dictionary, key):
+    return dictionary[key]
 
 
 @register.filter(name="get_list_from_dict")

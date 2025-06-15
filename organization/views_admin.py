@@ -10,7 +10,7 @@ from .controllers_fastly import add_wevote_subdomain_to_fastly, add_subdomain_ro
     get_wevote_subdomain_status
 from .models import GROUP, INDIVIDUAL, Organization, OrganizationChangeLog, OrganizationReservedDomain, \
     OrganizationTeamMember, ORGANIZATION_UNIQUE_IDENTIFIERS, ORGANIZATION_UNIQUE_ATTRIBUTES_TO_BE_CLEARED, \
-    OrganizationsArePossibleDuplicates
+    OrganizationsArePossibleDuplicates, PUBLIC_FIGURE
 from base64 import b64encode
 from admin_tools.views import redirect_to_sign_in_page
 from campaign.controllers import move_campaignx_to_another_organization
@@ -18,7 +18,8 @@ from campaign.models import CampaignXListedByOrganization, CampaignXManager
 from candidate.models import CandidateCampaign, CandidateListManager, CandidateManager, \
     PROFILE_IMAGE_TYPE_UNKNOWN, PROFILE_IMAGE_TYPE_UPLOADED
 from volunteer_task.models import VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS, \
-    VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION, VolunteerTaskManager, VOLUNTEER_ACTION_ORGANIZATION_DEDUPLICATION
+    VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION, VolunteerTaskManager, VOLUNTEER_ACTION_ORGANIZATION_AUGMENTATION, \
+    VOLUNTEER_ACTION_ORGANIZATION_DEDUPLICATION
 from config.base import get_environment_variable
 from datetime import datetime
 from django.db.models import Q
@@ -53,8 +54,8 @@ from voter.models import fetch_voter_from_voter_device_link, retrieve_voter_auth
 from voter_guide.models import VoterGuideManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, get_voter_api_device_id, \
-    extract_instagram_handle_from_text_string, extract_twitter_handle_from_text_string, \
-    positive_value_exists, STATE_CODE_MAP, get_voter_api_device_id
+    extract_instagram_handle_from_text_string, extract_twitter_handle_from_text_string, generate_bluesky_url, \
+    normalize_bluesky_handle, normalize_tiktok_url, positive_value_exists, STATE_CODE_MAP, get_voter_api_device_id
 from wevote_functions.functions_date import convert_date_to_date_as_integer
 from wevote_settings.constants import ELECTION_YEARS_AVAILABLE
 
@@ -366,7 +367,10 @@ def organizations_sync_out_view(request):  # organizationsSyncOut
 
     try:
         organization_queryset = Organization.objects.using('readonly').all()
-        organization_queryset = organization_queryset.exclude(organization_type__iexact=INDIVIDUAL)
+        organization_queryset = organization_queryset.exclude(
+            Q(organization_type__iexact=INDIVIDUAL) |
+            Q(organization_type__iexact=PUBLIC_FIGURE)
+        )
         if positive_value_exists(state_served_code):
             organization_queryset = organization_queryset.filter(state_served_code__iexact=state_served_code)
         organization_list_dict = organization_queryset.values(
@@ -446,6 +450,7 @@ def organization_list_view(request):
 
     candidate_we_vote_id = request.GET.get('candidate_we_vote_id', '')
     google_civic_election_id = request.GET.get('google_civic_election_id', '')
+    letter_selected = request.GET.get('letter_selected', '')
     limit_to_opinions_in_state_code = request.GET.get('limit_to_opinions_in_state_code', '')
     limit_to_opinions_in_this_year = convert_to_int(request.GET.get('limit_to_opinions_in_this_year', 0))
     organization_search = request.GET.get('organization_search', '')
@@ -483,6 +488,14 @@ def organization_list_view(request):
             Q(organization_email__exact='')
         )
 
+    if positive_value_exists(letter_selected):
+        if letter_selected == '#':
+            # For numbers, filter organizations starting with any digit
+            organization_list_query = organization_list_query.filter(organization_name__regex=r'^[0-9]')
+        else:
+            # For letters, filter organizations starting with the selected letter
+            organization_list_query = organization_list_query.filter(organization_name__istartswith=letter_selected)
+
     if positive_value_exists(show_twitter_updates_failing):
         organization_list_query = organization_list_query.filter(organization_twitter_updates_failing=True)
 
@@ -503,11 +516,14 @@ def organization_list_view(request):
         else:
             organization_list_query = organization_list_query.filter(organization_type__iexact=organization_type_filter)
     elif positive_value_exists(organization_search):
-        # Do not remove individuals from search
+        # Do not remove individuals or public figures from search
         pass
     else:
-        # By default, don't show individuals
-        organization_list_query = organization_list_query.exclude(organization_type__iexact=INDIVIDUAL)
+        # By default, don't show individuals or public figures
+        organization_list_query = organization_list_query.exclude(
+            Q(organization_type__iexact=INDIVIDUAL) |
+            Q(organization_type__iexact=PUBLIC_FIGURE)
+        )
 
     link_issue_list_manager = OrganizationLinkToIssueList()
     issue_list_manager = IssueListManager()
@@ -677,6 +693,7 @@ def organization_list_view(request):
         'google_civic_election_id': google_civic_election_id,
         'issue_list':               issue_list,
         'issues_selected':          issues_selected,
+        'letter_selected':          letter_selected,
         'limit_to_opinions_in_state_code': limit_to_opinions_in_state_code,
         'limit_to_opinions_in_this_year': limit_to_opinions_in_this_year,
         'messages_on_stage':        messages_on_stage,
@@ -1006,9 +1023,11 @@ def organization_edit_view(request, organization_id=0, organization_we_vote_id="
         organization_id=organization_id,
         we_vote_id=organization_we_vote_id)
 
+    bluesky_url = ""
     organization_twitter_handle = ""
     if results['organization_found']:
         organization_on_stage = results['organization']
+        bluesky_url = generate_bluesky_url(organization_on_stage.bluesky_handle)
         state_served_code = organization_on_stage.state_served_code
         organization_on_stage_found = True
         organization_we_vote_id = organization_on_stage.we_vote_id
@@ -1069,6 +1088,7 @@ def organization_edit_view(request, organization_id=0, organization_we_vote_id="
 
     template_values = {
         'change_log_list':                      change_log_list,
+        'bluesky_url':                          bluesky_url,
         'google_civic_election_id':             google_civic_election_id,
         'issue_list':                           new_issue_list,
         'messages_on_stage':                    messages_on_stage,
@@ -1365,16 +1385,22 @@ def organization_edit_process_view(request):
 
     status = ''
     success = True
+    volunteer_task_manager = VolunteerTaskManager()
     voter_device_id = get_voter_api_device_id(request)
     voter = fetch_voter_from_voter_device_link(voter_device_id)
     change_description = ''
     if hasattr(voter, 'last_name'):
         changed_by_name = voter.get_full_name()
+        changed_by_voter_id = voter.id
         changed_by_voter_we_vote_id = voter.we_vote_id
     else:
         changed_by_name = ""
+        changed_by_voter_id = 0
         changed_by_voter_we_vote_id = ''
 
+    bluesky_handle = request.POST.get('bluesky_handle', False)
+    if positive_value_exists(bluesky_handle):
+        bluesky_handle = normalize_bluesky_handle(bluesky_handle)
     issue_analysis_admin_notes = request.POST.get('issue_analysis_admin_notes', False)
     issue_analysis_done = request.POST.get('issue_analysis_done', False)
     organization_contact_form_url = request.POST.get('organization_contact_form_url', False)
@@ -1399,6 +1425,9 @@ def organization_edit_process_view(request):
     organization_website = request.POST.get('organization_website', '')
     profile_image_type_currently_active = request.POST.get('profile_image_type_currently_active', False)
     state_served_code = request.POST.get('state_served_code', False)
+    tiktok_url = request.POST.get('tiktok_url', False)
+    if tiktok_url is not False:
+        tiktok_url = normalize_tiktok_url(tiktok_url)
     wikipedia_page_title = request.POST.get('wikipedia_page_title', False)
     wikipedia_photo_url = request.POST.get('wikipedia_photo_url', False)
 
@@ -1437,6 +1466,9 @@ def organization_edit_process_view(request):
 
     url_variables = "?n=1"
 
+    if bluesky_handle is not False:
+        url_variables += "&bluesky_handle=" + str(bluesky_handle)
+
     if issue_analysis_admin_notes is not False:
         url_variables += "&issue_analysis_admin_notes=" + str(issue_analysis_admin_notes)
 
@@ -1455,7 +1487,7 @@ def organization_edit_process_view(request):
     if organization_facebook is not False:
         url_variables += "&organization_facebook=" + str(organization_facebook)
 
-    if  organization_id is not False:
+    if organization_id is not False:
         url_variables += "&organization_id=" + str(organization_id)
 
     if organization_instagram_handle is not False:
@@ -1481,6 +1513,9 @@ def organization_edit_process_view(request):
 
     if state_served_code is not False:
         url_variables += "&state_served_code=" + str(state_served_code)
+
+    if tiktok_url is not False:
+        url_variables += "&tiktok_url=" + str(tiktok_url)
 
     if wikipedia_page_title is not False:
         url_variables += "&wikipedia_page_title=" + str(wikipedia_page_title)
@@ -1755,6 +1790,8 @@ def organization_edit_process_view(request):
 
             # ###############################################
             # Now process all other organization fields
+            if bluesky_handle is not False:
+                organization_on_stage.bluesky_handle = bluesky_handle.strip()
             if issue_analysis_admin_notes is not False:
                 organization_on_stage.issue_analysis_admin_notes = issue_analysis_admin_notes.strip()
             issue_analysis_done_before = positive_value_exists(organization_on_stage.issue_analysis_done)
@@ -1787,6 +1824,8 @@ def organization_edit_process_view(request):
                     if organization_website else None
             if state_served_code is not False:
                 organization_on_stage.state_served_code = state_served_code.strip() if state_served_code else None
+            if tiktok_url is not False:
+                organization_on_stage.tiktok_url = tiktok_url.strip()
             if wikipedia_page_title is not False:
                 organization_on_stage.wikipedia_page_title = wikipedia_page_title.strip() \
                     if wikipedia_page_title else None
@@ -1874,6 +1913,19 @@ def organization_edit_process_view(request):
             organization_we_vote_id=organization_we_vote_id,
             status=status,
         )
+
+    # Now add to the volunteers scores for doing tasks
+    if positive_value_exists(changed_by_voter_we_vote_id):
+        # Give the volunteer who entered this credit
+        try:
+            task_results = volunteer_task_manager.create_volunteer_task_completed(
+                action_constant=VOLUNTEER_ACTION_ORGANIZATION_AUGMENTATION,
+                voter_id=changed_by_voter_id,
+                voter_we_vote_id=changed_by_voter_we_vote_id,
+            )
+        except Exception as e:
+            status += 'FAILED_TO_CREATE_VOLUNTEER_TASK_COMPLETED-AUGMENTATION: ' \
+                      '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
 
     return HttpResponseRedirect(reverse('organization:organization_position_list', args=(organization_id,)) +
                                 "?google_civic_election_id=" + str(google_civic_election_id) + "&state_code=" +
