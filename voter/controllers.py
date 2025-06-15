@@ -4737,6 +4737,7 @@ def voter_save_photo_from_file_reader(
         }
         return results
 
+    img_dict = {}
     if not voter_photo_binary_file:
         try:
             img_dict = re.match("data:(?P<type>.*?);(?P<encoding>.*?),(?P<data>.*)",
@@ -4751,11 +4752,13 @@ def voter_save_photo_from_file_reader(
     if voter_photo_binary_file:
         try:
             byte_data = base64.b64decode(voter_photo_binary_file)
-            if "svg" in img_dict["type"]:
+            if img_dict and img_dict["type"] and "svg" in img_dict["type"].lower():
                 byte_data = svg2png(bytestring=byte_data)
             image_data_source = BytesIO(byte_data)
             image = None
-            if "gif" in img_dict["type"] or "tiff" in img_dict["type"]:
+            image_types_to_check = ["gif", "tiff"]
+            if img_dict and img_dict["type"] and any(
+                    image_type in img_dict["type"].lower() for image_type in image_types_to_check):
                 image = Image.open(image_data_source)
                 image_data_destination = BytesIO()
                 image.save(image_data_destination, format="WEBP", save_all=True, loop=0)
@@ -4763,6 +4766,9 @@ def voter_save_photo_from_file_reader(
             else:
                 image = Image.open(image_data_source)
             format_to_cache = image.format
+            if format_to_cache and format_to_cache.lower() == "mpo":
+                # An MPO file is a stereoscopic image consisting of two overlapping 2D images in JPG format
+                format_to_cache = "JPEG"
             python_image_library_image = ImageOps.exif_transpose(image)
             image_copy = python_image_library_image.copy()
             image_copy.thumbnail((PROFILE_IMAGE_ORIGINAL_MAX_WIDTH, PROFILE_IMAGE_ORIGINAL_MAX_HEIGHT), Image.Resampling.LANCZOS)
