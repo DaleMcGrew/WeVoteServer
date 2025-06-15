@@ -7,6 +7,7 @@ from time import time
 from volunteer_task.models import VOLUNTEER_ACTION_CANDIDATE_CREATED, \
     VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS, VOLUNTEER_ACTION_ELECTION_RETRIEVE_STARTED, \
     VOLUNTEER_ACTION_MATCH_CANDIDATES_TO_POLITICIANS, \
+    VOLUNTEER_ACTION_ORGANIZATION_AUGMENTATION, VOLUNTEER_ACTION_ORGANIZATION_DEDUPLICATION, \
     VOLUNTEER_ACTION_POLITICIAN_AUGMENTATION, VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION, \
     VOLUNTEER_ACTION_POLITICIAN_PHOTO, VOLUNTEER_ACTION_POLITICIAN_REQUEST, \
     VOLUNTEER_ACTION_POSITION_COMMENT_SAVED, VOLUNTEER_ACTION_POSITION_SAVED, \
@@ -260,6 +261,8 @@ def create_updates_dict_for_volunteer_weekly_metrics(
     duplicate_politician_analysis = 0       # VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS = 10
     election_retrieve_started = 0           # VOLUNTEER_ACTION_ELECTION_RETRIEVE_STARTED = 9
     match_candidates_to_politicians = 0     # VOLUNTEER_ACTION_MATCH_CANDIDATES_TO_POLITICIANS = 11
+    organizations_augmented = 0             # VOLUNTEER_ACTION_ORGANIZATION_AUGMENTATION = 14
+    organizations_deduplicated = 0          # VOLUNTEER_ACTION_ORGANIZATION_DEDUPLICATION = 13
     politicians_augmented = 0               # VOLUNTEER_ACTION_POLITICIAN_AUGMENTATION = 6
     politicians_deduplicated = 0            # VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION = 5
     politicians_photo_added = 0             # VOLUNTEER_ACTION_POLITICIAN_PHOTO = 7
@@ -317,6 +320,10 @@ def create_updates_dict_for_volunteer_weekly_metrics(
                     election_retrieve_started += 1
                 elif volunteer_task_completed.action_constant == VOLUNTEER_ACTION_MATCH_CANDIDATES_TO_POLITICIANS:
                     match_candidates_to_politicians += 1
+                elif volunteer_task_completed.action_constant == VOLUNTEER_ACTION_ORGANIZATION_AUGMENTATION:
+                    organizations_augmented += 1
+                elif volunteer_task_completed.action_constant == VOLUNTEER_ACTION_ORGANIZATION_DEDUPLICATION:
+                    organizations_deduplicated += 1
                 elif volunteer_task_completed.action_constant == VOLUNTEER_ACTION_POLITICIAN_AUGMENTATION:
                     politicians_augmented += 1
                 elif volunteer_task_completed.action_constant == VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION:
@@ -345,6 +352,8 @@ def create_updates_dict_for_volunteer_weekly_metrics(
         'election_retrieve_started':            election_retrieve_started,
         'match_candidates_to_politicians':      match_candidates_to_politicians,
         'end_of_week_date_integer':             end_of_week_date_integer,
+        'organizations_augmented':              organizations_augmented,
+        'organizations_deduplicated':           organizations_deduplicated,
         'politicians_augmented':                politicians_augmented,
         'politicians_deduplicated':             politicians_deduplicated,
         'politicians_photo_added':              politicians_photo_added,
@@ -481,7 +490,7 @@ def update_weekly_volunteer_metrics(which_day_is_end_of_week=6, recalculate_all=
     task_list = []
 
     if positive_value_exists(recalculate_all):
-        day_before_last_update_date_integer = 20240312  # Hard coded for resetting all statistics for this team
+        day_before_last_update_date_integer = 20250601  # Hard coded for resetting all statistics for this team
     else:
         # Retrieve the last complete day we processed
         # If we run updates Wed March 13th, 2024, then the date stored is the day before: 20240312 (vs. 20240313)
@@ -655,7 +664,7 @@ def update_weekly_volunteer_metrics(which_day_is_end_of_week=6, recalculate_all=
                             bulk_update_list.append(volunteer_weekly_metrics)
                             updates_needed = True
                         except Exception as e:
-                            status += "ERROR_UPDATING_VOLUNTER_WEEKLY_METRICS: " + str(e) + " "
+                            status += "ERROR_UPDATING_VOLUNTEER_WEEKLY_METRICS: " + str(e) + " "
                             all_voters_updated_successfully = False
                     else:
                         all_voters_updated_successfully = False
@@ -704,6 +713,7 @@ def update_weekly_volunteer_metrics(which_day_is_end_of_week=6, recalculate_all=
                 [
                     'candidates_created', 'date_last_updated_as_integer', 'duplicate_politician_analysis',
                     'election_retrieve_started', 'match_candidates_to_politicians', 'end_of_week_date_integer',
+                    'organizations_augmented', 'organizations_deduplicated',
                     'politicians_augmented', 'politicians_deduplicated', 'politicians_photo_added',
                     'politicians_requested_changes', 'positions_saved', 'position_comments_saved',
                     'twitter_bulk_retrieve', 'voter_date_unique_string', 'voter_display_name',

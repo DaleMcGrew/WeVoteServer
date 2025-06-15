@@ -1748,6 +1748,81 @@ def convert_integer_to_string_with_comma_for_thousands_separator(integer_number)
     return number_with_commas
 
 
+def normalize_bluesky_handle(input_value):
+    if not input_value:
+        return ''
+
+    # Remove leading/trailing whitespace and convert to lowercase
+    input_value = input_value.strip().lower()
+
+    # Regular expression to match Bluesky handles and URLs
+    handle_pattern = r'^@?([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+$'
+    url_pattern = r'^(https?://)?(www\.)?(bsky\.app)/profile/([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+/?$'
+
+    if re.match(handle_pattern, input_value):
+        # If it's a handle (with or without @), ensure it starts with @
+        return '@' + input_value.lstrip('@')
+    elif re.match(url_pattern, input_value):
+        # If it's a URL, extract the handle
+        match = re.match(url_pattern, input_value)
+        handle = input_value.split('/profile/')[-1].rstrip('/')
+        return '@' + handle
+    else:
+        # If it doesn't match expected patterns, return an empty string
+        return ''
+
+
+def generate_bluesky_url(input_value):
+    if not input_value:
+        return ''
+
+    # Remove leading/trailing whitespace and convert to lowercase
+    input_value = input_value.strip().lower()
+
+    # Regular expression to match Bluesky handles and URLs
+    handle_pattern = r'^@?([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+$'
+    url_pattern = r'^(https?://)?(www\.)?(bsky\.app)/profile/([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+/?$'
+
+    if re.match(handle_pattern, input_value):
+        # If it's a handle (with or without @), convert to URL
+        handle = input_value.lstrip('@')
+        return f'https://bsky.app/profile/{handle}'
+    elif re.match(url_pattern, input_value):
+        # If it's already a URL, ensure it's in the correct format
+        match = re.match(url_pattern, input_value)
+        handle = match.group(4)
+        return f'https://bsky.app/profile/{handle}'
+    else:
+        # If it doesn't match expected patterns, return an empty string
+        return ''
+
+def normalize_tiktok_url(input_value):
+    if not input_value:
+        return ''
+
+    # Remove leading/trailing whitespace and convert to lowercase
+    input_value = input_value.strip().lower()
+
+    # Regular expression to match TikTok usernames
+    username_pattern = r'^@?[\w.]+$'
+
+    # Regular expression to match TikTok URLs
+    url_pattern = r'^(https?://)?(www\.)?(tiktok\.com/)?(@[\w.]+)/?$'
+
+    if re.match(username_pattern, input_value):
+        # If it's just a username (with or without @), convert to full URL
+        username = input_value.lstrip('@')
+        return f'https://www.tiktok.com/@{username}'
+    elif re.match(url_pattern, input_value):
+        # If it's already a URL, ensure it's in the correct format
+        match = re.match(url_pattern, input_value)
+        username = match.group(4)
+        return f'https://www.tiktok.com/{username}'
+    else:
+        # If it doesn't match expected patterns, return an empty string
+        return ''
+
+
 def process_request_from_master(request, message_text, get_url, get_params):
     """
 

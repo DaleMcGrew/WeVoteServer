@@ -158,6 +158,8 @@ def scoreboard_list_view(request):
                 'duplicate_politician_analysis': one_person_one_week.duplicate_politician_analysis,
                 'election_retrieve_started': one_person_one_week.election_retrieve_started,
                 'match_candidates_to_politicians': one_person_one_week.match_candidates_to_politicians,
+                'organizations_augmented': one_person_one_week.organizations_augmented,
+                'organizations_deduplicated': one_person_one_week.organizations_deduplicated,
                 'politicians_augmented': one_person_one_week.politicians_augmented,
                 'politicians_deduplicated': one_person_one_week.politicians_deduplicated,
                 'politicians_photo_added': one_person_one_week.politicians_photo_added,
@@ -173,6 +175,8 @@ def scoreboard_list_view(request):
                 'duplicate_politician_analysis': 0,
                 'election_retrieve_started': 0,
                 'match_candidates_to_politicians': 0,
+                'organizations_augmented': 0,
+                'organizations_deduplicated': 0,
                 'politicians_augmented': 0,
                 'politicians_deduplicated': 0,
                 'politicians_photo_added': 0,
@@ -195,6 +199,12 @@ def scoreboard_list_view(request):
             'match_candidates_to_politicians':
                 team_actions_completed_dict[end_of_week_date_integer]['match_candidates_to_politicians'] +
                 one_person_one_week.match_candidates_to_politicians,
+            'organizations_augmented':
+                team_actions_completed_dict[end_of_week_date_integer]['organizations_augmented'] +
+                one_person_one_week.organizations_augmented,
+            'organizations_deduplicated':
+                team_actions_completed_dict[end_of_week_date_integer]['organizations_deduplicated'] +
+                one_person_one_week.organizations_deduplicated,
             'politicians_augmented':
                 team_actions_completed_dict[end_of_week_date_integer]['politicians_augmented'] +
                 one_person_one_week.politicians_augmented,
@@ -235,7 +245,9 @@ def scoreboard_list_view(request):
     # Work on individual Volunteer statistics
     weekly_metrics_fields = [
         'candidates_created', 'duplicate_politician_analysis', 'election_retrieve_started',
-        'match_candidates_to_politicians', 'politicians_augmented', 'politicians_deduplicated',
+        'match_candidates_to_politicians',
+        'organizations_augmented', 'organizations_deduplicated',
+        'politicians_augmented', 'politicians_deduplicated',
         'politicians_photo_added', 'politicians_requested_changes', 'positions_saved',
         'position_comments_saved', 'twitter_bulk_retrieve', 'voter_guide_possibilities_created',
     ]
@@ -258,6 +270,10 @@ def scoreboard_list_view(request):
                 match_candidates_to_politicians = \
                     actions_completed_dict[voter_we_vote_id][end_of_week_date_integer][
                         'match_candidates_to_politicians']
+                organizations_augmented = \
+                    actions_completed_dict[voter_we_vote_id][end_of_week_date_integer]['organizations_augmented']
+                organizations_deduplicated = \
+                    actions_completed_dict[voter_we_vote_id][end_of_week_date_integer]['organizations_deduplicated']
                 politicians_augmented = \
                     actions_completed_dict[voter_we_vote_id][end_of_week_date_integer]['politicians_augmented']
                 politicians_deduplicated = \
@@ -278,6 +294,7 @@ def scoreboard_list_view(request):
                 volunteer_task_total = \
                     candidates_created + duplicate_politician_analysis + election_retrieve_started + \
                     match_candidates_to_politicians + \
+                    organizations_augmented + organizations_deduplicated + \
                     politicians_augmented + politicians_deduplicated + politicians_photo_added + \
                     politicians_requested_changes + positions_saved + position_comments_saved + \
                     twitter_bulk_retrieve + voter_guide_possibilities_created
@@ -286,6 +303,8 @@ def scoreboard_list_view(request):
                 duplicate_politician_analysis = 0
                 election_retrieve_started = 0
                 match_candidates_to_politicians = 0
+                organizations_augmented = 0
+                organizations_deduplicated = 0
                 politicians_augmented = 0
                 politicians_deduplicated = 0
                 politicians_photo_added = 0
@@ -300,6 +319,8 @@ def scoreboard_list_view(request):
                 'duplicate_politician_analysis': duplicate_politician_analysis,
                 'election_retrieve_started': election_retrieve_started,
                 'match_candidates_to_politicians': match_candidates_to_politicians,
+                'organizations_augmented': organizations_augmented,
+                'organizations_deduplicated': organizations_deduplicated,
                 'politicians_augmented': politicians_augmented,
                 'politicians_deduplicated': politicians_deduplicated,
                 'politicians_photo_added': politicians_photo_added,
@@ -325,6 +346,12 @@ def scoreboard_list_view(request):
                 individual_score_dict[voter_we_vote_id]['match_candidates_to_politicians'] += \
                     match_candidates_to_politicians
                 individual_score_dict[voter_we_vote_id]['volunteer_task_total'] += match_candidates_to_politicians
+            if organizations_augmented > 0:
+                individual_score_dict[voter_we_vote_id]['organizations_augmented'] += organizations_augmented
+                individual_score_dict[voter_we_vote_id]['volunteer_task_total'] += organizations_augmented
+            if organizations_deduplicated > 0:
+                individual_score_dict[voter_we_vote_id]['organizations_deduplicated'] += organizations_deduplicated
+                individual_score_dict[voter_we_vote_id]['volunteer_task_total'] += organizations_deduplicated
             if politicians_augmented > 0:
                 individual_score_dict[voter_we_vote_id]['politicians_augmented'] += politicians_augmented
                 individual_score_dict[voter_we_vote_id]['volunteer_task_total'] += politicians_augmented
@@ -388,6 +415,10 @@ def scoreboard_list_view(request):
                 team_actions_completed_dict[end_of_week_date_integer]['election_retrieve_started']
             match_candidates_to_politicians = \
                 team_actions_completed_dict[end_of_week_date_integer]['match_candidates_to_politicians']
+            organizations_augmented = \
+                team_actions_completed_dict[end_of_week_date_integer]['organizations_augmented']
+            organizations_deduplicated = \
+                team_actions_completed_dict[end_of_week_date_integer]['organizations_deduplicated']
             politicians_augmented = \
                 team_actions_completed_dict[end_of_week_date_integer]['politicians_augmented']
             politicians_deduplicated = \
@@ -407,6 +438,7 @@ def scoreboard_list_view(request):
             volunteer_task_total = \
                 candidates_created + duplicate_politician_analysis + election_retrieve_started + \
                 match_candidates_to_politicians + \
+                organizations_augmented + organizations_deduplicated + \
                 politicians_augmented + politicians_deduplicated + politicians_photo_added + \
                 politicians_requested_changes + positions_saved + position_comments_saved + \
                 twitter_bulk_retrieve + voter_guide_possibilities_created
@@ -415,6 +447,8 @@ def scoreboard_list_view(request):
             duplicate_politician_analysis = 0
             election_retrieve_started = 0
             match_candidates_to_politicians = 0
+            organizations_augmented = 0
+            organizations_deduplicated = 0
             politicians_augmented = 0
             politicians_deduplicated = 0
             politicians_photo_added = 0
@@ -429,6 +463,8 @@ def scoreboard_list_view(request):
             'duplicate_politician_analysis': duplicate_politician_analysis,
             'election_retrieve_started': election_retrieve_started,
             'match_candidates_to_politicians': match_candidates_to_politicians,
+            'organizations_augmented': organizations_augmented,
+            'organizations_deduplicated': organizations_deduplicated,
             'politicians_augmented': politicians_augmented,
             'politicians_deduplicated': politicians_deduplicated,
             'politicians_photo_added': politicians_photo_added,
@@ -452,6 +488,12 @@ def scoreboard_list_view(request):
         if match_candidates_to_politicians > 0:
             team_score_dict['match_candidates_to_politicians'] += match_candidates_to_politicians
             team_score_dict['volunteer_task_total'] += match_candidates_to_politicians
+        if organizations_augmented > 0:
+            team_score_dict['organizations_augmented'] += organizations_augmented
+            team_score_dict['volunteer_task_total'] += organizations_augmented
+        if organizations_deduplicated > 0:
+            team_score_dict['organizations_deduplicated'] += organizations_deduplicated
+            team_score_dict['volunteer_task_total'] += organizations_deduplicated
         if politicians_augmented > 0:
             team_score_dict['politicians_augmented'] += politicians_augmented
             team_score_dict['volunteer_task_total'] += politicians_augmented
@@ -500,6 +542,23 @@ def scoreboard_list_view(request):
     except Exception as e:
         message = "COULD_NOT_GET_POSSIBLE_MEMBER_LIST: " + str(e) + " "
         messages.add_message(request, messages.ERROR, message)
+
+    team_score_dict['task_types'] = {
+        'candidates_created': 'Candidates Created',
+        'politicians_augmented': 'Candidates / Politicians Augmented',
+        'organizations_augmented': 'Endorsers Augmented',
+        'duplicate_politician_analysis': 'Candidates / Politicians Duplicate Analysis',
+        'politicians_deduplicated': 'Candidates / Politicians Deduplicated',
+        'organizations_deduplicated': 'Endorsers Deduplicated',
+        'match_candidates_to_politicians': 'Candidates Matched to Politicians',
+        'politicians_photo_added': 'Candidates / Politicians Photos',
+        'election_retrieve_started': 'Election Data Retrieved',
+        'positions_saved': 'Opinions/Endorsements Saved',
+        'position_comments_saved': 'Opinion/Endorsement Comments Saved',
+        'politicians_requested_changes': 'Politicians Requested Changes',
+        'twitter_bulk_retrieve': 'Bulk Retrieve (Started)',
+        'voter_guide_possibilities_created': 'Voter Guides Saved'
+    }
 
     messages_on_stage = get_messages(request)
     template_values = {

@@ -8,7 +8,6 @@ import string
 from time import time
 from urllib.parse import urlencode
 from datetime import datetime, timedelta
-import pytz
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
@@ -37,7 +36,6 @@ from image.controllers import create_resized_images, organize_object_photo_field
 from import_export_ballotpedia.controllers import get_photo_url_from_ballotpedia
 from import_export_vote_smart.models import VoteSmartRatingOneCandidate
 from import_export_vote_smart.votesmart_local import VotesmartApiError
-from import_export_wikipedia.controllers import get_photo_url_from_wikipedia
 from office.models import ContestOffice
 from position.models import PositionEntered, PositionListManager
 from representative.models import Representative, RepresentativeManager
@@ -50,7 +48,8 @@ from wevote_functions.functions import convert_to_int, convert_to_political_part
     extract_first_name_from_full_name, extract_instagram_handle_from_text_string, \
     extract_middle_name_from_full_name, extract_last_name_from_full_name, \
     extract_state_from_ocd_division_id, extract_twitter_handle_from_text_string, get_voter_api_device_id, \
-    positive_value_exists, STATE_CODE_MAP, display_full_name_with_correct_capitalization
+    normalize_bluesky_handle, \
+    normalize_tiktok_url, positive_value_exists, STATE_CODE_MAP, display_full_name_with_correct_capitalization
 from wevote_functions.functions_date import convert_date_to_we_vote_date_string, \
     convert_we_vote_date_string_to_date_as_integer, generate_localized_datetime_from_obj, DATE_FORMAT_YMD_HMS
 from wevote_settings.constants import IS_BATTLEGROUND_YEARS_AVAILABLE
@@ -2253,6 +2252,13 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 'name':     'birth_date',
                 'value':     birth_date if birth_date else politician_on_stage.birth_date
             },
+            'bluesky_handle_dict':
+            {
+                'label':    'Bluesky',
+                'id':       'bluesky_handle_id',
+                'name':     'bluesky_handle',
+                'value':     politician_on_stage.bluesky_handle
+            },
             'change_log_list':              change_log_list,
             'duplicate_politician_list':    duplicate_politician_list,
             'facebook_url':                 facebook_url,
@@ -2403,6 +2409,13 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 'id':       'state_code_id',
                 'name':     'state_code',
                 'value':     state_code if state_code else politician_on_stage.state_code
+            },
+            'tiktok_url_dict':
+            {
+                'label':    'TikTok',
+                'id':       'tiktok_url_id',
+                'name':     'tiktok_url',
+                'value':     politician_on_stage.tiktok_url
             },
             'vote_smart_id':                vote_smart_id,
             'vote_smart_id_dict':
@@ -2639,6 +2652,9 @@ def politician_edit_process_view(request):
     if positive_value_exists(ballotpedia_politician_url):
         ballotpedia_politician_url = ballotpedia_politician_url.strip()
     birth_date = request.POST.get('birth_date', False)
+    bluesky_handle = request.POST.get('bluesky_handle', False)
+    if positive_value_exists(bluesky_handle):
+        bluesky_handle = normalize_bluesky_handle(bluesky_handle)
     first_name = request.POST.get('first_name', False)
     gender = request.POST.get('gender', 'False')
     middle_name = request.POST.get('middle_name', False)
@@ -2711,6 +2727,7 @@ def politician_edit_process_view(request):
     politician_we_vote_id = request.POST.get('politician_we_vote_id', False)
     seo_friendly_path = request.POST.get('seo_friendly_path', False)
     state_code = request.POST.get('state_code', False)
+    tiktok_url = request.POST.get('tiktok_url', False)
     twitter_handle_updates_failing = request.POST.get('twitter_handle_updates_failing', False)
     twitter_handle_updates_failing = positive_value_exists(twitter_handle_updates_failing)
     twitter_handle2_updates_failing = request.POST.get('twitter_handle2_updates_failing', False)
@@ -3037,6 +3054,19 @@ def politician_edit_process_view(request):
                         politician_on_stage.birth_date = datetime.strptime(birth_date, '%b. %d, %Y')
             except Exception as e:
                 messages.add_message(request, messages.ERROR, 'Could not save birthdate:' + str(e))
+            if bluesky_handle is not False:
+                change_results = change_tracking(
+                    existing_value=politician_on_stage.bluesky_handle,
+                    new_value=bluesky_handle,
+                    changes_found_dict=changes_found_dict,
+                    changes_found_key_base='is_bluesky',
+                    changes_found_key_name='Bluesky',
+                )
+                changes_found_dict = change_results['changes_found_dict']
+                if change_results['change_description_changed']:
+                    change_description += change_results['change_description']
+                    change_description_changed = True
+                politician_on_stage.bluesky_handle = bluesky_handle
             if facebook_url is not False:
                 change_results = change_tracking(
                     existing_value=politician_on_stage.facebook_url,
@@ -3428,6 +3458,21 @@ def politician_edit_process_view(request):
                 'time_difference': t1 - t0,
             }
             performance_list.append(performance_snapshot)
+
+            if tiktok_url is not False:
+                tiktok_url = normalize_tiktok_url(tiktok_url)
+                change_results = change_tracking(
+                    existing_value=politician_on_stage.tiktok_url,
+                    new_value=tiktok_url,
+                    changes_found_dict=changes_found_dict,
+                    changes_found_key_base='is_tiktok',
+                    changes_found_key_name='TikTok',
+                )
+                changes_found_dict = change_results['changes_found_dict']
+                if change_results['change_description_changed']:
+                    change_description += change_results['change_description']
+                    change_description_changed = True
+                politician_on_stage.tiktok_url = tiktok_url
 
             # if politician_on_stage.twitter_handle_updates_failing != twitter_handle_updates_failing:
             #     changes_found_dict['is_twitter_handle_removed'] = True

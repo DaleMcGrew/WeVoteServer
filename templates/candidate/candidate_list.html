@@ -269,7 +269,11 @@
 
         <li><a href="{% url 'import_export_facebook:bulk_retrieve_facebook_photos' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&page={{ current_page_number }}"
                target="_blank" >
-            Retrieve Facebook Photos for up to <strong>{{facebook_urls_without_picture_urls|intcomma}}</strong> Candidates <span class="glyphicon glyphicon-new-window"></span></a> (If the count does not decrease with each click, you are done for this election)</li>
+            Retrieve Facebook Photos
+            {% if facebook_urls_without_picture_urls > 0 %}
+                for up to <strong>{{facebook_urls_without_picture_urls|intcomma}}</strong> Candidates <span class="glyphicon glyphicon-new-window"></span></a> (If the count does not decrease with each click, you are done for this election)
+            {% endif %}
+        </li>
 
         <li><a href="{% url 'ballotpedia:bulk_retrieve_ballotpedia_photos' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&page={{ current_page_number }}"
                target="_blank" >
@@ -314,7 +318,11 @@
             Retrieve Links from Ballotpedia for up to <strong>{{ballotpedia_urls_to_retrieve_for_links|intcomma}}</strong> Candidates <span class="glyphicon glyphicon-new-window"></span></a> (50 at a time)</li>
         <li><a href="{% url 'import_export_facebook:bulk_retrieve_facebook_photos' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&page={{ current_page_number }}"
                target="_blank" >
-            Retrieve Facebook Photos for up to <strong>{{facebook_urls_without_picture_urls|intcomma}}</strong> Candidates <span class="glyphicon glyphicon-new-window"></span></a> (If the count does not decrease with each click, you are done for this election)</li>
+            Retrieve Facebook Photos
+            {% if facebook_urls_without_picture_urls > 0 %}
+                for up to <strong>{{facebook_urls_without_picture_urls|intcomma}}</strong> Candidates <span class="glyphicon glyphicon-new-window"></span></a> (If the count does not decrease with each click, you are done for this election)
+            {% endif %}
+        </li>
         <li><a href="{% url 'ballotpedia:bulk_retrieve_ballotpedia_photos' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&page={{ current_page_number }}"
                target="_blank" >
             Retrieve Ballotpedia Photos for up to <strong>{{ballotpedia_urls_without_picture_urls|intcomma}}</strong> Candidates <span class="glyphicon glyphicon-new-window"></span></a> (50 at a time)</li>
@@ -367,7 +375,7 @@
     <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}" />
     <input type="hidden" name="hide_candidate_tools" value="{{ hide_candidate_tools }}" />
     <input type="hidden" name="state_code" value="{{ state_code }}" />
-    <input type="text" name="candidate_search" id="candidate_search_id" style="width: 290px;" value="{{ candidate_search }}" />
+    <input type="text" name="candidate_search" id="candidate_search_field_id" style="width: 290px;" value="{{ candidate_search }}" />
     <input type="hidden" name="show_all_elections" id="show_all_elections_id" value="{{ show_all_elections }}" />
     <input type="hidden" name="show_election_statistics" value="{{ show_election_statistics }}" />
     <input type="hidden" name="show_marquee_or_battleground" value="{{ show_marquee_or_battleground }}" />
@@ -819,6 +827,7 @@
     function clearSearch() {
         displayLoadingBanner();
         $('#candidate_search_id').val('');
+        $('#candidate_search_field_id').val('');
         $('form[name="candidate_search"]').submit();
     }
 
