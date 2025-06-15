@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from config.base import get_environment_variable
+from .base import *
 
 
 # SECURITY WARNING: don't run with debug turned on in production!

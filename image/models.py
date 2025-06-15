@@ -15,7 +15,7 @@ from urllib.error import HTTPError
 from wevote_functions.functions import convert_to_int, positive_value_exists
 import boto3
 import wevote_functions.admin
-from .functions import analyze_remote_url
+from .functions import analyze_remote_url, crop_to_square
 
 # naming convention stored at aws
 BALLOTPEDIA_IMAGE_NAME = "ballotpedia_image"
@@ -2092,72 +2092,78 @@ class WeVoteImageManager(models.Manager):
         :param image_type:
         :param image_offset_x:
         :param image_offset_y:
+        :param save_gif_as_webp:
         :return:
         """        
-        image_dir = "/tmp/"
-        image_src = image_dir + image_local_path
-        image_dst = image_dir
+        original_image_local_path = "/tmp/" + image_local_path
+        converted_image_local_path = "/tmp/"
         image = None
         resized_image_created = False
         status = ''
         
-        path_obj = Path(image_src)
-        image_stem = path_obj.stem.lower()
-        input_format = path_obj.suffix
-        if input_format:
-            input_format = input_format[1:].lower()
+        original_image_path_obj = Path(original_image_local_path)
+        original_image_stem = original_image_path_obj.stem.lower()
+        original_image_format = original_image_path_obj.suffix
+        if original_image_format:
+            original_image_format = original_image_format[1:].lower()
         else:
-            status += "NO_INPUT_FORMAT_PROVIDED "
+            status += "NO_ORIGINAL_IMAGE_FORMAT_PROVIDED "
             results = {
                 'status':                   status,
-                'resized_image_created':    False,
+                'resized_image_created':    resized_image_created,
             }
             return results
-        output_format = input_format
-        format_map = {
+
+        # We leave gif out of this format_conversion_map because we need to honor incoming save_gif_as_webp switch
+        format_conversion_map = {
             "svg": "png",
             "tiff": "png"
         }
 
-        if input_format in format_map:
-            output_format = format_map[input_format]
-            image_name = f"{image_stem}.{output_format}"
-            image_dst += image_name
-            if input_format == "svg":
-                svg2png(url=image_src, write_to=image_dst)
+        if original_image_format in format_conversion_map:
+            converted_image_format = format_conversion_map[original_image_format]
+            image_name = f"{original_image_stem}.{converted_image_format}"
+            converted_image_local_path += image_name
+            if original_image_format == "svg":
+                svg2png(url=original_image_local_path, write_to=converted_image_local_path)
             else:
-                image = Image.open(image_src)
-                image.save(image_dst)
-        
-        elif input_format == "gif":
+                image = Image.open(original_image_local_path)
+                image.save(converted_image_local_path)
+        elif original_image_format == "gif":
             if save_gif_as_webp:
-                output_format = "webp"
-                image_name = f"{image_stem}.{output_format}"
-                image_dst += image_name
+                converted_image_format = "webp"
+                image_name = f"{original_image_stem}.{converted_image_format}"
+                converted_image_local_path += image_name
+                image = Image.open(original_image_local_path)
+                image.save(converted_image_local_path, save_all=True)
             else:
-                image_dst = image_src
-            image = Image.open(image_src)
-            image.save(image_dst, save_all=True)
+                converted_image_format = "gif"
+                converted_image_local_path = original_image_local_path
+                image = Image.open(original_image_local_path)
+                image.save(converted_image_local_path, save_all=True)
         
         else:
-            image_dst = image_src
+            converted_image_local_path = original_image_local_path
+            converted_image_format = original_image_format
         
         try:
-            image = Image.open(image_dst)
+            image = Image.open(converted_image_local_path)
         except Exception as e:
             exception_message = "RESIZE_WE_VOTE_MASTER_IMAGE_FAILED_OPENING: " + str(e) + " "
             handle_exception(e, logger=logger, exception_message=exception_message)
 
-        # Remove sensitive data
-        # See https://web.mit.edu/Graphics/src/Image-ExifTool-6.99/html/TagNames/GPS.html
-        exif = image.getexif()
-        gps_ifd = exif.get_ifd(ExifTags.IFD.GPSInfo)
-        gps_ifd.clear()
+        try:
+            # Remove sensitive data
+            # See https://web.mit.edu/Graphics/src/Image-ExifTool-6.99/html/TagNames/GPS.html
+            exif = image.getexif()
+            gps_ifd = exif.get_ifd(ExifTags.IFD.GPSInfo)
+            gps_ifd.clear()
+        except Exception as e:
+            exception_message = "REMOVE_SENSITIVE_DATA_FAILED: " + str(e) + " "
+            handle_exception(e, logger=logger, exception_message=exception_message)
 
         # Resize
         centering_x = 0.5
-        centering_y = None
-
         if image_type == TWITTER_BACKGROUND_IMAGE_NAME or image_type == TWITTER_BANNER_IMAGE_NAME:
             image = image.resize((image_width, image_height), Image.Resampling.LANCZOS)
         elif image_type == FACEBOOK_BACKGROUND_IMAGE_NAME:
@@ -2165,12 +2171,40 @@ class WeVoteImageManager(models.Manager):
             image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS,
                                  centering=(centering_x, centering_y))
         else:
-            centering_y = centering_x
-            image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS,
-                                 centering=(centering_x, centering_y))
+            if image_width == image_height:
+                image = crop_to_square(image)
+                image = image.resize((image_width, image_height), Image.Resampling.LANCZOS)
+            else:
+                # Calculate the aspect ratio
+                aspect_ratio = image.width / image.height
+                target_ratio = image_width / image_height
+
+                if aspect_ratio > target_ratio:
+                    # Image is wider, scale based on width
+                    new_width = image_width
+                    new_height = int(new_width / aspect_ratio)
+                else:
+                    # Image is taller, scale based on height
+                    new_height = image_height
+                    new_width = int(new_height * aspect_ratio)
+
+                # Resize the image while maintaining aspect ratio
+                # image.thumbnail((new_width, new_height), Image.Resampling.LANCZOS)
+                image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            # else:
+            #     centering_y = centering_x
+            #     image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS,
+            #                          centering=(centering_x, centering_y))
         
         try:
-            image.save(image_dst, save_all=True)
+            if converted_image_format.lower() in {'jpeg', 'jpg', 'jpe', 'jif', 'jfif', 'jfi'}:
+                image = image.convert('RGB')
+                image.save(converted_image_local_path, quality=95, subsampling=0)
+            elif converted_image_format.lower() in {'gif', 'webp'}:
+                image.save(converted_image_local_path, save_all=True)
+            else:
+                image.save(converted_image_local_path)
+
             resized_image_created = True
         except Exception as e:
             status += "IMAGE_SAVE_FAILED: " + str(e) + " "

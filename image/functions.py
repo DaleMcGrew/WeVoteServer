@@ -162,3 +162,19 @@ def change_default_profile_image_if_needed(
         'success':                  success,
     }
     return results
+
+
+def crop_to_square(image):
+    width, height = image.size
+    if width > height:
+        left = (width - height) / 2
+        top = 0
+        right = (width + height) / 2
+        bottom = height
+    else:
+        left = 0
+        top = (height - width) / 2
+        right = width
+        bottom = (height + width) / 2
+
+    return image.crop((left, top, right, bottom))
