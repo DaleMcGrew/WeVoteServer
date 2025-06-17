@@ -459,11 +459,13 @@ def organization_list_view(request):
     sort_by = request.GET.get('sort_by', '')
     state_code = request.GET.get('state_code', '')
     show_all = request.GET.get('show_all', False)
+    show_defunct = positive_value_exists(request.GET.get('show_defunct', False))
     show_issues = request.GET.get('show_issues', '')
     show_organizations_without_email = positive_value_exists(request.GET.get('show_organizations_without_email', False))
     show_twitter_updates_failing = positive_value_exists(request.GET.get('show_twitter_updates_failing', False))
-    show_organizations_to_be_analyzed = \
-        positive_value_exists(request.GET.get('show_organizations_to_be_analyzed', False))
+    show_organizations_to_analyze = positive_value_exists(request.GET.get('show_organizations_to_analyze', False))
+    show_organizations_to_augment = positive_value_exists(request.GET.get('show_organizations_to_augment', False))
+    show_organizations_to_qa = positive_value_exists(request.GET.get('show_organizations_to_qa', False))
     show_up_to_1000 = request.GET.get('show_up_to_1000', False)
     show_up_to_2000 = request.GET.get('show_up_to_2000', False)
 
@@ -478,7 +480,6 @@ def organization_list_view(request):
     else:
         organization_list_query = organization_list_query.order_by('organization_name')
 
-    # wv02org35759
     if positive_value_exists(organization_search):
         # Do not limit search
         pass
@@ -496,11 +497,20 @@ def organization_list_view(request):
             # For letters, filter organizations starting with the selected letter
             organization_list_query = organization_list_query.filter(organization_name__istartswith=letter_selected)
 
+    if positive_value_exists(show_defunct):
+        organization_list_query = organization_list_query.filter(organization_defunct=True)
+
     if positive_value_exists(show_twitter_updates_failing):
         organization_list_query = organization_list_query.filter(organization_twitter_updates_failing=True)
 
-    if positive_value_exists(show_organizations_to_be_analyzed):
+    if positive_value_exists(show_organizations_to_analyze):
         organization_list_query = organization_list_query.filter(issue_analysis_done=False)
+
+    if positive_value_exists(show_organizations_to_augment):
+        organization_list_query = organization_list_query.filter(augmentation_done=False)
+
+    if positive_value_exists(show_organizations_to_qa):
+        organization_list_query = organization_list_query.filter(qa_done=False)
 
     if positive_value_exists(state_code):
         organization_list_query = organization_list_query.filter(state_served_code__iexact=state_code)
@@ -702,9 +712,12 @@ def organization_list_view(request):
         'organization_list':        modified_organization_list,
         'organization_search':      organization_search,
         'show_all':                 show_all,
+        'show_defunct':             show_defunct,
         'show_issues':              show_issues,
         'show_organizations_without_email': show_organizations_without_email,
-        'show_organizations_to_be_analyzed': show_organizations_to_be_analyzed,
+        'show_organizations_to_analyze': show_organizations_to_analyze,
+        'show_organizations_to_augment': show_organizations_to_augment,
+        'show_organizations_to_qa': show_organizations_to_qa,
         'show_twitter_updates_failing': show_twitter_updates_failing,
         'show_up_to_1000':          show_up_to_1000,
         'show_up_to_2000':          show_up_to_2000,
@@ -1398,12 +1411,14 @@ def organization_edit_process_view(request):
         changed_by_voter_id = 0
         changed_by_voter_we_vote_id = ''
 
+    augmentation_done = positive_value_exists(request.POST.get('augmentation_done', False))
     bluesky_handle = request.POST.get('bluesky_handle', False)
     if positive_value_exists(bluesky_handle):
         bluesky_handle = normalize_bluesky_handle(bluesky_handle)
     issue_analysis_admin_notes = request.POST.get('issue_analysis_admin_notes', False)
     issue_analysis_done = request.POST.get('issue_analysis_done', False)
     organization_contact_form_url = request.POST.get('organization_contact_form_url', False)
+    organization_defunct = positive_value_exists(request.POST.get('organization_defunct', False))
     organization_email = request.POST.get('organization_email', '')
     organization_endorsements_api_url = request.POST.get('organization_endorsements_api_url', False)
     organization_facebook = request.POST.get('organization_facebook', '')
@@ -1424,6 +1439,7 @@ def organization_edit_process_view(request):
     organization_type = request.POST.get('organization_type', GROUP)
     organization_website = request.POST.get('organization_website', '')
     profile_image_type_currently_active = request.POST.get('profile_image_type_currently_active', False)
+    qa_done = positive_value_exists(request.POST.get('qa_done', False))
     state_served_code = request.POST.get('state_served_code', False)
     tiktok_url = request.POST.get('tiktok_url', False)
     if tiktok_url is not False:
@@ -1466,6 +1482,9 @@ def organization_edit_process_view(request):
 
     url_variables = "?n=1"
 
+    if augmentation_done is not False:
+        url_variables += "&augmentation_done=" + str(augmentation_done)
+
     if bluesky_handle is not False:
         url_variables += "&bluesky_handle=" + str(bluesky_handle)
 
@@ -1477,7 +1496,10 @@ def organization_edit_process_view(request):
 
     if organization_contact_form_url is not False:
         url_variables += "&organization_contact_form_url=" + str(organization_contact_form_url)
-    
+
+    if organization_defunct is not False:
+        url_variables += "&organization_defunct=" + str(organization_defunct)
+
     if organization_email is not False:
         url_variables += "&organization_email=" + str(organization_email)
 
@@ -1510,6 +1532,9 @@ def organization_edit_process_view(request):
 
     if profile_image_type_currently_active is not False:
         url_variables += "&profile_image_type_currently_active=" + str(profile_image_type_currently_active)
+
+    if qa_done is not False:
+        url_variables += "&qa_done=" + str(qa_done)
 
     if state_served_code is not False:
         url_variables += "&state_served_code=" + str(state_served_code)
@@ -1669,7 +1694,10 @@ def organization_edit_process_view(request):
                     messages.add_message(request, messages.ERROR, 'Could not create TwitterLinkToOrganization.')
                     twitter_handle_can_be_saved_without_conflict = False
 
+    augmentation_done_changed = False
     issue_analysis_done_changed = False
+    organization_defunct_changed = False
+    qa_done_changed = False
     try:
         if organization_on_stage_found:
             # Update below
@@ -1790,6 +1818,10 @@ def organization_edit_process_view(request):
 
             # ###############################################
             # Now process all other organization fields
+            augmentation_done_before = positive_value_exists(organization_on_stage.augmentation_done)
+            if augmentation_done_before is not positive_value_exists(augmentation_done):
+                augmentation_done_changed = True
+            organization_on_stage.augmentation_done = positive_value_exists(augmentation_done)
             if bluesky_handle is not False:
                 organization_on_stage.bluesky_handle = bluesky_handle.strip()
             if issue_analysis_admin_notes is not False:
@@ -1804,6 +1836,10 @@ def organization_edit_process_view(request):
                 organization_on_stage.organization_twitter_updates_failing = organization_twitter_updates_failing
             if organization_contact_form_url is not False:
                 organization_on_stage.organization_contact_form_url = organization_contact_form_url.strip()
+            organization_defunct_before = positive_value_exists(organization_on_stage.organization_defunct)
+            if organization_defunct_before is not positive_value_exists(organization_defunct):
+                organization_defunct_changed = True
+            organization_on_stage.organization_defunct = positive_value_exists(organization_defunct)
             if organization_email is not False:
                 organization_on_stage.organization_email = organization_email.strip() if organization_email else None
             if organization_endorsements_api_url is not False:
@@ -1822,6 +1858,10 @@ def organization_edit_process_view(request):
             if organization_website is not False:
                 organization_on_stage.organization_website = organization_website.strip() \
                     if organization_website else None
+            qa_done_before = positive_value_exists(organization_on_stage.qa_done)
+            if qa_done_before is not positive_value_exists(qa_done):
+                qa_done_changed = True
+            organization_on_stage.qa_done = positive_value_exists(qa_done)
             if state_served_code is not False:
                 organization_on_stage.state_served_code = state_served_code.strip() if state_served_code else None
             if tiktok_url is not False:
@@ -1896,11 +1936,26 @@ def organization_edit_process_view(request):
                 issue_we_vote_id=issue_we_vote_id,
                 issue_count_update_allowed=True)
             change_description += "{issue_we_vote_id} REMOVE ".format(issue_we_vote_id=issue_we_vote_id)
+    if augmentation_done_changed:
+        if augmentation_done:
+            change_description += "CHANGED: AUGMENTATION_DONE "
+        else:
+            change_description += "CHANGED: AUGMENTATION_NOT_DONE "
     if issue_analysis_done_changed:
         if issue_analysis_done:
             change_description += "CHANGED: ANALYSIS_DONE "
         else:
             change_description += "CHANGED: ANALYSIS_NOT_DONE "
+    if organization_defunct_changed:
+        if organization_defunct:
+            change_description += "CHANGED: ORG_DEFUNCT "
+        else:
+            change_description += "CHANGED: ORG_NOT_DEFUNCT "
+    if qa_done_changed:
+        if qa_done:
+            change_description += "CHANGED: QA_DONE "
+        else:
+            change_description += "CHANGED: QA_NOT_DONE "
 
     position_list_manager = PositionListManager()
     position_list_manager.refresh_cached_position_info_for_organization(organization_we_vote_id)

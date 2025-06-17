@@ -282,7 +282,7 @@
     {% if politician.politician_twitter_handle %}
         <input type="checkbox" name="twitter_handle_updates_failing" id="twitter_handle_updates_failing_id" value="1"
                 {% if politician.twitter_handle_updates_failing %}checked{% endif %} />
-        <label for="twitter_handle_updates_failing_id" style="font-weight: normal !important;">Twitter Handle Updates Failing{% if politician.twitter_handle_updates_failing %}. <span style="color: darkgray">Our automated Twitter data update script had trouble retrieving a handle. Uncheck when fixed.</span>{% endif %}</label><br />
+        <label for="twitter_handle_updates_failing_id" style="font-weight: normal !important;">Twitter Handle Updates Failing{% if politician.twitter_handle_updates_failing %}. <span style="color: darkgray">Our automated Twitter data update script had trouble retrieving this handle. Uncheck when fixed.</span>{% endif %}</label><br />
         <a href="https://twitter.com/{{ politician.politician_twitter_handle|iriencode }}"
            target="_blank">View on Twitter <span class="glyphicon glyphicon-new-window"></span></a>&nbsp;&nbsp;&nbsp;
         <a href="{% url 'import_export_twitter:refresh_twitter_politician_details' politician.id %}">Refresh Twitter Details</a><br />
@@ -305,7 +305,7 @@
     {% if politician.politician_twitter_handle2 %}
         <input type="checkbox" name="twitter_handle2_updates_failing" id="twitter_handle2_updates_failing_id" value="1"
                 {% if politician.twitter_handle2_updates_failing %}checked{% endif %} />
-        <label for="twitter_handle2_updates_failing_id" style="font-weight: normal !important;">Twitter Handle 2 Updates Failing{% if politician.twitter_handle2_updates_failing %}. <span style="color: darkgray">Our automated Twitter data update script had trouble retrieving a handle. Uncheck when fixed.</span>{% endif %}</label><br />
+        <label for="twitter_handle2_updates_failing_id" style="font-weight: normal !important;">Twitter Handle 2 Updates Failing{% if politician.twitter_handle2_updates_failing %}. <span style="color: darkgray">Our automated Twitter data update script had trouble retrieving this handle. Uncheck when fixed.</span>{% endif %}</label><br />
         <a href="https://twitter.com/{{ politician.politician_twitter_handle2|iriencode }}"
            target="_blank">View on Twitter <span class="glyphicon glyphicon-new-window"></span></a>&nbsp;&nbsp;&nbsp;
         <a href="{% url 'import_export_twitter:refresh_twitter_politician_details' politician.id %}?twitter_handle={{ politician.politician_twitter_handle2 }}">Make Primary Handle</a>

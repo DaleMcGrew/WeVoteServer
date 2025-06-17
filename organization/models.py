@@ -3397,9 +3397,12 @@ class Organization(models.Model):
     ballotpedia_photo_url = models.TextField(
         verbose_name='url of ballotpedia logo', blank=True, null=True)
 
+    augmentation_done = models.BooleanField(default=False)
     issue_analysis_done = models.BooleanField(default=False)
     issue_analysis_admin_notes = models.TextField(verbose_name="we vote admin notes", null=True, blank=True)
+    qa_done = models.BooleanField(default=False)
 
+    organization_defunct = models.BooleanField(default=False)
     organization_type = models.CharField(
         verbose_name="type of org", max_length=2, choices=ORGANIZATION_TYPE_CHOICES, default=UNKNOWN)
     date_last_changed = models.DateTimeField(null=True, auto_now=True)
