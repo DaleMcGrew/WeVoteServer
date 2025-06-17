@@ -201,7 +201,8 @@
                     <td>
                         <input type="checkbox" name="issue_analysis_done" id="issue_analysis_done_id" value="1" disabled
                             {% if organization.issue_analysis_done %}checked{% endif %} />
-                        Issue Analysis Done. <span style="color: darkgray">This organization has been tagged with the correct issues.</span>
+                        Values Analysis Done.
+                        <span style="color: darkgray">This endorser has been tagged with the correct issues.</span>
                         {% if organization.issue_analysis_admin_notes %}
                         <br />
                         {{ organization.issue_analysis_admin_notes|default_if_none:"" }}

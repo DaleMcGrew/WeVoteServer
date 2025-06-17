@@ -244,6 +244,7 @@ def retrieve_twitter_user_info(twitter_user_id=0, twitter_handle='', twitter_api
                 twitter_handle_found = positive_value_exists(twitter_user_id)
             except Exception as e:
                 status += 'TWITTER_DICT_DATA_NOT_FOUND-' + str(e) + " "
+                success = False
                 twitter_dict = {
                     'twitter_handle_updates_failing': True,
                     'username': twitter_handle,
@@ -251,7 +252,6 @@ def retrieve_twitter_user_info(twitter_user_id=0, twitter_handle='', twitter_api
                 twitter_user_id = 0
                 twitter_handle_found = False
                 twitter_user_not_found_in_twitter = True
-            success = True
             # status += 'TWITTER_HANDLE_SUCCESS-' + str(twitter_handle) + " "
         elif positive_value_exists(twitter_user_id):
             # Use Twitter API call counter to track the number of queries we are doing each day
@@ -276,6 +276,7 @@ def retrieve_twitter_user_info(twitter_user_id=0, twitter_handle='', twitter_api
             except Exception as e:
                 logger.error('retrieve_twitter_user_info create_detailed_counter_entry threw %s', str(e))
                 counter = None
+                success = False
             try:
                 twitter_user = client.get_user(id=twitter_user_id)
                 twitter_dict = convert_twitter_user_object_data_to_we_vote_dict(twitter_user.data)
@@ -284,11 +285,11 @@ def retrieve_twitter_user_info(twitter_user_id=0, twitter_handle='', twitter_api
                 twitter_handle_found = True
             except Exception as e:
                 status += 'TWITTER_JSON_DATA_NOT_FOUND_FROM_ID-' + str(e) + " "
+                success = False
                 twitter_dict = {}
+                twitter_handle_found = False
                 twitter_user_id = 0
-            success = True
             # status += 'TWITTER_USER_ID_SUCCESS-' + str(twitter_user_id) + " "
-            twitter_handle_found = True
         else:
             twitter_dict = {}
             success = False

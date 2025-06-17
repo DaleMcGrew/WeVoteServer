@@ -80,7 +80,7 @@
 
 <div class="form-group">
     <label for="profile_image_type_currently_active_id" class="col-sm-3 control-label">
-        Organization Photo Choice<br />
+        Logo Choice<br />
         <span style="color: darkgray">{{ organization.profile_image_type_currently_active }}</span>
     </label>
     <div class="col-sm-8">
@@ -152,6 +152,13 @@
             &nbsp;&nbsp;&nbsp;&nbsp;Vote Smart Id: <a href="https://votesmart.org/interest-group/{{ organization.vote_smart_id }}" target="_blank">{{ organization.vote_smart_id }}</a>
                 {% endif %}
             &nbsp;&nbsp;&nbsp;&nbsp;Internal Id: {{ organization.id }}
+            &nbsp;&nbsp;&nbsp;&nbsp;<a href="https://www.google.com/search?q={{ organization.organization_name|urlencode }}" target="_blank">Search Google <span class="glyphicon glyphicon-new-window"></span></a>
+            <br />
+            {# Organization Defunct #}
+            <input type="checkbox" name="organization_defunct" id="organization_defunct_id" value="1"
+                    {% if organization.organization_defunct %}checked{% endif %} />
+            <label for="organization_defunct_id" style="font-weight: normal !important;">Defunct. 
+                <span style="color: darkgray">This endorser has been defunct/inactive for 4+ years.</span></label>
         {% endif %}
     </div>
 </div>
@@ -262,7 +269,7 @@
         {% if organization.organization_twitter_handle %}
             <input type="checkbox" name="organization_twitter_updates_failing" id="organization_twitter_updates_failing_id" value="1"
                     {% if organization.organization_twitter_updates_failing %}checked{% endif %} />
-            <label for="organization_twitter_updates_failing_id" style="font-weight: normal !important;">Twitter Updates Failing. <span style="color: darkgray">Our automated Twitter data update script had trouble retrieving a handle. Uncheck when fixed.</span></label>
+            <label for="organization_twitter_updates_failing_id" style="font-weight: normal !important;">Twitter Updates Failing. <span style="color: darkgray">Our automated Twitter data update script had trouble retrieving this handle. Uncheck when fixed.</span></label>
         {% endif %}
 
     </div>
@@ -306,7 +313,7 @@
         {% if organization.organization_instagram_handle %}
 {#            <input type="checkbox" name="organization_twitter_updates_failing" id="organization_twitter_updates_failing_id" value="1"#}
 {#                    {% if organization.organization_instagram_updates_failing %}checked{% endif %} />#}
-{#            <label for="organization_instagram_updates_failing_id" style="font-weight: normal !important;">Instagram Updates Failing. <span style="color: darkgray">Our automated Instagram data update script had trouble retrieving a handle. Uncheck when fixed.</span></label>#}
+{#            <label for="organization_instagram_updates_failing_id" style="font-weight: normal !important;">Instagram Updates Failing. <span style="color: darkgray">Our automated Instagram data update script had trouble retrieving this handle. Uncheck when fixed.</span></label>#}
         {% endif %}
 
     </div>
@@ -355,7 +362,12 @@
 
 {% if issue_list %}
 <div class="form-group">
-    <label class="col-sm-3 control-label">Select Values/Issues</label>
+    <label class="col-sm-3 control-label">
+        Values/Issues
+        <a href="https://help.wevote.us/hc/en-us/articles/360034261733-How-were-the-Values-within-We-Vote-chosen"
+           target="_blank"
+           class="u-no-break"><span class="glyphicon glyphicon-new-window"></span></a>
+    </label>
     <div class="col-sm-8 ">
     <ul class="list-inline">
     {% for issue in issue_list %}
@@ -379,15 +391,29 @@
 
 
 <div class="form-group">
-    <label class="col-sm-3 control-label">Issue Analysis Status</label>
+    <label class="col-sm-3 control-label">Augmentation Status</label>
     <div class="col-sm-8 ">
+        {# Augmentation Done #}
+        <input type="checkbox" name="augmentation_done" id="augmentation_done_id" value="1"
+                {% if organization.augmentation_done %}checked{% endif %} />
+        <label for="augmentation_done_id" style="font-weight: normal !important;">Augmentation Done. 
+            <span style="color: darkgray">The latest information about this endorser has been collected.</span></label>
+        <br />
+        {# Values Analysis #}
         <input type="checkbox" name="issue_analysis_done" id="issue_analysis_done_id" value="1"
                 {% if organization.issue_analysis_done %}checked{% endif %} />
-        <label for="issue_analysis_done_id" style="font-weight: normal !important;">Issue Analysis Done. <span style="color: darkgray">This organization has been tagged with the correct issues.</span></label>
+        <label for="issue_analysis_done_id" style="font-weight: normal !important;">Values Analysis Done. 
+            <span style="color: darkgray">This endorser has been tagged with the correct issues.</span></label>
+        <br />
+        {# QA: Quality Assurance #}
+        <input type="checkbox" name="qa_done" id="qa_done_id" value="1"
+                {% if organization.qa_done %}checked{% endif %} />
+        <label for="qa_done_id" style="font-weight: normal !important;">QA Done. 
+            <span style="color: darkgray">This endorser has been reviewed for accuracy by a second person. (Quality Assurance)</span></label>
         <textarea name="issue_analysis_admin_notes"
                   class="form-control animated"
                   id="issue_analysis_admin_notes_id"
-                  placeholder="Status of issue analysis?">{{ organization.issue_analysis_admin_notes|default_if_none:"" }}</textarea>
+                  placeholder="Status of augmentation?">{{ organization.issue_analysis_admin_notes|default_if_none:"" }}</textarea>
         {% if voter.is_admin and change_log_list %}
             <br />
 {% include "organization/change_log_list.html" with change_log_list=change_log_list %}
