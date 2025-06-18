@@ -460,6 +460,7 @@ def organization_list_view(request):
     state_code = request.GET.get('state_code', '')
     show_all = request.GET.get('show_all', False)
     show_defunct = positive_value_exists(request.GET.get('show_defunct', False))
+    show_help_needed = positive_value_exists(request.GET.get('show_help_needed', False))
     show_issues = request.GET.get('show_issues', '')
     show_organizations_without_email = positive_value_exists(request.GET.get('show_organizations_without_email', False))
     show_twitter_updates_failing = positive_value_exists(request.GET.get('show_twitter_updates_failing', False))
@@ -499,6 +500,9 @@ def organization_list_view(request):
 
     if positive_value_exists(show_defunct):
         organization_list_query = organization_list_query.filter(organization_defunct=True)
+
+    if positive_value_exists(show_help_needed):
+        organization_list_query = organization_list_query.filter(help_needed=True)
 
     if positive_value_exists(show_twitter_updates_failing):
         organization_list_query = organization_list_query.filter(organization_twitter_updates_failing=True)
@@ -713,6 +717,7 @@ def organization_list_view(request):
         'organization_search':      organization_search,
         'show_all':                 show_all,
         'show_defunct':             show_defunct,
+        'show_help_needed':         show_help_needed,
         'show_issues':              show_issues,
         'show_organizations_without_email': show_organizations_without_email,
         'show_organizations_to_analyze': show_organizations_to_analyze,
@@ -1415,8 +1420,9 @@ def organization_edit_process_view(request):
     bluesky_handle = request.POST.get('bluesky_handle', False)
     if positive_value_exists(bluesky_handle):
         bluesky_handle = normalize_bluesky_handle(bluesky_handle)
+    help_needed = positive_value_exists(request.POST.get('help_needed', False))
     issue_analysis_admin_notes = request.POST.get('issue_analysis_admin_notes', False)
-    issue_analysis_done = request.POST.get('issue_analysis_done', False)
+    issue_analysis_done = positive_value_exists(request.POST.get('issue_analysis_done', False))
     organization_contact_form_url = request.POST.get('organization_contact_form_url', False)
     organization_defunct = positive_value_exists(request.POST.get('organization_defunct', False))
     organization_email = request.POST.get('organization_email', '')
@@ -1487,6 +1493,9 @@ def organization_edit_process_view(request):
 
     if bluesky_handle is not False:
         url_variables += "&bluesky_handle=" + str(bluesky_handle)
+
+    if help_needed is not False:
+        url_variables += "&help_needed=" + str(help_needed)
 
     if issue_analysis_admin_notes is not False:
         url_variables += "&issue_analysis_admin_notes=" + str(issue_analysis_admin_notes)
@@ -1611,7 +1620,8 @@ def organization_edit_process_view(request):
                 messages.add_message(request, messages.ERROR, 'Twitter handle you entered not found on Twitter.')
                 twitter_handle_can_be_saved_without_conflict = False
 
-    if positive_value_exists(organization_we_vote_id) and twitter_handle_can_be_saved_without_conflict:
+    if positive_value_exists(organization_we_vote_id) and positive_value_exists(organization_twitter_handle) \
+            and twitter_handle_can_be_saved_without_conflict:
         # Check to see if there is a TwitterLinkToOrganization entry tied to this organization_we_vote_id
         link_results = twitter_user_manager.retrieve_twitter_link_to_organization(
             organization_we_vote_id=organization_we_vote_id)
@@ -1695,6 +1705,7 @@ def organization_edit_process_view(request):
                     twitter_handle_can_be_saved_without_conflict = False
 
     augmentation_done_changed = False
+    help_needed_changed = False
     issue_analysis_done_changed = False
     organization_defunct_changed = False
     qa_done_changed = False
@@ -1824,6 +1835,10 @@ def organization_edit_process_view(request):
             organization_on_stage.augmentation_done = positive_value_exists(augmentation_done)
             if bluesky_handle is not False:
                 organization_on_stage.bluesky_handle = bluesky_handle.strip()
+            help_needed_before = positive_value_exists(organization_on_stage.help_needed)
+            if help_needed_before is not positive_value_exists(help_needed):
+                help_needed_changed = True
+            organization_on_stage.help_needed = positive_value_exists(help_needed)
             if issue_analysis_admin_notes is not False:
                 organization_on_stage.issue_analysis_admin_notes = issue_analysis_admin_notes.strip()
             issue_analysis_done_before = positive_value_exists(organization_on_stage.issue_analysis_done)
@@ -1941,6 +1956,11 @@ def organization_edit_process_view(request):
             change_description += "CHANGED: AUGMENTATION_DONE "
         else:
             change_description += "CHANGED: AUGMENTATION_NOT_DONE "
+    if help_needed_changed:
+        if help_needed:
+            change_description += "CHANGED: HELP_NEEDED "
+        else:
+            change_description += "CHANGED: HELP_NEEDED_RESOLVED "
     if issue_analysis_done_changed:
         if issue_analysis_done:
             change_description += "CHANGED: ANALYSIS_DONE "

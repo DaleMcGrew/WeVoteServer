@@ -363,10 +363,16 @@
 {% if issue_list %}
 <div class="form-group">
     <label class="col-sm-3 control-label">
-        Values/Issues
+        Values Analysis
         <a href="https://help.wevote.us/hc/en-us/articles/360034261733-How-were-the-Values-within-We-Vote-chosen"
            target="_blank"
            class="u-no-break"><span class="glyphicon glyphicon-new-window"></span></a>
+        <br />
+        <a href="https://docs.google.com/document/d/18-A_UWIHuq7iR8JWpGtTE3QSSlSoGN0MYwHIGIxw7ZU/edit?tab=t.0#heading=h.ryg639tpp85h"
+           target="_blank"
+           class="u-no-break"
+           style="font-weight: normal!important;"
+        >Guidelines&nbsp;<span class="glyphicon glyphicon-new-window"></span></a>
     </label>
     <div class="col-sm-8 ">
     <ul class="list-inline">
@@ -394,22 +400,49 @@
     <label class="col-sm-3 control-label">Augmentation Status</label>
     <div class="col-sm-8 ">
         {# Augmentation Done #}
-        <input type="checkbox" name="augmentation_done" id="augmentation_done_id" value="1"
-                {% if organization.augmentation_done %}checked{% endif %} />
-        <label for="augmentation_done_id" style="font-weight: normal !important;">Augmentation Done. 
-            <span style="color: darkgray">The latest information about this endorser has been collected.</span></label>
-        <br />
+        <div style="display: flex;">
+        <div style="margin-right: 4px;">
+            <input type="checkbox" name="augmentation_done" id="augmentation_done_id" value="1"
+                    {% if organization.augmentation_done %}checked{% endif %} />
+        </div>
+        <div>
+            <label for="augmentation_done_id" style="font-weight: normal !important;">Augmentation Done. 
+                <span style="color: darkgray">The latest information about this endorser has been collected.</span></label>
+        </div>
+        </div>
         {# Values Analysis #}
-        <input type="checkbox" name="issue_analysis_done" id="issue_analysis_done_id" value="1"
-                {% if organization.issue_analysis_done %}checked{% endif %} />
-        <label for="issue_analysis_done_id" style="font-weight: normal !important;">Values Analysis Done. 
-            <span style="color: darkgray">This endorser has been tagged with the correct issues.</span></label>
-        <br />
+        <div style="display: flex;">
+        <div style="margin-right: 4px;">
+            <input type="checkbox" name="issue_analysis_done" id="issue_analysis_done_id" value="1"
+                    {% if organization.issue_analysis_done %}checked{% endif %} />
+        </div>
+        <div>
+            <label for="issue_analysis_done_id" style="font-weight: normal !important;">Values Analysis Done. 
+                <span style="color: darkgray">This endorser has been tagged with the correct issues.</span></label>
+        </div>
+        </div>
         {# QA: Quality Assurance #}
-        <input type="checkbox" name="qa_done" id="qa_done_id" value="1"
-                {% if organization.qa_done %}checked{% endif %} />
-        <label for="qa_done_id" style="font-weight: normal !important;">QA Done. 
-            <span style="color: darkgray">This endorser has been reviewed for accuracy by a second person. (Quality Assurance)</span></label>
+        <div style="display: flex;">
+        <div style="margin-right: 4px;">
+            <input type="checkbox" name="qa_done" id="qa_done_id" value="1"
+                    {% if organization.qa_done %}checked{% endif %} />
+        </div>
+        <div>
+            <label for="qa_done_id" style="font-weight: normal !important;">QA Done. 
+                <span style="color: darkgray">This endorser has been reviewed for accuracy by a second person. (Quality Assurance)</span></label>
+        </div>
+        </div>
+        {# Help needed from augmentation or values expert #}
+        <div style="display: flex;">
+        <div style="margin-right: 4px;">
+            <input type="checkbox" name="help_needed" id="help_needed_id" value="1"
+                    {% if organization.help_needed %}checked{% endif %} />
+        </div>
+        <div>
+            <label for="help_needed_id" style="font-weight: normal !important;">Help Needed. 
+                <span style="color: darkgray">Advice needed by expert in either augmentation or Values Analysis.</span></label>
+        </div>
+        </div>
         <textarea name="issue_analysis_admin_notes"
                   class="form-control animated"
                   id="issue_analysis_admin_notes_id"
