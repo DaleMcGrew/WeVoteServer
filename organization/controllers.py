@@ -337,6 +337,7 @@ def find_duplicate_organization(we_vote_organization, ignore_organization_id_lis
     }
     return results
 
+
 # This function decides whether two organizations should be merged ased on certain attributes. It compares them
 # and either merges them automatically or flags for manual intervention, when conflicts are found.
 def merge_if_duplicate_organizations(organization1, organization2, conflict_values):

@@ -2613,17 +2613,24 @@ class PoliticianManager(models.Manager):
             politician.profile_image_type_currently_active = PROFILE_IMAGE_TYPE_TWITTER
             values_changed = True
         if politician.profile_image_type_currently_active == PROFILE_IMAGE_TYPE_TWITTER:
-            if twitter_user.we_vote_hosted_profile_image_url_large != politician.we_vote_hosted_profile_image_url_large:
-                politician.we_vote_hosted_profile_image_url_large = twitter_user.we_vote_hosted_profile_image_url_large
-                values_changed = True
-            if twitter_user.we_vote_hosted_profile_image_url_medium != \
-                    politician.we_vote_hosted_profile_image_url_medium:
-                politician.we_vote_hosted_profile_image_url_medium = \
-                    twitter_user.we_vote_hosted_profile_image_url_medium
-                values_changed = True
-            if twitter_user.we_vote_hosted_profile_image_url_tiny != politician.we_vote_hosted_profile_image_url_tiny:
-                politician.we_vote_hosted_profile_image_url_tiny = twitter_user.we_vote_hosted_profile_image_url_tiny
-                values_changed = True
+            if positive_value_exists(twitter_user.we_vote_hosted_profile_image_url_large):
+                if twitter_user.we_vote_hosted_profile_image_url_large != \
+                        politician.we_vote_hosted_profile_image_url_large:
+                    politician.we_vote_hosted_profile_image_url_large = \
+                        twitter_user.we_vote_hosted_profile_image_url_large
+                    values_changed = True
+            if positive_value_exists(twitter_user.we_vote_hosted_profile_image_url_medium):
+                if twitter_user.we_vote_hosted_profile_image_url_medium != \
+                        politician.we_vote_hosted_profile_image_url_medium:
+                    politician.we_vote_hosted_profile_image_url_medium = \
+                        twitter_user.we_vote_hosted_profile_image_url_medium
+                    values_changed = True
+            if positive_value_exists(twitter_user.we_vote_hosted_profile_image_url_tiny):
+                if twitter_user.we_vote_hosted_profile_image_url_tiny != \
+                        politician.we_vote_hosted_profile_image_url_tiny:
+                    politician.we_vote_hosted_profile_image_url_tiny = \
+                        twitter_user.we_vote_hosted_profile_image_url_tiny
+                    values_changed = True
 
         if values_changed:
             try:

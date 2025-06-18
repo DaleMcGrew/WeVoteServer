@@ -39,29 +39,20 @@ TWITTER_USER_SUSPENDED_LOG_RESPONSES = [
 def convert_twitter_user_object_data_to_we_vote_dict(twitter_user_data):
     if twitter_user_data is None:
         twitter_user_data = {}
+    profile_image_url_raw = twitter_user_data['profile_image_url'] if 'profile_image_url' in twitter_user_data else ''
+    profile_image_url = profile_image_url_raw.replace('_normal', '')  # Retrieve full size image
     twitter_dict = {
-        'description': twitter_user_data['description']
-        if 'description' in twitter_user_data else '',
-        'entities': twitter_user_data['entities']
-        if 'entities' in twitter_user_data else '',
-        'id': twitter_user_data['id']
-        if 'id' in twitter_user_data else '',
-        'location': twitter_user_data['location']
-        if 'location' in twitter_user_data else '',
-        'name': twitter_user_data['name']
-        if 'name' in twitter_user_data else '',
-        'profile_image_url': twitter_user_data['profile_image_url']
-        if 'profile_image_url' in twitter_user_data else '',
-        'public_metrics': twitter_user_data['public_metrics']
-        if 'public_metrics' in twitter_user_data else '',
-        'username': twitter_user_data['username']
-        if 'username' in twitter_user_data else '',
-        'verified': twitter_user_data['verified']
-        if 'verified' in twitter_user_data else '',
-        'verified_type': twitter_user_data['verified_type']
-        if 'verified_type' in twitter_user_data else '',
-        'withheld': twitter_user_data['withheld']
-        if 'withheld' in twitter_user_data else '',
+        'description': twitter_user_data['description'] if 'description' in twitter_user_data else '',
+        'entities': twitter_user_data['entities'] if 'entities' in twitter_user_data else '',
+        'id': twitter_user_data['id'] if 'id' in twitter_user_data else '',
+        'location': twitter_user_data['location'] if 'location' in twitter_user_data else '',
+        'name': twitter_user_data['name'] if 'name' in twitter_user_data else '',
+        'profile_image_url': profile_image_url,
+        'public_metrics': twitter_user_data['public_metrics'] if 'public_metrics' in twitter_user_data else '',
+        'username': twitter_user_data['username'] if 'username' in twitter_user_data else '',
+        'verified': twitter_user_data['verified'] if 'verified' in twitter_user_data else '',
+        'verified_type': twitter_user_data['verified_type'] if 'verified_type' in twitter_user_data else '',
+        'withheld': twitter_user_data['withheld'] if 'withheld' in twitter_user_data else '',
     }
     return twitter_dict
 

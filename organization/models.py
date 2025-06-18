@@ -1173,8 +1173,8 @@ class OrganizationManager(models.Manager):
                     pass
         return organization
 
+    @staticmethod
     def save_fresh_twitter_details_to_organization(
-            self,
             organization=None,
             organization_we_vote_id='',
             twitter_user=None):
@@ -1304,21 +1304,25 @@ class OrganizationManager(models.Manager):
             organization.profile_image_type_currently_active = PROFILE_IMAGE_TYPE_TWITTER
             values_changed = True
         if organization.profile_image_type_currently_active == PROFILE_IMAGE_TYPE_TWITTER:
-            if twitter_user.we_vote_hosted_profile_image_url_large != \
-                    organization.we_vote_hosted_profile_image_url_large:
-                organization.we_vote_hosted_profile_image_url_large = \
-                    twitter_user.we_vote_hosted_profile_image_url_large
-                values_changed = True
-            if twitter_user.we_vote_hosted_profile_image_url_medium != \
-                    organization.we_vote_hosted_profile_image_url_medium:
-                organization.we_vote_hosted_profile_image_url_medium = \
-                    twitter_user.we_vote_hosted_profile_image_url_medium
-                values_changed = True
-            if twitter_user.we_vote_hosted_profile_image_url_tiny != \
-                    organization.we_vote_hosted_profile_image_url_tiny:
-                organization.we_vote_hosted_profile_image_url_tiny = \
-                    twitter_user.we_vote_hosted_profile_image_url_tiny
-                values_changed = True
+            if positive_value_exists(twitter_user.we_vote_hosted_profile_image_url_large):
+                # Only update organization if there is a new image coming in.
+                if twitter_user.we_vote_hosted_profile_image_url_large != \
+                        organization.we_vote_hosted_profile_image_url_large:
+                    organization.we_vote_hosted_profile_image_url_large = \
+                        twitter_user.we_vote_hosted_profile_image_url_large
+                    values_changed = True
+            if positive_value_exists(twitter_user.we_vote_hosted_profile_image_url_medium):
+                if twitter_user.we_vote_hosted_profile_image_url_medium != \
+                        organization.we_vote_hosted_profile_image_url_medium:
+                    organization.we_vote_hosted_profile_image_url_medium = \
+                        twitter_user.we_vote_hosted_profile_image_url_medium
+                    values_changed = True
+            if positive_value_exists(twitter_user.we_vote_hosted_profile_image_url_tiny):
+                if twitter_user.we_vote_hosted_profile_image_url_tiny != \
+                        organization.we_vote_hosted_profile_image_url_tiny:
+                    organization.we_vote_hosted_profile_image_url_tiny = \
+                        twitter_user.we_vote_hosted_profile_image_url_tiny
+                    values_changed = True
 
         if values_changed:
             try:
@@ -3398,6 +3402,7 @@ class Organization(models.Model):
         verbose_name='url of ballotpedia logo', blank=True, null=True)
 
     augmentation_done = models.BooleanField(default=False)
+    help_needed = models.BooleanField(default=False)
     issue_analysis_done = models.BooleanField(default=False)
     issue_analysis_admin_notes = models.TextField(verbose_name="we vote admin notes", null=True, blank=True)
     qa_done = models.BooleanField(default=False)
