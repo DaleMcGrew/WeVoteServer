@@ -43,7 +43,7 @@ services:
   
   api:
     build:
-      dockerfile: Dockerfile.dev
+      dockerfile: docker/Dockerfile.dev
     depends_on:
       caddy:
         condition: service_started
@@ -52,7 +52,6 @@ services:
         condition: service_healthy
         restart: true
     environment:
-      COMPOSE_FILE: compose.dev.yaml
       DATABASE_HOST: db
       DATABASE_PASSWORD: /run/secrets/db_password
       DATABASE_PORT: "5432"
