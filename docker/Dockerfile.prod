@@ -1,0 +1,29 @@
+FROM public.ecr.aws/docker/library/python:3.12-slim-bookworm
+
+# install required software
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt update && apt install -y \
+    libcairo2 postgresql-client libmagic1
+
+# install python dependencies
+COPY requirements.txt /tmp
+RUN pip install -r /tmp/requirements.txt --no-cache-dir
+RUN pip install newrelic
+
+# copy entrypoint script
+COPY docker/prod/entrypoint /usr/local/bin/docker-entrypoint
+
+# setup user and create required directories
+RUN useradd wevote && mkdir -p /var/log/wevote /wevote && chown wevote:wevote /var/log/wevote /wevote
+
+# copy all repo files to container
+COPY . /wevote/code
+
+# define docker runtime
+WORKDIR /wevote/code
+USER wevote
+EXPOSE 8000
+
+ENTRYPOINT ["docker-entrypoint"]
+CMD ["newrelic-admin", "run-program", "gunicorn", "--workers", "3", "--worker-class", "gthread", "--timeout", "1800", "--bind", "0.0.0.0:8000", "config.wsgi"]
+

@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+import json
+import os
+import subprocess
+import sys
+
+import boto3
+from botocore.exceptions import ClientError
+
+SECRET_ARN = os.getenv("CONFIG_SECRET_ARN")
+REGION_NAME = os.getenv("AWS_DEFAULT_REGION")
+
+if SECRET_ARN and REGION_NAME:
+    try:
+        session = boto3.session.Session()
+        client = session.client(service_name='secretsmanager', region_name=REGION_NAME)
+        get_secret_value_response = client.get_secret_value(SecretId=SECRET_ARN)
+        env_vars = json.loads(get_secret_value_response['SecretString'])
+        for e in env_vars.keys():
+            if e not in os.environ.keys():
+                os.environ[e] = env_vars[e]
+    except ClientError as e:
+        print("Unable to load secret")
+        raise e
+
+sys.exit(subprocess.call(sys.argv[1:]))
+
+
