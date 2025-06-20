@@ -45,9 +45,6 @@ services:
     build:
       dockerfile: docker/Dockerfile.dev
     depends_on:
-      caddy:
-        condition: service_started
-        restart: true
       db:
         condition: service_healthy
         restart: true
