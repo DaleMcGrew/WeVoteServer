@@ -6,6 +6,7 @@ def set_environment_variables_from_json(json_path):
         with open(json_path, 'r') as file:
             variables = json.load(file)
             for key, value in variables.items():
+                print(key)
                 # Convert boolean values to strings
                 if isinstance(value, bool):
                     value = str(value).lower()
