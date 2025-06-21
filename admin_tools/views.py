@@ -62,6 +62,8 @@ POSITIONS_SYNC_URL = get_environment_variable("POSITIONS_SYNC_URL")  # positions
 VOTER_GUIDES_SYNC_URL = get_environment_variable("VOTER_GUIDES_SYNC_URL")  # voterGuidesSyncOut
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
+TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
+
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -334,12 +336,13 @@ def data_cleanup_organization_analysis_view(request):
     messages_on_stage = get_messages(request)
 
     template_values = {
-        'messages_on_stage':                        messages_on_stage,
-        'organization':                             organization,
+        'messages_on_stage':                         messages_on_stage,
+        'organization':                              organization,
+        'TWITTER_API_ON':                            TWITTER_API_ON,
         'voter_linked_organization_we_vote_id_list': voter_linked_organization_we_vote_id_list_updated,
-        'organization_list_with_duplicate_twitter': organization_list_with_duplicate_twitter_updated,
-        'voter_list_duplicate_twitter':             voter_list_duplicate_twitter_updated,
-        'twitter_link_to_this_organization_exists':     twitter_link_to_this_organization_exists,
+        'organization_list_with_duplicate_twitter':  organization_list_with_duplicate_twitter_updated,
+        'voter_list_duplicate_twitter':              voter_list_duplicate_twitter_updated,
+        'twitter_link_to_this_organization_exists':  twitter_link_to_this_organization_exists,
         'twitter_link_to_another_organization_exists':  twitter_link_to_another_organization_exists,
     }
     response = render(request, 'admin_tools/data_cleanup_organization_analysis.html', template_values)

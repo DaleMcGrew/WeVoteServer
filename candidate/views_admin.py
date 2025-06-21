@@ -82,6 +82,7 @@ from .models import CandidateCampaign, CandidateListManager, CandidateChangeLog,
     PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_VOTE_USA, PROFILE_IMAGE_TYPE_WIKIPEDIA
 
 CANDIDATES_SYNC_URL = get_environment_variable("CANDIDATES_SYNC_URL")  # candidatesSyncOut
+TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 WEB_APP_ROOT_URL = get_environment_variable("WEB_APP_ROOT_URL")
 
@@ -2784,6 +2785,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
                 'name':     'tiktok_url',
                 'value':     candidate_on_stage.tiktok_url
             },
+            'TWITTER_API_ON':       TWITTER_API_ON,
             'twitter_link_possibility_list':    twitter_link_possibility_list,
             'twitter_url_dict':
             {
@@ -2823,6 +2825,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
         template_values = {
             'messages_on_stage':    messages_on_stage,
             # Incoming variables
+            'TWITTER_API_ON':       TWITTER_API_ON,
             'vote_smart_id':        vote_smart_id,
             'web_app_root_url':     web_app_root_url,
         }

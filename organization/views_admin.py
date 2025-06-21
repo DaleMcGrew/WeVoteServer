@@ -67,6 +67,7 @@ ORGANIZATION_STANCE_CHOICES = (
     (STILL_DECIDING,    'We Are Still Deciding Our Stance'),
 )
 ORGANIZATIONS_SYNC_URL = get_environment_variable("ORGANIZATIONS_SYNC_URL")  # organizationsSyncOut
+TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
 logger = wevote_functions.admin.get_logger(__name__)
@@ -729,8 +730,10 @@ def organization_list_view(request):
         'sort_by':                  sort_by,
         'state_code':               state_code,
         'state_list':               sorted_state_list,
+        'TWITTER_API_ON':           TWITTER_API_ON,
     }
     return render(request, 'organization/organization_list.html', template_values)
+
 
 @login_required
 def organization_merge_process_view(request):
@@ -1616,6 +1619,9 @@ def organization_edit_process_view(request):
             elif results['twitter_user_found']:
                 twitter_user = results['twitter_user']
                 twitter_link_to_organization_from_handle_twitter_id = twitter_user.twitter_id
+            elif not TWITTER_API_ON:
+                messages.add_message(request, messages.INFO, 'Twitter API turned off.')
+                twitter_handle_can_be_saved_without_conflict = False
             else:
                 messages.add_message(request, messages.ERROR, 'Twitter handle you entered not found on Twitter.')
                 twitter_handle_can_be_saved_without_conflict = False
@@ -1846,7 +1852,7 @@ def organization_edit_process_view(request):
                 issue_analysis_done_changed = True
             organization_on_stage.issue_analysis_done = positive_value_exists(issue_analysis_done)
             if organization_twitter_handle is not False:
-                if twitter_handle_can_be_saved_without_conflict:
+                if twitter_handle_can_be_saved_without_conflict or not TWITTER_API_ON:
                     organization_on_stage.organization_twitter_handle = organization_twitter_handle
                 organization_on_stage.organization_twitter_updates_failing = organization_twitter_updates_failing
             if organization_contact_form_url is not False:
@@ -2632,6 +2638,7 @@ def organization_position_list_view(request, organization_id=0, organization_we_
         'show_all_elections':               show_all_elections,
         'state_code':                       state_code,
         'state_list':                       sorted_state_list,
+        'TWITTER_API_ON':                   TWITTER_API_ON,
         'twitter_handle_mismatch':          twitter_handle_mismatch,
         'twitter_link_to_organization':     twitter_link_to_organization,
         'voter':                            voter,

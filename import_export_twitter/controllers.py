@@ -50,6 +50,7 @@ from wevote_settings.models import RemoteRequestHistory, RemoteRequestHistoryMan
 
 logger = wevote_functions.admin.get_logger(__name__)
 
+TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 TWITTER_CONSUMER_KEY = get_environment_variable("TWITTER_CONSUMER_KEY")
 TWITTER_CONSUMER_SECRET = get_environment_variable("TWITTER_CONSUMER_SECRET")
 TWITTER_ACCESS_TOKEN = get_environment_variable("TWITTER_ACCESS_TOKEN")
@@ -1109,7 +1110,10 @@ def retrieve_fresh_enough_twitter_user_for_handle(
             twitter_user = results['twitter_user']
             twitter_user_found = results['twitter_user_found']
 
-    if retrieve_latest_data_from_twitter:
+    if retrieve_latest_data_from_twitter and not TWITTER_API_ON:
+        status += "CANNOT_REACH_OUT_TO_TWITTER-TWITTER_API_ON_FALSE: " + str(twitter_handle) + " "
+
+    if retrieve_latest_data_from_twitter and TWITTER_API_ON:
         save_twitter_images_locally = False
         status += "REACHING_OUT_TO_TWITTER: " + str(twitter_handle) + " "
         twitter_api_counter_manager = TwitterApiCounterManager()
@@ -3392,6 +3396,7 @@ def twitter_sign_in_retrieve_for_api(voter_device_id, image_load_deferred):  # t
     the signin is complete via a call to twitter_process_deferred_images_for_api
 
     :param voter_device_id:
+    :param image_load_deferred:
     :return:
     """
     status = ""

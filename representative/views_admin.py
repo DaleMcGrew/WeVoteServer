@@ -40,6 +40,7 @@ from wevote_settings.constants import IS_BATTLEGROUND_YEARS_AVAILABLE, OFFICE_HE
 
 OFFICES_SYNC_URL = get_environment_variable("OFFICES_SYNC_URL")  # officesSyncOut
 REPRESENTATIVES_SYNC_URL = "https://api.wevoteusa.org/apis/v1/representativesSyncOut/"
+TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 WEB_APP_ROOT_URL = get_environment_variable("WEB_APP_ROOT_URL")
 
@@ -1218,6 +1219,7 @@ def representative_edit_view(request, representative_id):
         'political_party':                  political_party,
         'possible_politician_list':         possible_politician_list,
         'show_this_year':                   show_this_year,
+        'TWITTER_API_ON':                   TWITTER_API_ON,
         'web_app_root_url':                 web_app_root_url,
     }
     return render(request, 'representative/representative_edit.html', template_values)
