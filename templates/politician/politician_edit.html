@@ -287,7 +287,7 @@
            target="_blank">View on Twitter <span class="glyphicon glyphicon-new-window"></span></a>&nbsp;&nbsp;&nbsp;
         {% if TWITTER_API_ON %}
             <a href="{% url 'import_export_twitter:refresh_twitter_politician_details' politician.id %}">Refresh Twitter Details</a>
-            {% endif %}
+        {% endif %}
         <br />
         Twitter Name: {{ politician.twitter_name }}<br />
         Twitter Description: {{ politician.twitter_description }}<br />
