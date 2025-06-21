@@ -109,6 +109,8 @@ except Exception:
     SOCIAL_BACKGROUND_IMAGE_HEIGHT = 200    # HTML x
     SOCIAL_BACKGROUND_IMAGE_WIDTH = 900     # HTML y
 
+TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
+
 log_time = False
 
 

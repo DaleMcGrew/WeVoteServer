@@ -12,6 +12,7 @@ import wevote_functions.admin
 import wevote_functions.admin
 from admin_tools.views import redirect_to_sign_in_page
 from candidate.models import CandidateManager
+from config.base import get_environment_variable
 from image.controllers import delete_cached_images_for_voter, delete_cached_images_for_candidate, \
     delete_cached_images_for_organization, delete_stored_images_for_voter
 from organization.controllers import update_social_media_statistics_in_other_tables
@@ -31,6 +32,8 @@ from .controllers import refresh_twitter_candidate_details, refresh_twitter_data
     transfer_candidate_twitter_handles_from_google_civic
 
 logger = wevote_functions.admin.get_logger(__name__)
+
+TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 
 
 @login_required
@@ -344,7 +347,7 @@ def scrape_website_for_social_media_view(request, organization_id, force_retriev
 
     # ######################################
     # TODO DALE We should stop saving organization_twitter_handle without saving a TwitterLinkToOrganization
-    if organization.organization_twitter_handle:
+    if organization.organization_twitter_handle and TWITTER_API_ON:
         twitter_user_id = 0
         from twitter.models import TwitterApiCounterManager
         twitter_api_counter_manager = TwitterApiCounterManager()

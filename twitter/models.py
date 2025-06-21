@@ -14,6 +14,7 @@ import wevote_functions.admin
 from config.base import get_environment_variable
 from wevote_functions.functions import convert_to_int, generate_random_string, positive_value_exists
 
+TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 TWITTER_BEARER_TOKEN = get_environment_variable("TWITTER_BEARER_TOKEN")
 
 logger = wevote_functions.admin.get_logger(__name__)
@@ -765,35 +766,38 @@ class TwitterUserManager(models.Manager):
             status += "TWITTER_USER_NOT_FOUND_LOCALLY "
 
         # If here, we want to reach out to Twitter to get info for this twitter_handle
-        from twitter.functions import retrieve_twitter_user_info
-        twitter_api_counter_manager = TwitterApiCounterManager()
-        twitter_results = retrieve_twitter_user_info(
-            twitter_user_id,
-            twitter_handle,
-            twitter_api_counter_manager=twitter_api_counter_manager,
-            parent='retrieve_twitter_user_locally_or_remotely'
-        )
-        if twitter_results['success'] is False:
-            status += twitter_results['status']
-            success = False
-        if twitter_results['twitter_handle_found']:
-            twitter_save_results = self.update_or_create_twitter_user(
-                twitter_dict=twitter_results['twitter_dict'],
-                twitter_id=twitter_user_id)
-            if twitter_save_results['twitter_user_found']:
-                twitter_user = twitter_save_results['twitter_user']
-                # If saved, pull the fresh results from the database and return
-                twitter_second_results = self.retrieve_twitter_user(twitter_user.twitter_id,
-                                                                    twitter_user.twitter_handle)
-                if twitter_second_results['twitter_user_found']:
-                    status += "TWITTER_USER_FOUND_LOCALLY2: " + twitter_second_results['status']
-                    return twitter_second_results
+        if TWITTER_API_ON:
+            from twitter.functions import retrieve_twitter_user_info
+            twitter_api_counter_manager = TwitterApiCounterManager()
+            twitter_results = retrieve_twitter_user_info(
+                twitter_user_id,
+                twitter_handle,
+                twitter_api_counter_manager=twitter_api_counter_manager,
+                parent='retrieve_twitter_user_locally_or_remotely'
+            )
+            if twitter_results['success'] is False:
+                status += twitter_results['status']
+                success = False
+            if twitter_results['twitter_handle_found']:
+                twitter_save_results = self.update_or_create_twitter_user(
+                    twitter_dict=twitter_results['twitter_dict'],
+                    twitter_id=twitter_user_id)
+                if twitter_save_results['twitter_user_found']:
+                    twitter_user = twitter_save_results['twitter_user']
+                    # If saved, pull the fresh results from the database and return
+                    twitter_second_results = self.retrieve_twitter_user(twitter_user.twitter_id,
+                                                                        twitter_user.twitter_handle)
+                    if twitter_second_results['twitter_user_found']:
+                        status += "TWITTER_USER_FOUND_LOCALLY2: " + twitter_second_results['status']
+                        return twitter_second_results
+                    else:
+                        status += "TWITTER_USER_NOT_FOUND_LOCALLY2: " + twitter_second_results['status']
                 else:
-                    status += "TWITTER_USER_NOT_FOUND_LOCALLY2: " + twitter_second_results['status']
+                    status += "TWITTER_UPDATE_OR_CREATE_PROBLEM: " + twitter_save_results['status']
             else:
-                status += "TWITTER_UPDATE_OR_CREATE_PROBLEM: " + twitter_save_results['status']
+                status += "TWITTER_USER_NOT_FOUND_FROM_TWITTER: " + twitter_results['status']
         else:
-            status += "TWITTER_USER_NOT_FOUND_FROM_TWITTER: " + twitter_results['status']
+            status += "TWITTER_API_ON-FALSE "
 
         results = {
             'success':                  success,
