@@ -1117,6 +1117,7 @@ def organization_edit_view(request, organization_id=0, organization_we_vote_id="
         'organization_types':                   organization_types_list,
         'state_list':                           sorted_state_list,
         'state_served_code':                    state_served_code,
+        'TWITTER_API_ON':                       TWITTER_API_ON,
         'twitter_handle_mismatch':              twitter_handle_mismatch,
         'twitter_link_to_organization':         twitter_link_to_organization,
         'twitter_link_to_organization_handle':  twitter_link_to_organization_handle,
@@ -1453,6 +1454,10 @@ def organization_edit_process_view(request):
     tiktok_url = request.POST.get('tiktok_url', False)
     if tiktok_url is not False:
         tiktok_url = normalize_tiktok_url(tiktok_url)
+    twitter_description = request.POST.get('twitter_description', False)
+    twitter_followers_count = request.POST.get('twitter_followers_count', False)
+    if positive_value_exists(twitter_followers_count):
+        twitter_followers_count = convert_to_int(twitter_followers_count)
     wikipedia_page_title = request.POST.get('wikipedia_page_title', False)
     wikipedia_photo_url = request.POST.get('wikipedia_photo_url', False)
 
@@ -1627,7 +1632,7 @@ def organization_edit_process_view(request):
                 twitter_handle_can_be_saved_without_conflict = False
 
     if positive_value_exists(organization_we_vote_id) and positive_value_exists(organization_twitter_handle) \
-            and twitter_handle_can_be_saved_without_conflict:
+            and twitter_handle_can_be_saved_without_conflict and TWITTER_API_ON:
         # Check to see if there is a TwitterLinkToOrganization entry tied to this organization_we_vote_id
         link_results = twitter_user_manager.retrieve_twitter_link_to_organization(
             organization_we_vote_id=organization_we_vote_id)
@@ -1855,6 +1860,14 @@ def organization_edit_process_view(request):
                 if twitter_handle_can_be_saved_without_conflict or not TWITTER_API_ON:
                     organization_on_stage.organization_twitter_handle = organization_twitter_handle
                 organization_on_stage.organization_twitter_updates_failing = organization_twitter_updates_failing
+            if not TWITTER_API_ON:
+                # If the Twitter API is not available, take in form fields related to Twitter metadata
+                if twitter_description is not False:
+                    organization_on_stage.twitter_description = twitter_description.strip() \
+                        if twitter_description else None
+                if twitter_followers_count is not False:
+                    organization_on_stage.twitter_followers_count = twitter_followers_count \
+                        if twitter_followers_count else None
             if organization_contact_form_url is not False:
                 organization_on_stage.organization_contact_form_url = organization_contact_form_url.strip()
             organization_defunct_before = positive_value_exists(organization_on_stage.organization_defunct)
@@ -1900,7 +1913,8 @@ def organization_edit_process_view(request):
         return HttpResponseRedirect(reverse('organization:organization_list', args=()))
 
     # Pull the latest Twitter information
-    if not organization_twitter_updates_failing and not organization_on_stage.organization_twitter_updates_failing:
+    if TWITTER_API_ON and \
+            not organization_twitter_updates_failing and not organization_on_stage.organization_twitter_updates_failing:
         results = refresh_twitter_organization_details(organization_on_stage)
         status += results['status']
 
