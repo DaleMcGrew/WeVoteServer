@@ -275,6 +275,31 @@
     </div>
 </div>
 
+{% if not TWITTER_API_ON %}
+<div class="form-group">
+    <label for="twitter_description_id" class="col-sm-3 control-label">
+        Twitter Description
+    </label>
+    <div class="col-sm-8">
+        <textarea name="twitter_description"
+                  class="form-control animated"
+                  id="twitter_description_id"
+                  placeholder="Twitter Description">{% if organization %}{{ organization.twitter_description|default_if_none:"" }}{% else %}{{ twitter_description }}{% endif %}</textarea>
+    </div>
+</div>
+    
+<div class="form-group">
+    <label for="twitter_followers_count_id" class="col-sm-3 control-label">
+        Twitter Followers Count
+    </label>
+    <div class="col-sm-8">
+        <input type="text" name="twitter_followers_count" id="twitter_followers_count_id" class="form-control"
+               value="{% if organization %}{{ organization.twitter_followers_count|default_if_none:0 }}{% else %}{{ twitter_followers_count }}{% endif %}"
+        />
+    </div>
+</div>
+{% endif %}{# if not TWITTER_API_ON #}
+
 <div class="form-group">
     <label for="organization_facebook_id" class="col-sm-3 control-label">
         Facebook URL
