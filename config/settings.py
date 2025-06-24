@@ -12,6 +12,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.8/ref/settings/
 """
 
+# June 24, 2025 -- The django/http is looking specifically in the settings.py file for this parameter
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20000000
+
 try:
     # If the WeVoteServer/config/production.py file exists, use it
     from config.production import *
