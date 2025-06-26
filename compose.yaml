@@ -3,9 +3,9 @@ name: wevote
 services:
   db:
     environment:
-      POSTGRES_DB: /run/secrets/postgres_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: /run/secrets/postgres_password
+      - POSTGRES_USER=${DATABASE_USER:-postgres}
+      - POSTGRES_DB=${DATABASE_NAME:-wevoteserverdb}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 10s
@@ -15,14 +15,8 @@ services:
     networks:
       - back_end
     restart: unless-stopped
-    secrets:
-      - postgres_db
-      - postgres_password
     user: postgres
     volumes:
-      - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
-      - ./pg_ident.conf:/etc/postgresql/pg_ident.conf:ro
       - postgres_data:/var/lib/postgresql/data
     
   aws:
@@ -49,21 +43,24 @@ services:
         condition: service_healthy
         restart: true
     environment:
-      DATABASE_HOST: db
-      DATABASE_PASSWORD: /run/secrets/db_password
-      DATABASE_PORT: "5432"
-      DJANGO_SUPERUSER_EMAIL: /run/secrets/django_admin_email
-      DJANGO_SUPERUSER_PASSWORD: /run/secrets/django_admin_password
+      - DATABASE_NAME=${DATABASE_NAME:-wevoteserverdb}
+      - DATABASE_NAME_READONLY=${DATABASE_NAME:-wevoteserverdb}
+      - DATABASE_HOST=db
+      - DATABASE_HOST_READONLY=db
+      - DATABASE_USER=${DATABASE_USER:-postgres}
+      - DATABASE_USER_READONLY=${DATABASE_USER:-postgres}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-admin}
+      - DATABASE_PASSWORD_READONLY=${DATABASE_PASSWORD:-admin}
+      - DATABASE_PORT=${DATABASE_PORT:-5432}
+      - DATABASE_PORT_READONLY=${DATABASE_PORT:-5432}
+      - DJANGO_SUPERUSER_EMAIL
+      - DJANGO_SUPERUSER_PASSWORD
     volumes:
       - .:/wevote/code
     networks:
       - back_end
     ports:
       - "127.0.0.1:8000:8000"
-    secrets:
-      - db_password
-      - django_admin_email
-      - django_admin_password
 
 networks:
   back_end:
@@ -71,19 +68,6 @@ networks:
     driver_opts:
       com.docker.network.bridge.host_binding_ipv4: "127.0.0.1"
 
-secrets:
-  postgres_db:
-    environment: POSTGRES_DB
-  postgres_user:
-    environment: POSTGRES_USER
-  postgres_password:
-    environment: POSTGRES_PASSWORD
-  db_password:
-    environment: DATABASE_PASSWORD
-  django_admin_email:
-    environment: DJANGO_SUPERUSER_EMAIL
-  django_admin_password:
-    environment: DJANGO_SUPERUSER_PASSWORD
 
 volumes:
   localstack:
