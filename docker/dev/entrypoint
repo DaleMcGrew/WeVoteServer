@@ -36,7 +36,7 @@ os.system("python manage.py makemigrations")
 log("Running 'manage.py migrate'")
 os.system("python manage.py migrate")
 log("Running 'manage.py createsuperuser'")
-os.system("python manage.py createsuperuser --no-input")
+os.system("python manage.py createsuperuser --noinput")
 
 
 sys.exit(subprocess.call(sys.argv[1:]))
