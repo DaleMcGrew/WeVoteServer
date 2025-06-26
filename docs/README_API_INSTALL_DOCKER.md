@@ -14,34 +14,35 @@ Only [Docker Desktop](https://docs.docker.com/get-docker/) is required.
     cd WeVoteServer
     ```
 
-2. Set environment variables in `.env`
+2. Create an environment file called `.env` to provide required settings. Example:
 
     ```
-    DATABASE_PASSWORD    
-    DJANGO_SUPERUSER_EMAIL
-    DJANGO_SUPERUSER_PASSWORD
-    POSTGRES_DB
-    POSTGRES_PASSWORD
-    POSTGRES_USER
+    DATABASE_PASSWORD=MyDBpassword
+    DJANGO_SUPERUSER_EMAIL=email@test.com
+    DJANGO_SUPERUSER_PASSWORD=MyAdminPassword
+
+    # You can optionally override the default values for database user and name
+    # DATABASE_USER=postgres
+    # DATABASE_NAME=wevoteserverdb
     ```
 
 3. Create and start containers
 
     ```
-    docker compose up --detach
+    docker compose up --detach --build --remove-orphans
     ```
-    Use the `--profile` flag, if you need AWS
+    Use the `--profile` flag, if you need to also run the AWS localstack container (when developing features specific to AWS environment).
     ```
-    docker compose --profile optional up --detach
+    docker compose --profile optional up --detach --build --remove-orphans
     ```
-    Access the API at [http://localhost:8000/](http://localhost:8000/)
+    Once docker is running, you can now access the API at [http://localhost:8000/](http://localhost:8000/)
 
 4. Stop and remove containers
 
     ```
     docker compose down
     ```
-    Use the `--volumes` flag to remove volumes
+    Use the `--volumes` flag to remove volumes (includes database data - you will lose all previously saved data). Only do this if you want to completely remove development environment or start over from scratch.
     ```
     docker compose down --volumes
     ```
