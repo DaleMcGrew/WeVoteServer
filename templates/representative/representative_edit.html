@@ -217,7 +217,10 @@
         <input type="checkbox" name="twitter_handle_updates_failing" id="twitter_handle_updates_failing_id" value="1"
                 {% if representative.twitter_handle_updates_failing %}checked{% endif %} />
         <label for="twitter_handle_updates_failing_id" style="font-weight: normal !important;">Twitter Updates Failing{% if representative.twitter_handle_updates_failing %}. <span style="color: darkgray">Our automated Twitter data update script had trouble retrieving this handle. Uncheck when fixed.</span>{% endif %}</label><br />
-        <a href="{% url 'import_export_twitter:refresh_twitter_representative_details' representative.id %}">Refresh Twitter Details</a><br />
+        {% if TWITTER_API_ON %}
+            <a href="{% url 'import_export_twitter:refresh_twitter_representative_details' representative.id %}">Refresh Twitter Details</a>
+            <br />
+        {% endif %}
         Twitter Name: {{ representative.twitter_name }}<br />
         Twitter Description: {{ representative.twitter_description }}<br />
         Twitter Location: {{ representative.twitter_location }}<br />

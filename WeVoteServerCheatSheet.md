@@ -10,7 +10,7 @@ Didn't find a wevote directory
 `(3.11.8) stevepodell@Steves-MBP-M1-Dec2021 log % sudo mkdir wevote`
 Make the directory 
 `(3.11.8) stevepodell@Steves-MBP-M1-Dec2021 log % sudo chown stevepodell:staff wevote`
-Give it access to yourself at your (non sudo) privilege level.  Be sure to substitue your Mac user name for 'stevepodell'
+Give it access to yourself at your (non sudo) privilege level.  Be sure to substitute your Mac user name for 'stevepodell'
 
 #### Stopping postgres loaded by brew, and not setup as a daemon
 ```

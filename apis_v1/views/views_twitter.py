@@ -18,6 +18,7 @@ from wevote_functions.functions import get_voter_device_id, positive_value_exist
 
 logger = wevote_functions.admin.get_logger(__name__)
 
+TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 LOG_OAUTH = get_environment_variable_default("TWITTER_LOG_OAUTH_STEPS", False)
 
@@ -257,18 +258,25 @@ def twitter_process_deferred_images_view(request):  # twitterProcessDeferredImag
     :param request:
     :return:
     """
-    results = twitter_process_deferred_images_for_api(
-        organization_we_vote_id=request.GET.get('organization_we_vote_id'),
-        status=request.GET.get('status'),
-        success=request.GET.get('success'),
-        twitter_id=request.GET.get('twitter_id'),
-        twitter_name=request.GET.get('twitter_name'),
-        twitter_profile_banner_url_https=request.GET.get('twitter_profile_banner_url_https'),
-        twitter_profile_image_url_https=request.GET.get('twitter_profile_image_url_https'),
-        twitter_secret_key=request.GET.get('twitter_secret_key'),
-        twitter_screen_name=request.GET.get('twitter_screen_name'),
-        voter_we_vote_id_for_cache=request.GET.get('voter_we_vote_id_for_cache')
-    )
+    if not TWITTER_API_ON:
+        results = {
+            'status': 'twitter_process_deferred_images_for_api_twitter_api_off',
+            'success': False,
+            'twitter_images_were_processed': False,
+        }
+    else:
+        results = twitter_process_deferred_images_for_api(
+            organization_we_vote_id=request.GET.get('organization_we_vote_id'),
+            status=request.GET.get('status'),
+            success=request.GET.get('success'),
+            twitter_id=request.GET.get('twitter_id'),
+            twitter_name=request.GET.get('twitter_name'),
+            twitter_profile_banner_url_https=request.GET.get('twitter_profile_banner_url_https'),
+            twitter_profile_image_url_https=request.GET.get('twitter_profile_image_url_https'),
+            twitter_secret_key=request.GET.get('twitter_secret_key'),
+            twitter_screen_name=request.GET.get('twitter_screen_name'),
+            voter_we_vote_id_for_cache=request.GET.get('voter_we_vote_id_for_cache')
+        )
 
     return HttpResponse(json.dumps(results), content_type='application/json')
 

@@ -63,6 +63,7 @@ from .models import Politician, PoliticianChangeLog, PoliticianManager, POLITICI
     RecommendedPoliticianLinkByPolitician
 from politician.controllers_generate_color import generate_background, validate_hex
 POLITICIANS_SYNC_URL = get_environment_variable("POLITICIANS_SYNC_URL")  # politiciansSyncOut
+TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 WEB_APP_ROOT_URL = get_environment_variable("WEB_APP_ROOT_URL")
 
@@ -2417,6 +2418,7 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 'name':     'tiktok_url',
                 'value':     politician_on_stage.tiktok_url
             },
+            'TWITTER_API_ON':       TWITTER_API_ON,
             'vote_smart_id':                vote_smart_id,
             'vote_smart_id_dict':
             {
@@ -2446,6 +2448,7 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         template_values = {
             'messages_on_stage':    messages_on_stage,
             # Incoming variables
+            'TWITTER_API_ON':       TWITTER_API_ON,
             'vote_smart_id':        vote_smart_id,
         }
     return render(request, 'politician/politician_edit.html', template_values)

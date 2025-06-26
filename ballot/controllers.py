@@ -2896,6 +2896,7 @@ def generate_ballot_item_list_from_object_list(
             office_we_vote_id = ballot_item.contest_office_we_vote_id
             primary_party = ""
             race_office_level = ""
+            state_code = ballot_item.state_code
             if positive_value_exists(office_we_vote_id):
                 office_results = contest_office_manager.retrieve_contest_office_from_we_vote_id(
                     office_we_vote_id, read_only=True)
@@ -2905,6 +2906,8 @@ def generate_ballot_item_list_from_object_list(
                     office_name = contest_office.office_name
                     primary_party = contest_office.primary_party
                     race_office_level = contest_office.ballotpedia_race_office_level
+                    state_code = contest_office.state_code \
+                        if positive_value_exists(contest_office.state_code) else state_code
             try:
                 results = candidate_list_object.retrieve_all_candidates_for_office(
                     office_we_vote_id=office_we_vote_id, read_only=True)
@@ -2939,6 +2942,7 @@ def generate_ballot_item_list_from_object_list(
                     'kind_of_ballot_item':          kind_of_ballot_item,
                     'primary_party':                primary_party,
                     'race_office_level':            race_office_level,
+                    'state_code':                   state_code,
                     'we_vote_id':                   office_we_vote_id,
                     'candidate_list':               candidates_to_display,
                 }
@@ -2957,6 +2961,7 @@ def generate_ballot_item_list_from_object_list(
                     measure_text = measure_results_dict[measure_we_vote_id].measure_text
                     measure_url = measure_results_dict[measure_we_vote_id].measure_url
                     no_vote_description = measure_results_dict[measure_we_vote_id].ballotpedia_no_vote_description
+                    state_code = measure_results_dict[measure_we_vote_id].state_code
                     yes_vote_description = measure_results_dict[measure_we_vote_id].ballotpedia_yes_vote_description
                 else:
                     ballot_item_display_name = ballot_item.ballot_item_display_name
@@ -2964,6 +2969,7 @@ def generate_ballot_item_list_from_object_list(
                     measure_text = ballot_item.measure_text
                     measure_url = ballot_item.measure_url
                     no_vote_description = ballot_item.no_vote_description
+                    state_code = ballot_item.state_code
                     yes_vote_description = ballot_item.yes_vote_description
             except Exception as e:
                 status += "PROBLEM_WITH_MEASURE: " + str(e) + " "
@@ -2972,6 +2978,7 @@ def generate_ballot_item_list_from_object_list(
                 measure_text = ballot_item.measure_text
                 measure_url = ballot_item.measure_url
                 no_vote_description = ballot_item.no_vote_description
+                state_code = ballot_item.state_code
                 yes_vote_description = ballot_item.yes_vote_description
             one_ballot_item = {
                 'ballot_item_display_name':     ballot_item_display_name,
@@ -2987,6 +2994,7 @@ def generate_ballot_item_list_from_object_list(
                 'district_name':                "",  # TODO Add this
                 'election_display_name':        "",  # TODO Add this
                 'regional_display_name':        "",  # TODO Add this
+                'state_code':                   state_code,
                 'state_display_name':           "",  # TODO Add this
                 'we_vote_id':                   measure_we_vote_id,
                 'yes_vote_description':         strip_html_tags(yes_vote_description),
