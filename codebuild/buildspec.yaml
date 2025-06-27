@@ -9,7 +9,7 @@ phases:
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=build}
       - ECR_LOGIN_HOST=$(echo $REPO_URI | sed 's#/.*##')
-      - IMAGE_NAME="weconnect-server:latest"
+      - IMAGE_NAME="wevote-api:latest"
       - echo Logging into ECR
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_LOGIN_HOST
   build:
