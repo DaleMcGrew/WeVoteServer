@@ -18,18 +18,22 @@
 from __future__ import print_function
 
 import datetime
+import json
 
 import firebase_admin
-from firebase_admin import messaging
+from firebase_admin import messaging, credentials
 import os
 from config.base import get_environment_variable
 
 # Create a real environment variable, from our cached configuration element
 try:
     creds_path_from_json = get_environment_variable("GOOGLE_APPLICATION_CREDENTIALS")
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path_from_json
+    if not os.path.exists(creds_path_from_json):
+        cred = credentials.Certificate(json.loads(creds_path_from_json))
+    else:
+        cred = credentials.Certificate(creds_path_from_json)
     # initialize the firebase admin API, that we use to send Firebase Cloud Messaging (FCM) messages
-    default_app = firebase_admin.initialize_app()
+    default_app = firebase_admin.initialize_app(cred)
     # print('firebase initialized')
 except Exception as e:
     pass

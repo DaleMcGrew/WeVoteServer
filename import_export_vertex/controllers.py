@@ -1,9 +1,10 @@
 # import_export_vertex/controllers.py
 # Brought to you by We Vote. Be good.
+import json
 import urllib.request
 from socket import timeout
 from time import time
-
+import os
 import vertexai
 from google.oauth2 import service_account
 from vertexai.language_models import TextGenerationModel
@@ -33,7 +34,11 @@ def ask_google_vertex_a_question(question, text_to_search):
         status += "GOOGLE_APPLICATION_CREDENTIALS_VERTEX (pointing to JSON credentials file) is missing."
 
     try:
-        credentials = service_account.Credentials.from_service_account_file(vertex_credentials)
+        if os.path.exists(vertex_credentials):
+            credentials = service_account.Credentials.from_service_account_file(vertex_credentials)
+        else:
+            service_account_info = json.loads(vertex_credentials)
+            credentials = service_account.Credentials.from_service_account_info(service_account_info)
 
         # os.environ["SERVICE_ACCOUNT_ID"] = 'vertexai-name-of-people@we-vote-ballot.iam.gserviceaccount.com'
         vertexai.init(
