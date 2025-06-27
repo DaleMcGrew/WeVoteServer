@@ -13,6 +13,9 @@ RUN pip install newrelic
 # copy entrypoint script
 COPY docker/prod/entrypoint /usr/local/bin/docker-entrypoint
 
+# COPY database migration script
+COPY docker/prod/run-db-migration /usr/local/bin/run-db-migration
+
 # setup user and create required directories
 RUN useradd wevote && mkdir -p /var/log/wevote /wevote && chown wevote:wevote /var/log/wevote /wevote
 
