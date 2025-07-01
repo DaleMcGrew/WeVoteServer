@@ -11,7 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django_user_agents.utils import get_user_agent
 
 import wevote_functions.admin
-from apis_v1.controllers import organization_follow, voter_count
+from apis_v1.controllers import voter_count  # organization_follow
 from apis_v1.views import views_voter_utils
 from ballot.controllers import choose_election_and_prepare_ballot_data, voter_ballot_items_retrieve_for_api, \
     voter_ballot_list_retrieve_for_api
@@ -62,6 +62,39 @@ from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
 logger = wevote_functions.admin.get_logger(__name__)
 
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
+
+
+def get_politician_data_results(candidate_id, candidate_we_vote_id, politician_id, politician_we_vote_id):
+    status = ""
+    # Make an extra effort to get latest politician data
+    if not positive_value_exists(politician_we_vote_id):
+        if positive_value_exists(candidate_we_vote_id):
+            try:
+                from candidate.models import CandidateCampaign
+                candidate = CandidateCampaign.objects.using('readonly').get(we_vote_id=candidate_we_vote_id)
+                politician_we_vote_id = candidate.politician_we_vote_id
+            except Exception as e:
+                status += "ERROR with CandidateCampaign.objects.using('readonly').get: " + str(e) + " "
+    if not positive_value_exists(politician_we_vote_id):
+        if positive_value_exists(candidate_id):
+            try:
+                from candidate.models import CandidateCampaign
+                candidate = CandidateCampaign.objects.using('readonly').get(id=candidate_id)
+                politician_we_vote_id = candidate.politician_we_vote_id
+            except Exception as e:
+                status += "ERROR with CandidateCampaign.objects.using('readonly').get: " + str(e) + " "
+    if positive_value_exists(politician_we_vote_id) and not positive_value_exists(politician_id):
+        try:
+            from politician.models import Politician
+            politician = Politician.objects.using('readonly').get(we_vote_id=politician_we_vote_id)
+            politician_id = politician.id
+        except Exception as e:
+            status += "ERROR with Politician.objects.using('readonly').get: " + str(e) + " "
+    return {
+        'politician_id': politician_id,
+        'politician_we_vote_id': politician_we_vote_id,
+        'status': status,
+    }
 
 
 @csrf_exempt
@@ -1874,27 +1907,41 @@ def voter_position_comment_save_view(request):  # voterPositionCommentSave
     :param request:
     :return:
     """
-    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
-    position_we_vote_id = request.GET.get('position_we_vote_id', "")
-
-    statement_text = request.GET.get('statement_text', False)
-    statement_html = request.GET.get('statement_html', False)
-
-    kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     ballot_item_we_vote_id = request.GET.get('ballot_item_we_vote_id', None)
-
+    candidate_id = None
     candidate_we_vote_id = None
+    kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     measure_we_vote_id = None
     office_we_vote_id = None
-    politician_we_vote_id = None
+    politician_id = None
+    politician_we_vote_id = request.GET.get('politician_we_vote_id', None)
+    position_we_vote_id = request.GET.get('position_we_vote_id', "")
+    stance = request.GET.get('stance', False)
+    if stance == 'false':
+        stance = False
+    statement_text = request.GET.get('statement_text', False)
+    statement_html = request.GET.get('statement_html', False)
+    status = ''
+    visibility_setting = request.GET.get('visibility_setting', False)
+    if visibility_setting == 'false':
+        visibility_setting = False
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
+
     if kind_of_ballot_item == CANDIDATE:
         candidate_we_vote_id = ballot_item_we_vote_id
     elif kind_of_ballot_item == MEASURE:
         measure_we_vote_id = ballot_item_we_vote_id
     elif kind_of_ballot_item == OFFICE:
         office_we_vote_id = ballot_item_we_vote_id
-    elif kind_of_ballot_item == POLITICIAN:
-        politician_we_vote_id = ballot_item_we_vote_id
+    # We don't mix ballot_item_we_vote_id and politician_we_vote_id
+    # elif kind_of_ballot_item == POLITICIAN:
+    #     politician_we_vote_id = ballot_item_we_vote_id
+
+    politician_data_results = \
+        get_politician_data_results(candidate_id, candidate_we_vote_id, politician_id, politician_we_vote_id)
+    politician_id = politician_data_results['politician_id']
+    politician_we_vote_id = politician_data_results['politician_we_vote_id']
+    status += politician_data_results['status']
 
     results = voter_position_comment_save_for_api(
         voter_device_id=voter_device_id,
@@ -1916,46 +1963,77 @@ def voter_opposing_save_view(request):  # voterOpposingSave
     :param request:
     :return:
     """
-    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
-    kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     ballot_item_id = request.GET.get('ballot_item_id', 0)
     ballot_item_we_vote_id = request.GET.get('ballot_item_we_vote_id', None)
-    user_agent_string = request.headers['user-agent']
-    user_agent_object = get_user_agent(request)
     candidate_id = 0
     candidate_we_vote_id = None
+    kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     measure_id = 0
     measure_we_vote_id = None
     politician_id = 0
-    politician_we_vote_id = None
+    politician_we_vote_id = request.GET.get('politician_we_vote_id', None)
     status = ''
+    success = True
+    user_agent_string = request.headers['user-agent']
+    user_agent_object = get_user_agent(request)
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
+
+    # Get voter object from voter_device_id
+    voter_manager = VoterManager()
+    results = voter_manager.retrieve_voter_from_voter_device_id(voter_device_id, read_only=True)
+    if results['voter_found']:
+        voter = results['voter']
+        voter_id = voter.id
+        # voter_is_signed_in = voter.is_signed_in()
+    else:
+        voter = None
+        voter_id = 0
+        status += results['status']
+        # voter_is_signed_in = False
+
     if kind_of_ballot_item == CANDIDATE:
         candidate_id = ballot_item_id
         candidate_we_vote_id = ballot_item_we_vote_id
     elif kind_of_ballot_item == MEASURE:
         measure_id = ballot_item_id
         measure_we_vote_id = ballot_item_we_vote_id
-    elif kind_of_ballot_item == POLITICIAN:
-        politician_id = ballot_item_id
-        politician_we_vote_id = ballot_item_we_vote_id
+    # We don't mix ballot_item_we_vote_id and politician_we_vote_id
+    # elif kind_of_ballot_item == POLITICIAN:
+    #     politician_id = ballot_item_id
+    #     politician_we_vote_id = ballot_item_we_vote_id
+
+    politician_data_results = \
+        get_politician_data_results(candidate_id, candidate_we_vote_id, politician_id, politician_we_vote_id)
+    politician_id = politician_data_results['politician_id']
+    politician_we_vote_id = politician_data_results['politician_we_vote_id']
+    status += politician_data_results['status']
+
     results = voter_opposing_save(
-        voter_device_id=voter_device_id,
         candidate_id=candidate_id,
         candidate_we_vote_id=candidate_we_vote_id,
+        make_heart_favorite_toggle_update=True,
         measure_id=measure_id,
         measure_we_vote_id=measure_we_vote_id,
         politician_id=politician_id,
         politician_we_vote_id=politician_we_vote_id,
         user_agent_string=user_agent_string,
-        user_agent_object=user_agent_object)
+        user_agent_object=user_agent_object,
+        voter=voter,
+        voter_device_id=voter_device_id,
+        voter_id=voter_id,
+    )
     status += results['status']
+    if not results['success']:
+        success = False
+
     json_data = {
         'ballot_item_id': results['ballot_item_id'],
         'ballot_item_we_vote_id': results['ballot_item_we_vote_id'],
         'kind_of_ballot_item': results['kind_of_ballot_item'],
+        'politician_we_vote_id': results['politician_we_vote_id'],
         'position_we_vote_id': results['position_we_vote_id'],
         'status': status,
-        'success': results['success'],
+        'success': success,
         'voter_device_id': voter_device_id,
         'voter_id': results['voter_id'],
     }
@@ -2155,28 +2233,38 @@ def voter_stop_opposing_save_view(request):  # voterStopOpposingSave
     :param request:
     :return:
     """
-    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
-    kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     ballot_item_id = request.GET.get('ballot_item_id', 0)
     ballot_item_we_vote_id = request.GET.get('ballot_item_we_vote_id', None)
-    user_agent_string = request.headers['user-agent']
-    user_agent_object = get_user_agent(request)
     candidate_id = 0
     candidate_we_vote_id = None
+    kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     measure_id = 0
     measure_we_vote_id = None
     politician_id = 0
-    politician_we_vote_id = None
+    politician_we_vote_id = request.GET.get('politician_we_vote_id', None)
+    status = ""
+    user_agent_string = request.headers['user-agent']
+    user_agent_object = get_user_agent(request)
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
+
     if kind_of_ballot_item == CANDIDATE:
         candidate_id = ballot_item_id
         candidate_we_vote_id = ballot_item_we_vote_id
     elif kind_of_ballot_item == MEASURE:
         measure_id = ballot_item_id
         measure_we_vote_id = ballot_item_we_vote_id
-    elif kind_of_ballot_item == POLITICIAN:
-        politician_id = ballot_item_id
-        politician_we_vote_id = ballot_item_we_vote_id
-    return voter_stop_opposing_save(
+    # We don't mix ballot_item_we_vote_id and politician_we_vote_id
+    # elif kind_of_ballot_item == POLITICIAN:
+    #     politician_id = ballot_item_id
+    #     politician_we_vote_id = ballot_item_we_vote_id
+
+    politician_data_results = \
+        get_politician_data_results(candidate_id, candidate_we_vote_id, politician_id, politician_we_vote_id)
+    politician_id = politician_data_results['politician_id']
+    politician_we_vote_id = politician_data_results['politician_we_vote_id']
+    status += politician_data_results['status']
+
+    results = voter_stop_opposing_save(
         voter_device_id=voter_device_id,
         candidate_id=candidate_id,
         candidate_we_vote_id=candidate_we_vote_id,
@@ -2186,6 +2274,20 @@ def voter_stop_opposing_save_view(request):  # voterStopOpposingSave
         politician_we_vote_id=politician_we_vote_id,
         user_agent_string=user_agent_string,
         user_agent_object=user_agent_object)
+    status += results['status']
+
+    json_data = {
+        'ballot_item_id': results['ballot_item_id'],
+        'ballot_item_we_vote_id': results['ballot_item_we_vote_id'],
+        'kind_of_ballot_item': results['kind_of_ballot_item'],
+        'politician_we_vote_id': results['politician_we_vote_id'],
+        'position_we_vote_id': results['position_we_vote_id'],
+        'status': status,
+        'success': results['success'],
+        'voter_device_id': voter_device_id,
+        'voter_id': results['voter_id'],
+    }
+    return HttpResponse(json.dumps(json_data), content_type='application/json')
 
 
 def voter_stop_supporting_save_view(request):  # voterStopSupportingSave
@@ -2195,28 +2297,38 @@ def voter_stop_supporting_save_view(request):  # voterStopSupportingSave
     :param request:
     :return:
     """
-    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
-    kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     ballot_item_id = request.GET.get('ballot_item_id', 0)
     ballot_item_we_vote_id = request.GET.get('ballot_item_we_vote_id', None)
-    user_agent_string = request.headers['user-agent']
-    user_agent_object = get_user_agent(request)
     candidate_id = 0
     candidate_we_vote_id = None
+    kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     measure_id = 0
     measure_we_vote_id = None
     politician_id = 0
-    politician_we_vote_id = None
+    politician_we_vote_id = request.GET.get('politician_we_vote_id', None)
+    status = ""
+    user_agent_string = request.headers['user-agent']
+    user_agent_object = get_user_agent(request)
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
+
     if kind_of_ballot_item == CANDIDATE:
         candidate_id = ballot_item_id
         candidate_we_vote_id = ballot_item_we_vote_id
     elif kind_of_ballot_item == MEASURE:
         measure_id = ballot_item_id
         measure_we_vote_id = ballot_item_we_vote_id
-    elif kind_of_ballot_item == POLITICIAN:
-        politician_id = ballot_item_id
-        politician_we_vote_id = ballot_item_we_vote_id
-    return voter_stop_supporting_save(
+    # We don't mix ballot_item_we_vote_id and politician_we_vote_id
+    # elif kind_of_ballot_item == POLITICIAN:
+    #     politician_id = ballot_item_id
+    #     politician_we_vote_id = ballot_item_we_vote_id
+
+    politician_data_results = \
+        get_politician_data_results(candidate_id, candidate_we_vote_id, politician_id, politician_we_vote_id)
+    politician_id = politician_data_results['politician_id']
+    politician_we_vote_id = politician_data_results['politician_we_vote_id']
+    status += politician_data_results['status']
+
+    results = voter_stop_supporting_save(
         voter_device_id=voter_device_id,
         candidate_id=candidate_id,
         candidate_we_vote_id=candidate_we_vote_id,
@@ -2226,6 +2338,19 @@ def voter_stop_supporting_save_view(request):  # voterStopSupportingSave
         politician_we_vote_id=politician_we_vote_id,
         user_agent_string=user_agent_string,
         user_agent_object=user_agent_object)
+    status += results['status']
+    json_data = {
+        'ballot_item_id': results['ballot_item_id'],
+        'ballot_item_we_vote_id': results['ballot_item_we_vote_id'],
+        'kind_of_ballot_item': results['kind_of_ballot_item'],
+        'politician_we_vote_id': results['politician_we_vote_id'],
+        'position_we_vote_id': results['position_we_vote_id'],
+        'status': status,
+        'success': results['success'],
+        'voter_device_id': voter_device_id,
+        'voter_id': results['voter_id'],
+    }
+    return HttpResponse(json.dumps(json_data), content_type='application/json')
 
 
 def voter_supporting_save_view(request):  # voterSupportingSave
@@ -2235,30 +2360,32 @@ def voter_supporting_save_view(request):  # voterSupportingSave
     :param request:
     :return:
     """
-    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
-    kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     ballot_item_id = request.GET.get('ballot_item_id', 0)
     ballot_item_we_vote_id = request.GET.get('ballot_item_we_vote_id', None)
-    user_agent_string = request.headers['user-agent']
-    user_agent_object = get_user_agent(request)
     candidate_id = 0
     candidate_we_vote_id = None
+    kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     measure_id = 0
     measure_we_vote_id = None
     politician_id = 0
-    politician_we_vote_id = None
+    politician_we_vote_id = request.GET.get('politician_we_vote_id', None)
     status = ''
+    user_agent_string = request.headers['user-agent']
+    user_agent_object = get_user_agent(request)
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
 
     # Get voter object from voter_device_id
     voter_manager = VoterManager()
     results = voter_manager.retrieve_voter_from_voter_device_id(voter_device_id, read_only=True)
     if results['voter_found']:
         voter = results['voter']
-        voter_is_signed_in = voter.is_signed_in()
+        voter_id = voter.id
+        # voter_is_signed_in = voter.is_signed_in()
     else:
         voter = None
+        voter_id = 0
         status += results['status']
-        voter_is_signed_in = False
+        # voter_is_signed_in = False
 
     if kind_of_ballot_item == CANDIDATE:
         candidate_id = ballot_item_id
@@ -2266,13 +2393,21 @@ def voter_supporting_save_view(request):  # voterSupportingSave
     elif kind_of_ballot_item == MEASURE:
         measure_id = ballot_item_id
         measure_we_vote_id = ballot_item_we_vote_id
-    elif kind_of_ballot_item == POLITICIAN:
-        politician_id = ballot_item_id
-        politician_we_vote_id = ballot_item_we_vote_id
+    # We don't mix ballot_item_we_vote_id and politician_we_vote_id
+    # elif kind_of_ballot_item == POLITICIAN:
+    #     politician_id = ballot_item_id
+    #     politician_we_vote_id = ballot_item_we_vote_id
+
+    politician_data_results = \
+        get_politician_data_results(candidate_id, candidate_we_vote_id, politician_id, politician_we_vote_id)
+    politician_id = politician_data_results['politician_id']
+    politician_we_vote_id = politician_data_results['politician_we_vote_id']
+    status += politician_data_results['status']
+
     results = voter_supporting_save(
         candidate_id=candidate_id,
         candidate_we_vote_id=candidate_we_vote_id,
-        direct_api_call=True,
+        make_heart_favorite_toggle_update=True,
         measure_id=measure_id,
         measure_we_vote_id=measure_we_vote_id,
         politician_id=politician_id,
@@ -2281,75 +2416,19 @@ def voter_supporting_save_view(request):  # voterSupportingSave
         user_agent_object=user_agent_object,
         voter=voter,
         voter_device_id=voter_device_id,
+        voter_id=voter_id,
     )
     status += results['status']
-
-    # Collect the variables needed by organization_follow
-    organization_id = 0
-    organization_we_vote_id = None
-    if voter_is_signed_in:
-        # Unfortunately there isn't a simple way to get organization ids from voter_supporting_save
-        if not positive_value_exists(politician_we_vote_id):
-            if positive_value_exists(politician_id):
-                try:
-                    from politician.models import Politician
-                    politician = Politician.objects.using('readonly').get(id=politician_id)
-                    politician_we_vote_id = politician.we_vote_id
-                except Exception:
-                    pass
-        if not positive_value_exists(politician_we_vote_id):
-            if positive_value_exists(candidate_we_vote_id):
-                try:
-                    from candidate.models import CandidateCampaign
-                    candidate = CandidateCampaign.objects.using('readonly').get(we_vote_id=candidate_we_vote_id)
-                    politician_we_vote_id = candidate.politician_we_vote_id
-                except Exception:
-                    pass
-        if not positive_value_exists(politician_we_vote_id):
-            if positive_value_exists(candidate_id):
-                try:
-                    from candidate.models import CandidateCampaign
-                    candidate = CandidateCampaign.objects.using('readonly').get(id=candidate_id)
-                    politician_we_vote_id = candidate.politician_we_vote_id
-                except Exception:
-                    pass
-        if positive_value_exists(politician_we_vote_id):
-            try:
-                queryset = Organization.objects.using('readonly').filter(politician_we_vote_id=politician_we_vote_id)
-                organization_list = list(queryset)
-                if len(organization_list) > 0:
-                    organization = organization_list[0]
-                    organization_id = organization.id
-                    organization_we_vote_id = organization.we_vote_id
-            except Exception as e:
-                pass
-
-    politician_organization_can_be_followed = \
-        voter_is_signed_in and \
-        positive_value_exists(politician_we_vote_id) and \
-        (positive_value_exists(organization_id) and positive_value_exists(organization_we_vote_id))
-    if politician_organization_can_be_followed:
-        # Now follow the organization
-        org_results = organization_follow(
-            direct_api_call=True,  # True?
-            organization_id=organization_id,
-            organization_we_vote_id=organization_we_vote_id,
-            # organization_twitter_handle=organization_twitter_handle,
-            # organization_follow_based_on_issue=organization_follow_based_on_issue,
-            politician_we_vote_id=politician_we_vote_id,
-            user_agent_string=user_agent_string,
-            user_agent_object=user_agent_object,
-            voter_device_id=voter_device_id,
-        )
-        status += org_results['status']
+    success = results['success']
 
     json_data = {
         'ballot_item_id': results['ballot_item_id'],
         'ballot_item_we_vote_id': results['ballot_item_we_vote_id'],
         'kind_of_ballot_item': results['kind_of_ballot_item'],
+        'politician_we_vote_id': results['politician_we_vote_id'],
         'position_we_vote_id': results['position_we_vote_id'],
         'status': status,
-        'success': results['success'],
+        'success': success,
         'voter_device_id': voter_device_id,
         'voter_id': results['voter_id'],
     }

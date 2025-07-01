@@ -11,7 +11,8 @@ from politician.models import PoliticianManager
 from django.http import HttpResponse
 from follow.models import FollowOrganizationList
 import json
-from position.models import ANY_STANCE, FRIENDS_ONLY, SUPPORT, OPPOSE, PositionManager, PositionListManager, PUBLIC_ONLY
+from position.models import ANY_STANCE, FRIENDS_ONLY, NO_STANCE, OPPOSE, PositionManager, PositionListManager, \
+    PUBLIC_ONLY, SUPPORT
 from voter.models import fetch_voter_id_from_voter_device_link, VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, is_voter_device_id_valid, positive_value_exists
@@ -455,7 +456,172 @@ def positions_public_count_for_contest_measure(measure_id, measure_we_vote_id, s
 def voter_opposing_save(  # voterOpposingSave
         candidate_id=0,
         candidate_we_vote_id='',
-        direct_api_call=False,
+        make_heart_favorite_toggle_update=False,
+        measure_id=0,
+        measure_we_vote_id='',
+        politician_id=0,
+        politician_we_vote_id='',
+        user_agent_string='',
+        user_agent_object=None,
+        voter=None,
+        voter_device_id='',
+        voter_id=0):
+    status = ''
+    success = True
+    final_results_dict = {
+        'ballot_item_id': 0,
+        'ballot_item_we_vote_id': '',
+        'kind_of_ballot_item': '',
+        'politician_we_vote_id': '',
+        'position_we_vote_id': '',
+        'status': status,
+        'success': success,
+        'voter': voter,
+        'voter_device_id': voter_device_id,
+        'voter_id': voter_id,
+    }
+    if hasattr(voter, 'we_vote_id') and positive_value_exists(voter.we_vote_id):
+        voter_id = voter.id
+        voter_is_signed_in = voter.is_signed_in()
+        final_results_dict['voter'] = voter
+        final_results_dict['voter_id'] = voter_id
+    else:
+        # Get voter object from voter_device_id
+        voter_manager = VoterManager()
+        results = voter_manager.retrieve_voter_from_voter_device_id(voter_device_id, read_only=True)
+        if results['voter_found']:
+            voter = results['voter']
+            voter_id = voter.id
+            voter_is_signed_in = voter.is_signed_in()
+            final_results_dict['voter'] = voter
+            final_results_dict['voter_id'] = voter_id
+        else:
+            voter = None
+            status += results['status']
+            voter_is_signed_in = False
+            final_results_dict['voter'] = None
+            final_results_dict['voter_id'] = 0
+
+    position_manager = PositionManager()
+    if positive_value_exists(candidate_id) or positive_value_exists(candidate_we_vote_id):
+        candidate_manager = CandidateManager()
+        # Since we can take in either candidate_id or candidate_we_vote_id, we need to retrieve the value we don't have
+        if positive_value_exists(candidate_id) and not positive_value_exists(candidate_we_vote_id):
+            candidate_we_vote_id = candidate_manager.fetch_candidate_we_vote_id_from_id(candidate_id)
+        if positive_value_exists(candidate_we_vote_id) and not positive_value_exists(candidate_id):
+            candidate_id = candidate_manager.fetch_candidate_id_from_we_vote_id(candidate_we_vote_id)
+
+        results = position_manager.toggle_on_voter_oppose_for_candidate(
+            voter_id,
+            candidate_id,
+            user_agent_string,
+            user_agent_object)
+        # toggle_off_voter_support_for_candidate
+        status += "OPPOSING_CANDIDATE: " + results['status'] + " "
+        success = results['success']
+        final_results_dict['ballot_item_id'] = convert_to_int(candidate_id)
+        final_results_dict['ballot_item_we_vote_id'] = candidate_we_vote_id
+        final_results_dict['kind_of_ballot_item'] = CANDIDATE
+        final_results_dict['politician_we_vote_id'] = politician_we_vote_id
+        final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        final_results_dict['status'] = status
+        final_results_dict['success'] = success
+    elif positive_value_exists(measure_id) or positive_value_exists(measure_we_vote_id):
+        contest_measure_manager = ContestMeasureManager()
+        # Since we can take in either measure_id or measure_we_vote_id, we need to retrieve the value we don't have
+        if positive_value_exists(measure_id) and not positive_value_exists(measure_we_vote_id):
+            measure_we_vote_id = contest_measure_manager.fetch_contest_measure_we_vote_id_from_id(measure_id)
+        if positive_value_exists(measure_we_vote_id) and not positive_value_exists(measure_id):
+            measure_id = contest_measure_manager.fetch_contest_measure_id_from_we_vote_id(measure_we_vote_id)
+
+        results = position_manager.toggle_on_voter_oppose_for_contest_measure(
+            voter_id,
+            measure_id,
+            user_agent_string,
+            user_agent_object)
+        status += "OPPOSING_MEASURE " + results['status']
+        success = results['success']
+        final_results_dict['ballot_item_id'] = convert_to_int(measure_id)
+        final_results_dict['ballot_item_we_vote_id'] = measure_we_vote_id
+        final_results_dict['kind_of_ballot_item'] = MEASURE
+        final_results_dict['politician_we_vote_id'] = ''
+        final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        final_results_dict['status'] = status
+        final_results_dict['success'] = success
+    elif positive_value_exists(politician_id) or positive_value_exists(politician_we_vote_id):
+        politician_manager = PoliticianManager()
+        # Since we can take in either politician_id or politician_we_vote_id, we need to retrieve value we don't have
+        if positive_value_exists(politician_id) and not positive_value_exists(politician_we_vote_id):
+            politician_we_vote_id = politician_manager.fetch_politician_we_vote_id_from_id(politician_id)
+        if positive_value_exists(politician_we_vote_id) and not positive_value_exists(politician_id):
+            politician_id = politician_manager.fetch_politician_id_from_we_vote_id(politician_we_vote_id)
+
+        results = position_manager.toggle_on_voter_position_for_politician(
+            voter_id=voter_id,
+            politician_id=politician_id,
+            stance=OPPOSE,
+            user_agent_string=user_agent_string,
+            user_agent_object=user_agent_object)
+        status += "OPPOSING_POLITICIAN: " + results['status'] + " "
+        success = results['success']
+
+        final_results_dict['ballot_item_id'] = 0
+        final_results_dict['ballot_item_we_vote_id'] = ''
+        final_results_dict['kind_of_ballot_item'] = POLITICIAN
+        final_results_dict['politician_we_vote_id'] = politician_we_vote_id
+        final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        final_results_dict['status'] = status
+        final_results_dict['success'] = success
+    else:
+        status += 'UNABLE_TO_SAVE_OPPOSE-CANDIDATE_ID_MEASURE_ID_AND_POLITICIAN_ID_MISSING '
+        success = False
+        final_results_dict['status'] = status
+        final_results_dict['success'] = False
+
+    # Collect the variables needed by organization_follow
+    organization_id = 0
+    organization_we_vote_id = None
+    if make_heart_favorite_toggle_update and voter_is_signed_in and politician_we_vote_id:
+        from organization.models import Organization
+        try:
+            queryset = Organization.objects.using('readonly').filter(politician_we_vote_id=politician_we_vote_id)
+            organization_list = list(queryset)
+            if len(organization_list) > 0:
+                organization = organization_list[0]
+                organization_id = organization.id
+                organization_we_vote_id = organization.we_vote_id
+        except Exception as e:
+            status += "ERROR with Organization.objects.using('readonly').filter: " + str(e) + " "
+
+    politician_organization_can_be_followed = \
+        make_heart_favorite_toggle_update and success and voter_is_signed_in and \
+        positive_value_exists(politician_we_vote_id) and \
+        (positive_value_exists(organization_id) and positive_value_exists(organization_we_vote_id))
+    if politician_organization_can_be_followed:
+        # Now dislike the organization
+        from apis_v1.controllers import organization_dislike
+        org_results = organization_dislike(
+            make_position_update=False,
+            organization_id=organization_id,
+            organization_we_vote_id=organization_we_vote_id,
+            politician_we_vote_id=politician_we_vote_id,
+            user_agent_string=user_agent_string,
+            user_agent_object=user_agent_object,
+            voter=voter,
+            voter_device_id=voter_device_id,
+            voter_id=voter_id,
+        )
+        status += org_results['status']
+        final_results_dict['status'] = status
+        if not org_results['success']:
+            final_results_dict['success'] = False
+
+    return final_results_dict
+
+
+def voter_stop_opposing_save(  # voterStopOpposingSave
+        candidate_id=0,
+        candidate_we_vote_id='',
         measure_id=0,
         measure_we_vote_id='',
         politician_id=0,
@@ -471,6 +637,7 @@ def voter_opposing_save(  # voterOpposingSave
         'ballot_item_id': 0,
         'ballot_item_we_vote_id': '',
         'kind_of_ballot_item': '',
+        'politician_we_vote_id': '',
         'position_we_vote_id': '',
         'status': status,
         'success': success,
@@ -509,34 +676,34 @@ def voter_opposing_save(  # voterOpposingSave
         elif positive_value_exists(candidate_we_vote_id):
             candidate_id = candidate_manager.fetch_candidate_id_from_we_vote_id(candidate_we_vote_id)
 
-        results = position_manager.toggle_on_voter_oppose_for_candidate(
+        results = position_manager.toggle_off_voter_oppose_for_candidate(
             voter_id,
             candidate_id,
             user_agent_string,
             user_agent_object)
-        # toggle_off_voter_support_for_candidate
-        status += "OPPOSING_CANDIDATE " + results['status'] + " "
+        status += "STOP_OPPOSING_CANDIDATE: " + results['status'] + " "
         success = results['success']
         final_results_dict['ballot_item_id'] = convert_to_int(candidate_id)
         final_results_dict['ballot_item_we_vote_id'] = candidate_we_vote_id
         final_results_dict['kind_of_ballot_item'] = CANDIDATE
+        final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     elif positive_value_exists(measure_id) or positive_value_exists(measure_we_vote_id):
         contest_measure_manager = ContestMeasureManager()
         # Since we can take in either measure_id or measure_we_vote_id, we need to retrieve the value we don't have
-        if positive_value_exists(measure_id):
+        if positive_value_exists(measure_id) and not positive_value_exists(measure_we_vote_id):
             measure_we_vote_id = contest_measure_manager.fetch_contest_measure_we_vote_id_from_id(measure_id)
-        elif positive_value_exists(measure_we_vote_id):
+        if positive_value_exists(measure_we_vote_id) and not positive_value_exists(measure_id):
             measure_id = contest_measure_manager.fetch_contest_measure_id_from_we_vote_id(measure_we_vote_id)
 
-        results = position_manager.toggle_on_voter_oppose_for_contest_measure(
+        results = position_manager.toggle_off_voter_oppose_for_contest_measure(
             voter_id,
             measure_id,
             user_agent_string,
             user_agent_object)
-        status += "OPPOSING_MEASURE " + results['status']
+        status += "STOP_OPPOSING_MEASURE" + results['status'] + " "
         success = results['success']
         final_results_dict['ballot_item_id'] = convert_to_int(measure_id)
         final_results_dict['ballot_item_we_vote_id'] = measure_we_vote_id
@@ -547,176 +714,34 @@ def voter_opposing_save(  # voterOpposingSave
     elif positive_value_exists(politician_id) or positive_value_exists(politician_we_vote_id):
         politician_manager = PoliticianManager()
         # Since we can take in either politician_id or politician_we_vote_id, we need to retrieve value we don't have
-        if positive_value_exists(politician_id):
+        if positive_value_exists(politician_id) and not positive_value_exists(politician_we_vote_id):
             politician_we_vote_id = politician_manager.fetch_politician_we_vote_id_from_id(politician_id)
-        elif positive_value_exists(politician_we_vote_id):
+        if positive_value_exists(politician_we_vote_id) and not positive_value_exists(politician_id):
             politician_id = politician_manager.fetch_politician_id_from_we_vote_id(politician_we_vote_id)
 
-        results = position_manager.toggle_on_voter_oppose_for_politician(
-            voter_id,
-            politician_id,
-            user_agent_string,
-            user_agent_object)
-        # toggle_off_voter_support_for_politician
-        status += "OPPOSING_POLITICIAN " + results['status'] + " "
+        results = position_manager.toggle_on_voter_position_for_politician(
+            voter_id=voter_id,
+            politician_id=politician_id,
+            stance=NO_STANCE,
+            user_agent_string=user_agent_string,
+            user_agent_object=user_agent_object)
+        status += "STOP_OPPOSING_POLITICIAN: " + results['status'] + " "
         success = results['success']
 
         final_results_dict['ballot_item_id'] = convert_to_int(politician_id)
         final_results_dict['ballot_item_we_vote_id'] = politician_we_vote_id
         final_results_dict['kind_of_ballot_item'] = POLITICIAN
+        final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     else:
-        status += 'UNABLE_TO_SAVE_OPPOSE-CANDIDATE_ID_MEASURE_ID_AND_POLITICIAN_ID_MISSING '
+        status += 'UNABLE_TO_SAVE-CANDIDATE_ID_MEASURE_ID_AND_POLITICIAN_ID_MISSING '
         success = False
         final_results_dict['status'] = status
         final_results_dict['success'] = success
-    save_oppose_position = False
-    if positive_value_exists(direct_api_call) and success:
-        if positive_value_exists(politician_we_vote_id):
-            save_oppose_position = True
-    if save_oppose_position:
-        from apis_v1.controllers import organization_dislike
-        follow_results = organization_dislike(
-            direct_api_call=False,
-            # organization_id=organization_id,
-            # organization_we_vote_id=organization_we_vote_id,
-            # organization_twitter_handle=organization_twitter_handle,
-            politician_we_vote_id=politician_we_vote_id,
-            user_agent_string=user_agent_string,
-            user_agent_object=user_agent_object,
-            voter=voter,
-            voter_device_id=voter_device_id,
-            voter_id=voter_id,
-        )
-        status += follow_results['status']
-        final_results_dict['status'] = status
-        final_results_dict['voter'] = voter
-        final_results_dict['voter_id'] = voter_id
 
     return final_results_dict
-
-
-def voter_stop_opposing_save(  # voterStopOpposingSave
-        candidate_id=0,
-        candidate_we_vote_id='',
-        measure_id=0,
-        measure_we_vote_id='',
-        politician_id=0,
-        politician_we_vote_id='',
-        user_agent_string='',
-        user_agent_object={},
-        voter_device_id='',
-        voter_id=0):
-    status = ''
-    success = True
-    # Get voter_id from the voter_device_id, so we can know who is supporting/opposing
-    results = is_voter_device_id_valid(voter_device_id)
-    if not results['success']:
-        json_data = {
-            'status': 'VALID_VOTER_DEVICE_ID_MISSING',
-            'success': False,
-            'ballot_item_id':           0,
-            'ballot_item_we_vote_id':   '',
-            'kind_of_ballot_item':      '',
-            'position_we_vote_id':      '',
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-
-    if not positive_value_exists(voter_id):
-        voter_id = fetch_voter_id_from_voter_device_link(voter_device_id)
-    if not positive_value_exists(voter_id):
-        json_data = {
-            'status': "VALID_VOTER_ID_MISSING ",
-            'success': False,
-            'ballot_item_id':           0,
-            'ballot_item_we_vote_id':   '',
-            'kind_of_ballot_item':      '',
-            'position_we_vote_id':      '',
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-
-    position_manager = PositionManager()
-    if positive_value_exists(candidate_id) or positive_value_exists(candidate_we_vote_id):
-        candidate_manager = CandidateManager()
-        # Since we can take in either candidate_id or candidate_we_vote_id, we need to retrieve the value we don't have
-        if positive_value_exists(candidate_id):
-            candidate_we_vote_id = candidate_manager.fetch_candidate_we_vote_id_from_id(candidate_id)
-        elif positive_value_exists(candidate_we_vote_id):
-            candidate_id = candidate_manager.fetch_candidate_id_from_we_vote_id(candidate_we_vote_id)
-
-        results = position_manager.toggle_off_voter_oppose_for_candidate(voter_id, candidate_id,
-                                                                                  user_agent_string, user_agent_object)
-        status += "STOP_OPPOSING_CANDIDATE " + results['status'] + " "
-        success = results['success']
-
-        json_data = {
-            'status':                   status,
-            'success':                  success,
-            'ballot_item_id':           convert_to_int(candidate_id),
-            'ballot_item_we_vote_id':   candidate_we_vote_id,
-            'kind_of_ballot_item':      CANDIDATE,
-            'position_we_vote_id':      results['position_we_vote_id'],
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-    elif positive_value_exists(measure_id) or positive_value_exists(measure_we_vote_id):
-        contest_measure_manager = ContestMeasureManager()
-        # Since we can take in either measure_id or measure_we_vote_id, we need to retrieve the value we don't have
-        if positive_value_exists(measure_id):
-            measure_we_vote_id = contest_measure_manager.fetch_contest_measure_we_vote_id_from_id(measure_id)
-        elif positive_value_exists(measure_we_vote_id):
-            measure_id = contest_measure_manager.fetch_contest_measure_id_from_we_vote_id(measure_we_vote_id)
-
-        results = position_manager.toggle_off_voter_oppose_for_contest_measure(voter_id, measure_id,
-                                                                               user_agent_string, user_agent_object)
-        status += "STOP_OPPOSING_MEASURE" + results['status'] + " "
-        success = results['success']
-
-        json_data = {
-            'status':                   status,
-            'success':                  success,
-            'ballot_item_id':           convert_to_int(measure_id),
-            'ballot_item_we_vote_id':   measure_we_vote_id,
-            'kind_of_ballot_item':      MEASURE,
-            'position_we_vote_id':      results['position_we_vote_id'],
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-    elif positive_value_exists(politician_id) or positive_value_exists(politician_we_vote_id):
-        politician_manager = PoliticianManager()
-        # Since we can take in either politician_id or politician_we_vote_id, we need to retrieve value we don't have
-        if positive_value_exists(politician_id):
-            politician_we_vote_id = politician_manager.fetch_politician_we_vote_id_from_id(politician_id)
-        elif positive_value_exists(politician_we_vote_id):
-            politician_id = politician_manager.fetch_politician_id_from_we_vote_id(politician_we_vote_id)
-
-        results = position_manager.toggle_off_voter_oppose_for_politician(
-            voter_id, politician_id, user_agent_string, user_agent_object)
-        status += "STOP_OPPOSING_POLITICIAN " + results['status'] + " "
-        success = results['success']
-
-        json_data = {
-            'status': status,
-            'success': success,
-            'ballot_item_id': convert_to_int(politician_id),
-            'ballot_item_we_vote_id': politician_we_vote_id,
-            'kind_of_ballot_item': POLITICIAN,
-            'position_we_vote_id': results['position_we_vote_id'],
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-    else:
-        status += 'UNABLE_TO_SAVE-CANDIDATE_ID_MEASURE_ID_AND_POLITICIAN_ID_MISSING '
-        success = False
-
-    json_data = {
-        'status': status,
-        'success': success,
-        'ballot_item_id':           0,
-        'ballot_item_we_vote_id':   '',
-        'kind_of_ballot_item':      '',
-        'position_we_vote_id':      '',
-    }
-    return HttpResponse(json.dumps(json_data), content_type='application/json')
 
 
 def voter_stop_supporting_save(  # voterStopSupportingSave
@@ -728,152 +753,16 @@ def voter_stop_supporting_save(  # voterStopSupportingSave
         politician_we_vote_id='',
         user_agent_string='',
         user_agent_object={},
-        voter_device_id='',
-        voter_id=0):
-    status = ''
-    # Get voter_id from the voter_device_id so we can know who is supporting/opposing
-    results = is_voter_device_id_valid(voter_device_id)
-    if not results['success']:
-        json_data = {
-            'status': 'VALID_VOTER_DEVICE_ID_MISSING',
-            'success': False,
-            'ballot_item_id':           0,
-            'ballot_item_we_vote_id':   '',
-            'kind_of_ballot_item':      '',
-            'position_we_vote_id':      '',
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-
-    if not positive_value_exists(voter_id):
-        voter_id = fetch_voter_id_from_voter_device_link(voter_device_id)
-    if not positive_value_exists(voter_id):
-        json_data = {
-            'status': "VALID_VOTER_ID_MISSING ",
-            'success': False,
-            'ballot_item_id':           0,
-            'ballot_item_we_vote_id':   '',
-            'kind_of_ballot_item':      '',
-            'position_we_vote_id':      '',
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-
-    position_manager = PositionManager()
-    if positive_value_exists(candidate_id) or positive_value_exists(candidate_we_vote_id):
-        candidate_manager = CandidateManager()
-        # Since we can take in either candidate_id or candidate_we_vote_id, we need to retrieve the value we don't have
-        if positive_value_exists(candidate_id):
-            candidate_we_vote_id = candidate_manager.fetch_candidate_we_vote_id_from_id(candidate_id)
-        elif positive_value_exists(candidate_we_vote_id):
-            candidate_id = candidate_manager.fetch_candidate_id_from_we_vote_id(candidate_we_vote_id)
-
-        results = position_manager.toggle_off_voter_support_for_candidate(
-            voter_id, candidate_id, user_agent_string, user_agent_object)
-        status += "STOP_SUPPORTING_CANDIDATE " + results['status'] + " "
-        success = results['success']
-
-        json_data = {
-            'status':                   status,
-            'success':                  success,
-            'ballot_item_id':           convert_to_int(candidate_id),
-            'ballot_item_we_vote_id':   candidate_we_vote_id,
-            'kind_of_ballot_item':      CANDIDATE,
-            'position_we_vote_id':      results['position_we_vote_id'],
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-    elif positive_value_exists(measure_id) or positive_value_exists(measure_we_vote_id):
-        contest_measure_manager = ContestMeasureManager()
-        # Since we can take in either measure_id or measure_we_vote_id, we need to retrieve the value we don't have
-        if positive_value_exists(measure_id):
-            measure_we_vote_id = contest_measure_manager.fetch_contest_measure_we_vote_id_from_id(measure_id)
-        elif positive_value_exists(measure_we_vote_id):
-            measure_id = contest_measure_manager.fetch_contest_measure_id_from_we_vote_id(measure_we_vote_id)
-
-        results = position_manager.toggle_off_voter_support_for_contest_measure(voter_id, measure_id,
-                                                                                user_agent_string, user_agent_object)
-        status += "STOP_SUPPORTING_MEASURE " + results['status'] + " "
-        success = results['success']
-
-        json_data = {
-            'status':                   status,
-            'success':                  success,
-            'ballot_item_id':           convert_to_int(measure_id),
-            'ballot_item_we_vote_id':   measure_we_vote_id,
-            'kind_of_ballot_item':      MEASURE,
-            'position_we_vote_id':      results['position_we_vote_id'],
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-    elif positive_value_exists(politician_id) or positive_value_exists(politician_we_vote_id):
-        politician_manager = PoliticianManager()
-        # Since we can take in either politician_id or politician_we_vote_id, we need to retrieve value we don't have
-        if positive_value_exists(politician_id):
-            politician_we_vote_id = politician_manager.fetch_politician_we_vote_id_from_id(politician_id)
-        elif positive_value_exists(politician_we_vote_id):
-            politician_id = politician_manager.fetch_politician_id_from_we_vote_id(politician_we_vote_id)
-
-        results = position_manager.toggle_off_voter_support_for_politician(
-            voter_id, politician_id, user_agent_string, user_agent_object)
-        status += "STOP_SUPPORTING_POLITICIAN " + results['status'] + " "
-        success = results['success']
-
-        json_data = {
-            'status': status,
-            'success': success,
-            'ballot_item_id': convert_to_int(politician_id),
-            'ballot_item_we_vote_id': politician_we_vote_id,
-            'kind_of_ballot_item': POLITICIAN,
-            'position_we_vote_id': results['position_we_vote_id'],
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-    else:
-        status += 'UNABLE_TO_SAVE-CANDIDATE_ID_MEASURE_ID_AND_POLITICIAN_ID_MISSING '
-        success = False
-
-    json_data = {
-        'status': status,
-        'success': success,
-        'ballot_item_id':           0,
-        'ballot_item_we_vote_id':   '',
-        'kind_of_ballot_item':      '',
-        'position_we_vote_id':      '',
-    }
-    return HttpResponse(json.dumps(json_data), content_type='application/json')
-
-
-def voter_supporting_save(  # voterSupportingSave
-        candidate_id=0,
-        candidate_we_vote_id='',
-        direct_api_call=False,
-        measure_id=0,
-        measure_we_vote_id='',
-        politician_id=0,
-        politician_we_vote_id='',
-        user_agent_string='',
-        user_agent_object=None,
         voter=None,
         voter_device_id='',
         voter_id=0):
-    """
-    Default to this being a private position
-    :param candidate_id:
-    :param candidate_we_vote_id:
-    :param direct_api_call:
-    :param measure_id:
-    :param measure_we_vote_id:
-    :param politician_id:
-    :param politician_we_vote_id:
-    :param user_agent_string:
-    :param user_agent_object:
-    :param voter:
-    :param voter_device_id:
-    :param voter_id:
-    :return:
-    """
-    status = ""
+    status = ''
     success = True
     final_results_dict = {
         'ballot_item_id': 0,
         'ballot_item_we_vote_id': '',
         'kind_of_ballot_item': '',
+        'politician_we_vote_id': '',
         'position_we_vote_id': '',
         'status': status,
         'success': success,
@@ -888,7 +777,7 @@ def voter_supporting_save(  # voterSupportingSave
         # Get voter_id from the voter_device_id so we can know who is supporting/opposing
         results = is_voter_device_id_valid(voter_device_id)
         if not results['success']:
-            status += "VALID_VOTER_DEVICE_ID_MISSING "
+            status += results['status'] + 'VALID_VOTER_DEVICE_ID_MISSING '
             final_results_dict['status'] = status
             final_results_dict['success'] = False
             return final_results_dict
@@ -907,38 +796,37 @@ def voter_supporting_save(  # voterSupportingSave
     if positive_value_exists(candidate_id) or positive_value_exists(candidate_we_vote_id):
         candidate_manager = CandidateManager()
         # Since we can take in either candidate_id or candidate_we_vote_id, we need to retrieve the value we don't have
-        if positive_value_exists(candidate_id):
+        if positive_value_exists(candidate_id) and not positive_value_exists(candidate_we_vote_id):
             candidate_we_vote_id = candidate_manager.fetch_candidate_we_vote_id_from_id(candidate_id)
-        elif positive_value_exists(candidate_we_vote_id):
+        if positive_value_exists(candidate_we_vote_id) and not positive_value_exists(candidate_id):
             candidate_id = candidate_manager.fetch_candidate_id_from_we_vote_id(candidate_we_vote_id)
 
-        results = position_manager.toggle_on_voter_support_for_candidate(
-            voter_id,
-            candidate_id,
-            user_agent_string,
-            user_agent_object)
-        status += "SUPPORTING_CANDIDATE " + results['status'] + " "
+        results = position_manager.toggle_off_voter_support_for_candidate(
+            voter_id, candidate_id, user_agent_string, user_agent_object)
+        status += "STOP_SUPPORTING_CANDIDATE " + results['status'] + " "
         success = results['success']
-
         final_results_dict['ballot_item_id'] = convert_to_int(candidate_id)
         final_results_dict['ballot_item_we_vote_id'] = candidate_we_vote_id
         final_results_dict['kind_of_ballot_item'] = CANDIDATE
+        final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     elif positive_value_exists(measure_id) or positive_value_exists(measure_we_vote_id):
         contest_measure_manager = ContestMeasureManager()
         # Since we can take in either measure_id or measure_we_vote_id, we need to retrieve the value we don't have
-        if positive_value_exists(measure_id):
+        if positive_value_exists(measure_id) and not positive_value_exists(measure_we_vote_id):
             measure_we_vote_id = contest_measure_manager.fetch_contest_measure_we_vote_id_from_id(measure_id)
-        elif positive_value_exists(measure_we_vote_id):
+        if positive_value_exists(measure_we_vote_id) and not positive_value_exists(measure_id):
             measure_id = contest_measure_manager.fetch_contest_measure_id_from_we_vote_id(measure_we_vote_id)
 
-        results = position_manager.toggle_on_voter_support_for_contest_measure(
-            voter_id, measure_id, user_agent_string, user_agent_object)
-        status += "SUPPORTING_MEASURE: " + results['status'] + " "
+        results = position_manager.toggle_off_voter_support_for_contest_measure(
+            voter_id,
+            measure_id,
+            user_agent_string,
+            user_agent_object)
+        status += "STOP_SUPPORTING_MEASURE " + results['status'] + " "
         success = results['success']
-
         final_results_dict['ballot_item_id'] = convert_to_int(measure_id)
         final_results_dict['ballot_item_we_vote_id'] = measure_we_vote_id
         final_results_dict['kind_of_ballot_item'] = MEASURE
@@ -948,9 +836,149 @@ def voter_supporting_save(  # voterSupportingSave
     elif positive_value_exists(politician_id) or positive_value_exists(politician_we_vote_id):
         politician_manager = PoliticianManager()
         # Since we can take in either politician_id or politician_we_vote_id, we need to retrieve value we don't have
-        if positive_value_exists(politician_id):
+        if positive_value_exists(politician_id) and not positive_value_exists(politician_we_vote_id):
             politician_we_vote_id = politician_manager.fetch_politician_we_vote_id_from_id(politician_id)
-        elif positive_value_exists(politician_we_vote_id):
+        if positive_value_exists(politician_we_vote_id) and not positive_value_exists(politician_id):
+            politician_id = politician_manager.fetch_politician_id_from_we_vote_id(politician_we_vote_id)
+
+        results = position_manager.toggle_off_voter_support_for_politician(
+            voter_id, politician_id, user_agent_string, user_agent_object)
+        status += "STOP_SUPPORTING_POLITICIAN: " + results['status'] + " "
+        success = results['success']
+
+        final_results_dict['ballot_item_id'] = convert_to_int(politician_id)
+        final_results_dict['ballot_item_we_vote_id'] = politician_we_vote_id
+        final_results_dict['kind_of_ballot_item'] = POLITICIAN
+        final_results_dict['politician_we_vote_id'] = politician_we_vote_id
+        final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        final_results_dict['status'] = status
+        final_results_dict['success'] = success
+    else:
+        status += 'UNABLE_TO_SAVE-CANDIDATE_ID_MEASURE_ID_AND_POLITICIAN_ID_MISSING '
+        success = False
+        final_results_dict['status'] = status
+        final_results_dict['success'] = success
+
+    return final_results_dict
+
+
+def voter_supporting_save(  # voterSupportingSave
+        candidate_id=0,
+        candidate_we_vote_id='',
+        make_heart_favorite_toggle_update=False,
+        measure_id=0,
+        measure_we_vote_id='',
+        politician_id=0,
+        politician_we_vote_id='',
+        user_agent_string='',
+        user_agent_object=None,
+        voter=None,
+        voter_device_id='',
+        voter_id=0):
+    """
+    Default to this being a private position
+    :param candidate_id:
+    :param candidate_we_vote_id:
+    :param make_heart_favorite_toggle_update:
+    :param measure_id:
+    :param measure_we_vote_id:
+    :param politician_id:
+    :param politician_we_vote_id:
+    :param user_agent_string:
+    :param user_agent_object:
+    :param voter:
+    :param voter_device_id:
+    :param voter_id:
+    :return:
+    """
+    status = ""
+    success = True
+    final_results_dict = {
+        'ballot_item_id': 0,
+        'ballot_item_we_vote_id': '',
+        'kind_of_ballot_item': '',
+        'politician_we_vote_id': '',
+        'position_we_vote_id': '',
+        'status': status,
+        'success': success,
+        'voter': voter,
+        'voter_device_id': voter_device_id,
+        'voter_id': voter_id,
+    }
+    if hasattr(voter, 'we_vote_id') and positive_value_exists(voter.we_vote_id):
+        voter_id = voter.id
+        voter_is_signed_in = voter.is_signed_in()
+        final_results_dict['voter'] = voter
+        final_results_dict['voter_id'] = voter_id
+    else:
+        # Get voter object from voter_device_id
+        voter_manager = VoterManager()
+        results = voter_manager.retrieve_voter_from_voter_device_id(voter_device_id, read_only=True)
+        if results['voter_found']:
+            voter = results['voter']
+            voter_id = voter.id
+            voter_is_signed_in = voter.is_signed_in()
+            final_results_dict['voter'] = voter
+            final_results_dict['voter_id'] = voter_id
+        else:
+            voter = None
+            status += results['status']
+            voter_is_signed_in = False
+            final_results_dict['voter'] = None
+            final_results_dict['voter_id'] = 0
+
+    position_manager = PositionManager()
+    if positive_value_exists(candidate_id) or positive_value_exists(candidate_we_vote_id):
+        candidate_manager = CandidateManager()
+        # Since we can take in either candidate_id or candidate_we_vote_id, we need to retrieve the value we don't have
+        if positive_value_exists(candidate_id) and not positive_value_exists(candidate_we_vote_id):
+            candidate_we_vote_id = candidate_manager.fetch_candidate_we_vote_id_from_id(candidate_id)
+        if positive_value_exists(candidate_we_vote_id) and not positive_value_exists(candidate_id):
+            candidate_id = candidate_manager.fetch_candidate_id_from_we_vote_id(candidate_we_vote_id)
+
+        results = position_manager.toggle_on_voter_support_for_candidate(
+            voter_id,
+            candidate_id,
+            user_agent_string,
+            user_agent_object)
+        status += "SUPPORTING_CANDIDATE: " + results['status'] + " "
+        success = results['success']
+        final_results_dict['ballot_item_id'] = convert_to_int(candidate_id)
+        final_results_dict['ballot_item_we_vote_id'] = candidate_we_vote_id
+        final_results_dict['kind_of_ballot_item'] = CANDIDATE
+        final_results_dict['politician_we_vote_id'] = politician_we_vote_id
+        final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        final_results_dict['status'] = status
+        final_results_dict['success'] = success
+    elif positive_value_exists(measure_id) or positive_value_exists(measure_we_vote_id):
+        contest_measure_manager = ContestMeasureManager()
+        # Since we can take in either measure_id or measure_we_vote_id, we need to retrieve the value we don't have
+        if positive_value_exists(measure_id) and not positive_value_exists(measure_we_vote_id):
+            measure_we_vote_id = contest_measure_manager.fetch_contest_measure_we_vote_id_from_id(measure_id)
+        if positive_value_exists(measure_we_vote_id) and not positive_value_exists(measure_id):
+            measure_id = contest_measure_manager.fetch_contest_measure_id_from_we_vote_id(measure_we_vote_id)
+
+        results = position_manager.toggle_on_voter_support_for_contest_measure(
+            voter_id,
+            measure_id,
+            user_agent_string,
+            user_agent_object)
+        status += "SUPPORTING_MEASURE: " + results['status'] + " "
+        success = results['success']
+
+        final_results_dict['ballot_item_id'] = convert_to_int(measure_id)
+        final_results_dict['ballot_item_we_vote_id'] = measure_we_vote_id
+        final_results_dict['kind_of_ballot_item'] = MEASURE
+        final_results_dict['politician_we_vote_id'] = ''
+        final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        final_results_dict['status'] = status
+        final_results_dict['success'] = success
+    elif positive_value_exists(politician_id) or positive_value_exists(politician_we_vote_id):
+        politician_manager = PoliticianManager()
+        # Since we can take in either politician_id or politician_we_vote_id, we need to retrieve value we don't have
+        if positive_value_exists(politician_id) and not positive_value_exists(politician_we_vote_id):
+            politician_we_vote_id = politician_manager.fetch_politician_we_vote_id_from_id(politician_id)
+        if positive_value_exists(politician_we_vote_id) and not positive_value_exists(politician_id):
             politician_id = politician_manager.fetch_politician_id_from_we_vote_id(politician_we_vote_id)
 
         results = position_manager.toggle_on_voter_position_for_politician(
@@ -962,14 +990,54 @@ def voter_supporting_save(  # voterSupportingSave
         status += "SUPPORTING_POLITICIAN: " + results['status'] + " "
         success = results['success']
 
-        final_results_dict['ballot_item_id'] = convert_to_int(politician_id)
-        final_results_dict['ballot_item_we_vote_id'] = politician_we_vote_id
+        final_results_dict['ballot_item_id'] = 0
+        final_results_dict['ballot_item_we_vote_id'] = ''
         final_results_dict['kind_of_ballot_item'] = POLITICIAN
+        final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     else:
         status += 'UNABLE_TO_SAVE-CANDIDATE_POLITICIAN_AND_MEASURE_ID_MISSING '
+        success = False
         final_results_dict['status'] = status
         final_results_dict['success'] = False
+
+    # Collect the variables needed by organization_follow
+    organization_id = 0
+    organization_we_vote_id = None
+    if make_heart_favorite_toggle_update and voter_is_signed_in and politician_we_vote_id:
+        from organization.models import Organization
+        try:
+            queryset = Organization.objects.using('readonly').filter(politician_we_vote_id=politician_we_vote_id)
+            organization_list = list(queryset)
+            if len(organization_list) > 0:
+                organization = organization_list[0]
+                organization_id = organization.id
+                organization_we_vote_id = organization.we_vote_id
+        except Exception as e:
+            status += "ERROR with Organization.objects.using('readonly').filter: " + str(e) + " "
+
+    politician_organization_can_be_followed = \
+        make_heart_favorite_toggle_update and success and voter_is_signed_in and \
+        positive_value_exists(politician_we_vote_id) and \
+        (positive_value_exists(organization_id) and positive_value_exists(organization_we_vote_id))
+    if politician_organization_can_be_followed:
+        # Now follow the organization
+        from apis_v1.controllers import organization_follow
+        org_results = organization_follow(
+            make_position_update=False,
+            organization_id=organization_id,
+            organization_we_vote_id=organization_we_vote_id,
+            politician_we_vote_id=politician_we_vote_id,
+            user_agent_string=user_agent_string,
+            user_agent_object=user_agent_object,
+            voter=voter,
+            voter_device_id=voter_device_id,
+            voter_id=voter_id,
+        )
+        status += org_results['status']
+        final_results_dict['status'] = status
+        if not org_results['success']:
+            final_results_dict['success'] = False
     return final_results_dict

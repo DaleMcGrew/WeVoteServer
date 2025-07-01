@@ -76,7 +76,7 @@ def organization_dislike_api_view(request):  # organizationDislike
     user_agent_object = get_user_agent(request)
     voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
     results = organization_dislike(
-        direct_api_call=True,
+        make_position_update=True,
         organization_id=organization_id,
         organization_we_vote_id=organization_we_vote_id,
         organization_twitter_handle=organization_twitter_handle,
@@ -116,7 +116,7 @@ def organization_follow_api_view(request):  # organizationFollow
     user_agent_object = get_user_agent(request)
     voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
     results = organization_follow(
-        direct_api_call=True,
+        make_position_update=True,
         organization_id=organization_id,
         organization_we_vote_id=organization_we_vote_id,
         organization_twitter_handle=organization_twitter_handle,

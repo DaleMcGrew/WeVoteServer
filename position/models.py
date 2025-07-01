@@ -3335,8 +3335,9 @@ class PositionListManager(models.Manager):
 
                 enhanced_position_list.append(position)
 
+            status += 'POSITION_LIST_ENHANCED '
             results = {
-                'status':                   'VOTER_POSITION_LIST_FOUND',
+                'status':                   status,
                 'success':                  True,
                 'friends_positions_list':   friends_positions_list,
                 'position_list_found':      True,
@@ -3536,15 +3537,15 @@ class PositionListManager(models.Manager):
 
             simple_position_list = []
             for position in position_list_filtered:
-                # Make sure we have a ballot_item_we_vote_id
                 if positive_value_exists(position.candidate_campaign_we_vote_id):
                     ballot_item_we_vote_id = position.candidate_campaign_we_vote_id
                 elif positive_value_exists(position.contest_measure_we_vote_id):
                     ballot_item_we_vote_id = position.contest_measure_we_vote_id
-                elif positive_value_exists(position.politician_we_vote_id):
-                    ballot_item_we_vote_id = position.politician_we_vote_id
+                # We don't want to mix politician_we_vote_id with ballot_item_we_vote_id
+                # elif positive_value_exists(position.politician_we_vote_id):
+                #     ballot_item_we_vote_id = position.politician_we_vote_id
                 else:
-                    continue
+                    ballot_item_we_vote_id = ''
 
                 ballot_item_display_name = position.ballot_item_display_name \
                     if positive_value_exists(position.ballot_item_display_name) else ''
@@ -6330,6 +6331,7 @@ class PositionManager(models.Manager):
         politician_found = False
         politician_manager = PoliticianManager()
         politician_we_vote_id = ""
+        user_agent_object = {} if user_agent_object is None else user_agent_object
         voter_manager = VoterManager()
 
         # In order to show a position publicly we need to tie the position to either organization_we_vote_id,
@@ -6391,8 +6393,8 @@ class PositionManager(models.Manager):
                         voter_position_on_stage.state_code = candidate.state_code
                         voter_position_on_stage.ballot_item_display_name = candidate.candidate_name
                         # Deprecate direct storing of contest_office
-                        voter_position_on_stage.contest_office_id = candidate.contest_office_id
-                        voter_position_on_stage.contest_office_we_vote_id = candidate.contest_office_we_vote_id
+                        # voter_position_on_stage.contest_office_id = candidate.contest_office_id
+                        # voter_position_on_stage.contest_office_we_vote_id = candidate.contest_office_we_vote_id
                         google_civic_election_id = candidate.google_civic_election_id
                         # Deprecate google_civic_election_id
                         voter_position_on_stage.google_civic_election_id = candidate.google_civic_election_id
@@ -6591,7 +6593,7 @@ class PositionManager(models.Manager):
                 status += 'NEW_STANCE_SAVED '
             except Exception as e:
                 handle_record_not_saved_exception(e, logger=logger)
-                status += 'NEW_STANCE_COULD_NOT_BE_SAVED '
+                status += 'NEW_STANCE_COULD_NOT_BE_SAVED: ' + str(e) + ' '
 
         save_position_object = False
         if voter_position_on_stage_found:
@@ -6717,8 +6719,9 @@ class PositionManager(models.Manager):
                 ballot_item_we_vote_id = candidate_we_vote_id
             elif positive_value_exists(contest_measure_we_vote_id):
                 ballot_item_we_vote_id = contest_measure_we_vote_id
-            elif positive_value_exists(politician_we_vote_id):
-                ballot_item_we_vote_id = politician_we_vote_id
+            # 2025-06-27 We don't want to mix politician_we_vote_id with ballot_item_we_vote_id
+            # elif positive_value_exists(politician_we_vote_id):
+            #     ballot_item_we_vote_id = politician_we_vote_id
             else:
                 ballot_item_we_vote_id = ""
             is_bot = user_agent_object.is_bot or robot_detection.is_robot(user_agent_string)
@@ -6731,6 +6734,7 @@ class PositionManager(models.Manager):
                 state_code=state_code,
                 organization_we_vote_id=organization_we_vote_id_temp,
                 organization_id=organization_id_temp,
+                politician_we_vote_id=politician_we_vote_id,
                 google_civic_election_id=google_civic_election_id,
                 user_agent_string=user_agent_string,
                 is_bot=is_bot,
