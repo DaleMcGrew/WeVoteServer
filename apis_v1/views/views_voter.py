@@ -11,7 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django_user_agents.utils import get_user_agent
 
 import wevote_functions.admin
-from apis_v1.controllers import voter_count  # organization_follow
+from apis_v1.controllers import voter_count
 from apis_v1.views import views_voter_utils
 from ballot.controllers import choose_election_and_prepare_ballot_data, voter_ballot_items_retrieve_for_api, \
     voter_ballot_list_retrieve_for_api
@@ -2378,12 +2378,10 @@ def voter_supporting_save_view(request):  # voterSupportingSave
     if results['voter_found']:
         voter = results['voter']
         voter_id = voter.id
-        # voter_is_signed_in = voter.is_signed_in()
     else:
         voter = None
         voter_id = 0
         status += results['status']
-        # voter_is_signed_in = False
 
     if kind_of_ballot_item == CANDIDATE:
         candidate_id = ballot_item_id
