@@ -353,7 +353,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000', 'https://localhost:8000',
     'http://wevotedeveloper.com', 'https://wevotedeveloper.com',
 ]
-DATA_UPLOAD_MAX_MEMORY_SIZE = 20000000          # This does not seem to have any effect  June 24, 2025
+DATA_UPLOAD_MAX_MEMORY_SIZE = 22000000  # MAX_IMAGE_SIZE (room for 21MB file), but this does not seem to have any effect
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 4096
 
 CORS_ORIGIN_WHITELIST = (

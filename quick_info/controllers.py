@@ -345,11 +345,11 @@ def quick_info_retrieve_for_api(kind_of_ballot_item, ballot_item_we_vote_id):
         candidate_we_vote_id = ballot_item_we_vote_id
         politician_we_vote_id = ""
         measure_we_vote_id = ""
-    elif kind_of_ballot_item == POLITICIAN:
-        office_we_vote_id = ""
-        candidate_we_vote_id = ""
-        politician_we_vote_id = ballot_item_we_vote_id
-        measure_we_vote_id = ""
+    # elif kind_of_ballot_item == POLITICIAN:
+    #     office_we_vote_id = ""
+    #     candidate_we_vote_id = ""
+    #     politician_we_vote_id = ballot_item_we_vote_id
+    #     measure_we_vote_id = ""
     elif kind_of_ballot_item == MEASURE:
         office_we_vote_id = ""
         candidate_we_vote_id = ""

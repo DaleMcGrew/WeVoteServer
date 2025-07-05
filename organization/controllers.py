@@ -2075,6 +2075,7 @@ def organization_follow_or_unfollow_or_ignore(  # organizationFollow organizatio
 
     voter_manager = VoterManager()
     if hasattr(voter, 'we_vote_id') and positive_value_exists(voter.we_vote_id):
+        voter_id = voter.id
         voter_we_vote_id = voter.we_vote_id
         is_signed_in = voter.is_signed_in()
         voter_linked_organization_we_vote_id = voter.linked_organization_we_vote_id

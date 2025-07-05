@@ -565,6 +565,9 @@ def combine_two_positions_for_voter_and_save(from_position, to_position):
     elif do_these_match(from_position, to_position, "contest_measure_we_vote_id"):
         # This is good
         pass
+    elif do_these_match(from_position, to_position, "politician_we_vote_id"):
+        # This is good
+        pass
     else:
         return to_position
 
@@ -4183,38 +4186,34 @@ def voter_position_comment_save_for_api(  # voterPositionCommentSave
         statement_html='',
         ):
     status = ""
+    final_results_dict = {
+        'status': status,
+        'success': True,
+        'ballot_item_id': 0,
+        'ballot_item_we_vote_id': '',
+        'is_public_position': False,
+        'kind_of_ballot_item': '',
+        'politician_we_vote_id': politician_we_vote_id,
+        'position_we_vote_id': position_we_vote_id,
+        'statement_text': statement_text,
+        'voter_device_id': voter_device_id,
+    }
     results = is_voter_device_id_valid(voter_device_id)
     if not results['success']:
         json_data_from_results = results['json_data']
         status += json_data_from_results['status']
-        json_data = {
-            'status':                   status,
-            'success':                  False,
-            'ballot_item_id':           0,
-            'ballot_item_we_vote_id':   '',
-            'kind_of_ballot_item':      '',
-            'statement_text':           statement_text,
-            'is_public_position':       False
-        }
-        return json_data
+        final_results_dict['status'] = status
+        final_results_dict['success'] = False
+        return final_results_dict
 
     voter_manager = VoterManager()
     voter_results = voter_manager.retrieve_voter_from_voter_device_id(voter_device_id, read_only=True)
     voter_id = voter_results['voter_id']
     if not positive_value_exists(voter_id):
         status += "VOTER_NOT_FOUND_FROM_VOTER_DEVICE_ID-VOTER_POSITION_COMMENT "
-        json_data = {
-            'status':                   status,
-            'success':                  False,
-            'voter_device_id':          voter_device_id,
-            'position_we_vote_id':      position_we_vote_id,
-            'ballot_item_id':           0,
-            'ballot_item_we_vote_id':   '',
-            'kind_of_ballot_item':      '',
-            'statement_text':           statement_text,
-            'is_public_position':       False
-        }
-        return json_data
+        final_results_dict['status'] = status
+        final_results_dict['success'] = False
+        return final_results_dict
 
     voter = voter_results['voter']
     position_we_vote_id = position_we_vote_id.strip().lower()
@@ -4238,34 +4237,16 @@ def voter_position_comment_save_for_api(  # voterPositionCommentSave
         )
     if not unique_identifier_found:
         status += "POSITION_REQUIRED_UNIQUE_IDENTIFIER_VARIABLES_MISSING "
-        json_data = {
-            'status':                   status,
-            'success':                  False,
-            'voter_device_id':          voter_device_id,
-            'position_we_vote_id':      position_we_vote_id,
-            'ballot_item_id':           0,
-            'ballot_item_we_vote_id':   '',
-            'kind_of_ballot_item':      '',
-            'statement_text':           statement_text,
-            'is_public_position':       False
-        }
-        return json_data
+        final_results_dict['status'] = status
+        final_results_dict['success'] = False
+        return final_results_dict
     elif not existing_unique_identifier_found and not required_variables_for_new_entry:
         # Don't need is_positive_rating, is_support_or_positive_rating, is_negative_rating,
         # or is_oppose_or_negative_rating
         status += "NEW_POSITION_REQUIRED_VARIABLES_MISSING "
-        json_data = {
-            'status':                   status,
-            'success':                  False,
-            'voter_device_id':          voter_device_id,
-            'position_we_vote_id':      position_we_vote_id,
-            'ballot_item_id':           0,
-            'ballot_item_we_vote_id':   '',
-            'kind_of_ballot_item':      '',
-            'statement_text':           statement_text,
-            'is_public_position':       False
-        }
-        return json_data
+        final_results_dict['status'] = status
+        final_results_dict['success'] = False
+        return final_results_dict
 
     position_manager = PositionManager()
     save_results = position_manager.update_or_create_position_comment(
@@ -4297,44 +4278,35 @@ def voter_position_comment_save_for_api(  # voterPositionCommentSave
             kind_of_ballot_item = OFFICE
             ballot_item_id = position.contest_office_id
             ballot_item_we_vote_id = position.contest_office_we_vote_id
-        elif positive_value_exists(position.politician_we_vote_id):
-            kind_of_ballot_item = POLITICIAN
-            ballot_item_id = position.politician_id
-            ballot_item_we_vote_id = position.politician_we_vote_id
+        # We don't mix ballot_item_we_vote_id and politician_we_vote_id
+        # elif positive_value_exists(position.politician_we_vote_id):
+        #     kind_of_ballot_item = POLITICIAN
+        #     ballot_item_id = position.politician_id
+        #     ballot_item_we_vote_id = position.politician_we_vote_id
         else:
             kind_of_ballot_item = "UNKNOWN_BALLOT_ITEM"
             ballot_item_id = None
             ballot_item_we_vote_id = None
 
         status += save_results['status']
-        json_data = {
-            'success':                  save_results['success'],
-            'status':                   status,
-            'voter_device_id':          voter_device_id,
-            'position_we_vote_id':      position.we_vote_id,
-            'ballot_item_id':           ballot_item_id,
-            'ballot_item_we_vote_id':   ballot_item_we_vote_id,
-            'kind_of_ballot_item':      kind_of_ballot_item,
-            'statement_text':           position.statement_text,
-            'statement_html':           position.statement_html,
-            'is_public_position':       is_public_position
-        }
-        return json_data
+        final_results_dict['ballot_item_id'] = ballot_item_id
+        final_results_dict['ballot_item_we_vote_id'] = ballot_item_we_vote_id
+        final_results_dict['is_public_position'] = is_public_position
+        final_results_dict['kind_of_ballot_item'] = kind_of_ballot_item
+        final_results_dict['politician_we_vote_id'] = position.politician_we_vote_id
+        final_results_dict['position_we_vote_id'] = position.we_vote_id
+        final_results_dict['stance'] = position.stance
+        final_results_dict['state_code'] = position.state_code
+        final_results_dict['statement_text'] = position.statement_text
+        final_results_dict['statement_html'] = position.statement_html
+        final_results_dict['status'] = status
+        final_results_dict['success'] = save_results['success']
+        return final_results_dict
     else:
         status += save_results['status']
-        json_data = {
-            'success':                  False,
-            'status':                   status,
-            'voter_device_id':          voter_device_id,
-            'position_we_vote_id':      '',
-            'ballot_item_id':           0,
-            'ballot_item_we_vote_id':   "",
-            'kind_of_ballot_item':      "",
-            'statement_text':           statement_text,
-            'statement_html':           statement_html,
-            'is_public_position':       False
-        }
-        return json_data
+        final_results_dict['status'] = status
+        final_results_dict['success'] = False
+        return final_results_dict
 
 
 def voter_position_visibility_save_for_api(  # voterPositionVisibilitySave
@@ -4353,11 +4325,12 @@ def voter_position_visibility_save_for_api(  # voterPositionVisibilitySave
     if not results['success']:
         json_data_from_results = results['json_data']
         json_data = {
-            'status':                   json_data_from_results['status'],
-            'success':                  False,
             'ballot_item_id':           0,
             'ballot_item_we_vote_id':   '',
             'kind_of_ballot_item':      '',
+            'politician_we_vote_id':    politician_we_vote_id,
+            'status':                   json_data_from_results['status'],
+            'success':                  False,
             'visibility_setting':       visibility_setting,
         }
         return json_data
@@ -4368,14 +4341,15 @@ def voter_position_visibility_save_for_api(  # voterPositionVisibilitySave
     if not positive_value_exists(voter_id):
         status += "VOTER_NOT_FOUND_FROM_VOTER_DEVICE_ID-VOTER_POSITION_VISIBILITY "
         json_data = {
-            'status':                   status,
-            'success':                  False,
-            'voter_device_id':          voter_device_id,
             'ballot_item_id':           0,
             'ballot_item_we_vote_id':   '',
-            'kind_of_ballot_item':      '',
-            'visibility_setting':       visibility_setting,
             'is_public_position':       is_public_position,
+            'kind_of_ballot_item':      '',
+            'politician_we_vote_id':    politician_we_vote_id,
+            'status':                   status,
+            'success':                  False,
+            'visibility_setting':       visibility_setting,
+            'voter_device_id':          voter_device_id,
         }
         return json_data
 
@@ -4396,6 +4370,7 @@ def voter_position_visibility_save_for_api(  # voterPositionVisibilitySave
             'ballot_item_id':           0,
             'ballot_item_we_vote_id':   '',
             'kind_of_ballot_item':      '',
+            'politician_we_vote_id':    politician_we_vote_id,
             'visibility_setting':       visibility_setting,
             'is_public_position':       is_public_position,
         }
@@ -4413,6 +4388,7 @@ def voter_position_visibility_save_for_api(  # voterPositionVisibilitySave
             'ballot_item_id':           0,
             'ballot_item_we_vote_id':   '',
             'kind_of_ballot_item':      '',
+            'politician_we_vote_id':    politician_we_vote_id,
             'visibility_setting':       visibility_setting,
             'is_public_position':       is_public_position,
         }
@@ -4434,6 +4410,7 @@ def voter_position_visibility_save_for_api(  # voterPositionVisibilitySave
                 'status':                   status,
                 'success':                  False,
                 'voter_device_id':          voter_device_id,
+                'politician_we_vote_id':    politician_we_vote_id,
                 'position_we_vote_id':      '',
                 'ballot_item_id':           0,
                 'ballot_item_we_vote_id':   "",
@@ -4462,7 +4439,7 @@ def voter_position_visibility_save_for_api(  # voterPositionVisibilitySave
         if not results['success']:
             success = False
     elif positive_value_exists(politician_we_vote_id):
-        results = position_manager.position_manager.retrieve_position_table_unknown(
+        results = position_manager.retrieve_position_table_unknown(
             politician_we_vote_id=politician_we_vote_id,
             voter_id=voter_id)
         if not results['success']:
@@ -4540,25 +4517,27 @@ def voter_position_visibility_save_for_api(  # voterPositionVisibilitySave
             kind_of_ballot_item = OFFICE
             ballot_item_id = position.contest_office_id
             ballot_item_we_vote_id = position.contest_office_we_vote_id
-        elif positive_value_exists(politician_we_vote_id):
-            kind_of_ballot_item = POLITICIAN
-            ballot_item_id = position.politician_id
-            ballot_item_we_vote_id = position.politician_we_vote_id
+        # We don't mix ballot_item_we_vote_id and politician_we_vote_id
+        # elif positive_value_exists(politician_we_vote_id):
+        #     kind_of_ballot_item = POLITICIAN
+        #     ballot_item_id = position.politician_id
+        #     ballot_item_we_vote_id = position.politician_we_vote_id
         else:
             kind_of_ballot_item = "UNKNOWN_BALLOT_ITEM"
             ballot_item_id = None
             ballot_item_we_vote_id = None
 
         json_data = {
-            'success':                  success,
-            'status':                   status,
-            'voter_device_id':          voter_device_id,
-            'position_we_vote_id':      position.we_vote_id,
             'ballot_item_id':           ballot_item_id,
             'ballot_item_we_vote_id':   ballot_item_we_vote_id,
-            'kind_of_ballot_item':      kind_of_ballot_item,
-            'visibility_setting':       visibility_setting,
             'is_public_position':       is_public_position,
+            'kind_of_ballot_item':      kind_of_ballot_item,
+            'politician_we_vote_id':    position.politician_we_vote_id,
+            'position_we_vote_id':      position.we_vote_id,
+            'success':                  success,
+            'status':                   status,
+            'visibility_setting':       visibility_setting,
+            'voter_device_id':          voter_device_id,
         }
         return json_data
     else:
@@ -4574,25 +4553,27 @@ def voter_position_visibility_save_for_api(  # voterPositionVisibilitySave
             kind_of_ballot_item = OFFICE
             ballot_item_id = 0
             ballot_item_we_vote_id = office_we_vote_id
-        elif positive_value_exists(politician_we_vote_id):
-            kind_of_ballot_item = POLITICIAN
-            ballot_item_id = 0
-            ballot_item_we_vote_id = politician_we_vote_id
+        # We don't mix ballot_item_we_vote_id and politician_we_vote_id
+        # elif positive_value_exists(politician_we_vote_id):
+        #     kind_of_ballot_item = POLITICIAN
+        #     ballot_item_id = 0
+        #     ballot_item_we_vote_id = politician_we_vote_id
         else:
             kind_of_ballot_item = "UNKNOWN_BALLOT_ITEM"
             ballot_item_id = None
             ballot_item_we_vote_id = None
 
         json_data = {
-            'success':                  success,
-            'status':                   status,
-            'voter_device_id':          voter_device_id,
-            'position_we_vote_id':      '',
             'ballot_item_id':           ballot_item_id,
             'ballot_item_we_vote_id':   ballot_item_we_vote_id,
-            'kind_of_ballot_item':      kind_of_ballot_item,
-            'visibility_setting':       visibility_setting,
             'is_public_position':       is_public_position,
+            'kind_of_ballot_item':      kind_of_ballot_item,
+            'politician_we_vote_id':    politician_we_vote_id,
+            'position_we_vote_id':      '',
+            'success':                  success,
+            'status':                   status,
+            'visibility_setting':       visibility_setting,
+            'voter_device_id':          voter_device_id,
         }
         return json_data
 

@@ -48,8 +48,8 @@ def quick_info_list_view(request):
             quick_info_list = QuickInfo.objects.filter(contest_office_we_vote_id__startswith='wv')
         elif kind_of_ballot_item == CANDIDATE:
             quick_info_list = QuickInfo.objects.filter(candidate_campaign_we_vote_id__startswith='wv')
-        elif kind_of_ballot_item == POLITICIAN:
-            quick_info_list = QuickInfo.objects.filter(politician_we_vote_id__startswith='wv')
+        # elif kind_of_ballot_item == POLITICIAN:
+        #     quick_info_list = QuickInfo.objects.filter(politician_we_vote_id__startswith='wv')
         elif kind_of_ballot_item == MEASURE:
             quick_info_list = QuickInfo.objects.filter(contest_measure_we_vote_id__startswith='wv')
     if positive_value_exists(language):

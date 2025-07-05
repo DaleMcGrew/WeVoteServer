@@ -37,7 +37,7 @@ def organization_count():
 
 
 def organization_dislike(  # organizationDislike
-        direct_api_call=False,
+        make_position_update=False,
         organization_id=None,
         organization_twitter_handle=None,
         organization_we_vote_id=None,
@@ -49,7 +49,7 @@ def organization_dislike(  # organizationDislike
         voter_id=0):
     """
     Save that the voter dislikes this org. Used by HeartFavoriteToggle.
-    :param direct_api_call:
+    :param make_position_update:
     :param organization_id:
     :param organization_twitter_handle;
     :param organization_we_vote_id:
@@ -83,28 +83,13 @@ def organization_dislike(  # organizationDislike
     # This organization may also be linked to a Candidate in an upcoming election
     # Does a position exist for this politician_we_vote_id
 
-    # if kind_of_ballot_item == CANDIDATE:
-    #     candidate_id = ballot_item_id
-    #     candidate_we_vote_id = ballot_item_we_vote_id
-    # elif kind_of_ballot_item == MEASURE:
-    #     measure_id = ballot_item_id
-    #     measure_we_vote_id = ballot_item_we_vote_id
-    # elif kind_of_ballot_item == POLITICIAN:
-    #     politician_id = ballot_item_id
-    #     politician_we_vote_id = ballot_item_we_vote_id
     save_oppose_position = False
-    if positive_value_exists(direct_api_call):
-        if positive_value_exists(politician_we_vote_id):
-            save_oppose_position = True
+    if positive_value_exists(make_position_update) and positive_value_exists(politician_we_vote_id):
+        save_oppose_position = True
     if save_oppose_position:
         from support_oppose_deciding.controllers import voter_opposing_save
         position_results = voter_opposing_save(
-            # candidate_id=candidate_id,
-            # candidate_we_vote_id=candidate_we_vote_id,
-            direct_api_call=False,
-            # measure_id=measure_id,
-            # measure_we_vote_id=measure_we_vote_id,
-            # politician_id=politician_id,
+            make_heart_favorite_toggle_update=False,
             politician_we_vote_id=politician_we_vote_id,
             user_agent_string=user_agent_string,
             user_agent_object=user_agent_object,
@@ -193,7 +178,7 @@ def organization_stop_disliking(  # organizationStopDisliking
 
 
 def organization_follow(  # organizationFollow
-        direct_api_call=False,
+        make_position_update=False,
         organization_follow_based_on_issue=None,
         organization_id=None,
         organization_twitter_handle=None,
@@ -206,7 +191,7 @@ def organization_follow(  # organizationFollow
         voter_id=0):
     """
     Save that the voter wants to follow this org. Used by HeartFavoriteToggle.
-    :param direct_api_call:
+    :param make_position_update:
     :param organization_follow_based_on_issue:
     :param organization_id:
     :param organization_twitter_handle;
@@ -236,25 +221,19 @@ def organization_follow(  # organizationFollow
     status += results['status']
     voter = results['voter']
     voter_id = results['voter_id']
-    # When we dislike an organization, also create an Oppose position IFF a position doesn't already exist.
-    # It is possible to choose a candidate and at the same time Dislike them.
+    # When we follow an organization, also create a Support position IFF a position doesn't already exist.
+    # It is possible to oppose a candidate and at the same time Follow them.
     # This organization_we_vote_id may be linked to a Politician.
     # This organization may also be linked to a Candidate in an upcoming election
     # Does a position exist for this politician_we_vote_id
 
     save_support_position = False
-    if positive_value_exists(direct_api_call):
-        if positive_value_exists(politician_we_vote_id):
-            save_support_position = True
+    if positive_value_exists(make_position_update) and positive_value_exists(politician_we_vote_id):
+        save_support_position = True
     if save_support_position:
         from support_oppose_deciding.controllers import voter_supporting_save
         position_results = voter_supporting_save(
-            # candidate_id=candidate_id,
-            # candidate_we_vote_id=candidate_we_vote_id,
-            direct_api_call=False,
-            # measure_id=measure_id,
-            # measure_we_vote_id=measure_we_vote_id,
-            # politician_id=politician_id,
+            make_heart_favorite_toggle_update=False,
             politician_we_vote_id=politician_we_vote_id,
             user_agent_string=user_agent_string,
             user_agent_object=user_agent_object,
@@ -267,18 +246,18 @@ def organization_follow(  # organizationFollow
         voter_id = position_results['voter_id']
     final_results_dict = {
         'organization_dislike_count': results['organization_dislike_count'],
+        'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
         'organization_followers_count': results['organization_followers_count'],
         'organization_id': results['organization_id'],
-        'organization_we_vote_id': results['organization_we_vote_id'],
         'organization_twitter_handle': organization_twitter_handle,
-        'organization_follow_based_on_issue': results['organization_follow_based_on_issue'],
+        'organization_we_vote_id': results['organization_we_vote_id'],
+        'organization_we_vote_id_that_is_following': results['organization_we_vote_id_that_is_following'],
         'politician_we_vote_id': results['politician_we_vote_id'],
         'status': status,
         'success': results['success'],
         'voter': voter,
         'voter_device_id': voter_device_id,
         'voter_id': voter_id,
-        'organization_we_vote_id_that_is_following': results['organization_we_vote_id_that_is_following'],
         'voter_linked_organization_we_vote_id': results['organization_we_vote_id_that_is_following'],  # Backward compat
     }
     return final_results_dict
