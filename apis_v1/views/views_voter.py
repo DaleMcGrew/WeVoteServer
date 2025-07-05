@@ -1857,21 +1857,19 @@ def voter_position_visibility_save_view(request):  # voterPositionVisibilitySave
     """
     kind_of_ballot_item = request.GET.get('kind_of_ballot_item', "")
     ballot_item_we_vote_id = request.GET.get('ballot_item_we_vote_id', None)
+    politician_we_vote_id = request.GET.get('politician_we_vote_id', None)
     visibility_setting = request.GET.get('visibility_setting', False)
     voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
 
     candidate_we_vote_id = None
     measure_we_vote_id = None
     office_we_vote_id = None
-    politician_we_vote_id = None
     if kind_of_ballot_item == CANDIDATE:
         candidate_we_vote_id = ballot_item_we_vote_id
     elif kind_of_ballot_item == MEASURE:
         measure_we_vote_id = ballot_item_we_vote_id
     elif kind_of_ballot_item == OFFICE:
         office_we_vote_id = ballot_item_we_vote_id
-    elif kind_of_ballot_item == POLITICIAN:
-        politician_we_vote_id = ballot_item_we_vote_id
 
     results = voter_position_visibility_save_for_api(
         voter_device_id=voter_device_id,
