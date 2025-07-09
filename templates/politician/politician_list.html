@@ -263,7 +263,7 @@
     <!-- Pagination Section -->
 {% if not hide_pagination %}
 <span class="float-right">
-    {% if previous_page_url %}
+    {% if has_previous_page %}
     <a href="{{ previous_page_url }}" onclick="displayLoadingBanner()">Previous page</a>
     {% endif %}
     Page {{ current_page_number|add:1 }}
