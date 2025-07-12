@@ -1948,8 +1948,10 @@ def voter_position_comment_save_view(request):  # voterPositionCommentSave
         candidate_we_vote_id=candidate_we_vote_id,
         measure_we_vote_id=measure_we_vote_id,
         politician_we_vote_id=politician_we_vote_id,
+        stance=stance,
         statement_text=statement_text,
         statement_html=statement_html,
+        visibility_setting=visibility_setting,
     )
 
     return HttpResponse(json.dumps(results), content_type='application/json')

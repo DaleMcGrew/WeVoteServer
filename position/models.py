@@ -6799,8 +6799,11 @@ class PositionManager(models.Manager):
             candidate_we_vote_id='',
             measure_we_vote_id='',
             politician_we_vote_id='',
+            stance=False,
             statement_text='',
-            statement_html=''):
+            statement_html='',
+            visibility_setting=False,
+    ):
         voter_position_found = False
         is_public_position = False
         problem_with_duplicate_in_same_table = False
@@ -7019,12 +7022,31 @@ class PositionManager(models.Manager):
                     # Heal the data: Make sure we have a voter_we_vote_id
                     voter_position_on_stage.voter_we_vote_id = fetch_voter_we_vote_id_from_voter_id(voter_id)
 
+                if stance is not False:
+                    if stance in [INFORMATION_ONLY, OPPOSE, SUPPORT]:
+                        voter_position_on_stage.stance = stance
+
                 if not positive_value_exists(voter_position_on_stage.date_entered):
                     voter_position_on_stage.date_entered = now()
                 voter_position_on_stage.save()
                 position_we_vote_id = voter_position_on_stage.we_vote_id
                 voter_position_on_stage_found = True
                 status += 'POSITION_COMMENT_UPDATED '
+
+                if visibility_setting is not False:
+                    if visibility_setting in [FRIENDS_ONLY, SHOW_PUBLIC]:
+                        incoming_setting_is_public = visibility_setting == SHOW_PUBLIC
+                        existing_position_is_public = voter_position_on_stage.is_public_position()
+                        incoming_setting_different_than_existing = \
+                            incoming_setting_is_public != existing_position_is_public
+                        if incoming_setting_different_than_existing:
+                            # Move to opposite table
+                            position_manager = PositionManager()
+                            results = position_manager.switch_position_visibility(
+                                voter_position_on_stage, incoming_setting_is_public)
+                            if results['success']:
+                                voter_position_on_stage = results['position']
+                                is_public_position = voter_position_on_stage.is_public_position()
             except Exception as e:
                 status += 'POSITION_COMMENT_COULD_NOT_BE_UPDATED: ' + str(e) + ' '
         else:
@@ -7095,8 +7117,22 @@ class PositionManager(models.Manager):
                             organization_id = organization.id
                             speaker_display_name = organization.organization_name
 
+                incoming_stance = NO_STANCE
+                if stance is not False:
+                    if stance in [INFORMATION_ONLY, OPPOSE, SUPPORT]:
+                        incoming_stance = stance
+
+                new_position_starter = PositionForFriends
+                is_public_position = False
+                if visibility_setting is not False:
+                    if visibility_setting in [FRIENDS_ONLY, SHOW_PUBLIC]:
+                        incoming_setting_is_public = visibility_setting == SHOW_PUBLIC
+                        if incoming_setting_is_public:
+                            new_position_starter = PositionEntered
+                            is_public_position = True
+
                 # Always default to Friends only
-                voter_position_on_stage = PositionForFriends(
+                voter_position_on_stage = new_position_starter(
                     voter_id=voter_id,
                     voter_we_vote_id=voter_we_vote_id,
                     ballot_item_display_name=ballot_item_display_name,
@@ -7117,7 +7153,7 @@ class PositionManager(models.Manager):
                     speaker_display_name=speaker_display_name,
                     speaker_image_url_https_medium=speaker_image_url_https_medium,
                     speaker_image_url_https_tiny=speaker_image_url_https_tiny,
-                    stance=NO_STANCE,
+                    stance=incoming_stance,
                     statement_text=statement_text,
                 )
 

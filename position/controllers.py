@@ -4182,8 +4182,10 @@ def voter_position_comment_save_for_api(  # voterPositionCommentSave
         candidate_we_vote_id='',
         measure_we_vote_id='',
         politician_we_vote_id='',
+        stance=False,
         statement_text='',
         statement_html='',
+        visibility_setting=False,
         ):
     status = ""
     final_results_dict = {
@@ -4195,6 +4197,7 @@ def voter_position_comment_save_for_api(  # voterPositionCommentSave
         'kind_of_ballot_item': '',
         'politician_we_vote_id': politician_we_vote_id,
         'position_we_vote_id': position_we_vote_id,
+        'stance': stance,
         'statement_text': statement_text,
         'voter_device_id': voter_device_id,
     }
@@ -4257,8 +4260,10 @@ def voter_position_comment_save_for_api(  # voterPositionCommentSave
         candidate_we_vote_id=candidate_we_vote_id,
         measure_we_vote_id=measure_we_vote_id,
         politician_we_vote_id=politician_we_vote_id,
+        stance=stance,
         statement_text=statement_text,
-        statement_html=statement_html
+        statement_html=statement_html,
+        visibility_setting=visibility_setting,
     )
 
     if save_results['success']:
