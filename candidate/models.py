@@ -4014,78 +4014,98 @@ class CandidateManager(models.Manager):
         status = ""
         success = True
 
-        candidate_year_for_comparison = candidate.candidate_year \
-            if positive_value_exists(candidate.candidate_year) else 0
-        candidate_ultimate_election_date_for_comparison = candidate.candidate_ultimate_election_date \
-            if positive_value_exists(candidate.candidate_ultimate_election_date) else 0
-        position_year_for_comparison = position_object.position_year \
-            if positive_value_exists(position_object.position_year) else 0
-        position_ultimate_election_date_for_comparison = position_object.position_ultimate_election_date \
-            if positive_value_exists(position_object.position_ultimate_election_date) else 0
+        if not candidate:
+            status += "CANDIDATE_REQUIRED_FOR_SORTING_DATES "
+            success = False
+            return {
+                'position_object_updated': position_object_updated,
+                'position_object': position_object,
+                'status': status,
+                'success': success,
+            }
 
-        if positive_value_exists(candidate_year_for_comparison) \
-                and position_year_for_comparison == candidate_year_for_comparison:
-            # Leave it as is and do not generate sorting dates
-            pass
-        elif positive_value_exists(candidate_year_for_comparison) \
-                and position_year_for_comparison != candidate_year_for_comparison:
-            position_object.position_year = candidate.candidate_year
-            position_object_updated = True
-        else:
-            generate_sorting_dates = True
-        if positive_value_exists(candidate_ultimate_election_date_for_comparison) \
-                and position_ultimate_election_date_for_comparison == candidate_ultimate_election_date_for_comparison:
-            # Leave it as is and do not generate sorting dates
-            pass
-        elif positive_value_exists(candidate_ultimate_election_date_for_comparison) \
-                and position_ultimate_election_date_for_comparison != candidate_ultimate_election_date_for_comparison:
-            position_object.position_ultimate_election_date = candidate.candidate_ultimate_election_date
-            position_object_updated = True
-        else:
-            generate_sorting_dates = True
+        try:
+            candidate_year_for_comparison = candidate.candidate_year \
+                if positive_value_exists(candidate.candidate_year) else 0
+            candidate_ultimate_election_date_for_comparison = candidate.candidate_ultimate_election_date \
+                if positive_value_exists(candidate.candidate_ultimate_election_date) else 0
+            position_year_for_comparison = position_object.position_year \
+                if positive_value_exists(position_object.position_year) else 0
+            position_ultimate_election_date_for_comparison = position_object.position_ultimate_election_date \
+                if positive_value_exists(position_object.position_ultimate_election_date) else 0
 
-        if generate_sorting_dates:
-            largest_year_integer = None
-            largest_election_date_integer = None
-            candidate_manager = CandidateManager()
-            date_results = candidate_manager.generate_candidate_position_sorting_dates(
-                candidate_we_vote_id_list=[candidate.we_vote_id])
-            if positive_value_exists(date_results['largest_year_integer']):
-                largest_year_integer = date_results['largest_year_integer']
-                if candidate.candidate_year != largest_year_integer:
-                    candidate_year_changed = True
-                if not position_object.position_year:
-                    position_object.position_year = largest_year_integer
-                    position_object_updated = True
-                elif largest_year_integer > position_object.position_year:
-                    position_object.position_year = largest_year_integer
-                    position_object_updated = True
-            if positive_value_exists(date_results['largest_election_date_integer']):
-                largest_election_date_integer = date_results['largest_election_date_integer']
-                if candidate.candidate_ultimate_election_date != largest_election_date_integer:
-                    candidate_ultimate_election_date_changed = True
-                if not position_object.position_ultimate_election_date:
-                    position_object.position_ultimate_election_date = largest_election_date_integer
-                    position_object_updated = True
-                elif largest_election_date_integer > position_object.position_ultimate_election_date:
-                    position_object.position_ultimate_election_date = largest_election_date_integer
-                    position_object_updated = True
-            if candidate_year_changed or candidate_ultimate_election_date_changed:
-                # Retrieve an editable copy of the candidate so we can update the date caches
-                results = \
-                    candidate_manager.retrieve_candidate_from_we_vote_id(candidate.we_vote_id, read_only=False)
-                if results['candidate_found']:
-                    editable_candidate = results['candidate']
-                    try:
-                        if candidate_year_changed:
-                            editable_candidate.candidate_year = largest_year_integer
-                        if candidate_ultimate_election_date_changed:
-                            editable_candidate.candidate_ultimate_election_date = largest_election_date_integer
-                        editable_candidate.save()
-                        status += "SAVED_EDITABLE_CAMPAIGN "
-                    except Exception as e:
-                        status += "FAILED_TO_SAVE_EDITABLE_CAMPAIGN: " + str(e) + " "
+            if positive_value_exists(candidate_year_for_comparison) \
+                    and position_year_for_comparison == candidate_year_for_comparison:
+                # Leave it as is and do not generate sorting dates
+                pass
+            elif positive_value_exists(candidate_year_for_comparison) \
+                    and position_year_for_comparison != candidate_year_for_comparison:
+                position_object.position_year = candidate.candidate_year
+                position_object_updated = True
+            else:
+                generate_sorting_dates = True
+            if positive_value_exists(candidate_ultimate_election_date_for_comparison) \
+                    and position_ultimate_election_date_for_comparison == candidate_ultimate_election_date_for_comparison:
+                # Leave it as is and do not generate sorting dates
+                pass
+            elif positive_value_exists(candidate_ultimate_election_date_for_comparison) \
+                    and position_ultimate_election_date_for_comparison != candidate_ultimate_election_date_for_comparison:
+                position_object.position_ultimate_election_date = candidate.candidate_ultimate_election_date
+                position_object_updated = True
+            else:
+                generate_sorting_dates = True
 
+            if generate_sorting_dates:
+                largest_year_integer = None
+                largest_election_date_integer = None
+                candidate_manager = CandidateManager()
+                date_results = candidate_manager.generate_candidate_position_sorting_dates(
+                    candidate_we_vote_id_list=[candidate.we_vote_id])
+                if positive_value_exists(date_results['largest_year_integer']):
+                    largest_year_integer = date_results['largest_year_integer']
+                    if candidate.candidate_year != largest_year_integer:
+                        candidate_year_changed = True
+                    if not position_object.position_year:
+                        position_object.position_year = largest_year_integer
+                        position_object_updated = True
+                    elif largest_year_integer > position_object.position_year:
+                        position_object.position_year = largest_year_integer
+                        position_object_updated = True
+                if positive_value_exists(date_results['largest_election_date_integer']):
+                    largest_election_date_integer = date_results['largest_election_date_integer']
+                    if candidate.candidate_ultimate_election_date != largest_election_date_integer:
+                        candidate_ultimate_election_date_changed = True
+                    if not position_object.position_ultimate_election_date:
+                        position_object.position_ultimate_election_date = largest_election_date_integer
+                        position_object_updated = True
+                    elif largest_election_date_integer > position_object.position_ultimate_election_date:
+                        position_object.position_ultimate_election_date = largest_election_date_integer
+                        position_object_updated = True
+                if candidate_year_changed or candidate_ultimate_election_date_changed:
+                    # Retrieve an editable copy of the candidate so we can update the date caches
+                    results = \
+                        candidate_manager.retrieve_candidate_from_we_vote_id(candidate.we_vote_id, read_only=False)
+                    if results['candidate_found']:
+                        editable_candidate = results['candidate']
+                        try:
+                            if candidate_year_changed:
+                                editable_candidate.candidate_year = largest_year_integer
+                            if candidate_ultimate_election_date_changed:
+                                editable_candidate.candidate_ultimate_election_date = largest_election_date_integer
+                            editable_candidate.save()
+                            status += "SAVED_EDITABLE_CAMPAIGN "
+                        except Exception as e:
+                            status += "FAILED_TO_SAVE_EDITABLE_CAMPAIGN: " + str(e) + " "
+                            success = False
+        except Exception as e:
+            status += "FAILED_ADDING_SORTING_DATES_FOR_POSITION: " + str(e) + " "
+            success = False
+            return {
+                'position_object_updated': position_object_updated,
+                'position_object': position_object,
+                'status': status,
+                'success': success,
+            }
         return {
             'position_object_updated':  position_object_updated,
             'position_object':          position_object,
