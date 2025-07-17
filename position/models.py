@@ -426,6 +426,11 @@ class PositionEntered(models.Model):
     def is_public_position(self):
         return True
 
+    def date_entered_display(self):
+        if positive_value_exists(self.date_entered):
+            return str(self.date_entered)
+        return ''
+
     def last_updated(self):
         if positive_value_exists(self.date_last_changed):
             return str(self.date_last_changed)
@@ -870,6 +875,11 @@ class PositionForFriends(models.Model):
     @staticmethod
     def is_public_position():
         return False
+
+    def date_entered_display(self):
+        if positive_value_exists(self.date_entered):
+            return str(self.date_entered)
+        return ''
 
     def last_updated(self):
         if positive_value_exists(self.date_last_changed):
@@ -3576,6 +3586,7 @@ class PositionListManager(models.Manager):
                     'ballot_item_we_vote_id':               ballot_item_we_vote_id,
                     'candidate_campaign_we_vote_id':        candidate_campaign_we_vote_id,
                     'contest_office_name':                  contest_office_name,
+                    'date_entered':                         position.date_entered_display(),
                     'date_last_changed':                    date_last_changed,
                     'is_oppose':                            position.is_oppose(),
                     'is_public_position':                   position.is_public_position(),
@@ -3583,6 +3594,9 @@ class PositionListManager(models.Manager):
                     'statement_text':                       position.statement_text,
                     'political_party':                      political_party,
                     'politician_we_vote_id':                politician_we_vote_id,
+                    'position_ultimate_election_date':      position.position_ultimate_election_date,
+                    'position_we_vote_id':                  position.we_vote_id,
+                    'position_year':                        position.position_year,
                 }
                 simple_position_list.append(one_position)
 

@@ -1786,6 +1786,7 @@ def position_retrieve_for_api(position_we_vote_id, voter_device_id):  # position
     we_vote_id = position_we_vote_id.strip().lower()
     if not positive_value_exists(position_we_vote_id):
         json_data = {
+            'date_entered':                     '',
             'status':                           "POSITION_RETRIEVE_BOTH_IDS_MISSING",
             'success':                          False,
             'ballot_item_display_name':         '',
@@ -1842,6 +1843,7 @@ def position_retrieve_for_api(position_we_vote_id, voter_device_id):  # position
     if results['position_found']:
         position = results['position']
         json_data = {
+            'date_entered':                     position.date_entered_display(),
             'success':                          True,
             'status':                           results['status'],
             'position_we_vote_id':              position.we_vote_id,
@@ -1882,6 +1884,7 @@ def position_retrieve_for_api(position_we_vote_id, voter_device_id):  # position
         return HttpResponse(json.dumps(json_data), content_type='application/json')
     else:
         json_data = {
+            'date_entered':                     '',
             'status':                           results['status'],
             'success':                          results['success'],
             'position_we_vote_id':              we_vote_id,
@@ -1959,6 +1962,7 @@ def position_save_for_api(  # positionSave
     )
     if not unique_identifier_found:
         results = {
+            'date_entered':             '',
             'status':                   "POSITION_REQUIRED_UNIQUE_IDENTIFIER_VARIABLES_MISSING",
             'success':                  False,
             'voter_device_id':          voter_device_id,
@@ -1997,6 +2001,7 @@ def position_save_for_api(  # positionSave
         return results
     elif not existing_unique_identifier_found and not required_variables_for_new_entry:
         results = {
+            'date_entered':             '',
             'status':                   "NEW_POSITION_REQUIRED_VARIABLES_MISSING",
             'success':                  False,
             'voter_device_id':          voter_device_id,
@@ -2061,6 +2066,7 @@ def position_save_for_api(  # positionSave
     if save_results['success']:
         position = save_results['position']
         results = {
+            'date_entered':             position.date_entered_display(),
             'success':                  save_results['success'],
             'status':                   save_results['status'],
             'voter_device_id':          voter_device_id,
@@ -2099,6 +2105,7 @@ def position_save_for_api(  # positionSave
         return results
     else:
         results = {
+            'date_entered':             '',
             'success':                  False,
             'status':                   save_results['status'],
             'voter_device_id':          voter_device_id,
@@ -2342,6 +2349,7 @@ def position_list_for_ballot_item_for_api(office_id, office_we_vote_id,  # posit
                 'ballot_item_image_url_https_tiny':     one_position.ballot_item_image_url_https_tiny,
                 'ballot_item_id':                   one_position.get_ballot_item_id(),
                 'ballot_item_we_vote_id':           one_position.get_ballot_item_we_vote_id(),
+                'date_entered':                     one_position.date_entered_display(),
                 'is_support':                       one_position.is_support(),
                 'is_positive_rating':               one_position.is_positive_rating(),
                 'is_support_or_positive_rating':    one_position.is_support_or_positive_rating(),
@@ -2532,6 +2540,7 @@ def position_list_for_ballot_item_from_friends_for_api(  # positionListForBallot
                 else one_position.ballot_item_image_url_https,
                 'ballot_item_image_url_https_medium':   one_position.ballot_item_image_url_https_medium,
                 'ballot_item_image_url_https_tiny':     one_position.ballot_item_image_url_https_tiny,
+                'date_entered':                     one_position.date_entered_display(),
                 'has_video':                        is_link_to_video(one_position.more_info_url),
                 'is_support':                       one_position.is_support(),
                 'is_positive_rating':               one_position.is_positive_rating(),
@@ -3372,6 +3381,7 @@ def position_list_for_opinion_maker_for_api(voter_device_id,  # positionListForO
                 'contest_office_id':                    one_position.contest_office_id,
                 'contest_office_we_vote_id':            one_position.contest_office_we_vote_id,
                 'contest_office_name':                  one_position.contest_office_name,
+                'date_entered':                         one_position.date_entered_display(),
                 'google_civic_election_id':             one_position.google_civic_election_id,
                 'is_support':                           one_position.is_support(),
                 'is_positive_rating':                   one_position.is_positive_rating(),
@@ -3625,6 +3635,7 @@ def position_list_for_voter_for_api(voter_device_id,  # positionListForVoter
                 'contest_office_id':                    one_position.contest_office_id,
                 'contest_office_we_vote_id':            one_position.contest_office_we_vote_id,
                 'contest_office_name':                  one_position.contest_office_name,
+                'date_entered':                         one_position.date_entered_display(),
                 'race_office_level':                    one_position.race_office_level,
                 'is_support':                           one_position.is_support(),
                 'is_positive_rating':                   one_position.is_positive_rating(),
@@ -3966,6 +3977,7 @@ def voter_position_retrieve_for_api(voter_device_id, office_we_vote_id, candidat
         # Don't need is_positive_rating, is_support_or_positive_rating, is_negative_rating,
         # or is_oppose_or_negative_rating
         json_data = {
+            'date_entered':             '',
             'status':                   "VOTER_NOT_FOUND_FROM_VOTER_DEVICE_ID",
             'success':                  False,
             'position_we_vote_id':      '',
@@ -4006,6 +4018,7 @@ def voter_position_retrieve_for_api(voter_device_id, office_we_vote_id, candidat
         # Don't need is_positive_rating, is_support_or_positive_rating, is_negative_rating,
         # or is_oppose_or_negative_rating
         json_data = {
+            'date_entered':             '',
             'status':                   "POSITION_RETRIEVE_MISSING_AT_LEAST_ONE_BALLOT_ITEM_ID",
             'success':                  False,
             'position_we_vote_id':      '',
@@ -4055,6 +4068,7 @@ def voter_position_retrieve_for_api(voter_device_id, office_we_vote_id, candidat
         # Don't need is_positive_rating, is_support_or_positive_rating, is_negative_rating,
         # or is_oppose_or_negative_rating
         json_data = {
+            'date_entered':             position.date_entered_display(),
             'success':                  True,
             'status':                   results['status'],
             'position_we_vote_id':      position.we_vote_id,
@@ -4088,6 +4102,7 @@ def voter_position_retrieve_for_api(voter_device_id, office_we_vote_id, candidat
         # Don't need is_positive_rating, is_support_or_positive_rating, is_negative_rating,
         # or is_oppose_or_negative_rating
         json_data = {
+            'date_entered':             '',
             'status':                   results['status'],
             'success':                  True,
             'position_we_vote_id':      '',
