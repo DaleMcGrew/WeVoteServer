@@ -2,17 +2,16 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from ballot.controllers import figure_out_google_civic_election_id_voter_is_watching
-from ballot.models import CANDIDATE, MEASURE, OFFICE, POLITICIAN, BallotItemListManager
-from candidate.models import CandidateManager, CandidateListManager
+from ballot.models import CANDIDATE, MEASURE, OFFICE, POLITICIAN
+from candidate.models import CandidateManager
 from friend.models import FriendManager
 from measure.models import ContestMeasureManager
 from politician.models import PoliticianManager
 from django.http import HttpResponse
 from follow.models import FollowOrganizationList
 import json
-from position.models import ANY_STANCE, FRIENDS_ONLY, NO_STANCE, OPPOSE, PositionManager, PositionListManager, \
-    PUBLIC_ONLY, SUPPORT
+from position.models import ANY_STANCE, convert_position_object_to_dict, FRIENDS_ONLY, NO_STANCE, OPPOSE, \
+    PositionManager, PositionListManager, PUBLIC_ONLY, SUPPORT
 from voter.models import fetch_voter_id_from_voter_device_link, VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, is_voter_device_id_valid, positive_value_exists
@@ -474,6 +473,7 @@ def voter_opposing_save(  # voterOpposingSave
         'kind_of_ballot_item': '',
         'politician_we_vote_id': '',
         'position_we_vote_id': '',
+        'position': {},
         'status': status,
         'success': success,
         'voter': voter,
@@ -524,6 +524,10 @@ def voter_opposing_save(  # voterOpposingSave
         final_results_dict['kind_of_ballot_item'] = CANDIDATE
         final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     elif positive_value_exists(measure_id) or positive_value_exists(measure_we_vote_id):
@@ -546,6 +550,10 @@ def voter_opposing_save(  # voterOpposingSave
         final_results_dict['kind_of_ballot_item'] = MEASURE
         final_results_dict['politician_we_vote_id'] = ''
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     elif positive_value_exists(politician_id) or positive_value_exists(politician_we_vote_id):
@@ -570,6 +578,10 @@ def voter_opposing_save(  # voterOpposingSave
         final_results_dict['kind_of_ballot_item'] = POLITICIAN
         final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     else:
@@ -638,6 +650,7 @@ def voter_stop_opposing_save(  # voterStopOpposingSave
         'ballot_item_we_vote_id': '',
         'kind_of_ballot_item': '',
         'politician_we_vote_id': '',
+        'position': {},
         'position_we_vote_id': '',
         'status': status,
         'success': success,
@@ -688,6 +701,10 @@ def voter_stop_opposing_save(  # voterStopOpposingSave
         final_results_dict['kind_of_ballot_item'] = CANDIDATE
         final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     elif positive_value_exists(measure_id) or positive_value_exists(measure_we_vote_id):
@@ -709,6 +726,10 @@ def voter_stop_opposing_save(  # voterStopOpposingSave
         final_results_dict['ballot_item_we_vote_id'] = measure_we_vote_id
         final_results_dict['kind_of_ballot_item'] = MEASURE
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     elif positive_value_exists(politician_id) or positive_value_exists(politician_we_vote_id):
@@ -733,6 +754,10 @@ def voter_stop_opposing_save(  # voterStopOpposingSave
         final_results_dict['kind_of_ballot_item'] = POLITICIAN
         final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     else:
@@ -763,6 +788,7 @@ def voter_stop_supporting_save(  # voterStopSupportingSave
         'ballot_item_we_vote_id': '',
         'kind_of_ballot_item': '',
         'politician_we_vote_id': '',
+        'position': {},
         'position_we_vote_id': '',
         'status': status,
         'success': success,
@@ -810,6 +836,10 @@ def voter_stop_supporting_save(  # voterStopSupportingSave
         final_results_dict['kind_of_ballot_item'] = CANDIDATE
         final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     elif positive_value_exists(measure_id) or positive_value_exists(measure_we_vote_id):
@@ -831,6 +861,10 @@ def voter_stop_supporting_save(  # voterStopSupportingSave
         final_results_dict['ballot_item_we_vote_id'] = measure_we_vote_id
         final_results_dict['kind_of_ballot_item'] = MEASURE
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     elif positive_value_exists(politician_id) or positive_value_exists(politician_we_vote_id):
@@ -851,6 +885,10 @@ def voter_stop_supporting_save(  # voterStopSupportingSave
         final_results_dict['kind_of_ballot_item'] = POLITICIAN
         final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     else:
@@ -898,6 +936,7 @@ def voter_supporting_save(  # voterSupportingSave
         'ballot_item_we_vote_id': '',
         'kind_of_ballot_item': '',
         'politician_we_vote_id': '',
+        'position': {},
         'position_we_vote_id': '',
         'status': status,
         'success': success,
@@ -948,6 +987,10 @@ def voter_supporting_save(  # voterSupportingSave
         final_results_dict['kind_of_ballot_item'] = CANDIDATE
         final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     elif positive_value_exists(measure_id) or positive_value_exists(measure_we_vote_id):
@@ -971,6 +1014,10 @@ def voter_supporting_save(  # voterSupportingSave
         final_results_dict['kind_of_ballot_item'] = MEASURE
         final_results_dict['politician_we_vote_id'] = ''
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     elif positive_value_exists(politician_id) or positive_value_exists(politician_we_vote_id):
@@ -995,6 +1042,10 @@ def voter_supporting_save(  # voterSupportingSave
         final_results_dict['kind_of_ballot_item'] = POLITICIAN
         final_results_dict['politician_we_vote_id'] = politician_we_vote_id
         final_results_dict['position_we_vote_id'] = results['position_we_vote_id']
+        if 'position' in results:
+            one_position, convert_status = convert_position_object_to_dict(results['position'])
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['status'] = status
         final_results_dict['success'] = success
     else:

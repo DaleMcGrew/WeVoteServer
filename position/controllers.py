@@ -2,7 +2,8 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from .models import PositionEntered, PositionForFriends, PositionManager, PositionListManager, ANY_STANCE, \
+from .models import convert_position_object_to_dict, PositionEntered, PositionForFriends, \
+    PositionManager, PositionListManager, ANY_STANCE, \
     FRIENDS_AND_PUBLIC, FRIENDS_ONLY, PUBLIC_ONLY, SHOW_PUBLIC, THIS_ELECTION_ONLY, ALL_OTHER_ELECTIONS, \
     ALL_ELECTIONS, SUPPORT, OPPOSE, INFORMATION_ONLY, NO_STANCE
 from ballot.models import OFFICE, CANDIDATE, MEASURE, POLITICIAN
@@ -4212,6 +4213,7 @@ def voter_position_comment_save_for_api(  # voterPositionCommentSave
         'kind_of_ballot_item': '',
         'politician_we_vote_id': politician_we_vote_id,
         'position_we_vote_id': position_we_vote_id,
+        'position': {},
         'stance': stance,
         'statement_text': statement_text,
         'voter_device_id': voter_device_id,
@@ -4315,6 +4317,10 @@ def voter_position_comment_save_for_api(  # voterPositionCommentSave
         final_results_dict['kind_of_ballot_item'] = kind_of_ballot_item
         final_results_dict['politician_we_vote_id'] = position.politician_we_vote_id
         final_results_dict['position_we_vote_id'] = position.we_vote_id
+        if position:
+            one_position, convert_status = convert_position_object_to_dict(position)
+            status += convert_status
+            final_results_dict['position'] = one_position
         final_results_dict['stance'] = position.stance
         final_results_dict['state_code'] = position.state_code
         final_results_dict['statement_text'] = position.statement_text

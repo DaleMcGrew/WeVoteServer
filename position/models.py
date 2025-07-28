@@ -69,6 +69,66 @@ logger = wevote_functions.admin.get_logger(__name__)
 # TODO DALE Consider adding vote_smart_sig_id and vote_smart_candidate_id fields so we can export them and to prevent
 # duplicate position entries from Vote Smart
 
+
+def convert_position_object_to_dict(position):
+    """
+    Convert a Position object to a dictionary.
+    """
+    status = ''
+    if positive_value_exists(position.candidate_campaign_we_vote_id):
+        ballot_item_we_vote_id = position.candidate_campaign_we_vote_id
+    elif positive_value_exists(position.contest_measure_we_vote_id):
+        ballot_item_we_vote_id = position.contest_measure_we_vote_id
+    # We don't want to mix politician_we_vote_id with ballot_item_we_vote_id
+    # elif positive_value_exists(position.politician_we_vote_id):
+    #     ballot_item_we_vote_id = position.politician_we_vote_id
+    else:
+        ballot_item_we_vote_id = ''
+
+    ballot_item_display_name = position.ballot_item_display_name \
+        if positive_value_exists(position.ballot_item_display_name) else ''
+    ballot_item_image_url_https_large = position.ballot_item_image_url_https_large \
+        if positive_value_exists(position.ballot_item_image_url_https_large) else ''
+    ballot_item_image_url_https_medium = position.ballot_item_image_url_https_medium \
+        if positive_value_exists(position.ballot_item_image_url_https_medium) else ''
+    ballot_item_image_url_https_tiny = position.ballot_item_image_url_https_tiny \
+        if positive_value_exists(position.ballot_item_image_url_https_tiny) else ''
+    candidate_campaign_we_vote_id = position.candidate_campaign_we_vote_id \
+        if positive_value_exists(position.candidate_campaign_we_vote_id) else ''
+    contest_office_name = position.contest_office_name \
+        if positive_value_exists(position.contest_office_name) else ''
+    political_party = position.political_party \
+        if positive_value_exists(position.political_party) else ''
+    politician_we_vote_id = position.politician_we_vote_id \
+        if positive_value_exists(position.politician_we_vote_id) else ''
+    try:
+        date_last_changed = position.date_last_changed.strftime(DATE_FORMAT_YMD_HMS)  # '%Y-%m-%d %H:%M:%S'
+    except Exception as e:
+        status += 'VOTER_POSITION_DATE_LAST_CHANGED_FAILED: ' + str(e) + ' '
+        date_last_changed = ''
+    one_position = {
+        'ballot_item_display_name': ballot_item_display_name,
+        'ballot_item_image_url_https_large': ballot_item_image_url_https_large,
+        'ballot_item_image_url_https_medium': ballot_item_image_url_https_medium,
+        'ballot_item_image_url_https_tiny': ballot_item_image_url_https_tiny,
+        'ballot_item_we_vote_id': ballot_item_we_vote_id,
+        'candidate_campaign_we_vote_id': candidate_campaign_we_vote_id,
+        'contest_office_name': contest_office_name,
+        'date_entered': position.date_entered_display(),
+        'date_last_changed': date_last_changed,
+        'is_oppose': position.is_oppose(),
+        'is_public_position': position.is_public_position(),
+        'is_support': position.is_support(),
+        'statement_text': position.statement_text,
+        'political_party': political_party,
+        'politician_we_vote_id': politician_we_vote_id,
+        'position_ultimate_election_date': position.position_ultimate_election_date,
+        'position_we_vote_id': position.we_vote_id,
+        'position_year': position.position_year,
+    }
+    return one_position, status
+
+
 class PositionEntered(models.Model):
     """
     Any public position entered by any organization or candidate gets its own PositionEntered entry.
@@ -3547,57 +3607,8 @@ class PositionListManager(models.Manager):
 
             simple_position_list = []
             for position in position_list_filtered:
-                if positive_value_exists(position.candidate_campaign_we_vote_id):
-                    ballot_item_we_vote_id = position.candidate_campaign_we_vote_id
-                elif positive_value_exists(position.contest_measure_we_vote_id):
-                    ballot_item_we_vote_id = position.contest_measure_we_vote_id
-                # We don't want to mix politician_we_vote_id with ballot_item_we_vote_id
-                # elif positive_value_exists(position.politician_we_vote_id):
-                #     ballot_item_we_vote_id = position.politician_we_vote_id
-                else:
-                    ballot_item_we_vote_id = ''
-
-                ballot_item_display_name = position.ballot_item_display_name \
-                    if positive_value_exists(position.ballot_item_display_name) else ''
-                ballot_item_image_url_https_large = position.ballot_item_image_url_https_large \
-                    if positive_value_exists(position.ballot_item_image_url_https_large) else ''
-                ballot_item_image_url_https_medium = position.ballot_item_image_url_https_medium \
-                    if positive_value_exists(position.ballot_item_image_url_https_medium) else ''
-                ballot_item_image_url_https_tiny = position.ballot_item_image_url_https_tiny \
-                    if positive_value_exists(position.ballot_item_image_url_https_tiny) else ''
-                candidate_campaign_we_vote_id = position.candidate_campaign_we_vote_id \
-                    if positive_value_exists(position.candidate_campaign_we_vote_id) else ''
-                contest_office_name = position.contest_office_name \
-                    if positive_value_exists(position.contest_office_name) else ''
-                political_party = position.political_party \
-                    if positive_value_exists(position.political_party) else ''
-                politician_we_vote_id = position.politician_we_vote_id \
-                    if positive_value_exists(position.politician_we_vote_id) else ''
-                try:
-                    date_last_changed = position.date_last_changed.strftime(DATE_FORMAT_YMD_HMS)  # '%Y-%m-%d %H:%M:%S'
-                except Exception as e:
-                    status += 'VOTER_POSITION_DATE_LAST_CHANGED_FAILED: ' + str(e) + ' '
-                    date_last_changed = ''
-                one_position = {
-                    'ballot_item_display_name':             ballot_item_display_name,
-                    'ballot_item_image_url_https_large':    ballot_item_image_url_https_large,
-                    'ballot_item_image_url_https_medium':   ballot_item_image_url_https_medium,
-                    'ballot_item_image_url_https_tiny':     ballot_item_image_url_https_tiny,
-                    'ballot_item_we_vote_id':               ballot_item_we_vote_id,
-                    'candidate_campaign_we_vote_id':        candidate_campaign_we_vote_id,
-                    'contest_office_name':                  contest_office_name,
-                    'date_entered':                         position.date_entered_display(),
-                    'date_last_changed':                    date_last_changed,
-                    'is_oppose':                            position.is_oppose(),
-                    'is_public_position':                   position.is_public_position(),
-                    'is_support':                           position.is_support(),
-                    'statement_text':                       position.statement_text,
-                    'political_party':                      political_party,
-                    'politician_we_vote_id':                politician_we_vote_id,
-                    'position_ultimate_election_date':      position.position_ultimate_election_date,
-                    'position_we_vote_id':                  position.we_vote_id,
-                    'position_year':                        position.position_year,
-                }
+                one_position, convert_status = convert_position_object_to_dict(position)
+                status += convert_status
                 simple_position_list.append(one_position)
 
             status += 'VOTER_POSITION_LIST_FOUND '
