@@ -1090,11 +1090,19 @@ def shared_item_save_for_api(  # sharedItemSave
         if positive_value_exists(shared_item.date_first_shared):
             date_first_shared = shared_item.date_first_shared.strftime(DATE_FORMAT_YMD_HMS)  # '%Y-%m-%d %H:%M:%S'
 
-        shared_item_code_no_opinions = shared_item.shared_item_code_no_opinions
-        url_with_shared_item_code_no_opinions = "https://" + hostname + "/-" + shared_item_code_no_opinions
+        if shared_item.shared_item_code_no_opinions:
+            shared_item_code_no_opinions = shared_item.shared_item_code_no_opinions
+            url_with_shared_item_code_no_opinions = "https://" + hostname + "/-" + shared_item_code_no_opinions
+        else:
+            shared_item_code_no_opinions = ''
+            url_with_shared_item_code_no_opinions = ''
 
-        shared_item_code_all_opinions = shared_item.shared_item_code_all_opinions
-        url_with_shared_item_code_all_opinions = "https://" + hostname + "/-" + shared_item_code_all_opinions
+        if shared_item.shared_item_code_all_opinions:
+            shared_item_code_all_opinions = shared_item.shared_item_code_all_opinions
+            url_with_shared_item_code_all_opinions = "https://" + hostname + "/-" + shared_item_code_all_opinions
+        else:
+            shared_item_code_all_opinions = ''
+            url_with_shared_item_code_all_opinions = ''
 
         # It is better to have a trackable code, but we can still link to the right page if we don't have code
         if positive_value_exists(shared_item.shared_item_code_ready):

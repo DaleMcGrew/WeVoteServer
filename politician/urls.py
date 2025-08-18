@@ -4,12 +4,13 @@
 
 from django.urls import re_path
 
-from . import views_admin
+from . import views_admin, views_data_cleaning
 
 urlpatterns = [
     re_path(r'^$', views_admin.politician_list_view, name='politician_list',),
     re_path(r'^compare_two_politicians/$',
             views_admin.compare_two_politicians_for_merge_view, name='compare_two_politicians_for_merge'),
+    re_path(r'^data_cleaning/$', views_data_cleaning.politicians_data_cleaning_view, name='politicians_data_cleaning'),
     re_path(r'^find_duplicate_politicians/$',
             views_admin.find_and_merge_duplicate_politicians_view, name='find_and_merge_duplicate_politicians'),
     re_path(r'^edit_process/$', views_admin.politician_edit_process_view, name='politician_edit_process'),

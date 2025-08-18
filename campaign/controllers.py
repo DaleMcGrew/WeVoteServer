@@ -1605,11 +1605,17 @@ def generate_campaignx_dict_list_from_campaignx_object_list(
         campaignx_owner_object_list = campaignx_manager.retrieve_campaignx_owner_list(
             campaignx_we_vote_id_list=[campaignx.we_vote_id], viewer_is_owner=voter_is_campaignx_owner)
         for campaignx_owner in campaignx_owner_object_list:
+            from .functions import get_verification_emails
+            verification_emails = get_verification_emails(
+                campaignx_owner=campaignx_owner,
+                viewer_is_owner=voter_is_campaignx_owner,
+            )
             campaign_owner_dict = {
                 'feature_this_profile_image':               campaignx_owner.feature_this_profile_image,
                 'organization_name':                        campaignx_owner.organization_name,
                 'organization_we_vote_id':                  campaignx_owner.organization_we_vote_id,
                 'visible_to_public':                        campaignx_owner.visible_to_public,
+                'verification_emails':                      verification_emails,
                 'we_vote_hosted_profile_image_url_medium':  campaignx_owner.we_vote_hosted_profile_image_url_medium,
                 'we_vote_hosted_profile_image_url_tiny':    campaignx_owner.we_vote_hosted_profile_image_url_tiny,
             }
