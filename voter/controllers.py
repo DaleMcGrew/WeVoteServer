@@ -9,7 +9,6 @@ from io import BytesIO
 from time import time
 
 import robot_detection
-from cairosvg import svg2png
 from PIL import Image, ImageFile, ImageOps
 from django.db.models import F
 from django.http import HttpResponse
@@ -4753,7 +4752,11 @@ def voter_save_photo_from_file_reader(
         try:
             byte_data = base64.b64decode(voter_photo_binary_file)
             if img_dict and img_dict["type"] and "svg" in img_dict["type"].lower():
-                byte_data = svg2png(bytestring=byte_data)
+                try:
+                    from cairosvg import svg2png
+                    byte_data = svg2png(bytestring=byte_data)
+                except Exception as e:
+                    status += "PROBLEM_CONVERTING_SVG_TO_PNG: {error} ".format(error=e)
             image_data_source = BytesIO(byte_data)
             image = None
             image_types_to_check = ["gif", "tiff"]
