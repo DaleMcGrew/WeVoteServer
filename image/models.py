@@ -7,7 +7,6 @@ from datetime import date
 from django.db import models
 from exception.models import handle_record_found_more_than_one_exception, handle_exception, \
     handle_record_not_saved_exception, handle_record_not_deleted_exception
-from cairosvg import svg2png
 from pathlib import Path
 from PIL import ExifTags, GifImagePlugin, Image, ImageOps
 from urllib.request import urlretrieve
@@ -2125,7 +2124,13 @@ class WeVoteImageManager(models.Manager):
             image_name = f"{original_image_stem}.{converted_image_format}"
             converted_image_local_path += image_name
             if original_image_format == "svg":
-                svg2png(url=original_image_local_path, write_to=converted_image_local_path)
+                try:
+                    from cairosvg import svg2png
+                    svg2png(url=original_image_local_path, write_to=converted_image_local_path)
+                except Exception as e:
+                    status += "FAILED_TO_CONVERT_SVG_TO_PNG: " + str(e) + " "
+                    image = Image.open(original_image_local_path)
+                    image.save(converted_image_local_path)
             else:
                 image = Image.open(original_image_local_path)
                 image.save(converted_image_local_path)
