@@ -12,41 +12,13 @@
 
     <ul>
         <li><a href="{% url 'politician:politician_new' %}?state_code={{ state_code }}">Add New Politician</a></li>
-        <li><a href="{% url 'politician:find_and_merge_duplicate_politicians' %}?state_code={{ state_code }}"
+        <li><a href="{% url 'politician:politicians_data_cleaning' %}?state_code={{ state_code }}"
                         target="_blank" >
-            Find and Merge Duplicate Politicians <span class="glyphicon glyphicon-new-window"></span></a> (about 1 minute)&nbsp;&nbsp;
+            Data Cleaning <span class="glyphicon glyphicon-new-window"></span></a>&nbsp;
             <a href="{% url 'politician:duplicates_list' %}?state_code={{ state_code }}"
                         target="_blank" >
-            Possible Duplicates <span class="glyphicon glyphicon-new-window"></span></a>
+            Possible Duplicate Candidates <span class="glyphicon glyphicon-new-window"></span></a>
         </li>
-        <li>
-            <a href="{% url 'politician:update_politicians_from_candidates' %}?state_code={{ state_code }}"
-               target="_blank" >
-                Update Politicians from Candidates <span class="glyphicon glyphicon-new-window"></span></a> (about 1 minute)
-            &nbsp;&nbsp;
-            <a href="{% url 'politician:update_ultimate_election_date_from_candidates' %}?state_code={{ state_code }}" >
-                Update Politician Ultimate Election Dates</a>
-        </li>
-
-{# # 2024-05-15: Causing problems on live servers #}
-{#        <li><a href="{% url 'politician:update_recommended_politicians' %}?state_code={{ state_code }}"#}
-{#                        target="_blank" >#}
-{#            Update recommended politicians <span class="glyphicon glyphicon-new-window"></span></a> (about 1 minute)</li>#}
-        <li>
-            <a href="{% url 'candidate:repair_imported_names' %}?is_candidate=false" >
-                Repair Politician Names</a>,
-            <a href="{% url 'politician:repair_ocd_id_mismatch' %}?state_code={{ state_code }}&google_civic_election_id={{ google_civic_election_id }}" >
-                Repair OCD ID Mismatches</a>,
-            <a href="{% url 'politician:set_missing_gender_ids' %}" >Set Missing Politician Gender Ids</a>
-        </li>
-    {% if organization_might_be_needed_count %}
-        <li><a href="{% url 'politician:match_politicians_to_organizations' %}?state_code={{ state_code }}" >Match Politicians to Endorsers{% if organization_might_be_needed_count %} ({{ organization_might_be_needed_count|intcomma }}){% endif %}</a></li>
-    {% endif %}
-    {% if politicians_need_followers_count %}
-        <li><a href="{% url 'politician:politician_list' %}?create_followers_on=1&state_code={{ state_code }}" target="_blank" >
-            Create FollowOrganization Entries for Politicians{% if politicians_need_followers_count %} ({{ politicians_need_followers_count|intcomma }}){% endif %} <span class="glyphicon glyphicon-new-window"></span></a></li>
-    {% endif %}
-        <li><a href="{% url 'politician:update_profile_image_background_color' %}" >Update 5,000 Politicians' background colors &#40;may take 10 minutes&#41;</a></li>
     </ul>
 
 <form name="state_code_form" method="get" action="{% url 'politician:politician_list' %}">
@@ -209,7 +181,10 @@
                     &nbsp;&nbsp;
                 {% endif %}
                 {% if politician.linked_campaignx_we_vote_id %}
-                    {{ politician.linked_campaignx_we_vote_id|default_if_none:"" }}
+                    <a href="{% url 'campaign:campaignx_summary' politician.linked_campaignx_we_vote_id %}"
+                       target="_blank">
+                        {{ politician.linked_campaignx_we_vote_id }}
+                    </a>
                     &nbsp;&nbsp;
                 {% endif %}
                 {% if politician.vote_usa_politician_id %}

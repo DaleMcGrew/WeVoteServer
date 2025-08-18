@@ -617,6 +617,7 @@ class CampaignXManager(models.Manager):
             campaignx_owner_object_list = campaignx_manager.retrieve_campaignx_owner_list(
                 campaignx_we_vote_id_list=[campaignx_we_vote_id], viewer_is_owner=viewer_is_owner)
 
+            from .functions import get_verification_emails
             for campaignx_owner in campaignx_owner_object_list:
                 campaignx_owner_organization_name = '' if campaignx_owner.organization_name is None \
                     else campaignx_owner.organization_name
@@ -628,10 +629,15 @@ class CampaignXManager(models.Manager):
                 campaignx_owner_we_vote_hosted_profile_image_url_tiny = '' \
                     if campaignx_owner.we_vote_hosted_profile_image_url_tiny is None \
                     else campaignx_owner.we_vote_hosted_profile_image_url_tiny
+                verification_emails = get_verification_emails(
+                    campaignx_owner=campaignx_owner,
+                    viewer_is_owner=viewer_is_owner,
+                )
                 campaign_owner_dict = {
                     'organization_name':                        campaignx_owner_organization_name,
                     'organization_we_vote_id':                  campaignx_owner_organization_we_vote_id,
-                    'feature_this_profile_image':                       campaignx_owner.feature_this_profile_image,
+                    'feature_this_profile_image':               campaignx_owner.feature_this_profile_image,
+                    'verification_emails':                      verification_emails,
                     'visible_to_public':                        campaignx_owner.visible_to_public,
                     'we_vote_hosted_profile_image_url_medium':
                         campaignx_owner_we_vote_hosted_profile_image_url_medium,
@@ -742,11 +748,17 @@ class CampaignXManager(models.Manager):
 
             campaignx_owner_object_list = campaignx_manager.retrieve_campaignx_owner_list(
                 campaignx_we_vote_id_list=[campaignx_we_vote_id], viewer_is_owner=False)
+            from .functions import get_verification_emails
             for campaignx_owner in campaignx_owner_object_list:
+                verification_emails = get_verification_emails(
+                    campaignx_owner=campaignx_owner,
+                    viewer_is_owner=viewer_is_owner,
+                )
                 campaign_owner_dict = {
                     'organization_name':                        campaignx_owner.organization_name,
                     'organization_we_vote_id':                  campaignx_owner.organization_we_vote_id,
                     'feature_this_profile_image':               campaignx_owner.feature_this_profile_image,
+                    'verification_emails':                      verification_emails,
                     'visible_to_public':                        campaignx_owner.visible_to_public,
                     'we_vote_hosted_profile_image_url_medium':  campaignx_owner.we_vote_hosted_profile_image_url_medium,
                     'we_vote_hosted_profile_image_url_tiny':    campaignx_owner.we_vote_hosted_profile_image_url_tiny,
