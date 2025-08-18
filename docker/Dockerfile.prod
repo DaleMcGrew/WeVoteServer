@@ -3,7 +3,9 @@ FROM public.ecr.aws/docker/library/python:3.12-slim-bookworm
 # install required software
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt update && apt install -y \
-    libcairo2 postgresql-client libmagic1
+    postgresql-client libmagic1
+# libcairo2 is failing currently, so commenting it out for now
+#    libcairo2 postgresql-client libmagic1
 
 # install python dependencies
 COPY requirements.txt /tmp
