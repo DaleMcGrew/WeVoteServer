@@ -39,9 +39,10 @@ def obfuscate_email(email):
 def protect_emails_in_list(incoming_email_list):
     protected_list = []
     if incoming_email_list:
-        for unprotected_email in incoming_email_list:
-            protected_email = obfuscate_email(unprotected_email)
-            protected_list.append(protected_email)
+        for email_dict in incoming_email_list:
+            for email_we_vote_id, unprotected_email in email_dict.items():
+                protected_email = obfuscate_email(unprotected_email)
+                protected_list.append({email_we_vote_id: protected_email})
     return protected_list
 
 
@@ -57,9 +58,11 @@ def get_verification_emails(campaignx_owner=None, viewer_is_owner=False):
         results = email_manager.retrieve_voter_email_address_list(voter_we_vote_id)
         if results['email_address_list_found']:
             email_address_list = results['email_address_list']
-            verified_email_addresses = \
-                [email_object.normalized_email_address for email_object in email_address_list
-                    if email_object.email_ownership_is_verified and not email_object.deleted]
+            verified_email_addresses = [
+                {email_object.we_vote_id: email_object.normalized_email_address}
+                for email_object in email_address_list
+                if email_object.email_ownership_is_verified and not email_object.deleted
+            ]
     if viewer_is_owner:
         return verified_email_addresses
     else:
