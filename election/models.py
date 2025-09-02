@@ -295,13 +295,16 @@ class ElectionManager(models.Manager):
                     if election_found:
                         # Skip the rest
                         pass
-                    elif one_election.ballotpedia_election_id == ballotpedia_election_id:
+                    elif positive_value_exists(one_election.ballotpedia_election_id) and \
+                            one_election.ballotpedia_election_id == ballotpedia_election_id:
                         election_found = True
                         election_on_stage = one_election
-                    elif one_election.google_civic_election_id == google_civic_election_id:
+                    elif positive_value_exists(one_election.google_civic_election_id) and \
+                            one_election.google_civic_election_id == google_civic_election_id:
                         election_found = True
                         election_on_stage = one_election
-                    elif one_election.ctcl_uuid == ctcl_uuid:
+                    elif positive_value_exists(one_election.ctcl_uuid) and \
+                            one_election.ctcl_uuid == ctcl_uuid:
                         election_found = True
                         election_on_stage = one_election
                 # Then see if we can find a state-specific match
