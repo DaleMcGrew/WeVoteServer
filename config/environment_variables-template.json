@@ -13,7 +13,7 @@
   "DATABASE_ENGINE":                "django.db.backends.postgresql_psycopg2",
   "DATABASE_NAME":                  "wevoteserverdb",
   "DATABASE_USER":                  "postgres",
-  "DATABASE_PASSWORD":              "admin",
+  "DATABASE_PASSWORD":              "Arjun2809",
   "DATABASE_HOST":                  "",
   "DATABASE_PORT":                  "",
 
