@@ -1178,19 +1178,29 @@ def voter_email_address_save_view(request):  # voterEmailAddressSave
     :param request:
     :return:
     """
-    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
-    text_for_email_address = request.GET.get('text_for_email_address', '')
+    delete_email = positive_value_exists(request.GET.get('delete_email', ""))
+    email_address_we_vote_id = request.GET.get('email_address_we_vote_id', '')
+    hostname = request.GET.get('hostname', '')
+    is_cordova = positive_value_exists(request.GET.get('is_cordova', False))
     incoming_email_we_vote_id = request.GET.get('email_we_vote_id', '')
+    make_primary_email = positive_value_exists(request.GET.get('make_primary_email', False))
     resend_verification_email = positive_value_exists(request.GET.get('resend_verification_email', False))
     resend_verification_code_email = positive_value_exists(request.GET.get('resend_verification_code_email', False))
     send_link_to_sign_in = positive_value_exists(request.GET.get('send_link_to_sign_in', False))
     send_sign_in_code_email = positive_value_exists(request.GET.get('send_sign_in_code_email', False))
-    make_primary_email = positive_value_exists(request.GET.get('make_primary_email', False))
-    delete_email = positive_value_exists(request.GET.get('delete_email', ""))
-    is_cordova = positive_value_exists(request.GET.get('is_cordova', False))
-    hostname = request.GET.get('hostname', '')
+    text_for_email_address = request.GET.get('text_for_email_address', '')
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
 
     if positive_value_exists(send_sign_in_code_email):
+        if positive_value_exists(email_address_we_vote_id):
+            # If here, we had to send in the email_address_we_vote_id because the incoming text_for_email_address might
+            #  have been obfuscated.
+            email_manager = EmailManager()
+            results = email_manager.retrieve_email_address_object(
+                email_address_object_we_vote_id=email_address_we_vote_id)
+            if results['email_address_object_found']:
+                email_address_object = results['email_address_object']
+                text_for_email_address = email_address_object.normalized_email_address
         results = voter_email_address_send_sign_in_code_email_for_api(
             voter_device_id=voter_device_id,
             text_for_email_address=text_for_email_address,
