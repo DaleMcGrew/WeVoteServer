@@ -513,8 +513,8 @@ def candidate_list_view(request):
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
     t1 = time()
     performance_snapshot = {
-        'name': 'CandidateWeVoteIdList',
-        'description': 'Retrieve candidate_we_vote_id_list',
+        'name': 'CandidateWeVoteIdListBasic',
+        'description': 'Retrieve candidate_we_vote_id_list (basic retrieval)',
         'time_difference': t1-t0,
     }
     performance_list.append(performance_snapshot)
@@ -955,6 +955,7 @@ def candidate_list_view(request):
     # Maintenance script section END
     # ################################################
 
+    t0 = time()
     google_civic_election_id_list_generated = False
     show_this_year_of_candidates_restriction = False
     if positive_value_exists(google_civic_election_id):
@@ -969,7 +970,15 @@ def candidate_list_view(request):
         # Limit to just upcoming elections
         google_civic_election_id_list_generated = True
         google_civic_election_id_list = retrieve_upcoming_election_id_list()
+    t1 = time()
+    performance_snapshot = {
+        'name': 'GenerateGoogleCivicElectionIdList',
+        'description': 'Determine which election_id_list to use (param vs year vs all vs upcoming)',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
 
+    t0 = time()
     candidate_we_vote_id_list = []
     if show_this_year_of_candidates_restriction:
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(
@@ -985,7 +994,15 @@ def candidate_list_view(request):
                 google_civic_election_id_list=google_civic_election_id_list,
                 limit_to_this_state_code=state_code)
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
+    t1 = time()
+    performance_snapshot = {
+        'name': 'CandidateWeVoteIdListUpdated',
+        'description': 'Retrieve candidate_we_vote_id_list for either year/state or election/state',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
 
+    t0 = time()
     for one_state_code, one_state_name in state_list.items():
         count_result = candidate_list_manager.retrieve_candidate_count_for_election_and_state(
             google_civic_election_id_list, one_state_code)
@@ -1005,6 +1022,13 @@ def candidate_list_view(request):
     #     pass
     # else:
     #     sorted_state_list = sorted(state_list.items())
+    t1 = time()
+    performance_snapshot = {
+        'name': 'ModifyStateNamesWithCandidateCounts',
+        'description': 'Sort state list based on modified state names with appended candidate counts',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
 
     if positive_value_exists(review_mode):
         if positive_value_exists(google_civic_election_id):
@@ -1017,6 +1041,7 @@ def candidate_list_view(request):
     candidate_list_count = 0
     candidate_count_start = 0
 
+    t0 = time()
     election_manager = ElectionManager()
     if positive_value_exists(show_all_elections):
         results = election_manager.retrieve_elections()
@@ -1024,7 +1049,15 @@ def candidate_list_view(request):
     else:
         results = election_manager.retrieve_upcoming_elections()
         election_list = results['election_list']
+    t1 = time()
+    performance_snapshot = {
+        'name': 'ElectionList',
+        'description': 'Retrieve election_list, either all or upcoming',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
 
+    t0 = time()
     battleground_office_we_vote_ids = []
     battleground_candidate_we_vote_id_list = []
     if positive_value_exists(show_marquee_or_battleground):
@@ -1065,8 +1098,16 @@ def candidate_list_view(request):
             office_list_count = 0
         except Exception as e:
             office_list_count = 0
+    t1 = time()
+    performance_snapshot = {
+        'name': 'BattlegroundCandidateWeVoteIdList',
+        'description': 'Retrieve battleground_office_we_vote_ids and candidate_we_vote_id_list',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
 
     # Figure out the subset of candidate_we_vote_ids to look up
+    t0 = time()
     filtered_candidate_we_vote_id_list = []
     # show_this_year_of_candidates_restriction
     if (google_civic_election_id_list_generated or show_this_year_of_candidates_restriction) \
@@ -1077,6 +1118,13 @@ def candidate_list_view(request):
         filtered_candidate_we_vote_id_list = candidate_we_vote_id_list
     elif show_marquee_or_battleground:
         filtered_candidate_we_vote_id_list = battleground_candidate_we_vote_id_list
+    t1 = time()
+    performance_snapshot = {
+        'name': 'FilteredCandidateWeVoteIdList',
+        'description': 'Retrieve filtered_candidate_we_vote_id_list (by election, year, battleground)',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
 
     # Now retrieve the candidate_list from the filtered_candidate_we_vote_id_list
     t0 = time()
@@ -1280,6 +1328,7 @@ def candidate_list_view(request):
     performance_list.append(performance_snapshot)
 
     candidates_linked_to_multiple_offices = 0
+    t0 = time()
     if positive_value_exists(google_civic_election_id) and \
             positive_value_exists(find_candidates_linked_to_multiple_offices):
         # Only include candidates who are linked to two offices in the same election
@@ -1295,6 +1344,13 @@ def candidate_list_view(request):
                     modified_candidate_list.append(one_candidate)
             candidate_list = modified_candidate_list
         candidates_linked_to_multiple_offices = len(candidate_list)
+    t1 = time()
+    performance_snapshot = {
+        'name': 'FilterCandidatesLinkedToMultipleOffices',
+        'description': 'Filter candidate_list for candidates linked to multiple offices in the same election',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
 
     # #############################################################
     # Get candidates in the elections we care about - used below
@@ -1383,6 +1439,7 @@ def candidate_list_view(request):
         performance_list.append(performance_snapshot)
 
     # How many candidates with wikipedia_candidate_url's don't have wikipedia_photo_url?
+    t0 = time()
     wikipedia_urls_without_picture_urls = 0
     try:
         count_queryset = CandidateCampaign.objects.using('readonly').all()
@@ -1404,6 +1461,14 @@ def candidate_list_view(request):
     except Exception as e:
         logger.error("ERROR Finding Wikipedia Photo URLs: ", e)
 
+    t1 = time()
+    performance_snapshot = {
+        'name': 'DetermineWikipediaUrlWithoutPhoto',
+        'description': 'Determine how many wikipedia_url do not have wikipedia_photo_url',
+        'time_difference': t1 - t0,
+    }
+    performance_list.append(performance_snapshot)
+
 
     status_print_list = ""
     status_print_list += "{candidate_list_count:,} candidates found." \
@@ -1419,7 +1484,16 @@ def candidate_list_view(request):
     # Provide this election to the template, so we can show election statistics
     election = None
     if positive_value_exists(google_civic_election_id):
+        t0 = time()
         results = election_manager.retrieve_election(google_civic_election_id)
+        t1 = time()
+        performance_snapshot = {
+            'name': 'RetrieveElection',
+            'description': 'Retrieve election from election_manager',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
+
         if results['election_found']:
             election = results['election']
             ballot_returned_list_manager = BallotReturnedListManager()
@@ -1439,11 +1513,20 @@ def candidate_list_view(request):
                     pass
 
             # How many offices?
+            t0 = time()
             office_list_query = ContestOffice.objects.using('readonly').all()
             office_list_query = office_list_query.filter(google_civic_election_id=election.google_civic_election_id)
             election.office_count = office_list_query.count()
+            t1 = time()
+            performance_snapshot = {
+                'name': 'RetrieveOfficeCount',
+                'description': 'Retrieve office_count from querying ContestOffice',
+                'time_difference': t1 - t0,
+            }
+            performance_list.append(performance_snapshot)
 
             if positive_value_exists(show_election_statistics):
+                t0 = time()
                 office_list = list(office_list_query)
 
                 election.ballot_returned_count = \
@@ -1459,10 +1542,18 @@ def candidate_list_view(request):
                     if positive_value_exists(results['batches_not_processed']):
                         election.batches_not_processed = results['batches_not_processed']
                         election.batches_not_processed_batch_set_id = results['batch_set_id']
+                t1 = time()
+                performance_snapshot = {
+                    'name': 'RetrieveBallotAndBatchInfo',
+                    'description': 'Retrieve ballot_returned_count and batches_not_processed',
+                    'time_difference': t1 - t0,
+                }
+                performance_list.append(performance_snapshot)
 
                 # How many offices with zero candidates?
                 offices_with_candidates_count = 0
                 offices_without_candidates_count = 0
+                t0 = time()
                 for one_office in office_list:
                     candidate_list_query = CandidateCampaign.objects.using('readonly').all()
                     candidate_list_query = candidate_list_query.filter(contest_office_id=one_office.id)
@@ -1473,16 +1564,32 @@ def candidate_list_view(request):
                         offices_without_candidates_count += 1
                 election.offices_with_candidates_count = offices_with_candidates_count
                 election.offices_without_candidates_count = offices_without_candidates_count
+                t1 = time()
+                performance_snapshot = {
+                    'name': 'CountOfficesWithAndWithoutCandidates',
+                    'description': 'Retrieve offices_with_candidates_count and offices_without_candidates_count',
+                    'time_difference': t1 - t0,
+                }
+                performance_list.append(performance_snapshot)
 
                 # if positive_value_exists(google_civic_election_id_list_generated) \
                 #         or positive_value_exists(show_marquee_or_battleground):
                 #     candidate_query = candidate_query.filter(we_vote_id__in=filtered_candidate_we_vote_id_list)
                 # How many candidates?
+                t0 = time()
                 candidate_list_query = CandidateCampaign.objects.using('readonly').all()
                 candidate_list_query = candidate_list_query.filter(we_vote_id__in=candidate_we_vote_id_list)
                 election.candidate_count = candidate_list_query.count()
+                t1 = time()
+                performance_snapshot = {
+                    'name': 'CountCandidates',
+                    'description': 'Retrieve candidate_count',
+                    'time_difference': t1 - t0,
+                }
+                performance_list.append(performance_snapshot)
 
                 # How many without photos?
+                t0 = time()
                 # candidate_list_query = CandidateCampaign.objects.using('readonly').all()
                 # candidate_list_query = candidate_list_query.filter(we_vote_id__in=candidate_we_vote_id_list)
                 candidate_list_query = candidate_list_query.filter(
@@ -1492,20 +1599,44 @@ def candidate_list_view(request):
                 if positive_value_exists(election.candidate_count):
                     election.candidates_without_photo_percentage = \
                         100 * (election.candidates_without_photo_count / election.candidate_count)
+                t1 = time()
+                performance_snapshot = {
+                    'name': 'CountCandidatesWithoutPhoto',
+                    'description': 'Retrieve candidates_without_photo and percentage from total candidate count',
+                    'time_difference': t1 - t0,
+                }
+                performance_list.append(performance_snapshot)
 
                 # How many measures?
+                t0 = time()
                 measure_list_query = ContestMeasure.objects.using('readonly').all()
                 measure_list_query = measure_list_query.filter(
                     google_civic_election_id=election.google_civic_election_id)
                 election.measure_count = measure_list_query.count()
+                t1 = time()
+                performance_snapshot = {
+                    'name': 'CountMeasures',
+                    'description': 'Retrieve measure_count',
+                    'time_difference': t1 - t0,
+                }
+                performance_list.append(performance_snapshot)
 
                 # Number of Voter Guides
+                t0 = time()
                 voter_guide_query = VoterGuide.objects.using('readonly').filter(
                     google_civic_election_id=election.google_civic_election_id)
                 voter_guide_query = voter_guide_query.exclude(vote_smart_ratings_only=True)
                 election.voter_guides_count = voter_guide_query.count()
+                t1 = time()
+                performance_snapshot = {
+                    'name': 'CountVoterGuides',
+                    'description': 'Retrieve voter_guides_count',
+                    'time_difference': t1 - t0,
+                }
+                performance_list.append(performance_snapshot)
 
                 # Number of Public Positions
+                t0 = time()
                 position_query = PositionEntered.objects.using('readonly').all()
                 # Catch both candidates and measures (which have google_civic_election_id in the Positions table)
                 position_query = position_query.filter(
@@ -1514,6 +1645,13 @@ def candidate_list_view(request):
                 # As of Aug 2018 we are no longer using PERCENT_RATING
                 position_query = position_query.exclude(stance__iexact='PERCENT_RATING')
                 election.public_positions_count = position_query.count()
+                t1 = time()
+                performance_snapshot = {
+                    'name': 'CountPublicPositions',
+                    'description': 'Retrieve public_positions_count',
+                    'time_difference': t1 - t0,
+                }
+                performance_list.append(performance_snapshot)
 
     # Attach the latest contest_office information
     modified_candidate_list = []
@@ -1549,6 +1687,7 @@ def candidate_list_view(request):
 
     # Make sure we always include the current election in the election_list, even if it is older
     if positive_value_exists(google_civic_election_id):
+        t0 = time()
         this_election_found = False
         for one_election in election_list:
             if convert_to_int(one_election.google_civic_election_id) == convert_to_int(google_civic_election_id):
@@ -1559,16 +1698,31 @@ def candidate_list_view(request):
             if results['election_found']:
                 one_election = results['election']
                 election_list.append(one_election)
+        t1 = time()
+        performance_snapshot = {
+            'name': 'EnsureCurrentElectionIncluded',
+            'description': 'Loop through election_list until current election found; if not, append to election_list',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
 
     total_twitter_handles = 0
     if positive_value_exists(review_mode):
         # Attach the positions_count, if any, to each candidate in list
         position_list_manager = PositionListManager()
+        t0 = time()
         for candidate in candidate_list:
             candidate.positions_count = position_list_manager.fetch_public_positions_count_for_candidate(
                 candidate.id, candidate.we_vote_id)
             if positive_value_exists(candidate.candidate_twitter_handle):
                 total_twitter_handles += 1
+        t1 = time()
+        performance_snapshot = {
+            'name': 'AttachPositionCount',
+            'description': 'Attach positions_count to each candidate in review mode',
+            'time_difference': t1 - t0,
+        }
+        performance_list.append(performance_snapshot)
     elif positive_value_exists(show_candidates_with_best_twitter_options) \
             or positive_value_exists(show_candidates_with_twitter_options):
         # Attach the best guess Twitter account, if any, to each candidate in list
