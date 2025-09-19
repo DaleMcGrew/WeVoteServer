@@ -5,12 +5,13 @@
 import json
 
 from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 
 import wevote_functions.admin
 from config.base import get_environment_variable
-from politician.controllers import politician_retrieve_for_api
+from politician.controllers import politician_retrieve_for_api, politician_save_for_api
 from politician.views_admin import politician_change_gender_id_view
-from wevote_functions.functions import get_voter_device_id
+from wevote_functions.functions import get_voter_device_id, positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -82,6 +83,35 @@ def politician_retrieve_as_owner_view(request):  # politicianRetrieveAsOwner (No
         politician_we_vote_id=politician_we_vote_id,
         as_owner=True,
         hostname=hostname,
+    )
+    return HttpResponse(json.dumps(json_data), content_type='application/json')
+
+
+@csrf_exempt
+def politician_save_view(request):  # politicianSave
+    # This is set in /config/base.py: DATA_UPLOAD_MAX_MEMORY_SIZE = 6000000
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
+    politician_name = request.POST.get('politician_name', '')
+    politician_name_changed = positive_value_exists(request.POST.get('politician_name_changed', False))
+    politician_photo_from_file_reader = request.POST.get('politician_photo_from_file_reader', '')
+    politician_photo_changed = positive_value_exists(request.POST.get('politician_photo_changed', False))
+    politician_photo_delete = request.POST.get('politician_photo_delete', '')
+    politician_photo_delete_changed = positive_value_exists(request.POST.get('politician_photo_delete_changed', False))
+    politician_we_vote_id = request.POST.get('politician_we_vote_id', '')
+    state_code_changed = positive_value_exists(request.POST.get('state_code_changed', False))
+    state_code = request.POST.get('state_code', '')
+    json_data = politician_save_for_api(
+        politician_name=politician_name,
+        politician_name_changed=politician_name_changed,
+        politician_photo_from_file_reader=politician_photo_from_file_reader,
+        politician_photo_changed=politician_photo_changed,
+        politician_photo_delete=politician_photo_delete,
+        politician_photo_delete_changed=politician_photo_delete_changed,
+        politician_we_vote_id=politician_we_vote_id,
+        request=request,
+        state_code_changed=state_code_changed,
+        state_code=state_code,
+        voter_device_id=voter_device_id,
     )
     return HttpResponse(json.dumps(json_data), content_type='application/json')
 

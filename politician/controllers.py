@@ -3,19 +3,21 @@
 # -*- coding: UTF-8 -*-
 
 import base64
+import copy
 from io import BytesIO
 from PIL import Image, ImageOps
 import re
 
 from django.db.models import Q
-from campaign.models import CampaignXManager, FINAL_ELECTION_DATE_COOL_DOWN
+from campaign.models import CampaignXManager, FINAL_ELECTION_DATE_COOL_DOWN, CampaignXOwner
 from candidate.controllers import add_name_to_next_spot, copy_field_value_from_object1_to_object2, \
     generate_candidate_dict_list_from_candidate_object_list, move_candidates_to_another_politician
 from candidate.models import CandidateListManager, CandidateManager, PROFILE_IMAGE_TYPE_FACEBOOK, \
     PROFILE_IMAGE_TYPE_UNKNOWN, \
     PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_VOTE_USA
 from datetime import datetime
-from image.controllers import cache_image_object_to_aws
+from email_outbound.models import EmailAddress
+from image.controllers import cache_image_object_to_aws, create_resized_images
 from office.models import ContestOfficeManager, ContestOfficeListManager
 from office_held.controllers import generate_office_held_dict_list_from_office_held_we_vote_id_list
 from organization.models import Organization, OrganizationManager
@@ -44,6 +46,64 @@ POLITICIANS_SYNC_URL = get_environment_variable("POLITICIANS_SYNC_URL")  # polit
 # Also search image/controllers.py for these constants
 PROFILE_IMAGE_ORIGINAL_MAX_WIDTH = 2048
 PROFILE_IMAGE_ORIGINAL_MAX_HEIGHT = 2048
+POLITICIAN_RETRIEVE_ERROR_DICT = {
+    'ballotpedia_politician_url': '',
+    'candidate_list': '',
+    'candidate_list_exists': '',
+    'final_election_date_in_past': True,
+    'in_draft_mode': True,
+    'instagram_handle': '',
+    'is_supporters_count_minimum_exceeded': False,
+    'linked_campaignx_we_vote_id': '',
+    'office_held_list': '',
+    'office_held_list_exists': '',
+    'opponent_candidate_list': '',
+    'opponent_candidate_list_exists': '',
+    'opposers_count': 0,
+    'organization_we_vote_id': '',
+    'political_party': '',
+    'politician_candidate_list': [],
+    'politician_candidate_list_exists': False,
+    'politician_description': '',
+    'politician_email': '',
+    'politician_email2': '',
+    'politician_email3': '',
+    'politician_name': '',
+    'politician_news_item_list': '',
+    'politician_owner_list': [],
+    'politician_twitter_handle': '',
+    'politician_twitter_handle2': '',
+    'politician_ultimate_election_date': 0,
+    'politician_url': '',
+    'politician_we_vote_id': '',
+    # 'is_blocked_by_we_vote':            politician.is_blocked_by_we_vote,
+    # 'is_blocked_by_we_vote_reason':     politician.is_blocked_by_we_vote_reason,
+    # 'latest_politician_supporter_endorsement_list':  latest_politician_supporter_endorsement_list,
+    # 'latest_politician_supporter_list':  latest_politician_supporter_list,
+    'profile_image_background_color': '',
+    'representative_list': '',
+    'representative_list_exists': '',
+    'seo_friendly_path': '',
+    'seo_friendly_path_list': '',
+    'state_code': '',
+    'status': '',
+    'success': False,
+    'supporters_count': 0,
+    'supporters_count_next_goal':       0,
+    'supporters_count_victory_goal':    0,
+    'twitter_followers_count': '',
+    'visible_on_this_site':             False,
+    'voter_politician_supporter':        {},
+    'voter_can_send_updates_to_politician': False,
+    'voter_can_vote_for_politician_we_vote_ids': '',
+    'voter_is_politician_owner': False,
+    'voter_signed_in_with_email': False,
+    'we_vote_hosted_profile_image_url_large': '',
+    'we_vote_hosted_profile_image_url_medium': '',
+    'we_vote_hosted_profile_image_url_tiny': '',
+    'wikipedia_url': '',
+    'youtube_url': '',
+}
 
 
 def add_alternate_names_to_next_spot(politician):
@@ -687,6 +747,124 @@ def generate_campaignx_for_politician(
         'status':               status,
         'success':              success,
         'politician':           politician,
+    }
+    return results
+
+
+def is_voter_politician_owner(
+        politician=None,
+        politician_we_vote_id=None,
+        voter=None,
+        voter_we_vote_id=None,
+):
+    politician_found = False
+    status = ''
+    success = True
+    voter_emails_found = False
+    voter_found = False
+    has_permission_to_edit_politician = False
+
+    if voter and positive_value_exists(voter.we_vote_id):
+        voter_found = True
+        voter_we_vote_id = voter.we_vote_id
+    elif positive_value_exists(voter_we_vote_id):
+        try:
+            voter = Voter.objects.using('readonly').get(we_vote_id=voter_we_vote_id)
+            voter_found = True
+        except Exception as e:
+            status += "VOTER_NOT_FOUND: " + str(e) + " "
+
+    if not voter_found:
+        status += "VOTER_REQUIRED_FOR_VOTER_POLITICIAN_OWNERSHIP "
+        success = False
+        results = {
+            'politician_found': politician_found,
+            'politician_we_vote_id': politician_we_vote_id,
+            'has_permission_to_edit_politician': has_permission_to_edit_politician,
+            'status': status,
+            'success': success,
+        }
+        return results
+
+    voter_email_address_list = []
+    try:
+        queryset = EmailAddress.objects.using('readonly').all()
+        queryset = queryset.filter(voter_we_vote_id=voter_we_vote_id)
+        queryset = queryset.filter(email_ownership_is_verified=True)
+        queryset = queryset.values_list('normalized_email_address', flat=True).distinct()
+        voter_email_address_list = list(queryset)
+        voter_emails_found = True
+    except Exception as e:
+        status += "VOTER_EMAILS_NOT_FOUND: " + str(e) + " "
+    voter_email_address_set = set(email.lower() for email in voter_email_address_list)
+
+    if not voter_emails_found or len(voter_email_address_list) == 0:
+        status += "VOTER_DOES_NOT_HAVE_EMAILS "
+        results = {
+            'politician_found': politician_found,
+            'politician_we_vote_id': politician_we_vote_id,
+            'has_permission_to_edit_politician': has_permission_to_edit_politician,
+            'status': status,
+            'success': success,
+        }
+        return results
+
+    if politician and positive_value_exists(politician.we_vote_id):
+        politician_found = True
+        politician_we_vote_id = politician.we_vote_id
+    elif positive_value_exists(politician_we_vote_id):
+        try:
+            politician = Politician.objects.using('readonly').get(we_vote_id=politician_we_vote_id)
+            politician_found = True
+        except Exception as e:
+            status += "POLITICIAN_NOT_FOUND: " + str(e) + " "
+
+    if not politician_found:
+        status += "POLITICIAN_REQUIRED_FOR_VOTER_POLITICIAN_OWNERSHIP "
+        success = False
+        results = {
+            'politician_found': politician_found,
+            'politician_we_vote_id': politician_we_vote_id,
+            'has_permission_to_edit_politician': has_permission_to_edit_politician,
+            'status': status,
+            'success': success,
+        }
+        return results
+
+    # Does the voter have a verified email address that matches a politician email address?
+    politician_email_address_list = []
+    if positive_value_exists(politician.politician_email):
+        politician_email_address_list.append(politician.politician_email)
+    if positive_value_exists(politician.politician_email2):
+        politician_email_address_list.append(politician.politician_email2)
+    if positive_value_exists(politician.politician_email3):
+        politician_email_address_list.append(politician.politician_email3)
+    politician_email_address_set = set(email.lower() for email in politician_email_address_list if email)
+    # Check if there's any intersection between the two sets
+    matching_emails = voter_email_address_set.intersection(politician_email_address_set)
+
+    if matching_emails:
+        has_permission_to_edit_politician = True
+        status += f"VOTER_OWNS_POLITICIAN: Matching emails: {', '.join(matching_emails)} "
+
+    if not has_permission_to_edit_politician:
+        # Now check to see if the voter is on the Politician's staff (CampaignX Owner)
+        campaignx_we_vote_id = politician.linked_campaignx_we_vote_id
+        try:
+            campaignx_owner_query = CampaignXOwner.objects.using('readonly').filter(
+                campaignx_we_vote_id=campaignx_we_vote_id,
+                voter_we_vote_id=voter_we_vote_id)
+            has_permission_to_edit_politician = positive_value_exists(campaignx_owner_query.count())
+            status += 'VOTER_IS_CAMPAIGNX_OWNER '
+        except CampaignXOwner as e:
+            status += 'CAMPAIGNX_OWNER_QUERY_FAILED: ' + str(e) + ' '
+
+    results = {
+        'politician_found': politician_found,
+        'politician_we_vote_id': politician_we_vote_id,
+        'has_permission_to_edit_politician': has_permission_to_edit_politician,
+        'status': status,
+        'success': success,
     }
     return results
 
@@ -1617,6 +1795,7 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
 
     politician_manager = PoliticianManager()
     politician = None
+    politician_retrieve_error_dict = copy.deepcopy(POLITICIAN_RETRIEVE_ERROR_DICT)
     voter_manager = VoterManager()
     voter_results = voter_manager.retrieve_voter_from_voter_device_id(voter_device_id, read_only=True)
     if voter_results['voter_found']:
@@ -1642,7 +1821,7 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
                 success = False
             politician_found = results['politician_found']
             status += results['status']
-            voter_is_politician_owner = results['viewer_is_owner']
+            voter_is_politician_owner = True
             politician = results['politician']
             # politician_owner_list = results['politician_owner_list']
     else:
@@ -1660,39 +1839,9 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
             success = False
         status += results['status']
     if not success or not politician_found:
-        results = {
-            'final_election_date_in_past':      True,
-            'in_draft_mode':                    True,
-            'is_supporters_count_minimum_exceeded': False,
-            'linked_campaignx_we_vote_id':      '',
-            'opposers_count':                   0,
-            'organization_we_vote_id':          '',
-            'politician_description':           '',
-            'politician_email':                 '',
-            'politician_email2':                '',
-            'politician_email3':                '',
-            'politician_name':                  '',
-            'politician_owner_list':            politician_owner_list,
-            'politician_candidate_list':        [],
-            'politician_candidate_list_exists': False,
-            'politician_ultimate_election_date': 0,
-            'politician_we_vote_id':            '',
-            'seo_friendly_path':                seo_friendly_path,
-            'seo_friendly_path_list':           seo_friendly_path_list,
-            'status':                           status,
-            'success':                          False,
-            'supporters_count':                 0,
-            'supporters_count_next_goal':       0,
-            'supporters_count_victory_goal':    0,
-            'visible_on_this_site':             False,
-            'voter_politician_supporter':       {},
-            'voter_can_send_updates_to_politician': False,
-            'voter_is_politician_owner':        False,
-            'voter_signed_in_with_email':       voter_signed_in_with_email,
-            'we_vote_hosted_profile_image_url_large': '',
-            'we_vote_hosted_profile_image_url_medium': '',
-            'we_vote_hosted_profile_image_url_tiny': '',
-        }
+        results = politician_retrieve_error_dict
+        results['status'] = status
+        results['voter_signed_in_with_email'] = voter_signed_in_with_email
         return results
 
     if not positive_value_exists(politician.linked_campaignx_we_vote_id):
@@ -2084,6 +2233,183 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
     return results
 
 
+def politician_save_for_api(  # politicianSave
+        politician_name='',
+        politician_name_changed=False,
+        politician_photo_from_file_reader='',
+        politician_photo_changed=False,
+        politician_photo_delete=False,
+        politician_photo_delete_changed=False,
+        state_code='',
+        state_code_changed=False,
+        politician_we_vote_id='',
+        request=None,
+        voter_device_id=''):
+    status = ''
+    success = True
+    politician_retrieve_error_dict = copy.deepcopy(POLITICIAN_RETRIEVE_ERROR_DICT)
+
+    voter_manager = VoterManager()
+    voter_results = voter_manager.retrieve_voter_from_voter_device_id(voter_device_id, read_only=True)
+    if voter_results['voter_found']:
+        voter = voter_results['voter']
+        voter_signed_in_with_email = voter.signed_in_with_email()
+        voter_we_vote_id = voter.we_vote_id
+        linked_organization_we_vote_id = voter.linked_organization_we_vote_id
+    else:
+        status += "VALID_VOTER_ID_MISSING "
+        results = politician_retrieve_error_dict
+        results['status'] = status
+        return results
+
+    politician_manager = PoliticianManager()
+    if positive_value_exists(politician_we_vote_id):
+        # Check permissions to make sure this voter can make saves to the Politician
+        results = is_voter_politician_owner(
+            politician_we_vote_id=politician_we_vote_id, voter_we_vote_id=voter_we_vote_id)
+        has_permission_to_edit_politician = results['has_permission_to_edit_politician']
+        if not positive_value_exists(has_permission_to_edit_politician):
+            status += "DOES_NOT_HAVE_PERMISSION_TO_EDIT_POLITICIAN "
+            results = politician_retrieve_error_dict
+            results['status'] = status
+            return results
+
+        update_values = {}
+
+        # Save politician_photo_from_file_reader and get back we_vote_hosted_politician_photo_original_url
+        if politician_photo_changed and politician_photo_from_file_reader:
+            photo_results = politician_save_photo_from_file_reader(
+                politician_we_vote_id=politician_we_vote_id,
+                politician_photo_from_file_reader=politician_photo_from_file_reader)
+            if photo_results['we_vote_hosted_politician_photo_original_url']:
+                update_values['we_vote_hosted_politician_photo_original_url'] = \
+                    photo_results['we_vote_hosted_politician_photo_original_url']
+                # Now we want to resize to a large version
+                create_resized_image_results = create_resized_images(
+                    politician_we_vote_id=politician_we_vote_id,
+                    politician_uploaded_profile_image_url_https=photo_results\
+                    ['we_vote_hosted_politician_photo_original_url'])
+                update_values['we_vote_hosted_profile_uploaded_image_url_large'] = \
+                    create_resized_image_results['cached_resized_image_url_large']
+                update_values['we_vote_hosted_profile_uploaded_image_url_medium'] = \
+                    create_resized_image_results['cached_resized_image_url_medium']
+                update_values['we_vote_hosted_profile_uploaded_image_url_small'] = \
+                    create_resized_image_results['cached_resized_image_url_tiny']
+
+        if politician_name_changed:
+            update_values['politician_name'] = politician_name
+        if state_code_changed:
+            update_values['state_code'] = state_code
+
+        # update_values = {
+        #     'politician_photo_changed':         politician_photo_changed,
+        #     'politician_photo_delete':          politician_photo_delete,
+        #     'politician_photo_delete_changed':  politician_photo_delete_changed,
+        # }
+        create_results = politician_manager.update_or_create_politician(
+            politician_we_vote_id=politician_we_vote_id,
+            update_values=update_values,
+        )
+    else:
+        # If here, we are creating a new Politician
+        # Make sure we have minimum required data
+        update_values = {
+            'politician_name':                 politician_name,
+            # 'politician_photo_delete':                politician_photo_delete,
+            # 'politician_photo_delete_changed':        politician_photo_delete_changed,
+        }
+        create_results = politician_manager.update_or_create_politician(
+            politician_name=politician_name,
+            state_code=state_code,
+            update_values=update_values,
+        )
+        if create_results['politician_created']:
+            # Campaign was just created, so save the voter as an owner
+            politician_we_vote_id = create_results['politician_we_vote_id']
+            owner_results = politician_manager.update_or_create_politician_owner(
+                politician_we_vote_id=politician_we_vote_id,
+                organization_we_vote_id=linked_organization_we_vote_id,
+                voter_we_vote_id=voter_we_vote_id)
+            status += owner_results['status']
+        if create_results['politician_found'] and politician_photo_changed:
+            politician = create_results['politician']
+            politician_we_vote_id = create_results['politician_we_vote_id']
+            if politician_photo_from_file_reader:
+                photo_results = politician_save_photo_from_file_reader(
+                    politician_we_vote_id=politician_we_vote_id,
+                    politician_photo_from_file_reader=politician_photo_from_file_reader)
+                if photo_results['we_vote_hosted_politician_photo_original_url']:
+                    politician.we_vote_hosted_politician_photo_original_url = \
+                        photo_results['we_vote_hosted_politician_photo_original_url']
+
+                    # Now we want to resize to a large version
+                    create_resized_image_results = create_resized_images(
+                        politician_we_vote_id=politician_we_vote_id,
+                        politician_uploaded_profile_image_url_https=politician.we_vote_hosted_politician_photo_original_url)
+                    politician.we_vote_hosted_profile_uploaded_image_url_large = \
+                        create_resized_image_results['cached_resized_image_url_large']
+                    politician.we_vote_hosted_profile_uploaded_image_url_medium = \
+                        create_resized_image_results['cached_resized_image_url_medium']
+                    politician.we_vote_hosted_profile_uploaded_image_url_small = \
+                        create_resized_image_results['cached_resized_image_url_tiny']
+                    # Place in the default fields too here? Search for other routine that deals with photo choice
+                    # we_vote_hosted_profile_image_url_large
+                    # we_vote_hosted_profile_image_url_medium
+                    # we_vote_hosted_profile_image_url_tiny
+
+                    politician.save()
+            else:
+                # Deleting image
+                politician.we_vote_hosted_profile_uploaded_image_url_large = None
+                politician.we_vote_hosted_profile_uploaded_image_url_medium = None
+                politician.we_vote_hosted_profile_uploaded_image_url_small = None
+                politician.save()
+
+    status += create_results['status']
+    if create_results['politician_found']:
+        politician = create_results['politician']
+        politician_we_vote_id = politician.we_vote_id
+        return politician_retrieve_for_api(
+            as_owner=True,
+            politician_we_vote_id=politician_we_vote_id,
+            voter_device_id=voter_device_id,
+        )
+
+        # # We need to know all the politicians this voter can vote for so we can figure out
+        # #  if the voter can vote for any politicians in the election
+        # from ballot.controllers import what_voter_can_vote_for
+        # results = what_voter_can_vote_for(request=request, voter_device_id=voter_device_id)
+        # voter_can_vote_for_politician_we_vote_ids = results['voter_can_vote_for_politician_we_vote_ids']
+
+        # generate_results = generate_politician_dict_from_politician_object(
+        #     politician=politician,
+        #     politician_owner_list=politician_owner_list,
+        #     hostname=hostname,
+        #     seo_friendly_path_list=seo_friendly_path_list,
+        #     voter_can_vote_for_politician_we_vote_ids=voter_can_vote_for_politician_we_vote_ids,
+        #     voter_is_politician_owner=voter_is_politician_owner,
+        #     voter_signed_in_with_email=voter_signed_in_with_email,
+        #     voter_we_vote_id=voter_we_vote_id,
+        # )
+        #
+        # politician_dict = generate_results['politician_dict']
+        # status += generate_results['status']
+        # if not generate_results['success']:
+        #     success = False
+        # if 'politician_description' not in politician_dict:
+        #     success = False
+        # if success:
+        #     results = politician_dict
+        # else:
+        #     results = politician_retrieve_error_dict
+        # return results
+    else:
+        status += "POLITICIAN_SAVE_ERROR "
+        results = politician_retrieve_error_dict
+        results['status'] = status
+        return results
+
+
 def politicians_import_from_master_server(request, state_code=''):  # politiciansSyncOut
     """
     Get the json data, and either create new entries or update existing
@@ -2289,7 +2615,7 @@ def politicians_import_from_structured_json(structured_json):  # politiciansSync
                 updated_politician_values[one_field] = 0
 
         results = politician_manager.update_or_create_politician(
-            updated_politician_values=updated_politician_values,
+            update_values=updated_politician_values,
             politician_we_vote_id=politician_we_vote_id)
         if results['success']:
             if results['politician_created']:

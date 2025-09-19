@@ -1532,7 +1532,7 @@ class PoliticianManager(models.Manager):
         }
 
         results = self.update_or_create_politician(
-            updated_politician_values=updated_politician_values,
+            update_values=updated_politician_values,
             politician_we_vote_id=candidate.politician_we_vote_id,
             vote_usa_politician_id=candidate.vote_usa_politician_id,
             candidate_twitter_handle=candidate.candidate_twitter_handle,
@@ -1553,7 +1553,7 @@ class PoliticianManager(models.Manager):
 
     @staticmethod
     def update_or_create_politician(
-            updated_politician_values={},
+            update_values={},
             politician_we_vote_id='',
             vote_smart_id=0,
             vote_usa_politician_id='',
@@ -1563,10 +1563,12 @@ class PoliticianManager(models.Manager):
             state_code="",
             first_name="",
             middle_name="",
-            last_name=""):
+            last_name="",
+            politician_name="",
+    ):
         """
         Either update or create a politician entry. The individual variables passed in are for the purpose of finding
-        a politician to update, and the updated_politician_values variable contains the values we want to update to.
+        a politician to update, and the update_values variable contains the values we want to update to.
         """
         new_politician_created = False
         politician_found = False
@@ -1582,19 +1584,19 @@ class PoliticianManager(models.Manager):
                 politician, new_politician_created = \
                     Politician.objects.update_or_create(
                         we_vote_id=politician_we_vote_id,
-                        defaults=updated_politician_values)
+                        defaults=update_values)
                 politician_found = True
             elif positive_value_exists(vote_smart_id):
                 politician, new_politician_created = \
                     Politician.objects.update_or_create(
                         vote_smart_id=vote_smart_id,
-                        defaults=updated_politician_values)
+                        defaults=update_values)
                 politician_found = True
             elif positive_value_exists(vote_usa_politician_id):
                 politician, new_politician_created = \
                     Politician.objects.update_or_create(
                         vote_usa_politician_id=vote_usa_politician_id,
-                        defaults=updated_politician_values)
+                        defaults=update_values)
                 politician_found = True
             elif positive_value_exists(candidate_twitter_handle):
                 # For incoming twitter_handle we need to approach this differently
@@ -1611,7 +1613,7 @@ class PoliticianManager(models.Manager):
                     politician_found = True
                 else:
                     # Create politician
-                    politician = Politician.objects.create(defaults=updated_politician_values)
+                    politician = Politician.objects.create(defaults=update_values)
                     new_politician_created = True
                     politician_found = True
             elif positive_value_exists(candidate_name) and positive_value_exists(state_code):
@@ -1620,7 +1622,15 @@ class PoliticianManager(models.Manager):
                     Politician.objects.update_or_create(
                         politician_name=candidate_name,
                         state_code=state_code,
-                        defaults=updated_politician_values)
+                        defaults=update_values)
+                politician_found = True
+            elif positive_value_exists(politician_name) and positive_value_exists(state_code):
+                state_code = state_code.lower()
+                politician, new_politician_created = \
+                    Politician.objects.update_or_create(
+                        politician_name=politician_name,
+                        state_code=state_code,
+                        defaults=update_values)
                 politician_found = True
             elif positive_value_exists(first_name) and positive_value_exists(last_name) \
                     and positive_value_exists(state_code):
@@ -1630,7 +1640,7 @@ class PoliticianManager(models.Manager):
                         first_name=first_name,
                         last_name=last_name,
                         state_code=state_code,
-                        defaults=updated_politician_values)
+                        defaults=update_values)
                 politician_found = True
             else:
                 # If here we have exhausted our set of unique identifiers
