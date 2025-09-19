@@ -1003,7 +1003,7 @@ def candidate_list_view(request):
     performance_list.append(performance_snapshot)
 
     t0 = time()
-    # make just 1 query to get all states' candidate counts (using django.db.models Count)
+    # make 1 query to get all states' candidate counts in one swoop (using django.db.models Count)
     candidate_counts_qs = CandidateCampaign.objects.using('readonly').filter(
         we_vote_id__in=candidate_we_vote_id_list).values('state_code').annotate(candidate_count=Count('id'))
 
