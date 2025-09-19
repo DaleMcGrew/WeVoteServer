@@ -14,7 +14,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.db.models.functions import Length
 from django.http import HttpResponse
 from django.http import HttpResponseRedirect
@@ -1003,20 +1003,24 @@ def candidate_list_view(request):
     performance_list.append(performance_snapshot)
 
     t0 = time()
+    # make just 1 query to get all states' candidate counts (had to use django.db.models Count)
+    candidate_counts_qs = CandidateCampaign.objects.using('readonly').filter(
+        we_vote_id__in=candidate_we_vote_id_list).values('state_code').annotate(candidate_count=Count('id'))
+
+    # then use candidate_counts_qs to create a dict that maps state codes to their candidate counts
+    candidate_counts_by_state = {x['state_code'].lower(): x['candidate_count'] for x in candidate_counts_qs}
+
     for one_state_code, one_state_name in state_list.items():
         count_result = candidate_list_manager.retrieve_candidate_count_for_election_and_state(
-            google_civic_election_id_list, one_state_code)
+            google_civic_election_id_list, one_state_code, candidate_counts_by_state)
         state_name_modified = one_state_name
         if positive_value_exists(count_result['candidate_count']):
             state_name_modified += " - " + str(count_result['candidate_count'])
-            state_list_modified[one_state_code] = state_name_modified
         elif str(one_state_code.lower()) == str(state_code.lower()):
             state_name_modified += " - 0"
-            state_list_modified[one_state_code] = state_name_modified
-        else:
-            # At one point we did not include state in drop-down if there weren't any candidates in that state.
-            #  Now we do.
-            state_list_modified[one_state_code] = state_name_modified
+        # At one point we did not include state in drop-down if there weren't any candidates in that state.
+        #  Now we do.
+        state_list_modified[one_state_code] = state_name_modified
     sorted_state_list = sorted(state_list_modified.items())
     # if positive_value_exists(google_civic_election_id):
     #     pass
@@ -1156,102 +1160,40 @@ def candidate_list_view(request):
             candidate_query = candidate_query.filter(state_code__iexact=state_code)
         if positive_value_exists(candidate_search):
             search_words = candidate_search.split()
+            final_filters = Q()
             for one_word in search_words:
-                filters = []
-
-                new_filter = Q(ballotpedia_candidate_id__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(ballotpedia_candidate_name__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(ballotpedia_candidate_summary__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(ballotpedia_candidate_url__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(ballotpedia_office_id__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(ballotpedia_person_id__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(ballotpedia_race_id__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(candidate_name__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(candidate_twitter_handle__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(candidate_twitter_handle2__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(candidate_twitter_handle3__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(candidate_url__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(candidate_contact_form_url__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(contest_office_name__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(district_name__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(facebook_url__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(google_civic_candidate_name__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(google_civic_candidate_name2__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(google_civic_candidate_name3__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(linked_campaignx_we_vote_id=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(politician_we_vote_id=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(party__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(seo_friendly_path__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(twitter_description__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(vote_usa_office_id__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(vote_usa_politician_id__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(we_vote_id=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(wikipedia_url__icontains=one_word)
-                filters.append(new_filter)
-
-                # Add the first query
-                if len(filters):
-                    final_filters = filters.pop()
-
-                    # ...and "OR" the remaining items in the list
-                    for item in filters:
-                        final_filters |= item
-
-                    candidate_query = candidate_query.filter(final_filters)
+                filters = (
+                    Q(ballotpedia_candidate_id__icontains=one_word)
+                    | Q(ballotpedia_candidate_name__icontains=one_word)
+                    | Q(ballotpedia_candidate_summary__icontains=one_word)
+                    | Q(ballotpedia_candidate_url__icontains=one_word)
+                    | Q(ballotpedia_office_id__icontains=one_word)
+                    | Q(ballotpedia_person_id__icontains=one_word)
+                    | Q(ballotpedia_race_id__icontains=one_word)
+                    | Q(candidate_name__icontains=one_word)
+                    | Q(candidate_twitter_handle__icontains=one_word)
+                    | Q(candidate_twitter_handle2__icontains=one_word)
+                    | Q(candidate_twitter_handle3__icontains=one_word)
+                    | Q(candidate_url__icontains=one_word)
+                    | Q(candidate_contact_form_url__icontains=one_word)
+                    | Q(contest_office_name__icontains=one_word)
+                    | Q(district_name__icontains=one_word)
+                    | Q(facebook_url__icontains=one_word)
+                    | Q(google_civic_candidate_name__icontains=one_word)
+                    | Q(google_civic_candidate_name2__icontains=one_word)
+                    | Q(google_civic_candidate_name3__icontains=one_word)
+                    | Q(linked_campaignx_we_vote_id=one_word)
+                    | Q(politician_we_vote_id=one_word)
+                    | Q(party__icontains=one_word)
+                    | Q(seo_friendly_path__icontains=one_word)
+                    | Q(twitter_description__icontains=one_word)
+                    | Q(vote_usa_office_id__icontains=one_word)
+                    | Q(vote_usa_politician_id__icontains=one_word)
+                    | Q(we_vote_id=one_word)
+                    | Q(wikipedia_url__icontains=one_word)
+                )
+                final_filters &= filters
+            candidate_query = candidate_query.filter(final_filters)
         if positive_value_exists(hide_candidates_with_links):
             # Show candidates that do NOT have links: Twitter, Instagram, Facebook, Web, Ballotpedia
             # If you make changes here, please also search for 'hide_candidates_with_links' in election/views_admin.py
