@@ -119,6 +119,7 @@ class CampaignX(models.Model):
     #  This organization_we_vote_id field (cached, not the master link) is the
     #  "Endorser" object attached to that politician.
     organization_we_vote_id = models.CharField(max_length=255, null=True, db_index=True)
+    passkey_for_creating_campaign_owner = models.CharField(max_length=25, null=True, db_index=True)
     politician_starter_list_serialized = models.TextField(null=True, blank=True)
     profile_image_background_color = models.CharField(blank=True, null=True, max_length=7)
     seo_friendly_path = models.CharField(max_length=255, null=True, unique=False, db_index=True)  # No longer unique
