@@ -996,7 +996,7 @@ class CandidateListManager(models.Manager):
             return results
 
         # check if we passed in a non-empty dictionary that maps state codes to candidate counts
-        if candidate_counts_by_state is not None and positive_value_exists(state_code):
+        if positive_value_exists(candidate_counts_by_state) and positive_value_exists(state_code):
             candidate_count = candidate_counts_by_state.get(state_code.lower(), 0)
             success = True
             status += "CANDIDATE_COUNT_FOUND_FROM_DICTIONARY "
