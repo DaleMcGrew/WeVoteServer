@@ -66,9 +66,57 @@ POLITICIANS_SYNC_URL = get_environment_variable("POLITICIANS_SYNC_URL")  # polit
 TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 WEB_APP_ROOT_URL = get_environment_variable("WEB_APP_ROOT_URL")
+from wevote_functions import functions_test_links
 
 logger = wevote_functions.admin.get_logger(__name__)
 
+@login_required
+def politician_url_test_view(request):
+    politician_we_vote_id = request.GET.get("politician_we_vote_id")
+    politician_id = request.GET.get("politician_id")
+
+    try:
+        if positive_value_exists(politician_id):
+            politician_data = Politician.objects.get(id=politician_id)
+        else:
+            politician_data = Politician.objects.get(we_vote_id=politician_we_vote_id)
+
+    except Politician.MultipleObjectsReturned as e:
+        handle_record_found_more_than_one_exception(e, logger=logger)
+        messages.add_message(request, messages.ERROR, "Multiple records found for this politician.")
+        return HttpResponseRedirect(reverse('politician:politician_list'))  # Redirect to a list page
+    except Politician.DoesNotExist:
+        messages.add_message(request, messages.ERROR, "Politician not found.")
+        return HttpResponseRedirect(
+            reverse('politician:politician_edit', args=(politician_id or politician_we_vote_id,))
+        )
+    except Exception as e:
+        messages.add_message(request, messages.ERROR, f"Unexpected error: {str(e)}")
+        return HttpResponseRedirect(reverse('politician:politician_list'))
+    
+    # Collect all URLs that exist
+    urls_to_test = []
+    fields = [
+        "politician_url", "politician_url2", "politician_url3",
+        "politician_url4", "politician_url5",
+        "facebook_url", "facebook_url2", "facebook_url3",
+    ]
+    for field in fields:
+        value = getattr(politician_data, field, None)
+        if value:
+            urls_to_test.append(value)
+    politician_name = politician_data.politician_name  
+    
+    # Handle case when no URLs exist
+    if not urls_to_test:
+        messages.add_message(request, messages.ERROR, "No websites or social media URLs to test for this politician.")
+        return HttpResponseRedirect(
+            reverse('politician:politician_edit', args=(politician_data.id,))
+        )
+
+    # Otherwise, run the test
+    result = functions_test_links.test_urls(urls_to_test, politician_name)
+    return HttpResponse(json.dumps(result), content_type='application/json')
 
 @login_required
 def compare_two_politicians_for_merge_view(request):

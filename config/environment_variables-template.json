@@ -238,5 +238,9 @@
   "_comment":                       "Directory path to store temporary files",
   "PATH_FOR_TEMP_FILES":            "/tmp",
 
+  "_comment":                       "Settings for running Selenium tests on BrowserStack",
+  "BROWSERSTACK_USERNAME":          "",
+  "BROWSERSTACK_ACCESS_KEY":        "",
+
   "_comment":                       "End of environment_variables.json"
 }
