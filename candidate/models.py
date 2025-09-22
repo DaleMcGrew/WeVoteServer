@@ -977,7 +977,12 @@ class CandidateListManager(models.Manager):
         }
         return results
 
-    def retrieve_candidate_count_for_election_and_state(self, google_civic_election_id_list=[], state_code=''):
+    def retrieve_candidate_count_for_election_and_state(
+            self,
+            google_civic_election_id_list=[],
+            state_code='',
+            candidate_counts_by_state=None,
+    ):
         status = ''
         if not positive_value_exists(google_civic_election_id_list) and not positive_value_exists(state_code):
             status += 'VALID_ELECTION_ID_AND_STATE_CODE_MISSING '
@@ -987,6 +992,20 @@ class CandidateListManager(models.Manager):
                 'google_civic_election_id_list':    google_civic_election_id_list,
                 'state_code':                       state_code,
                 'candidate_count':                  0,
+            }
+            return results
+
+        # check if we passed in a non-empty dictionary that maps state codes to candidate counts
+        if positive_value_exists(candidate_counts_by_state) and positive_value_exists(state_code):
+            candidate_count = candidate_counts_by_state.get(state_code.lower(), 0)
+            success = True
+            status += "CANDIDATE_COUNT_FOUND_FROM_DICTIONARY "
+            results = {
+                'success': success,
+                'status': status,
+                'google_civic_election_id_list': google_civic_election_id_list,
+                'state_code': state_code,
+                'candidate_count': candidate_count,
             }
             return results
 
@@ -1010,7 +1029,7 @@ class CandidateListManager(models.Manager):
                 candidate_query = candidate_query.filter(we_vote_id__in=candidate_we_vote_id_list)
                 if positive_value_exists(state_code):
                     candidate_query = candidate_query.filter(state_code__iexact=state_code)
-    
+
                 candidate_count = candidate_query.count()
                 success = True
                 status += "CANDIDATE_COUNT_FOUND "
@@ -2008,10 +2027,11 @@ class CandidateListManager(models.Manager):
                 success = False
             else:
                 candidate_to_office_link_list = results['candidate_to_office_link_list']
-                for candidate_to_office_link in candidate_to_office_link_list:
-                    candidate_we_vote_id_list.append(candidate_to_office_link.candidate_we_vote_id)
-                    office_we_vote_id_list_by_candidate_we_vote_id[candidate_to_office_link.candidate_we_vote_id]\
-                        = candidate_to_office_link.contest_office_we_vote_id
+                candidate_we_vote_id_list = [link.candidate_we_vote_id for link in candidate_to_office_link_list]
+                office_we_vote_id_list_by_candidate_we_vote_id = {
+                    link.candidate_we_vote_id: link.contest_office_we_vote_id \
+                    for link in candidate_to_office_link_list
+                }
         else:
             status += "RETRIEVE_CANDIDATE_WE_VOTE_ID_LIST_NO_ELECTION_PROVIDED "
         results = {
