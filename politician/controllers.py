@@ -2174,6 +2174,7 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
         politician_description = ''
     instagram_handle = extract_instagram_handle_from_text_string(politician.instagram_handle)
     results = {
+        'ballot_guide_official_statement':  politician.ballot_guide_official_statement,
         'ballotpedia_politician_url':       politician.ballotpedia_politician_url,
         'candidate_list':                   politician_candidate_dict_list,
         'candidate_list_exists':            politician_candidate_list_exists,
@@ -2206,6 +2207,7 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
         # 'latest_politician_supporter_list':  latest_politician_supporter_list,
         'politician_ultimate_election_date': politician_ultimate_election_date,
         'profile_image_background_color':   politician.profile_image_background_color,
+        'profile_image_type_currently_active': politician.profile_image_type_currently_active,
         'representative_list':              politician_representative_dict_list,
         'representative_list_exists':       politician_representative_list_exists,
         'seo_friendly_path':                politician.seo_friendly_path,
@@ -2224,9 +2226,16 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
         'voter_can_vote_for_politician_we_vote_ids': voter_can_vote_for_politician_we_vote_ids,
         'voter_is_politician_owner':        voter_is_politician_owner,
         'voter_signed_in_with_email':       voter_signed_in_with_email,
+        'we_vote_hosted_profile_ballotpedia_image_url_large':   politician.we_vote_hosted_profile_ballotpedia_image_url_large,
+        'we_vote_hosted_profile_facebook_image_url_large':   politician.we_vote_hosted_profile_facebook_image_url_large,
         'we_vote_hosted_profile_image_url_large':   politician.we_vote_hosted_profile_image_url_large,
         'we_vote_hosted_profile_image_url_medium':  we_vote_hosted_profile_image_url_medium,
         'we_vote_hosted_profile_image_url_tiny':    we_vote_hosted_profile_image_url_tiny,
+        'we_vote_hosted_profile_linkedin_image_url_large':   politician.we_vote_hosted_profile_linkedin_image_url_large,
+        'we_vote_hosted_profile_twitter_image_url_large':   politician.we_vote_hosted_profile_twitter_image_url_large,
+        'we_vote_hosted_profile_uploaded_image_url_large':   politician.we_vote_hosted_profile_uploaded_image_url_large,
+        'we_vote_hosted_profile_vote_usa_image_url_large':   politician.we_vote_hosted_profile_vote_usa_image_url_large,
+        'we_vote_hosted_profile_wikipedia_image_url_large':   politician.we_vote_hosted_profile_wikipedia_image_url_large,
         'wikipedia_url':                    politician.wikipedia_url,
         'youtube_url':                      politician.youtube_url,
     }
@@ -2234,16 +2243,20 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
 
 
 def politician_save_for_api(  # politicianSave
+        ballot_guide_official_statement='',
+        ballot_guide_official_statement_changed='',
         politician_name='',
         politician_name_changed=False,
         politician_photo_from_file_reader='',
         politician_photo_changed=False,
         politician_photo_delete=False,
         politician_photo_delete_changed=False,
+        politician_we_vote_id='',
+        profile_image_type_currently_active=False,
+        profile_image_type_currently_active_changed=False,
+        request=None,
         state_code='',
         state_code_changed=False,
-        politician_we_vote_id='',
-        request=None,
         voter_device_id=''):
     status = ''
     success = True
@@ -2295,17 +2308,22 @@ def politician_save_for_api(  # politicianSave
                     create_resized_image_results['cached_resized_image_url_medium']
                 update_values['we_vote_hosted_profile_uploaded_image_url_small'] = \
                     create_resized_image_results['cached_resized_image_url_tiny']
+        elif positive_value_exists(politician_photo_delete) and positive_value_exists(politician_photo_delete_changed):
+            # Only delete if another photo was not provided
+            update_values['we_vote_hosted_politician_photo_original_url'] = None
+            update_values['we_vote_hosted_profile_uploaded_image_url_large'] = None
+            update_values['we_vote_hosted_profile_uploaded_image_url_medium'] = None
+            update_values['we_vote_hosted_profile_uploaded_image_url_small'] = None
 
+        if ballot_guide_official_statement_changed:
+            update_values['ballot_guide_official_statement'] = ballot_guide_official_statement
         if politician_name_changed:
             update_values['politician_name'] = politician_name
+        if profile_image_type_currently_active_changed:
+            update_values['profile_image_type_currently_active'] = profile_image_type_currently_active
         if state_code_changed:
             update_values['state_code'] = state_code
 
-        # update_values = {
-        #     'politician_photo_changed':         politician_photo_changed,
-        #     'politician_photo_delete':          politician_photo_delete,
-        #     'politician_photo_delete_changed':  politician_photo_delete_changed,
-        # }
         create_results = politician_manager.update_or_create_politician(
             politician_we_vote_id=politician_we_vote_id,
             update_values=update_values,
@@ -2314,9 +2332,10 @@ def politician_save_for_api(  # politicianSave
         # If here, we are creating a new Politician
         # Make sure we have minimum required data
         update_values = {
-            'politician_name':                 politician_name,
-            # 'politician_photo_delete':                politician_photo_delete,
-            # 'politician_photo_delete_changed':        politician_photo_delete_changed,
+            'ballot_guide_official_statement':      ballot_guide_official_statement,
+            'politician_name':                      politician_name,
+            'profile_image_type_currently_active':  profile_image_type_currently_active,
+            'state_code':                           state_code,
         }
         create_results = politician_manager.update_or_create_politician(
             politician_name=politician_name,
@@ -2352,10 +2371,6 @@ def politician_save_for_api(  # politicianSave
                         create_resized_image_results['cached_resized_image_url_medium']
                     politician.we_vote_hosted_profile_uploaded_image_url_small = \
                         create_resized_image_results['cached_resized_image_url_tiny']
-                    # Place in the default fields too here? Search for other routine that deals with photo choice
-                    # we_vote_hosted_profile_image_url_large
-                    # we_vote_hosted_profile_image_url_medium
-                    # we_vote_hosted_profile_image_url_tiny
 
                     politician.save()
             else:
@@ -2369,40 +2384,30 @@ def politician_save_for_api(  # politicianSave
     if create_results['politician_found']:
         politician = create_results['politician']
         politician_we_vote_id = politician.we_vote_id
-        return politician_retrieve_for_api(
+
+        if profile_image_type_currently_active_changed or politician_photo_changed or politician_photo_delete:
+            from image.controllers import organize_object_photo_fields_based_on_image_type_currently_active
+            results = organize_object_photo_fields_based_on_image_type_currently_active(
+                object_with_photo_fields=politician,
+                profile_image_type_currently_active=politician.profile_image_type_currently_active,
+            )
+            status += results['status']
+            if results['success'] and results['save_changes']:
+                politician = results['object_with_photo_fields']
+                from politician.controllers_generate_color import generate_background
+                politician.profile_image_background_color = generate_background(politician)
+                try:
+                    politician.save()
+                except Exception as e:
+                    status += "ERROR_SAVING_POLITICIAN_IMAGE: " + str(e) + " "
+
+        results = politician_retrieve_for_api(
             as_owner=True,
             politician_we_vote_id=politician_we_vote_id,
             voter_device_id=voter_device_id,
         )
-
-        # # We need to know all the politicians this voter can vote for so we can figure out
-        # #  if the voter can vote for any politicians in the election
-        # from ballot.controllers import what_voter_can_vote_for
-        # results = what_voter_can_vote_for(request=request, voter_device_id=voter_device_id)
-        # voter_can_vote_for_politician_we_vote_ids = results['voter_can_vote_for_politician_we_vote_ids']
-
-        # generate_results = generate_politician_dict_from_politician_object(
-        #     politician=politician,
-        #     politician_owner_list=politician_owner_list,
-        #     hostname=hostname,
-        #     seo_friendly_path_list=seo_friendly_path_list,
-        #     voter_can_vote_for_politician_we_vote_ids=voter_can_vote_for_politician_we_vote_ids,
-        #     voter_is_politician_owner=voter_is_politician_owner,
-        #     voter_signed_in_with_email=voter_signed_in_with_email,
-        #     voter_we_vote_id=voter_we_vote_id,
-        # )
-        #
-        # politician_dict = generate_results['politician_dict']
-        # status += generate_results['status']
-        # if not generate_results['success']:
-        #     success = False
-        # if 'politician_description' not in politician_dict:
-        #     success = False
-        # if success:
-        #     results = politician_dict
-        # else:
-        #     results = politician_retrieve_error_dict
-        # return results
+        results['status'] = status + results['status']
+        return results
     else:
         status += "POLITICIAN_SAVE_ERROR "
         results = politician_retrieve_error_dict

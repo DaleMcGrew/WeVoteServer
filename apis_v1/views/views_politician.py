@@ -90,6 +90,9 @@ def politician_retrieve_as_owner_view(request):  # politicianRetrieveAsOwner (No
 @csrf_exempt
 def politician_save_view(request):  # politicianSave
     # This is set in /config/base.py: DATA_UPLOAD_MAX_MEMORY_SIZE = 6000000
+    ballot_guide_official_statement = request.POST.get('ballot_guide_official_statement', '')
+    ballot_guide_official_statement_changed = \
+        positive_value_exists(request.POST.get('ballot_guide_official_statement_changed', False))
     voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
     politician_name = request.POST.get('politician_name', '')
     politician_name_changed = positive_value_exists(request.POST.get('politician_name_changed', False))
@@ -98,9 +101,14 @@ def politician_save_view(request):  # politicianSave
     politician_photo_delete = request.POST.get('politician_photo_delete', '')
     politician_photo_delete_changed = positive_value_exists(request.POST.get('politician_photo_delete_changed', False))
     politician_we_vote_id = request.POST.get('politician_we_vote_id', '')
+    profile_image_type_currently_active = request.POST.get('profile_image_type_currently_active', False)
+    profile_image_type_currently_active_changed = \
+        positive_value_exists(request.POST.get('profile_image_type_currently_active_changed', False))
     state_code_changed = positive_value_exists(request.POST.get('state_code_changed', False))
     state_code = request.POST.get('state_code', '')
     json_data = politician_save_for_api(
+        ballot_guide_official_statement=ballot_guide_official_statement,
+        ballot_guide_official_statement_changed=ballot_guide_official_statement_changed,
         politician_name=politician_name,
         politician_name_changed=politician_name_changed,
         politician_photo_from_file_reader=politician_photo_from_file_reader,
@@ -108,6 +116,8 @@ def politician_save_view(request):  # politicianSave
         politician_photo_delete=politician_photo_delete,
         politician_photo_delete_changed=politician_photo_delete_changed,
         politician_we_vote_id=politician_we_vote_id,
+        profile_image_type_currently_active=profile_image_type_currently_active,
+        profile_image_type_currently_active_changed=profile_image_type_currently_active_changed,
         request=request,
         state_code_changed=state_code_changed,
         state_code=state_code,
