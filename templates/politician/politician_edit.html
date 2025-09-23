@@ -363,6 +363,13 @@
 </div>
 </div>
 
+<div class="pb-3 row">
+    <label for="politician_urltest_id" class="pl-4 control-label">
+        Test Politician Website's/URL's 
+        <a href="{% url 'politician:politician_url_testing' %}?politician_we_vote_id={{ politician.we_vote_id }}&politician_id={{ politician.id }}" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a>
+    </label>
+</div>
+
 <div class="row">
 <div class="col">
 <div class="form-group">
