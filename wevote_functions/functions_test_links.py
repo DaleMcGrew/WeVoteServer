@@ -11,6 +11,7 @@ import tldextract
 from ipwhois import IPWhois
 import re
 
+
 # Load environment variables from .env file
 def get_required_env_var(var_name):
     value = get_environment_variable(var_name)
@@ -22,8 +23,14 @@ def get_required_env_var(var_name):
 
     return value
 
-BROWSERSTACK_USERNAME = get_required_env_var("BROWSERSTACK_USERNAME")
-BROWSERSTACK_ACCESS_KEY = get_required_env_var("BROWSERSTACK_ACCESS_KEY")
+
+try:
+    BROWSERSTACK_USERNAME = get_required_env_var("BROWSERSTACK_USERNAME")
+    BROWSERSTACK_ACCESS_KEY = get_required_env_var("BROWSERSTACK_ACCESS_KEY")
+except Exception as e:
+    BROWSERSTACK_USERNAME = ''
+    BROWSERSTACK_ACCESS_KEY = ''
+
 
 # Function to render JavaScript-heavy pages using Selenium and BrowserStack
 def get_rendered_page_content(url):
