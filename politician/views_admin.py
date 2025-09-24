@@ -2602,7 +2602,7 @@ def politician_edit_process_view(request):
                 if positive_value_exists(politician_name) \
                 else False
             if required_politician_variables:
-                politician_on_stage = Politician(
+                politician_on_stage = Politician.objects.create(
                     first_name=extract_first_name_from_full_name(politician_name),
                     middle_name=extract_middle_name_from_full_name(politician_name),
                     last_name=extract_last_name_from_full_name(politician_name),
