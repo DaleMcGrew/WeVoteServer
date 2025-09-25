@@ -6,9 +6,9 @@ from selenium.webdriver.chrome.options import Options
 from urllib.parse import urlparse
 from langdetect import detect, LangDetectException
 from config.base import get_environment_variable
-import dns.resolver
+# import dns.resolver
 import tldextract
-from ipwhois import IPWhois
+# from ipwhois import IPWhois
 import re
 
 
@@ -63,6 +63,7 @@ def get_rendered_page_content(url):
     finally:
         driver.quit()
 
+
 # Function to extract politician name from URL using wordninja
 def extract_politician_name(url: str) -> list:
     parsed = urlparse(url)
@@ -90,7 +91,8 @@ def extract_politician_name(url: str) -> list:
     ]
 
     return tokens
-   
+
+
 # Function to validate URL format
 def is_valid_url(url: str) -> bool:
     try:
@@ -99,12 +101,14 @@ def is_valid_url(url: str) -> bool:
     except ValueError:
         return False
 
+
 # Function to detect language of the text
 def detect_language(text):
     try:
         return detect(text)
     except LangDetectException:
         return "unknown"
+
 
 # Function to toggle between http and https   
 def toggle_http_https(url: str) -> str:
@@ -113,6 +117,7 @@ def toggle_http_https(url: str) -> str:
     elif url.startswith("http://"):
        return url.replace("http://", "https://", 1)
     return url
+
 
 # Functions to check for SSL and domain alias redirects
 def normalize_url(url):
@@ -123,10 +128,12 @@ def normalize_url(url):
         netloc = netloc[4:]  # remove www
     return f"{netloc}{parsed.path}".rstrip('/')
 
+
 # Check for SSL redirect (http to https)
 def is_ssl_redirect(original_url, redirected_url):
     return original_url.startswith("http://") and redirected_url.startswith("https://") \
            and normalize_url(original_url) == normalize_url(redirected_url)
+
 
 # Check for domain alias redirect (e.g., twitter.com to x.com)
 def is_domain_alias_redirect(original_url, redirected_url):
@@ -143,6 +150,7 @@ def is_domain_alias_redirect(original_url, redirected_url):
     
     return domain_aliases.get(orig_domain) == redir_domain and orig_parsed.path == redir_parsed.path
 
+
 # Function to check if a domain is parked by its registrar
 def is_registrar_parked(domain: str) -> bool:
     """
@@ -154,33 +162,35 @@ def is_registrar_parked(domain: str) -> bool:
         extracted = tldextract.extract(domain)
         clean_domain = f"{extracted.domain}.{extracted.suffix}"
 
-        # Check if domain resolves
-        try:
-            answers = dns.resolver.resolve(clean_domain, "A")
-        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
-            return True  # Domain doesn't resolve → parked or expired
+        # TURNING OFF DNS CHECKS UNTIL WE GET npm installable package
+        # # Check if domain resolves
+        # try:
+        #     answers = dns.resolver.resolve(clean_domain, "A")
+        # except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+        #     return True  # Domain doesn't resolve → parked or expired
 
-        # Get IP info from first resolved IP
-        ip_address = answers[0].to_text()
-        obj = IPWhois(ip_address)
-        res = obj.lookup_rdap(asn_methods=["whois"])
+        # # Get IP info from first resolved IP
+        # ip_address = answers[0].to_text()
+        # obj = IPWhois(ip_address)
+        # res = obj.lookup_rdap(asn_methods=["whois"])
 
-        # Check if the domain is on known parking networks
-        parked_networks = [
-            "godaddy", "namecheap", "network solutions", "domain.com",
-            "google", "squarespace", "hover", "register.com",
-            "tucows", "enom", "porkbun"
-        ]
+        # # Check if the domain is on known parking networks
+        # parked_networks = [
+        #     "godaddy", "namecheap", "network solutions", "domain.com",
+        #     "google", "squarespace", "hover", "register.com",
+        #     "tucows", "enom", "porkbun"
+        # ]
 
-        registrar = (res.get("network", {}) or {}).get("name", "")
-        if registrar and any(pn in registrar.lower() for pn in parked_networks):
-            return True
+        # registrar = (res.get("network", {}) or {}).get("name", "")
+        # if registrar and any(pn in registrar.lower() for pn in parked_networks):
+        #     return True
 
         return False
     except Exception as e:
         # Fail-safe: assume parked if we can't determine
         return True
-    
+
+
 # Function to check if URL is a social media profile
 def is_social_profile_url(url):
     social_keywords = ['facebook', 'twitter', 'x.com', 'instagram', 'linkedin', 'tiktok', 'snapchat']

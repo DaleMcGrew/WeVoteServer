@@ -554,9 +554,9 @@ def voter_address_save_view(request):  # voterAddressSave
         # Search for these variables elsewhere when updating code
         turn_off_direct_voter_ballot_retrieve = False
         default_election_data_source_is_ballotpedia = False
-        default_election_data_source_is_ctcl = True
+        default_election_data_source_is_ctcl = False
         default_election_data_source_is_google_civic = False
-        default_election_data_source_is_vote_usa = False
+        default_election_data_source_is_vote_usa = True
         was_refreshed_from_ballotpedia_just_now = False
         was_refreshed_from_ctcl_just_now = False
         was_refreshed_from_vote_usa_just_now = False
