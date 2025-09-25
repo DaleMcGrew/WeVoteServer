@@ -2537,9 +2537,12 @@ def retrieve_candidate_list_for_all_upcoming_elections(
 def fetch_ballotpedia_urls_to_retrieve_for_links_count(
         candidate_we_vote_id_list=[],
         state_code='',
+        default_year_if_empty=True
 ):
     ballotpedia_urls_to_retrieve_for_links = 0
     if not candidate_we_vote_id_list or len(candidate_we_vote_id_list) == 0:
+        if not default_year_if_empty:
+            return 0
         # Only look at candidates for this year
         candidate_list_manager = CandidateListManager()
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(
@@ -2567,9 +2570,12 @@ def fetch_ballotpedia_urls_to_retrieve_for_links_count(
 def fetch_ballotpedia_urls_to_retrieve_for_photos_count(
         candidate_we_vote_id_list=[],
         state_code='',
+        default_year_if_empty=True,
 ):
     ballotpedia_urls_to_retrieve_for_photos = 0
     if not candidate_we_vote_id_list or len(candidate_we_vote_id_list) == 0:
+        if not default_year_if_empty:
+            return 0
         # Only look at candidates for this year
         candidate_list_manager = CandidateListManager()
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(

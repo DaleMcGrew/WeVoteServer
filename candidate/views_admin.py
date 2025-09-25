@@ -1320,6 +1320,7 @@ def candidate_list_view(request):
     ballotpedia_urls_without_picture_urls = fetch_ballotpedia_urls_to_retrieve_for_photos_count(
         candidate_we_vote_id_list=candidate_we_vote_id_list,
         state_code=state_code,
+        default_year_if_empty=False,
     )
     t1 = time()
     performance_snapshot = {
@@ -1334,6 +1335,7 @@ def candidate_list_view(request):
     ballotpedia_urls_to_retrieve_for_links = fetch_ballotpedia_urls_to_retrieve_for_links_count(
         candidate_we_vote_id_list=candidate_we_vote_id_list,
         state_code=state_code,
+        default_year_if_empty=False
     )
     t1 = time()
     performance_snapshot = {
