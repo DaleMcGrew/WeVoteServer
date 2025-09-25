@@ -72,49 +72,6 @@ WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
 logger = wevote_functions.admin.get_logger(__name__)
 
-
-@login_required
-def compare_two_organizations_for_merge_view(request):
-    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
-    authority_required = {'political_data_manager'}
-    if not voter_has_authority(request, authority_required):
-        return redirect_to_sign_in_page(request, authority_required)
-
-    organization1_we_vote_id = request.GET.get('organization1_we_vote_id', 0)
-    organization2_we_vote_id = request.GET.get('organization2_we_vote_id', 0)
-    google_civic_election_id = request.GET.get('google_civic_election_id', 0)
-    google_civic_election_id = convert_to_int(google_civic_election_id)
-
-    organization_manager = OrganizationManager()
-    organization_results = organization_manager.retrieve_organization_from_we_vote_id(organization1_we_vote_id)
-    if not organization_results['organization_found']:
-        messages.add_message(request, messages.ERROR, "Organization1 not found.")
-        return HttpResponseRedirect(reverse('organization:organization_list', args=()) +
-                                    "?google_civic_election_id=" + str(google_civic_election_id))
-
-    organization_option1_for_template = organization_results['organization']
-
-    organization_results = organization_manager.retrieve_organization_from_we_vote_id(organization2_we_vote_id)
-    if not organization_results['organization_found']:
-        messages.add_message(request, messages.ERROR, "Organization2 not found.")
-        return HttpResponseRedirect(reverse('organization:organization_position_list',
-                                            args=(organization_option1_for_template.id,)) +
-                                    "?google_civic_election_id=" + str(google_civic_election_id))
-
-    organization_option2_for_template = organization_results['organization']
-
-    organization_merge_conflict_values = figure_out_organization_conflict_values(
-        organization_option1_for_template, organization_option2_for_template)
-
-    # This view function takes us to displaying a template
-    remove_duplicate_process = False  # Do not try to find another office to merge after finishing
-    return render_organization_merge_form(
-        request, organization_option1_for_template,
-        organization_option2_for_template,
-        organization_merge_conflict_values,
-        remove_duplicate_process)
-
-
 @login_required
 def edit_team_members_process_view(request):
     """
@@ -3753,7 +3710,6 @@ def reserved_domain_list_view(request):
 
 @login_required
 def compare_two_organizations_for_merge_view(request):
-    status = ''
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'political_data_manager'}
     if not voter_has_authority(request, authority_required):
@@ -3767,7 +3723,7 @@ def compare_two_organizations_for_merge_view(request):
 
     organization_manager = OrganizationManager()
     organization_results = organization_manager.retrieve_organization(
-        organization_we_vote_id=organization1_we_vote_id,
+        we_vote_id=organization1_we_vote_id,
         read_only=True)
     if not organization_results['organization_found']:
         messages.add_message(request, messages.ERROR, "Organization1 not found.")
@@ -3779,7 +3735,7 @@ def compare_two_organizations_for_merge_view(request):
     organization_option1_for_template = organization_results['organization']
 
     organization_results = organization_manager.retrieve_organization(
-        organization_we_vote_id=organization2_we_vote_id,
+        we_vote_id=organization2_we_vote_id,
         read_only=True)
     if not organization_results['organization_found']:
         messages.add_message(request, messages.ERROR, "Organization2 not found.")
@@ -3797,12 +3753,8 @@ def compare_two_organizations_for_merge_view(request):
             "?google_civic_election_id=" + str(google_civic_election_id) +
             "&state_code=" + str(state_code))
 
-    conflict_results = figure_out_organization_conflict_values(
+    organization_merge_conflict_values = figure_out_organization_conflict_values(
         organization_option1_for_template, organization_option2_for_template)
-    organization_merge_conflict_values = conflict_results['organization_merge_conflict_values']
-    if not conflict_results['success']:
-        status += conflict_results['status']
-        messages.add_message(request, messages.ERROR, status)
 
     # This view function takes us to displaying a template
     remove_duplicate_process = False  # Do not try to find another office to merge after finishing
