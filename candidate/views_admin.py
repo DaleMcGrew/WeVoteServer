@@ -1249,7 +1249,7 @@ def candidate_list_view(request):
         if positive_value_exists(show_all) or positive_value_exists(find_candidates_linked_to_multiple_offices):
             candidate_list = list(candidate_query)
         else:
-            number_to_show_per_page = 10
+            number_to_show_per_page = 50
             if candidate_list_count <= number_to_show_per_page:
                 # Ignore pagination
                 candidate_list = list(candidate_query)
