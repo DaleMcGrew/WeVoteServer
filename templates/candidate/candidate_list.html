@@ -455,8 +455,8 @@
     {% if not review_mode %}
     <table class="table">
     {% for candidate in candidate_list %}
-        {% if forloop.counter == 1 or forloop.counter|divisibleby:9 %}
-        {# Show the header every ~8 lines #}
+        {% if forloop.counter == 1 or forloop.counter|divisibleby:15 %}
+        {# Show the header every ~15 lines #}
           <thead>
             <tr>
                 <th>&nbsp;</th>
