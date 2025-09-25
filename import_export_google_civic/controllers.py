@@ -2996,7 +2996,10 @@ def voter_ballot_items_retrieve_from_google_civic_2021(
         status += "COULD_NOT_SAVE_LATITUDE_OR_LONGITUDE: " + str(e) + " "
         success = False
 
-    one_ballot_results = {}
+    one_ballot_results = {
+        'status': status,
+        'success': success,
+    }
     use_ballotpedia = False
     if not success:
         pass
