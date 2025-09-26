@@ -80,7 +80,7 @@ def extract_politician_name(url: str) -> list:
         # Regular website: take the domain name before the first dot
         raw_text =  domain.split(".")[0].lower()
     
-   # Split into candidate words
+    # Split into candidate words
     tokens = wordninja.split(raw_text)
 
     # Filter out noise: single letters, generic words, years, etc.
@@ -199,11 +199,15 @@ def is_social_profile_url(url):
 
 # Function to check URL status and analyze content
 def check_url_status(url: str, politician_name: str, result: dict) -> dict:
-    expired_site_keywords = ['notfound', 'this page could not be found', 'sorry', 'flywheel', 'godaddy', 'site paused', 'lapsed', 'unknown domain', 
+    expired_site_keywords = [
+        'notfound', 'this page could not be found', 'sorry', 'flywheel', 'godaddy', 'site paused', 'lapsed',
+        'unknown domain',
         'denied', 'error', "this account doesn’t exist", 'website expired', "4d", "casino", "betting", "gambling", 
-        "loan", "bitcoin", "crypto", "pharmacy", "hack","Daftar","game", "javascript is not available", "something went wrong", "log into facebook"]
+        "loan", "bitcoin", "crypto", "pharmacy", "hack","Daftar","game", "javascript is not available",
+        "something went wrong", "log into facebook",
+    ]
     headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
     }
     js_required_strings = [
         "javascript is not available",
@@ -293,11 +297,11 @@ def check_url_status(url: str, politician_name: str, result: dict) -> dict:
             if result["is_social_account"]:
                 result["social_account_does_not_exist"] = False
             if url.startswith("http://"):
-                    result["status_code_http"] = response.status_code
-                    result["status_description_http"] = "Valid URL"
+                result["status_code_http"] = response.status_code
+                result["status_description_http"] = "Valid URL"
             else:
-                    result["status_code_https"] = response.status_code
-                    result["status_description_https"] = "Valid URL"
+                result["status_code_https"] = response.status_code
+                result["status_description_https"] = "Valid URL"
             result["success"] = True              
             if "twitter.com" in url and "x.com" in result["final_url"]:
                 result["status"] = "Success"
@@ -326,16 +330,16 @@ def check_url_status(url: str, politician_name: str, result: dict) -> dict:
                     result["status_code_https"] = response.status_code
                     result["status_description_https"] = status_description
             return result
-        elif response.status_code!= 200:
-                result["status"] = "Failed"
-                if url.startswith("http://"):
-                    result["status_code_http"] = response.status_code
-                    result["status_description_http"] = "The Url is Not Active or Not Valid"
-                else:
-                    result["status_code_https"] = response.status_code
-                    result["status_description_https"] = "The Url is Not Active or Not Valid"
-                result["success"] = False 
-                return result           
+        elif response.status_code != 200:
+            result["status"] = "Failed"
+            if url.startswith("http://"):
+                result["status_code_http"] = response.status_code
+                result["status_description_http"] = "The Url is Not Active or Not Valid"
+            else:
+                result["status_code_https"] = response.status_code
+                result["status_description_https"] = "The Url is Not Active or Not Valid"
+            result["success"] = False
+            return result
         return result
     except requests.exceptions.ConnectionError as e:
         result["status"] = "Failed"
@@ -348,6 +352,7 @@ def check_url_status(url: str, politician_name: str, result: dict) -> dict:
         result["success"] = False
         print('ConnectionError:', e)
         return result
+
 
 # Main function to validate link and gather status information
 def is_valid_link_with_status(url: str, politician_name:str) -> dict:
@@ -379,6 +384,7 @@ def is_valid_link_with_status(url: str, politician_name:str) -> dict:
 
     alternative_url = toggle_http_https(url)
     return check_url_status(alternative_url, politician_name, result)
+
 
 def test_urls(urls_to_test, politician_name):
     results = []

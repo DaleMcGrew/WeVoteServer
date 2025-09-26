@@ -2878,8 +2878,8 @@ def voter_update_view(request):  # voterUpdate
             )
 
             # schedule email with subject and message
-            email_subject = f"[WeVote] Other Ways to Verify - {'Politician ID: ' + politician_we_vote_id \
-                if politician_we_vote_id else 'no politician_we_vote_id'}"
+            politician_id_for_display = politician_we_vote_id if politician_we_vote_id else 'no politician_we_vote_id'
+            email_subject = f"[WeVote] Other Ways to Verify - Politician ID: {politician_id_for_display}"
             email_context_first_name = first_name or voter.first_name
             email_context_last_name = last_name or voter.last_name
             email_message_lines = [
@@ -2892,8 +2892,7 @@ def voter_update_view(request):  # voterUpdate
                 f"Voter Last Name: {email_context_last_name or '(Unknown)'}",
                 f"Voter Email: {voter.email or '(Unknown)'}",
                 f"Link to Voter's Page in Admin: \
-                    {'https://api.wevoteusa.org/voter/edit/'+ voter_we_vote_id if voter_we_vote_id \
-                    else '(Unknown)'}",
+                    {'https://api.wevoteusa.org/voter/edit/'+ voter_we_vote_id if voter_we_vote_id else '(Unknown)'}",
                 f"Politician Page URL: {politician_page_url or '(Unknown)'}",
                 "",
                 "Other Ways to Verify: ",

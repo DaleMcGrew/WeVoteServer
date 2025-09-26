@@ -87,6 +87,6 @@ python-whois==0.9.4
 beautifulsoup4==4.12.3
 selenium==4.25.0
 langdetect==1.0.9
-dnspython==2.8.0
+# dnspython==2.8.0
 tldextract==5.1.2
-ipwhois==1.2.0
+# ipwhois==1.2.0
