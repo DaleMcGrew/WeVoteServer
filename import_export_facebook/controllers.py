@@ -919,3 +919,59 @@ def get_facebook_photo_url_from_facebook_url(
         'success':              success,
     }
     return results
+
+
+def is_invalid_facebook_url_format(facebook_url):
+    is_invalid = False
+    status = ""
+    success = True
+
+    if not positive_value_exists(facebook_url):
+        status += "MISSING_FACEBOOK_URL "
+        success = True
+        results = {
+            'is_invalid':   is_invalid,
+            'status':       status,
+            'success':      success,
+        }
+        return results
+
+    # List of invalid exact URLs
+    invalid_urls = [
+        "https://facebook.com/p",
+        "https://www.facebook.com/p",
+        "http://facebook.com/p",
+        "http://www.facebook.com/p",
+        "https://facebook.com/pages",
+        "https://www.facebook.com/pages",
+        "http://facebook.com/pages",
+        "http://www.facebook.com/pages",
+        "https://facebook.com/profile",
+        "https://www.facebook.com/profile",
+        "http://facebook.com/profile",
+        "http://www.facebook.com/profile",
+        "https://facebook.com/profile.php",
+        "https://www.facebook.com/profile.php",
+        "http://facebook.com/profile.php",
+        "http://www.facebook.com/profile.php",
+        "https://facebook.com/public",
+        "https://www.facebook.com/public",
+        "http://facebook.com/public",
+        "http://www.facebook.com/public"
+    ]
+
+    # Normalize the input URL
+    normalized_url = facebook_url.lower().rstrip('/')
+
+    # Check if the normalized URL exactly matches any of the invalid URLs
+    if normalized_url in invalid_urls:
+        is_invalid = True
+        status += "Invalid Facebook URL format "
+
+    results = {
+        'is_invalid':   is_invalid,
+        'status':       status,
+        'success':      success,
+    }
+    return results
+

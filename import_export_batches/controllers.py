@@ -4445,7 +4445,10 @@ def import_candidate_data_from_batch_row_actions(batch_header_id, batch_row_id, 
         if positive_value_exists(one_batch_row_action.ctcl_uuid):
             update_values['ctcl_uuid'] = one_batch_row_action.ctcl_uuid
         if positive_value_exists(one_batch_row_action.facebook_url):
-            update_values['facebook_url'] = one_batch_row_action.facebook_url
+            from import_export_facebook.controllers import is_invalid_facebook_url_format
+            results_test = is_invalid_facebook_url_format(one_batch_row_action.facebook_url3)
+            if not results_test['is_invalid']:
+                update_values['facebook_url'] = one_batch_row_action.facebook_url
         if positive_value_exists(google_civic_election_id):
             update_values['google_civic_election_id'] = google_civic_election_id
         if positive_value_exists(one_batch_row_action.party):

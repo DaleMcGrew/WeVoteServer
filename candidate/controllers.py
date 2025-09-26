@@ -1157,6 +1157,7 @@ def filter_candidates_structured_json_for_local_duplicates(structured_json):
 
 
 def candidates_import_from_structured_json(structured_json):  # Consumes candidatesSyncOut
+    from import_export_facebook.controllers import is_invalid_facebook_url_format
     candidate_manager = CandidateManager()
     candidates_saved = 0
     candidates_updated = 0
@@ -1267,7 +1268,9 @@ def candidates_import_from_structured_json(structured_json):  # Consumes candida
                 updated_candidate_values['facebook_profile_image_url_https'] = \
                     one_candidate['facebook_profile_image_url_https']
             if 'facebook_url' in one_candidate:
-                updated_candidate_values['facebook_url'] = one_candidate['facebook_url']
+                results_test = is_invalid_facebook_url_format(one_candidate['facebook_url'])
+                if not results_test['is_invalid']:
+                    updated_candidate_values['facebook_url'] = one_candidate['facebook_url']
             if 'facebook_url_is_broken' in one_candidate:
                 updated_candidate_values['facebook_url_is_broken'] = one_candidate['facebook_url_is_broken']
             if 'google_civic_candidate_name' in one_candidate:
@@ -3714,21 +3717,28 @@ def update_candidate_details_from_politician(candidate=None, politician=None):
                 elif not results['success']:
                     status += "FAILED_TO_ADD_GOOGLE_CIVIC_CANDIDATE_NAME3: " + results['status']
             # Facebook
+            from import_export_facebook.controllers import is_invalid_facebook_url_format
             if positive_value_exists(politician.facebook_url) and not politician.facebook_url_is_broken:
-                candidate.facebook_url = politician.facebook_url
-                save_changes = True
-                if 'facebook_url' not in fields_updated:
-                    fields_updated.append('facebook_url')
+                results_test = is_invalid_facebook_url_format(politician.facebook_url)
+                if not results_test['is_invalid']:
+                    candidate.facebook_url = politician.facebook_url
+                    save_changes = True
+                    if 'facebook_url' not in fields_updated:
+                        fields_updated.append('facebook_url')
             elif positive_value_exists(politician.facebook_url2) and not politician.facebook_url2_is_broken:
-                candidate.facebook_url = politician.facebook_url2
-                save_changes = True
-                if 'facebook_url' not in fields_updated:
-                    fields_updated.append('facebook_url')
+                results_test = is_invalid_facebook_url_format(politician.facebook_url2)
+                if not results_test['is_invalid']:
+                    candidate.facebook_url = politician.facebook_url2
+                    save_changes = True
+                    if 'facebook_url' not in fields_updated:
+                        fields_updated.append('facebook_url')
             elif positive_value_exists(politician.facebook_url3) and not politician.facebook_url3_is_broken:
-                candidate.facebook_url = politician.facebook_url3
-                save_changes = True
-                if 'facebook_url' not in fields_updated:
-                    fields_updated.append('facebook_url')
+                results_test = is_invalid_facebook_url_format(politician.facebook_url3)
+                if not results_test['is_invalid']:
+                    candidate.facebook_url = politician.facebook_url3
+                    save_changes = True
+                    if 'facebook_url' not in fields_updated:
+                        fields_updated.append('facebook_url')
             # Email
             if positive_value_exists(politician.politician_email):
                 candidate.candidate_email = politician.politician_email

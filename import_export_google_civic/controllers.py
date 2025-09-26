@@ -206,7 +206,10 @@ def process_candidates_from_structured_json(
             if positive_value_exists(photo_url):
                 updated_candidate_values['photo_url'] = photo_url
             if positive_value_exists(facebook_url):
-                updated_candidate_values['facebook_url'] = facebook_url
+                from import_export_facebook.controllers import is_invalid_facebook_url_format
+                results_test = is_invalid_facebook_url_format(facebook_url)
+                if not results_test['is_invalid']:
+                    updated_candidate_values['facebook_url'] = facebook_url
             if positive_value_exists(twitter_url):
                 updated_candidate_values['twitter_url'] = twitter_url
             if positive_value_exists(google_plus_url):
@@ -556,10 +559,13 @@ def groom_and_store_google_civic_candidates_json_2021(
                     if one_channel['type'] == 'Facebook':
                         facebook_url = one_channel['id'] if 'id' in one_channel else ''
                         if positive_value_exists(facebook_url):
-                            facebook_handle = extract_facebook_username_from_text_string(facebook_url)
-                            if positive_value_exists(facebook_handle):
-                                facebook_url = "https://facebook.com/" + str(facebook_handle)
-                            else:
+                            # This approach isn't working as expected
+                            # facebook_handle = extract_facebook_username_from_text_string(facebook_url)
+                            # if positive_value_exists(facebook_handle):
+                            #     facebook_url = "https://facebook.com/" + str(facebook_handle)
+                            from import_export_facebook.controllers import is_invalid_facebook_url_format
+                            results_test = is_invalid_facebook_url_format(facebook_url)
+                            if results_test['is_invalid']:
                                 facebook_url = ''
                         else:
                             facebook_url = ''
