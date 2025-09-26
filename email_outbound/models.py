@@ -1076,12 +1076,14 @@ class EmailManager(models.Manager):
                 status += "SEND_SCHEDULED_ADD_HEADER_ERROR: " + str(e) + " "
                 print(status)
             message.subject = Subject(email_scheduled.subject)
-            message.content = Content(
-                MimeType.text,
-                email_scheduled.message_text)
-            message.content = Content(
-                MimeType.html,
-                email_scheduled.message_html)
+            if email_scheduled.message_text:
+                message.content = Content(
+                    MimeType.text,
+                    email_scheduled.message_text)
+            else:
+                message.content = Content(
+                    MimeType.html,
+                    email_scheduled.message_html)
             try:
                 sendgrid_client = SendGridAPIClient(SENDGRID_API_KEY)
                 response = sendgrid_client.send(message)
