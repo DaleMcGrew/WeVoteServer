@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from . import views_admin
+from . import views_admin, views_data_cleaning
 from django.urls import re_path
 
 
@@ -10,6 +10,7 @@ urlpatterns = [
     # views_admin
     re_path(r'^$', views_admin.candidate_list_view, name='candidate_list',),
     re_path(r'^create/$', views_admin.candidate_create_process_view, name='candidate_create_process'),
+    re_path(r'^data_cleaning/$', views_data_cleaning.candidates_data_cleaning_view, name='candidates_data_cleaning'),
     re_path(r'^create_us_house_candidates/$',
             views_admin.create_us_house_candidates_view, name='create_us_house_candidates'),
     re_path(r'^politician_match_this_election/', views_admin.candidate_politician_match_this_election_view,
