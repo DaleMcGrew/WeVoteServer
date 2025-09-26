@@ -926,6 +926,16 @@ def is_invalid_facebook_url_format(facebook_url):
     status = ""
     success = True
 
+    if not positive_value_exists(facebook_url):
+        status += "MISSING_FACEBOOK_URL "
+        success = True
+        results = {
+            'is_invalid':   is_invalid,
+            'status':       status,
+            'success':      success,
+        }
+        return results
+
     # List of invalid exact URLs
     invalid_urls = [
         "https://facebook.com/p",
