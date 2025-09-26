@@ -2722,6 +2722,10 @@ def voter_update_view(request):  # voterUpdate
         profile_image_type_currently_active = request.POST.get('profile_image_type_currently_active', False)
         profile_image_type_currently_active_changed = \
             positive_value_exists(request.POST.get('profile_image_type_currently_active_changed', False))
+        politician_we_vote_id = request.POST.get('politician_we_vote_id', None)
+        other_ways_to_verify = request.POST.get('other_ways_to_verify', None)
+        politician_page_url = request.POST.get('politician_page_url', None)
+
     else:
         delete_voter_account = positive_value_exists(request.GET.get('delete_voter_account', False))
         facebook_email, facebook_email_changed = \
@@ -2752,6 +2756,10 @@ def voter_update_view(request):  # voterUpdate
         profile_image_type_currently_active = False
         profile_image_type_currently_active_changed = False
 
+        politician_we_vote_id = request.POST.get('politician_we_vote_id', None)
+        other_ways_to_verify = request.POST.get('other_ways_to_verify', None)
+        politician_page_url = request.POST.get('politician_page_url', None)
+
     # Voter has visited a private-labeled We Vote site, and we want to store that voter's id from another database
     if external_voter_id is not False:
         external_voter_id = external_voter_id.strip()
@@ -2765,7 +2773,7 @@ def voter_update_view(request):  # voterUpdate
 
     device_id_results = is_voter_device_id_valid(voter_device_id)
     if not device_id_results['success']:
-        status += "VOTER_DEVICE_ID_NOT_BALLOT " + device_id_results['status']
+        status += "VOTER_DEVICE_ID_NOT_BALLOT " + device_id_results['status'] + voter_device_id + " "
         json_data = {
                 'status':                           status,
                 'success':                          False,
@@ -2852,6 +2860,73 @@ def voter_update_view(request):  # voterUpdate
     voter = voter_results['voter']
     voter_we_vote_id = voter.we_vote_id
 
+    # other ways to verify flags
+    other_ways_to_verify_sent = False
+    other_ways_to_verify_error = False
+
+    # send SendGrid email of other_ways_to_verify form details
+    # Accept other_ways_to_verify (form data), politician_we_vote_id, and politician_page_url
+    # Do not update database
+    if other_ways_to_verify:
+        try:
+            # Implementing using Email Manager
+            email_manager = EmailManager()
+
+            # create email outbound description
+            outbound_results = email_manager.create_email_outbound_description(
+                recipient_voter_email='support@wevote.us',
+            )
+
+            # schedule email with subject and message
+            email_subject = f"[WeVote] Other Ways to Verify - {'Politician ID: ' + politician_we_vote_id \
+                if politician_we_vote_id else 'no politician_we_vote_id'}"
+            email_context_first_name = first_name or voter.first_name
+            email_context_last_name = last_name or voter.last_name
+            email_message_lines = [
+                "Other Ways to Verify submission:",
+                "",
+                "Voter Context:",
+                f"Voter ID: {voter_id or '(Unknown)'}",
+                f"Voter WeVote ID: {voter_we_vote_id or '(Unknown)'}",
+                f"Voter First Name: {email_context_first_name or '(Unknown)'}",
+                f"Voter Last Name: {email_context_last_name or '(Unknown)'}",
+                f"Voter Email: {voter.email or '(Unknown)'}",
+                f"Link to Voter's Page in Admin: \
+                    {'https://api.wevoteusa.org/voter/edit/'+ voter_we_vote_id if voter_we_vote_id \
+                    else '(Unknown)'}",
+                f"Politician Page URL: {politician_page_url or '(Unknown)'}",
+                "",
+                "Other Ways to Verify: ",
+                (other_ways_to_verify or "(none)")
+            ]
+            email_message = "\n".join(email_message_lines)
+            email_results = email_manager.schedule_email(
+                email_outbound_description=outbound_results['email_outbound_description'],
+                subject=email_subject,
+                message_text=email_message
+            )
+
+            if email_results['email_scheduled_saved']:
+                # status += "OTHER_VERIFY_EMAIL_SCHEDULED "
+
+                # send scheduled emil
+                send_results = email_manager.send_scheduled_email(
+                    email_scheduled=email_results['email_scheduled']
+                )
+                if send_results['success'] and send_results['email_scheduled_sent']:
+                        # status += "OTHER_VERIFY_EMAIL_SENT "
+
+                        # confirm if email is sent
+                        other_ways_to_verify_sent = True
+                else:
+                    status += send_results['status']
+            else:
+                status += email_results['status']
+        except Exception as e:
+            status += "OTHER_VERIFY_EMAIL_ERROR: " + str(e) + ' '
+            other_ways_to_verify_error = True
+            other_ways_to_verify_sent = False
+
     if delete_voter_account:
         # We want to fully delete this record
         results = delete_all_voter_information_permanently(voter_to_delete=voter, user=request.user)
@@ -2906,6 +2981,8 @@ def voter_update_view(request):  # voterUpdate
                 'we_vote_hosted_profile_twitter_image_url_large': voter.we_vote_hosted_profile_twitter_image_url_large,
                 'we_vote_hosted_profile_uploaded_image_url_large':
                 voter.we_vote_hosted_profile_uploaded_image_url_large,
+                'other_ways_to_verify_sent': other_ways_to_verify_sent,
+                'other_ways_to_verify_error': other_ways_to_verify_error,
             }
         response = HttpResponse(json.dumps(json_data), content_type='application/json')
         return response
@@ -3224,6 +3301,8 @@ def voter_update_view(request):  # voterUpdate
         'we_vote_hosted_profile_facebook_image_url_large':  we_vote_hosted_profile_facebook_image_url_large,
         'we_vote_hosted_profile_twitter_image_url_large':   we_vote_hosted_profile_twitter_image_url_large,
         'we_vote_hosted_profile_uploaded_image_url_large':  we_vote_hosted_profile_uploaded_image_url_large,
+        'other_ways_to_verify_sent':                 other_ways_to_verify_sent,
+        'other_ways_to_verify_error':                other_ways_to_verify_error,
     }
 
     response = HttpResponse(json.dumps(json_data), content_type='application/json')
