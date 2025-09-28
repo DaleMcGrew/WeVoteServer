@@ -74,15 +74,17 @@ def politician_retrieve_view(request):  # politicianRetrieve (CDN)
 
 
 def politician_retrieve_as_owner_view(request):  # politicianRetrieveAsOwner (No CDN)
-    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
-    politician_we_vote_id = request.GET.get('politician_we_vote_id', '')
     hostname = request.GET.get('hostname', '')
+    politician_we_vote_id = request.GET.get('politician_we_vote_id', '')
+    seo_friendly_path = request.GET.get('seo_friendly_path', '')
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
     json_data = politician_retrieve_for_api(
         request=request,
         voter_device_id=voter_device_id,
         politician_we_vote_id=politician_we_vote_id,
         as_owner=True,
         hostname=hostname,
+        seo_friendly_path=seo_friendly_path,
     )
     return HttpResponse(json.dumps(json_data), content_type='application/json')
 
