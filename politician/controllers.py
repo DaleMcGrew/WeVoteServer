@@ -1807,9 +1807,6 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
             status += "VALID_VOTER_ID_MISSING "
             success = False
         if success:
-            # retrieve_politician_as_owner was here 2024-07-12
-            #  but that function didn't exist anywhere else in the codebase. It looks like politicianRetrieveAsOwner
-            #  is not being called right now from WebApp.
             results = politician_manager.retrieve_politician(
                 politician_we_vote_id=politician_we_vote_id,
                 seo_friendly_path=seo_friendly_path,
@@ -1830,13 +1827,13 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
             seo_friendly_path=seo_friendly_path,
             read_only=True,
         )
+        if not results['success']:
+            status += "POLITICIAN_RETRIEVE_ERROR2: "
+            success = False
         politician_found = results['politician_found']
         politician = results['politician']
         # politician_owner_list = results['politician_owner_list']
         voter_is_politician_owner = False
-        if not results['success']:
-            status += "POLITICIAN_RETRIEVE_ERROR2: "
-            success = False
         status += results['status']
     if not success or not politician_found:
         results = politician_retrieve_error_dict
