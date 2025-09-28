@@ -282,6 +282,8 @@ urlpatterns = [
                           name='saveRepairedGenderIdsView'),
                   re_path(r'^politicianRetrieve/', views_politician.politician_retrieve_view,
                           name='politicianRetrieveView'),
+                  re_path(r'^politicianRetrieveAsOwner/', views_politician.politician_retrieve_as_owner_view,
+                          name='politicianRetrieveAsOwnerView'),
                   re_path(r'^politicianSave/', views_politician.politician_save_view, name='politicianSaveView'),
                   re_path(r'^politiciansSyncOut/', politicians_sync_out_view, name='politiciansSyncOutView'),
                   re_path(r'^pollingLocationsSyncOut/', polling_locations_sync_out_view,
