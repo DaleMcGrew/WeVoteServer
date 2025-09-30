@@ -95,6 +95,8 @@ def politician_save_view(request):  # politicianSave
     ballot_guide_official_statement = request.POST.get('ballot_guide_official_statement', '')
     ballot_guide_official_statement_changed = \
         positive_value_exists(request.POST.get('ballot_guide_official_statement_changed', False))
+    campaign_website = request.POST.get('campaign_website', '')
+    campaign_website_changed = positive_value_exists(request.POST.get('campaign_website_changed', False))
     voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
     politician_name = request.POST.get('politician_name', '')
     politician_name_changed = positive_value_exists(request.POST.get('politician_name_changed', False))
@@ -111,6 +113,8 @@ def politician_save_view(request):  # politicianSave
     json_data = politician_save_for_api(
         ballot_guide_official_statement=ballot_guide_official_statement,
         ballot_guide_official_statement_changed=ballot_guide_official_statement_changed,
+        campaign_website=campaign_website,
+        campaign_website_changed=campaign_website_changed,
         politician_name=politician_name,
         politician_name_changed=politician_name_changed,
         politician_photo_from_file_reader=politician_photo_from_file_reader,
