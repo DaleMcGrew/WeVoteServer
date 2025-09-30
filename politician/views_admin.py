@@ -193,6 +193,8 @@ def find_and_merge_duplicate_politicians_view(request):
     status = ""
     politician_manager = PoliticianManager()
 
+    # ################################
+    # Assemble a list of politicians that we already think might be duplicates
     queryset = PoliticiansArePossibleDuplicates.objects.using('readonly').all()
     if positive_value_exists(state_code):
         queryset = queryset.filter(state_code__iexact=state_code)
@@ -205,6 +207,8 @@ def find_and_merge_duplicate_politicians_view(request):
     exclude_politician_we_vote_id_list = \
         list(set(exclude_politician1_we_vote_id_list + exclude_politician2_we_vote_id_list))
 
+    # ################################
+    # Retrieve list of politicians to compare
     politician_query = Politician.objects.using('readonly').all()
     politician_query = politician_query.exclude(we_vote_id__in=exclude_politician_we_vote_id_list)
     if positive_value_exists(state_code):
@@ -228,6 +232,8 @@ def find_and_merge_duplicate_politicians_view(request):
     #                              "possible duplicates."
     #                              "".format(duplicate_count=duplicate_count))
 
+    # ################################
+    # When this search is run, give scoreboard credit to the volunteer who started this search
     try:
         # Give the volunteer who entered this credit
         volunteer_task_manager = VolunteerTaskManager()
