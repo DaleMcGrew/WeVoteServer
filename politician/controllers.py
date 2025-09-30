@@ -208,6 +208,73 @@ def add_twitter_handle_to_next_politician_spot(politician, twitter_handle):
     }
 
 
+def add_url_to_politician_url_spot(politician, incoming_politician_url, position=-1):
+    """
+    :param politician:
+    :param incoming_politician_url:
+    :param position: -1 means add at the end of the list, 1 means add at the beginning of the list
+    :return:
+    """
+    position = convert_to_int(position)
+    status = ''
+    success = True
+    values_changed = True  # With this implementation, we always assume a change
+
+    previous_url1 = politician.politician_url
+    previous_url2 = politician.politician_url2
+    previous_url3 = politician.politician_url3
+    previous_url4 = politician.politician_url4
+    previous_url5 = politician.politician_url5
+    reordered_urls = []
+    if positive_value_exists(previous_url1):
+        reordered_urls.append(previous_url1)
+    if positive_value_exists(previous_url2):
+        reordered_urls.append(previous_url2)
+    if positive_value_exists(previous_url3):
+        reordered_urls.append(previous_url3)
+    if positive_value_exists(previous_url4):
+        reordered_urls.append(previous_url4)
+    if positive_value_exists(previous_url5):
+        reordered_urls.append(previous_url5)
+
+    # Remove incoming_politician_url from the reordered_urls array (if it exists)
+    reordered_urls = [url for url in reordered_urls if url.lower() != incoming_politician_url.lower()]
+
+    number_of_urls = len(reordered_urls)
+    if position == 0:
+        position_as_index = 0
+    elif position < 0:
+        if number_of_urls == 0:
+            position_as_index = 0
+        else:
+            position_as_index = number_of_urls - 1
+    elif 0 < position <= 5:
+        if position >= number_of_urls:
+            position_as_index = number_of_urls - 1
+        else:
+            position_as_index = position - 1
+    else:
+        status += 'POSITION_OUT_OF_RANGE_PLACED_AT_END '
+        position_as_index = number_of_urls
+
+    # We place the url, even if incoming_politician_url is an empty string
+    reordered_urls.insert(position_as_index, incoming_politician_url)
+
+    # Place the reordered URLs back into the politician object
+    politician.politician_url = reordered_urls[0] if reordered_urls else None
+    politician.politician_url2 = reordered_urls[1] if len(reordered_urls) > 1 else None
+    politician.politician_url3 = reordered_urls[2] if len(reordered_urls) > 2 else None
+    politician.politician_url4 = reordered_urls[3] if len(reordered_urls) > 3 else None
+    politician.politician_url5 = reordered_urls[4] if len(reordered_urls) > 4 else None
+    # We currently only support 5 politician URLs
+    return {
+        'success': success,
+        'status': status,
+        'politician': politician,
+        'values_changed': values_changed,
+    }
+
+
 def fetch_duplicate_politician_count(we_vote_politician, ignore_politician_id_list):
     if not hasattr(we_vote_politician, 'politician_name'):
         return 0
@@ -2242,6 +2309,8 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
 def politician_save_for_api(  # politicianSave
         ballot_guide_official_statement='',
         ballot_guide_official_statement_changed='',
+        campaign_website='',
+        campaign_website_changed=False,
         politician_name='',
         politician_name_changed=False,
         politician_photo_from_file_reader='',
@@ -2291,7 +2360,7 @@ def politician_save_for_api(  # politicianSave
             photo_results = politician_save_photo_from_file_reader(
                 politician_we_vote_id=politician_we_vote_id,
                 politician_photo_from_file_reader=politician_photo_from_file_reader)
-            if photo_results['we_vote_hosted_politician_photo_original_url']:
+            if positive_value_exists(photo_results['we_vote_hosted_politician_photo_original_url']):
                 update_values['we_vote_hosted_politician_photo_original_url'] = \
                     photo_results['we_vote_hosted_politician_photo_original_url']
                 # Now we want to resize to a large version
@@ -2314,6 +2383,9 @@ def politician_save_for_api(  # politicianSave
 
         if ballot_guide_official_statement_changed:
             update_values['ballot_guide_official_statement'] = ballot_guide_official_statement
+        if campaign_website_changed:
+            # Note we are adding campaign_website to the the first politician_url spot below
+            pass
         if politician_name_changed:
             update_values['politician_name'] = politician_name
         if profile_image_type_currently_active_changed:
@@ -2379,8 +2451,18 @@ def politician_save_for_api(  # politicianSave
 
     status += create_results['status']
     if create_results['politician_found']:
+        politician_changed = False
         politician = create_results['politician']
         politician_we_vote_id = politician.we_vote_id
+
+        # Update the first politician_url field with campaign_website.
+        if campaign_website_changed:
+            # Place campaign_website in first spot, and move all other politician_urls to the next spot over.
+            campaign_results = add_url_to_politician_url_spot(politician, campaign_website, 1)
+            status += campaign_results['status']
+            if campaign_results['success'] and campaign_results['values_changed']:
+                politician = campaign_results['politician']
+                politician_changed = True
 
         if profile_image_type_currently_active_changed or politician_photo_changed or politician_photo_delete:
             from image.controllers import organize_object_photo_fields_based_on_image_type_currently_active
@@ -2393,10 +2475,14 @@ def politician_save_for_api(  # politicianSave
                 politician = results['object_with_photo_fields']
                 from politician.controllers_generate_color import generate_background
                 politician.profile_image_background_color = generate_background(politician)
-                try:
-                    politician.save()
-                except Exception as e:
-                    status += "ERROR_SAVING_POLITICIAN_IMAGE: " + str(e) + " "
+                politician_changed = True
+
+        # Now we want to resize to a large version
+        if politician_changed:
+            try:
+                politician.save()
+            except Exception as e:
+                status += "ERROR_SAVING_POLITICIAN_ONE_LAST_TIME: " + str(e) + " "
 
         results = politician_retrieve_for_api(
             as_owner=True,
