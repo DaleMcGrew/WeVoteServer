@@ -1007,12 +1007,12 @@ class RepresentativeManager(models.Manager):
 
                     # Add as new filter for "AND"
                     queryset = queryset.filter(final_filters)
+            total_count = queryset.count()
             if sort_by_is_battleground and positive_value_exists(year_furthest_in_future):
                 is_battleground_race_desc = "-is_battleground_race_{year}".format(year=year_furthest_in_future)
                 queryset = queryset.order_by(is_battleground_race_desc, '-twitter_followers_count')
             else:
                 queryset = queryset.order_by('-twitter_followers_count')
-            total_count = queryset.count()
             if representatives_limit > 0:
                 if index_start > 0:
                     representative_list = queryset[index_start:representatives_limit]
