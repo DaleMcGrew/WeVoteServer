@@ -1479,7 +1479,6 @@ def representatives_query_for_api(  # representativesQuery
         'total_count':      total_count,
         'year':             year,
     }
-
     return HttpResponse(json.dumps(json_data), content_type='application/json')
 
 

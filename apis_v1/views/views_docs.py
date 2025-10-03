@@ -45,7 +45,7 @@ from apis_v1.documentation_source import \
     organization_suggestion_tasks_doc, \
     pdf_to_html_doc, \
     pledge_to_vote_with_voter_guide_doc, politician_retrieve_doc, \
-    politician_save_doc, politicians_sync_out_doc, \
+    politician_save_doc, politicians_query_doc, politicians_sync_out_doc, \
     polling_locations_sync_out_doc, \
     reaction_like_count_doc, position_list_for_ballot_item_doc, position_list_for_ballot_item_from_friends_doc, \
     position_list_for_opinion_maker_doc, \
@@ -1843,6 +1843,16 @@ def politician_save_doc_view(request):
     """
     url_root = WE_VOTE_SERVER_ROOT_URL
     template_values = politician_save_doc.politician_save_doc_template_values(url_root)
+    template_values['voter_api_device_id'] = get_voter_api_device_id(request)
+    return render(request, 'apis_v1/api_doc_page.html', template_values)
+
+
+def politicians_query_doc_view(request):
+    """
+    Show documentation about politiciansQuery
+    """
+    url_root = WE_VOTE_SERVER_ROOT_URL
+    template_values = politicians_query_doc.politicians_query_doc_template_values(url_root)
     template_values['voter_api_device_id'] = get_voter_api_device_id(request)
     return render(request, 'apis_v1/api_doc_page.html', template_values)
 
