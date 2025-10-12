@@ -5,6 +5,7 @@
 import json
 from time import time
 
+from django.contrib import messages
 from django.core.exceptions import RequestDataTooBig
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -34,7 +35,7 @@ from import_export_facebook.controllers import voter_facebook_sign_in_retrieve_f
 from import_export_google_civic.controllers import voter_ballot_items_retrieve_from_google_civic_for_api
 from import_export_twitter.controllers import voter_twitter_save_to_current_account_for_api
 from issue.models import IssueManager
-from organization.models import Organization, OrganizationManager
+from organization.models import INDIVIDUAL, Organization, OrganizationManager
 from position.controllers import voter_all_positions_retrieve_for_api, \
     voter_position_retrieve_for_api, voter_position_comment_save_for_api, voter_position_visibility_save_for_api
 from sms.controllers import voter_sms_phone_number_retrieve_for_api, voter_sms_phone_number_save_for_api
@@ -2643,6 +2644,7 @@ def voter_update_view(request):  # voterUpdate
     :return:
     """
 
+    passkey_received_but_not_accepted = False
     status = ""
     voter_updated = False
     voter_name_needs_to_be_updated_in_activity = False
@@ -2719,6 +2721,7 @@ def voter_update_view(request):  # voterUpdate
             send_journal_list = False
         voter_photo_from_file_reader = request.POST.get('voter_photo_from_file_reader', '')
         voter_photo_changed = positive_value_exists(request.POST.get('voter_photo_changed', False))
+        passkey_to_verify_politician_control = request.POST.get('passkey', False)
         profile_image_type_currently_active = request.POST.get('profile_image_type_currently_active', False)
         profile_image_type_currently_active_changed = \
             positive_value_exists(request.POST.get('profile_image_type_currently_active_changed', False))
@@ -2747,6 +2750,7 @@ def voter_update_view(request):  # voterUpdate
         notification_settings_flags = return_flag_value(request, 'notification_settings_flags')
         notification_flag_integer_to_set = return_flag_value(request, 'notification_flag_integer_to_set')
         notification_flag_integer_to_unset = return_flag_value(request, 'notification_flag_integer_to_unset')
+        passkey_to_verify_politician_control = request.GET.get('passkey', False)
         try:
             send_journal_list = request.GET['send_journal_list']
         except KeyError:
@@ -2871,7 +2875,6 @@ def voter_update_view(request):  # voterUpdate
         try:
             # Implementing using Email Manager
             email_manager = EmailManager()
-
             # create email outbound description
             outbound_results = email_manager.create_email_outbound_description(
                 recipient_voter_email='support@wevote.us',
@@ -2906,17 +2909,15 @@ def voter_update_view(request):  # voterUpdate
             )
 
             if email_results['email_scheduled_saved']:
-                # status += "OTHER_VERIFY_EMAIL_SCHEDULED "
-
+                status += "OTHER_VERIFY_EMAIL_SCHEDULED "
                 # send scheduled emil
                 send_results = email_manager.send_scheduled_email(
                     email_scheduled=email_results['email_scheduled']
                 )
                 if send_results['success'] and send_results['email_scheduled_sent']:
-                        # status += "OTHER_VERIFY_EMAIL_SENT "
-
-                        # confirm if email is sent
-                        other_ways_to_verify_sent = True
+                    status += "OTHER_VERIFY_EMAIL_SENT "
+                    # confirm if email is sent
+                    other_ways_to_verify_sent = True
                 else:
                     status += send_results['status']
             else:
@@ -2925,6 +2926,114 @@ def voter_update_view(request):  # voterUpdate
             status += "OTHER_VERIFY_EMAIL_ERROR: " + str(e) + ' '
             other_ways_to_verify_error = True
             other_ways_to_verify_sent = False
+
+    campaignx_we_vote_id = ''
+    passkey_verified = False
+    if positive_value_exists(passkey_to_verify_politician_control):
+        # We want to verify politician control
+        if not positive_value_exists(politician_we_vote_id):
+            status += "POLITICIAN_NOT_FOUND_FOR_PASSKEY_VERIFICATION "
+        else:
+            try:
+                from campaign.models import CampaignX
+                campaign = CampaignX.objects.using('readonly').get(linked_politician_we_vote_id=politician_we_vote_id)
+                campaignx_we_vote_id = campaign.we_vote_id
+                if passkey_to_verify_politician_control == campaign.passkey_for_creating_campaign_owner:
+                    passkey_verified = True
+                else:
+                    passkey_received_but_not_accepted = True
+            except Exception as e:
+                status += "ERROR with CampaignX.objects.using('readonly').get: " + str(e) + " "
+
+    do_not_create = False
+    link_already_exists = False
+    if passkey_verified:
+        # Mark that the politician has been claimed
+        try:
+            from politician.models import Politician
+            politician = Politician.objects.get(we_vote_id=politician_we_vote_id)
+            if not positive_value_exists(politician.is_claimed_profile):
+                politician.is_claimed_profile = True
+                politician.save()
+        except Exception as e:
+            status += "ERROR with Politician.objects.get: " + str(e) + " "
+
+        # Add this voter as a CampaignXOwner
+        from campaign.models import CampaignXOwner
+        try:
+            CampaignXOwner.objects.get(
+                campaignx_we_vote_id=campaignx_we_vote_id,
+                voter_we_vote_id=voter_we_vote_id)
+            link_already_exists = True
+        except CampaignXOwner.DoesNotExist:
+            link_already_exists = False
+        except Exception as e:
+            do_not_create = True
+            status += "ADD_CAMPAIGN_OWNER_ALREADY_EXISTS " + str(e) + " "
+        if not do_not_create and not link_already_exists:
+            organization_name = ''
+            we_vote_hosted_profile_image_url_medium = ''
+            we_vote_hosted_profile_image_url_tiny = ''
+            organization_manager = OrganizationManager()
+            if positive_value_exists(voter.linked_organization_we_vote_id):
+                organization_we_vote_id = voter.linked_organization_we_vote_id
+                organization_results = \
+                    organization_manager.retrieve_organization_from_we_vote_id(organization_we_vote_id)
+                if organization_results['organization_found']:
+                    organization_name = organization_results['organization'].organization_name
+                    we_vote_hosted_profile_image_url_medium = \
+                        organization_results['organization'].we_vote_hosted_profile_image_url_medium
+                    we_vote_hosted_profile_image_url_tiny = \
+                        organization_results['organization'].we_vote_hosted_profile_image_url_tiny
+            else:
+                # Create new organization
+                organization_name = voter.get_full_name()
+                organization_image = voter.voter_photo_url()
+                organization_type = INDIVIDUAL
+                create_results = organization_manager.create_organization(
+                    organization_name=organization_name,
+                    organization_image=organization_image,
+                    organization_type=organization_type,
+                    we_vote_hosted_profile_image_url_large=voter.we_vote_hosted_profile_image_url_large,
+                    we_vote_hosted_profile_image_url_medium=voter.we_vote_hosted_profile_image_url_medium,
+                    we_vote_hosted_profile_image_url_tiny=voter.we_vote_hosted_profile_image_url_tiny
+                )
+                if create_results['organization_created']:
+                    organization = create_results['organization']
+                    try:
+                        voter.linked_organization_we_vote_id = organization.we_vote_id
+                        voter.save()
+                    except Exception as e:
+                        status += "UNABLE_TO_LINK_NEW_ORGANIZATION_TO_VOTER: " + str(e) + " "
+
+            # If organization_name is missing, use voter's full name
+            if not positive_value_exists(organization_name) or 'Voter-' in organization_name:
+                voter_full_name = voter.get_full_name(True)
+                if positive_value_exists(voter_full_name) and 'Voter-' not in voter_full_name:
+                    organization_name = voter_full_name
+            # If organization_name is missing, use voter's email
+            if not positive_value_exists(organization_name) and \
+                    positive_value_exists(voter.email) and positive_value_exists(voter.email_ownership_is_verified):
+                organization_name = voter.email
+
+            # Now create new link
+            try:
+                # Create the CampaignXOwner
+                CampaignXOwner.objects.create(
+                    campaignx_we_vote_id=campaignx_we_vote_id,
+                    organization_name=organization_name,
+                    organization_we_vote_id=organization_we_vote_id,
+                    feature_this_profile_image=False,
+                    voter_we_vote_id=voter_we_vote_id,
+                    we_vote_hosted_profile_image_url_medium=we_vote_hosted_profile_image_url_medium,
+                    we_vote_hosted_profile_image_url_tiny=we_vote_hosted_profile_image_url_tiny,
+                    visible_to_public=False)
+
+                messages.add_message(request, messages.INFO, 'New CampaignXOwner created.')
+            except Exception as e:
+                messages.add_message(request, messages.ERROR,
+                                     'Could not create CampaignXOwner.'
+                                     ' {error} [type: {error_type}]'.format(error=e, error_type=type(e)))
 
     if delete_voter_account:
         # We want to fully delete this record
@@ -2968,6 +3077,8 @@ def voter_update_view(request):  # voterUpdate
                 'notification_flag_integer_to_set':         notification_flag_integer_to_set,
                 'notification_flag_integer_to_unset':       notification_flag_integer_to_unset,
                 'notification_settings_flags':              voter.notification_settings_flags,
+                'passkey_received_but_not_accepted':        passkey_received_but_not_accepted,
+                'passkey_verified':                         passkey_verified,
                 'profile_image_type_currently_active':      voter.profile_image_type_currently_active,
                 'twitter_profile_image_url_https':          voter.twitter_profile_image_url_https,
                 'voter_device_id':                          voter_device_id,
@@ -3290,6 +3401,8 @@ def voter_update_view(request):  # voterUpdate
         'notification_settings_flags':              voter.notification_settings_flags,
         'notification_flag_integer_to_set':         notification_flag_integer_to_set,
         'notification_flag_integer_to_unset':       notification_flag_integer_to_unset,
+        'passkey_received_but_not_accepted':        passkey_received_but_not_accepted,
+        'passkey_verified':                         passkey_verified,
         'profile_image_type_currently_active':      voter.profile_image_type_currently_active,
         'twitter_profile_image_url_https':          twitter_profile_image_url_https,
         'voter_device_id':                          voter_device_id,

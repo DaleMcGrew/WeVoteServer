@@ -47,7 +47,8 @@ from voter.models import fetch_voter_from_voter_device_link, voter_has_authority
 from wevote_functions.functions import convert_to_int, convert_to_political_party_constant, \
     extract_first_name_from_full_name, extract_instagram_handle_from_text_string, \
     extract_middle_name_from_full_name, extract_last_name_from_full_name, \
-    extract_state_from_ocd_division_id, extract_twitter_handle_from_text_string, get_voter_api_device_id, \
+    extract_state_from_ocd_division_id, extract_twitter_handle_from_text_string, \
+    generate_random_string, get_voter_api_device_id, \
     normalize_bluesky_handle, \
     normalize_tiktok_url, positive_value_exists, STATE_CODE_MAP, display_full_name_with_correct_capitalization
 from wevote_functions.functions_date import convert_date_to_we_vote_date_string, \
@@ -1911,7 +1912,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         linked_campaignx_list = []
         if positive_value_exists(politician_we_vote_id):
             from campaign.models import CampaignX
-            queryset = CampaignX.objects.using('readonly').all()
+            # Cannot be read only because we may need to update passkey below
+            queryset = CampaignX.objects.all()
             queryset = queryset.filter(linked_politician_we_vote_id=politician_we_vote_id)
             linked_campaignx_list = list(queryset)
         t1 = time()
@@ -1958,10 +1960,19 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         performance_list.append(performance_snapshot)
 
         politician_linked_campaignx_we_vote_id = ''
+        linked_campaignx_passkey = ''
         if len(linked_campaignx_list) > 0:
             linked_campaignx = linked_campaignx_list[0]
             if linked_campaignx and positive_value_exists(linked_campaignx.we_vote_id):
                 politician_linked_campaignx_we_vote_id = linked_campaignx.we_vote_id
+                if not positive_value_exists(linked_campaignx.passkey_for_creating_campaign_owner):
+                    try:
+                        linked_campaignx.passkey_for_creating_campaign_owner = \
+                            generate_random_string(8, remove_confusing_digits=True)
+                        linked_campaignx.save()
+                    except Exception as e:
+                        status += "COULD_NOT_GENERATE_PASSKEY_FOR_CAMPAIGN_OWNER: " + str(e) + " "
+                linked_campaignx_passkey = linked_campaignx.passkey_for_creating_campaign_owner
         elif positive_value_exists(politician_on_stage.linked_campaignx_we_vote_id):
             politician_linked_campaignx_we_vote_id = politician_on_stage.linked_campaignx_we_vote_id
 
@@ -2056,6 +2067,7 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 if google_civic_candidate_name3 else politician_on_stage.google_civic_candidate_name3
             },
             'instagram_handle':             instagram_handle,
+            'linked_campaignx_passkey':     linked_campaignx_passkey,
             'linked_campaignx_list':        linked_campaignx_list,
             'linked_candidate_list':        linked_candidate_list,
             'linked_representative_list':   linked_representative_list,

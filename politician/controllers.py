@@ -852,6 +852,7 @@ def generate_politician_dict_from_politician_object(politician=None):
         'ballotpedia_politician_url':       politician.ballotpedia_politician_url,
         'final_election_date_in_past':      final_election_date_in_past,
         'instagram_handle':                 instagram_handle,
+        'is_claimed_profile':               positive_value_exists(politician.is_claimed_profile),
         'linked_campaignx_we_vote_id':      politician.linked_campaignx_we_vote_id,
         'opposers_count':                   politician.opposers_count,
         'political_party':                  candidate_party_display(politician.political_party),
