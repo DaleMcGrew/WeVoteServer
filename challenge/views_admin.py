@@ -285,7 +285,7 @@ def challenge_edit_owners_process_view(request):
                     challenge_we_vote_id=challenge_we_vote_id,
                     organization_name=organization_name,
                     organization_we_vote_id=challenge_owner_organization_we_vote_id,
-                    feature_this_profile_image=challenge_owner_feature_this_profile_image,
+                    feature_this_profile_image=positive_value_exists(challenge_owner_feature_this_profile_image),
                     voter_we_vote_id=challenge_owner_voter_we_vote_id,
                     we_vote_hosted_profile_image_url_medium=we_vote_hosted_profile_image_url_medium,
                     we_vote_hosted_profile_image_url_tiny=we_vote_hosted_profile_image_url_tiny,

@@ -18,9 +18,8 @@ def obfuscate_email(email):
         # For short local parts, keep the first two characters and obfuscate the rest
         obfuscated_local_part = local_part[:2] + '*' * (len(local_part) - 2)
     else:
-        # For longer local parts, keep the first three characters and obfuscate the rest
-        middle_length = len(local_part) - 4
-        obfuscated_local_part = local_part[:3] + '*' * (len(local_part) - 2)
+        # For longer local parts, keep the first three characters, last character and obfuscate the rest
+        obfuscated_local_part = local_part[:3] + '*' * (len(local_part) - 4) + local_part[-1]
 
     domain_parts = domain.split('.')
     domain_name = domain_parts[0]
