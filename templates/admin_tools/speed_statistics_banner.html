@@ -35,6 +35,24 @@
                     </tr>
                 {% endfor %}
             {% endfor %}
+            {% comment %} comment out the load time display {% endcomment %}
+            <tr>
+                <td colspan="3" style="font-weight: bold; text-align: left">rendering</td>
+            </tr>
+            <tr>
+                <td>Render Time</td>
+                <td id="renderLoadTimeDisplay"> Render time not available</td>
+                <td style="font-weight: 300; color: #666; text-align: left;">
+                    The amount of time it took to render the page in Django.
+                </td>
+            </tr>
+            <tr>
+                <td>Browser Load Time</td>
+                <td id="browserLoadTimeDisplay"></td>
+                <td style="font-weight: 300; color: #666; text-align: left;">
+                    The amount of time it took the browserto load static and dynamic elements of this page.
+                </td>
+            </tr>
         </tbody>
     </table>
 </div>
@@ -55,6 +73,20 @@
     document.getElementById('SpeedStatisticsClose').addEventListener('click', function() {
         document.getElementById('SpeedStatisticsPopup').style.display = 'none';
         document.getElementById('SpeedStatisticsButton').style.display = 'block';
+    });
+
+    // Count how long it takes for the browser to load the page
+    const startBrowserLoadTime = performance.now();
+    window.addEventListener('load', () => {
+      const elapsed = (performance.now() - startBrowserLoadTime) / 1000;
+      document.getElementById('browserLoadTimeDisplay').textContent =
+        elapsed.toFixed(4);
+
+        const elementToRemove = document.getElementById('renderLoadTimePlaceholder');
+        if (elementToRemove) {
+            document.getElementById('renderLoadTimeDisplay').textContent = elementToRemove.textContent;
+            elementToRemove.remove();
+        }
     });
 </script>
 </body>
