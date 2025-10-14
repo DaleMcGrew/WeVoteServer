@@ -5,8 +5,6 @@ import re
 from base64 import b64encode
 import json
 import string
-from termios import TAB0
-from termios import TAB0
 from time import time
 from urllib.parse import urlencode
 from datetime import datetime, timedelta
