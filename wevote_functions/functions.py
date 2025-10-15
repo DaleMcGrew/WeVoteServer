@@ -1992,6 +1992,15 @@ def add_period_to_name_prefix_and_suffix(name):
     }
     return results
 
+def get_performance_total(performance_dict):
+    total = 0
+    for times in performance_dict.values():
+        for time in times:
+            time_diff = time.get('time_difference') if isinstance(time, dict) else getattr(time, 'time_difference', 0)
+            if time_diff:
+                total += time_diff
+    return total
+
 
 def remove_period_from_name_prefix_and_suffix(name):
     modified_name = name.replace(', JR. ', '  JR')
