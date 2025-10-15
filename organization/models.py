@@ -926,6 +926,10 @@ class OrganizationManager(models.Manager):
         else:
             return ''
 
+    def fetch_organizations_are_not_duplicates_list_we_vote_ids(self, organization_we_vote_id):
+        results = self.retrieve_organizations_are_not_duplicates_list(organization_we_vote_id, read_only=True)
+        return results['organizations_are_not_duplicates_list_we_vote_ids']
+    
     def organization_name_needs_repair(self, organization):
         """
         See also position_speaker_name_needs_repair
@@ -2426,7 +2430,49 @@ class OrganizationManager(models.Manager):
         }
         return results
 
-    def retrieve_organizations_are_not_duplicates_list(organization_we_vote_id, read_only=True):
+    @staticmethod
+    def update_or_create_organizations_are_not_duplicates(organization1_we_vote_id, organization2_we_vote_id):
+        """
+        Either update or create a OrganizationsAreNotDuplicates entry.
+        """
+        exception_multiple_object_returned = False
+        success = False
+        new_organizations_are_not_duplicates_created = False
+        organizations_are_not_duplicates = OrganizationsAreNotDuplicates()
+        status = ""
+
+        if positive_value_exists(organization1_we_vote_id) and positive_value_exists(organization2_we_vote_id):
+            try:
+                updated_values = {
+                    'organization1_we_vote_id':    organization1_we_vote_id,
+                    'organization2_we_vote_id':    organization2_we_vote_id,
+                }
+                organizations_are_not_duplicates, new_organizations_are_not_duplicates_created = \
+                    OrganizationsAreNotDuplicates.objects.update_or_create(
+                        organization1_we_vote_id__exact=organization1_we_vote_id,
+                        organization2_we_vote_id=organization2_we_vote_id,
+                        defaults=updated_values)
+                success = True
+                status += "ORGANIZATIONS_ARE_NOT_DUPLICATES_UPDATED_OR_CREATED "
+            except OrganizationsAreNotDuplicates.MultipleObjectsReturned as e:
+                success = False
+                status += 'MULTIPLE_MATCHING_ORGANIZATIONS_ARE_NOT_DUPLICATES_FOUND_BY_ORGANIZATION_WE_VOTE_ID '
+                exception_multiple_object_returned = True
+            except Exception as e:
+                status += 'EXCEPTION_UPDATE_OR_CREATE_ORGANIZATIONS_ARE_NOT_DUPLICATES ' \
+                         '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
+                success = False
+
+        results = {
+            'success':                                      success,
+            'status':                                       status,
+            'MultipleObjectsReturned':                      exception_multiple_object_returned,
+            'new_organizations_are_not_duplicates_created': new_organizations_are_not_duplicates_created,
+            'organizations_are_not_duplicates':             organizations_are_not_duplicates,
+        }
+        return results
+
+    def retrieve_organizations_are_not_duplicates_list(self, organization_we_vote_id, read_only=True):
         """
         Get a list of other organization_we_vote_id's that are not duplicates
         :param organization_we_vote_id:
@@ -3137,7 +3183,7 @@ class OrganizationListManager(models.Manager):
 
     def retrieve_organizations_from_non_unique_identifiers(
             self,
-            ignore_we_vote_id_list=[],
+            ignore_organization_id_list=[],
             organization_name='',
             read_only=True,
             twitter_handle_list=[],
@@ -3164,16 +3210,19 @@ class OrganizationListManager(models.Manager):
                 twitter_filters.append(new_filter)
 
             # Add the first query
-            final_filters = twitter_filters.pop()
+            if twitter_filters:
+                final_filters = twitter_filters.pop()
             # ...and "OR" the remaining items in the list
-            for item in twitter_filters:
-                final_filters |= item
+                for item in twitter_filters:
+                    final_filters |= item
+            else:
+                final_filters = Q()
 
             queryset = queryset.filter(final_filters)
 
             # Ignore entries with we_vote_id coming in from master server
-            if positive_value_exists(len(ignore_we_vote_id_list)):
-                queryset = queryset.filter(~Q(we_vote_id__in=ignore_we_vote_id_list))
+            if positive_value_exists(len(ignore_organization_id_list)):
+                queryset = queryset.filter(~Q(we_vote_id__in=ignore_organization_id_list))
 
             # We want to find organizations with *any* of these values
             if positive_value_exists(organization_name):

@@ -5,12 +5,12 @@
 from .controllers import full_domain_string_available, merge_these_two_organizations,\
     move_organization_followers_to_another_organization, move_organization_membership_link_to_another_organization, \
     move_organization_team_member_entries_to_another_organization, organizations_import_from_master_server, \
-    organization_politician_match, push_organization_data_to_other_table_caches, subdomain_string_available, find_duplicate_organization
+    organization_politician_match, push_organization_data_to_other_table_caches, subdomain_string_available, find_duplicate_organization, merge_if_duplicate_organizations
 from .controllers_fastly import add_wevote_subdomain_to_fastly, add_subdomain_route53_record, \
     get_wevote_subdomain_status
 from .models import GROUP, INDIVIDUAL, Organization, OrganizationChangeLog, OrganizationReservedDomain, \
     OrganizationTeamMember, ORGANIZATION_UNIQUE_IDENTIFIERS, ORGANIZATION_UNIQUE_ATTRIBUTES_TO_BE_CLEARED, \
-    OrganizationsArePossibleDuplicates, PUBLIC_FIGURE
+    OrganizationsArePossibleDuplicates, PUBLIC_FIGURE, OrganizationManager
 from base64 import b64encode
 from admin_tools.views import redirect_to_sign_in_page
 from campaign.controllers import move_campaignx_to_another_organization
@@ -757,7 +757,7 @@ def organization_merge_process_view(request):
                                     "&state_code=" + str(state_code))
 
     organization1_results = organization_manager.retrieve_organization(
-        organization_we_vote_id=organization1_we_vote_id,
+        we_vote_id=organization1_we_vote_id,
         read_only=True)
     if organization1_results['organization_found']:
         organization1_on_stage = organization1_results['organization']
@@ -777,11 +777,11 @@ def organization_merge_process_view(request):
                                     '&state_code=' + str(state_code))
 
     # Gather choices made from merge form
-    conflict_results = figure_out_organization_conflict_values(organization1_on_stage, organization2_on_stage)
-    organization_merge_conflict_values = conflict_results['organization_merge_conflict_values']
-    if not conflict_results['success']:
-        status += conflict_results['status']
-        messages.add_message(request, messages.ERROR, status)
+    organization_merge_conflict_values = figure_out_organization_conflict_values(organization1_on_stage, organization2_on_stage)
+    # organization_merge_conflict_values = conflict_results['organization_merge_conflict_values']
+    # if not conflict_results['success']:
+    #     status += conflict_results['status']
+    #     messages.add_message(request, messages.ERROR, status)
     admin_merge_choices = {}
     clear_these_attributes_from_organization2 = []
     for attribute in ORGANIZATION_UNIQUE_IDENTIFIERS:
@@ -800,9 +800,8 @@ def organization_merge_process_view(request):
     merge_results = merge_these_two_organizations(
         organization1_we_vote_id,
         organization2_we_vote_id,
-        admin_merge_choices,
-        clear_these_attributes_from_organization2)
-
+        admin_merge_choices)
+    
     if positive_value_exists(merge_results['organizations_merged']):
         organization = merge_results['organization']
         messages.add_message(request, messages.INFO, "Organization '{organization_name}' merged."
@@ -917,7 +916,6 @@ def organization_duplicates_list_view(request):
         queryset = OrganizationsArePossibleDuplicates.objects.using('readonly').all()
         if positive_value_exists(state_code):
             queryset = queryset.filter(state_code__iexact=state_code)
-        duplicates_list_count = queryset.count()
         queryset = queryset.exclude(
             Q(organization2_we_vote_id__isnull=True) | Q(organization2_we_vote_id=''))
         possible_duplicates_count = queryset.count()
@@ -938,6 +936,7 @@ def organization_duplicates_list_view(request):
             organizations_to_display_we_vote_id_list.append(one_duplicate.organization2_we_vote_id)
     try:
         queryset = Organization.objects.using('readonly').all()
+        duplicates_list_count = queryset.count()
         queryset = queryset.filter(we_vote_id__in=organizations_to_display_we_vote_id_list)
         organization_data_list = list(queryset)
         for one_organization in organization_data_list:
@@ -3785,9 +3784,9 @@ def find_and_merge_duplicate_organizations_view(request):
         queryset = queryset.filter(state_code__iexact=state_code)
     queryset = queryset.exclude(organization1_we_vote_id=None)
     queryset = queryset.exclude(organization2_we_vote_id=None)
-    queryset_organization1 = queryset.values('organization1_we_vote_id', flat=True).distinct()
+    queryset_organization1 = queryset.values_list('organization1_we_vote_id', flat=True).distinct()
     exclude_organization1_we_vote_id_list = list(queryset_organization1)
-    queryset_organization2 = queryset.values('organization2_we_vote_id', flat=True).distinct()
+    queryset_organization2 = queryset.values_list('organization2_we_vote_id', flat=True).distinct()
     exclude_organization2_we_vote_id_list = list(queryset_organization2)
     exclude_organization_we_vote_id_list = \
         list(set(exclude_organization1_we_vote_id_list + exclude_organization2_we_vote_id_list))
@@ -3822,10 +3821,9 @@ def find_and_merge_duplicate_organizations_view(request):
         # Add current entry to ignore list
         ignore_organization_id_list.append(we_vote_organization.we_vote_id)
         # Now check for others we have already labeled as "not a duplicate"
-        not_a_duplicate_list = organization_manager.fetch_organizations_are_not_duplicates_list_we_vote_id(
+        not_a_duplicate_list = organization_manager.fetch_organizations_are_not_duplicates_list_we_vote_ids(
             we_vote_organization.we_vote_id)
         ignore_organization_id_list += not_a_duplicate_list
-
         results = find_duplicate_organization(we_vote_organization, ignore_organization_id_list, read_only=True)
 
         # If we find organizations to merge, store them for review
@@ -3848,27 +3846,39 @@ def find_and_merge_duplicate_organizations_view(request):
                 OrganizationsArePossibleDuplicates.objects.create(
                     organization1_we_vote_id=organization.we_vote_id,
                     organization2_we_vote_id=None,
-                    state_code=state_code,
+                    state_code=organization.state_served_code,
+                )
+                OrganizationsArePossibleDuplicates.objects.create(
+                    organization1_we_vote_id=we_vote_organization.we_vote_id,
+                    organization2_we_vote_id=None,
+                    state_code=we_vote_organization.state_served_code,
                 )
                 messages.add_message(request, messages.INFO,
                                     "Organization {organization_name} automatically merged."
                                     "".format(organization_name=organization.organization_name))
             else:
                 # Add an entry showing that this is a possible match
+                state_code_local = state_code
+                if not positive_value_exists(state_code_local):
+                    if positive_value_exists(we_vote_organization.state_served_code):
+                        state_code_local = we_vote_organization.state_served_code
+                    else:
+                        state_code_local = organization_option2_for_template.state_served_code
                 OrganizationsArePossibleDuplicates.objects.create(
                     organization1_we_vote_id=we_vote_organization.we_vote_id,
                     organization2_we_vote_id=organization_option2_for_template.we_vote_id,
-                    state_code=state_code,
+                    state_code=state_code_local,
                 )
                 if organization_option2_for_template.we_vote_id not in exclude_organization_we_vote_id_list:
                     exclude_organization_we_vote_id_list.append(organization_option2_for_template.we_vote_id)
         else:
             # No matches found
-            OrganizationsArePossibleDuplicates.objects.create(
-                organization1_we_vote_id=we_vote_organization.we_vote_id,
-                organization2_we_vote_id=None,
-                state_code=state_code,
-            )
+            if we_vote_organization.we_vote_id not in exclude_organization_we_vote_id_list:
+                OrganizationsArePossibleDuplicates.objects.create(
+                    organization1_we_vote_id=we_vote_organization.we_vote_id,
+                    organization2_we_vote_id=None,
+                    state_code=we_vote_organization.state_served_code,
+                )
     
     return HttpResponseRedirect(reverse('organization:duplicates_list', args=()) +
                                 "?state_code="
