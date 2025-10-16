@@ -10,9 +10,12 @@
 {% include "admin_tools/speed_statistics_banner.html" with performance_dict=performance_dict %}
 
 <h1>Candidates</h1>
+
 <p><a href="{% url 'import_export_batches:batch_list' %}?kind_of_batch=CANDIDATE&google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}"
       target="_blank">
-        Import New Candidates <span class="glyphicon glyphicon-new-window"></span></a>
+        Import New Candidates <span class="glyphicon glyphicon-new-window"></span></a>&nbsp;
+    <a href="{% url 'candidate:candidates_data_cleaning' %}?google_civic_election_id={{ google_civic_election_id }}&show_all_elections={{ show_all_elections }}&show_this_year_of_candidates={{ show_this_year_of_candidates }}&state_code={{ state_code }}">
+  Data Cleaning <span class="glyphicon glyphicon-new-window"></span></a>
 </p>
 
 {% csrf_token %}
@@ -389,7 +392,10 @@
       <span class="float-right">
       {% if current_page_number > 0 %}<a href="{{ previous_page_url }}">Previous page</a> |{% endif %}
       Page {{ current_page_number|add:1 }}
-      | <a href="{{ next_page_url }}">Next page</a></span>
+      {% if next_page_url %}
+        | <a href="{{ next_page_url }}">Next page</a>
+      {% endif %}
+      </span>
     {% endif %}
     <br />
 
@@ -735,7 +741,10 @@
         <span class="float-right">
           {% if current_page_number > 0 %}<a href="{{ previous_page_url }}">Previous page</a> |{% endif %}
           Page {{ current_page_number|add:1 }}
-          | <a href="{{ next_page_url }}">Next page</a></span>
+          {% if next_page_url %}
+	        | <a href="{{ next_page_url }}">Next page</a>
+          {% endif %}
+        </span>
         {% endif %}
 
         <p>

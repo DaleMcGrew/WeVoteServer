@@ -17,6 +17,7 @@ CAMPAIGNX_SUPER_SHARE_ITEM_TEMPLATE = 'CAMPAIGNX_SUPER_SHARE_ITEM_TEMPLATE'
 CAMPAIGNX_SUPPORTER_INITIAL_RESPONSE_TEMPLATE = 'CAMPAIGNX_SUPPORTER_INITIAL_RESPONSE_TEMPLATE'
 FRIEND_ACCEPTED_INVITATION_TEMPLATE = 'FRIEND_ACCEPTED_INVITATION_TEMPLATE'
 FRIEND_INVITATION_TEMPLATE = 'FRIEND_INVITATION_TEMPLATE'
+FROM_TEMPLATE_SYSTEM = 'FROM_TEMPLATE_SYSTEM'
 GENERIC_EMAIL_TEMPLATE = 'GENERIC_EMAIL_TEMPLATE'
 LINK_TO_SIGN_IN_TEMPLATE = 'LINK_TO_SIGN_IN_TEMPLATE'
 MESSAGE_TO_FRIEND_TEMPLATE = 'MESSAGE_TO_FRIEND_TEMPLATE'
@@ -29,6 +30,7 @@ SEND_BALLOT_TO_FRIENDS = 'SEND_BALLOT_TO_FRIENDS'
 SIGN_IN_CODE_EMAIL_TEMPLATE = 'SIGN_IN_CODE_EMAIL_TEMPLATE'
 KIND_OF_EMAIL_TEMPLATE_CHOICES = (
     (GENERIC_EMAIL_TEMPLATE,  'Generic Email'),
+    (FROM_TEMPLATE_SYSTEM,  'From Dynamic Email Template'),
     (FRIEND_ACCEPTED_INVITATION_TEMPLATE, 'Accept an invitation to be a Friend'),
     (FRIEND_INVITATION_TEMPLATE, 'Invite Friend'),
     (LINK_TO_SIGN_IN_TEMPLATE, 'Link to sign in.'),
@@ -70,6 +72,50 @@ EMAIL_HOST_USER = get_environment_variable("EMAIL_HOST_USER", no_exception=True)
 EMAIL_HOST_PASSWORD = get_environment_variable("EMAIL_HOST_PASSWORD", no_exception=True)
 EMAIL_PORT = get_environment_variable("EMAIL_PORT", no_exception=True)
 EMAIL_USE_TLS = get_environment_variable("EMAIL_USE_TLS", no_exception=True)
+
+
+class EmailCampaign(models.Model):
+    """
+    An email campaign that we assemble, and then send
+    """
+    email_campaign_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
+    deleted = models.BooleanField(default=False)
+    email_body_template_raw = models.TextField(null=True, blank=True)  # We keep a copy for history
+    email_subject_template_raw = models.CharField(max_length=255, null=True, blank=True, unique=False)
+    email_template_id = models.PositiveIntegerField(default=0, null=False)
+    emails_sent = models.BooleanField(default=False)
+    is_for_politician = models.BooleanField(default=False)
+    is_for_staff = models.BooleanField(default=False)
+    is_for_voter = models.BooleanField(default=False)
+    voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
+
+
+class EmailCampaignLabel(models.Model):
+    """
+    This table stores labels we can apply to email campaigns, for sorting purposes
+    """
+    label_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
+    deleted = models.BooleanField(default=False)
+
+
+class EmailCampaignLabelLink(models.Model):
+    """
+    Which labels are linked to which email campaigns?
+    """
+    email_campaign_id = models.PositiveIntegerField(default=0, null=False)
+    email_campaign_label_id = models.PositiveIntegerField(default=0, null=False)
+
+
+class EmailCampaignRecipient(models.Model):
+    """
+    One recipient of a bulk email campaign
+    """
+    email_body_assembled = models.TextField(null=True, blank=True)
+    email_campaign_id = models.PositiveIntegerField(default=0, null=False)
+    email_scheduled = models.BooleanField(default=False)
+    email_subject_assembled = models.CharField(max_length=255, null=True, blank=True, unique=False)
+    recipient_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
+    voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
 
 
 class EmailAddress(models.Model):
@@ -149,7 +195,7 @@ class EmailOutboundDescription(models.Model):
 class EmailScheduled(models.Model):
     """
     Used to tell the email server literally what to send. If an email bounces temporarily, we will
-    want to trigger the EmailOutboundDescription to generate an new EmailScheduled entry.
+    want to trigger the EmailOutboundDescription to generate a new EmailScheduled entry.
     """
     subject = models.CharField(verbose_name="email subject", max_length=255, null=True, blank=True, unique=False)
     message_text = models.TextField(null=True, blank=True)
@@ -1333,6 +1379,27 @@ class EmailManager(models.Manager):
             status = "ERROR_UPDATE_EMAIL_ADDRESS_AS_VERIFIED: " + str(e) + " "
             print(status)
             return email_address_object
+
+
+class EmailTemplate(models.Model):
+    """
+    A template for EmailCampaign sends, or personalized emails.
+    """
+    archived = models.BooleanField(default=False)
+    deleted = models.BooleanField(default=False)
+    email_template_folder_id = models.PositiveIntegerField(default=0, null=False)
+    email_template_name = models.CharField(db_index=True, max_length=255, null=True)
+    message = models.TextField(null=True, blank=True)
+    subject = models.CharField(max_length=255, null=True)
+
+
+class EmailTemplateFolder(models.Model):
+    """
+    A template for EmailCampaign sends, or personalized emails.
+    """
+    email_template_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
+    archived = models.BooleanField(default=False)
+    deleted = models.BooleanField(default=False)
 
 
 def update_friend_invitation_email_link_with_new_email(deleted_email_we_vote_id, updated_email_we_vote_id):

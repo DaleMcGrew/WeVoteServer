@@ -568,24 +568,33 @@ def candidate_list_view(request):
     performance_list.append(performance_snapshot)
 
     t0 = time()
-    # make 1 query to get all states' candidate counts in one swoop (using django.db.models Count)
-    candidate_counts_qs = CandidateCampaign.objects.using('readonly').filter(
-        we_vote_id__in=candidate_we_vote_id_list).values('state_code').annotate(candidate_count=Count('id'))
+    if not positive_value_exists(candidate_we_vote_id_list):
+        state_list_modified = {code: name for code, name in state_list.items()}
+    else:
+        # make 1 query to get all states' candidate counts in one swoop (using django.db.models Count)
+        candidate_counts_qs = (CandidateCampaign.objects.using('readonly')
+                               .filter(we_vote_id__in=candidate_we_vote_id_list)
+                               .values('state_code')
+                               .annotate(candidate_count=Count('id')))
 
-    # then use candidate_counts_qs to create a dict that maps state codes to their candidate counts
-    candidate_counts_by_state = {x['state_code'].lower(): x['candidate_count'] for x in candidate_counts_qs}
+        # then use candidate_counts_qs to create a dict that maps state codes (case-insensitive) to their candidate counts
+        candidate_counts_by_state = {}
+        for x in candidate_counts_qs:
+            code = (x.get('state_code') or '').lower()
+            candidate_counts_by_state[code] = candidate_counts_by_state.get(code, 0) + x['candidate_count']
 
-    for one_state_code, one_state_name in state_list.items():
-        count_result = candidate_list_manager.retrieve_candidate_count_for_election_and_state(
-            google_civic_election_id_list, one_state_code, candidate_counts_by_state)
-        state_name_modified = one_state_name
-        if positive_value_exists(count_result['candidate_count']):
-            state_name_modified += " - " + str(count_result['candidate_count'])
-        elif str(one_state_code.lower()) == str(state_code.lower()):
-            state_name_modified += " - 0"
-        # At one point we did not include state in drop-down if there weren't any candidates in that state.
-        #  Now we do.
-        state_list_modified[one_state_code] = state_name_modified
+        for one_state_code, one_state_name in state_list.items():
+            count_result = candidate_list_manager.retrieve_candidate_count_for_election_and_state(
+                google_civic_election_id_list, one_state_code, candidate_counts_by_state)
+            state_name_modified = one_state_name
+            if positive_value_exists(count_result['candidate_count']):
+                state_name_modified += " - " + str(count_result['candidate_count'])
+            elif str(one_state_code.lower()) == str(state_code.lower()):
+                state_name_modified += " - 0"
+            # At one point we did not include state in drop-down if there weren't any candidates in that state.
+            #  Now we do.
+            state_list_modified[one_state_code] = state_name_modified
+
     sorted_state_list = sorted(state_list_modified.items())
     # if positive_value_exists(google_civic_election_id):
     #     pass
@@ -698,7 +707,9 @@ def candidate_list_view(request):
     # Now retrieve the candidate_list from the filtered_candidate_we_vote_id_list
     t0 = time()
     try:
-        candidate_query = CandidateCampaign.objects.all()
+        filters = Q()
+        excludes = Q()
+
         if positive_value_exists(google_civic_election_id_list_generated) \
                 or positive_value_exists(show_marquee_or_battleground) \
                 or positive_value_exists(show_this_year_of_candidates_restriction):
@@ -711,101 +722,93 @@ def candidate_list_view(request):
             # )
             # We currently only add the year when searching
             if positive_value_exists(candidate_search):
-                candidate_query = candidate_query.filter(
-                    Q(we_vote_id__in=filtered_candidate_we_vote_id_list) |
-                    Q(candidate_year=current_year)
-                )
+                filters &= (Q(we_vote_id__in=filtered_candidate_we_vote_id_list) | Q(candidate_year=current_year))
             else:
-                candidate_query = candidate_query.filter(we_vote_id__in=filtered_candidate_we_vote_id_list)
+                filters &= Q(we_vote_id__in=filtered_candidate_we_vote_id_list)
+
         if positive_value_exists(exclude_candidate_analysis_done):
-            candidate_query = candidate_query.exclude(candidate_analysis_done=True)
+            excludes |= Q(candidate_analysis_done=True)
         if positive_value_exists(no_supporters):
-            candidate_query = candidate_query.exclude(supporters_count__gt=0)
+            excludes |= Q(supporters_count__gt=0)
         if positive_value_exists(state_code):
-            candidate_query = candidate_query.filter(state_code__iexact=state_code)
+            filters &= Q(state_code__iexact=state_code)
+
         if positive_value_exists(candidate_search):
             search_words = candidate_search.split()
-            final_filters = Q()
-            for one_word in search_words:
-                filters = (
-                    Q(ballotpedia_candidate_id__icontains=one_word)
-                    | Q(ballotpedia_candidate_name__icontains=one_word)
-                    | Q(ballotpedia_candidate_summary__icontains=one_word)
-                    | Q(ballotpedia_candidate_url__icontains=one_word)
-                    | Q(ballotpedia_office_id__icontains=one_word)
-                    | Q(ballotpedia_person_id__icontains=one_word)
-                    | Q(ballotpedia_race_id__icontains=one_word)
-                    | Q(candidate_name__icontains=one_word)
-                    | Q(candidate_twitter_handle__icontains=one_word)
-                    | Q(candidate_twitter_handle2__icontains=one_word)
-                    | Q(candidate_twitter_handle3__icontains=one_word)
-                    | Q(candidate_url__icontains=one_word)
-                    | Q(candidate_contact_form_url__icontains=one_word)
-                    | Q(contest_office_name__icontains=one_word)
-                    | Q(district_name__icontains=one_word)
-                    | Q(facebook_url__icontains=one_word)
-                    | Q(google_civic_candidate_name__icontains=one_word)
-                    | Q(google_civic_candidate_name2__icontains=one_word)
-                    | Q(google_civic_candidate_name3__icontains=one_word)
-                    | Q(linked_campaignx_we_vote_id=one_word)
-                    | Q(politician_we_vote_id=one_word)
-                    | Q(party__icontains=one_word)
-                    | Q(seo_friendly_path__icontains=one_word)
-                    | Q(twitter_description__icontains=one_word)
-                    | Q(vote_usa_office_id__icontains=one_word)
-                    | Q(vote_usa_politician_id__icontains=one_word)
-                    | Q(we_vote_id=one_word)
-                    | Q(wikipedia_url__icontains=one_word)
-                )
-                final_filters &= filters
-            candidate_query = candidate_query.filter(final_filters)
+            search_fields = [
+                'ballotpedia_candidate_id', 'ballotpedia_candidate_name', 'ballotpedia_candidate_summary',
+                'ballotpedia_candidate_url', 'ballotpedia_office_id', 'ballotpedia_person_id',
+                'ballotpedia_race_id', 'candidate_name', 'candidate_twitter_handle',
+                'candidate_twitter_handle2', 'candidate_twitter_handle3', 'candidate_url',
+                'candidate_contact_form_url', 'contest_office_name', 'district_name',
+                'facebook_url', 'google_civic_candidate_name', 'google_civic_candidate_name2',
+                'google_civic_candidate_name3', 'linked_campaignx_we_vote_id',
+                'politician_we_vote_id', 'party', 'seo_friendly_path', 'twitter_description',
+                'vote_usa_office_id', 'vote_usa_politician_id', 'we_vote_id', 'wikipedia_url'
+            ]
+            for word in search_words:
+                word_filter = Q()
+                for field in search_fields:
+                    word_filter |= Q(**{f"{field}__icontains": word})
+                filters &= word_filter
         if positive_value_exists(hide_candidates_with_links):
             # Show candidates that do NOT have links: Twitter, Instagram, Facebook, Web, Ballotpedia
             # If you make changes here, please also search for 'hide_candidates_with_links' in election/views_admin.py
-            candidate_query = candidate_query.filter(
-                (Q(ballotpedia_candidate_url__isnull=True) | Q(ballotpedia_candidate_url=""))
-                & (Q(candidate_twitter_handle__isnull=True) | Q(candidate_twitter_handle="")
-                   | Q(twitter_handle_updates_failing=True))
-                & (Q(candidate_url__isnull=True) | Q(candidate_url=""))
-                & (Q(facebook_url__isnull=True) | Q(facebook_url="") | Q(facebook_url_is_broken=True))
-                & (Q(instagram_handle__isnull=True) | Q(instagram_handle=""))
+            filters &= (
+                    (Q(ballotpedia_candidate_url__isnull=True) | Q(ballotpedia_candidate_url=""))
+                    & (Q(candidate_twitter_handle__isnull=True) | Q(candidate_twitter_handle="")
+                       | Q(twitter_handle_updates_failing=True))
+                    & (Q(candidate_url__isnull=True) | Q(candidate_url=""))
+                    & (Q(facebook_url__isnull=True) | Q(facebook_url="") | Q(facebook_url_is_broken=True))
+                    & (Q(instagram_handle__isnull=True) | Q(instagram_handle=""))
             )
+
         if positive_value_exists(federal_or_state):
             # Show candidates that with a race_office_level of 'Federal' or 'State'
-            candidate_query = candidate_query.filter(Q(race_office_level="Federal") | Q(race_office_level="State"))
+            filters &= (Q(race_office_level="Federal") | Q(race_office_level="State"))
         if positive_value_exists(hide_candidates_with_photos):
             # Show candidates that do NOT have photos
-            candidate_query = candidate_query.filter(
-                Q(we_vote_hosted_profile_image_url_medium__isnull=True) | Q(we_vote_hosted_profile_image_url_medium=""))
+            filters &= (Q(we_vote_hosted_profile_image_url_medium__isnull=True) |
+                        Q(we_vote_hosted_profile_image_url_medium=""))
         if positive_value_exists(show_candidates_with_best_twitter_options):
             # Show candidates with TwitterLinkPossibilities of greater than 60
-            candidate_query = candidate_query.filter(
-                Q(candidate_twitter_handle__isnull=True) | Q(candidate_twitter_handle=""))
+            filters &= (Q(candidate_twitter_handle__isnull=True) | Q(candidate_twitter_handle=""))
             try:
-                twitter_query = TwitterLinkPossibility.objects.filter(likelihood_score__gte=60, not_a_match=False)
-                twitter_query = twitter_query.values_list('candidate_campaign_we_vote_id', flat=True).distinct()
-                twitter_list = list(twitter_query)
-                if len(twitter_list):
-                    candidate_query = candidate_query.filter(we_vote_id__in=twitter_list)
+                twitter_list = list(
+                    TwitterLinkPossibility.objects.filter(likelihood_score__gte=60, not_a_match=False)
+                    .values_list('candidate_campaign_we_vote_id', flat=True)
+                    .distinct()
+                )
+                if twitter_list:
+                    filters &= Q(we_vote_id__in=twitter_list)
             except Exception as e:
                 pass
         elif positive_value_exists(show_candidates_with_twitter_options):
             # Show candidates that we have Twitter search results for
             try:
-                candidate_query = candidate_query.filter(
-                    Q(candidate_twitter_handle__isnull=True) | Q(candidate_twitter_handle=""))
-
-                twitter_query = TwitterLinkPossibility.objects.filter(not_a_match=False)
-                twitter_query = twitter_query.values_list('candidate_campaign_we_vote_id', flat=True).distinct()
-                twitter_possibility_list = list(twitter_query)
-                if len(twitter_possibility_list):
-                    candidate_query = candidate_query.filter(we_vote_id__in=twitter_possibility_list)
+                filters &= (Q(candidate_twitter_handle__isnull=True) | Q(candidate_twitter_handle=""))
+                twitter_possibility_list = list(
+                    TwitterLinkPossibility.objects.filter(not_a_match=False)
+                    .values_list('candidate_campaign_we_vote_id', flat=True)
+                    .distinct()
+                )
+                if twitter_possibility_list:
+                    filters &= Q(we_vote_id__in=twitter_possibility_list)
             except Exception as e:
                 pass
         elif positive_value_exists(show_candidates_without_twitter):
             # Don't show candidates that already have Twitter handles
-            candidate_query = candidate_query.filter(
-                Q(candidate_twitter_handle__isnull=True) | Q(candidate_twitter_handle=""))
+            filters &= (Q(candidate_twitter_handle__isnull=True) | Q(candidate_twitter_handle=""))
+
+        if not filters and not excludes and not show_all_elections:
+            candidate_query = CandidateCampaign.objects.none()
+        else:
+            candidate_query = (CandidateCampaign.objects.using('readonly').filter(filters).exclude(excludes)
+                               .order_by('candidate_name'))
+
+        if positive_value_exists(show_candidates_with_email):
+            candidate_query = candidate_query.annotate(candidate_email_length=Length('candidate_email'))
+            candidate_query = candidate_query.filter(candidate_email_length__gt=2)
 
         if sort_by == "twitter":
             candidate_query = candidate_query.annotate(has_twitter=(
@@ -821,19 +824,23 @@ def candidate_list_view(request):
 
         candidate_list_count = candidate_query.count()
 
-        candidate_count_start = 0
+        number_to_show_per_page = 50
+        candidate_count_start = page * number_to_show_per_page
         if positive_value_exists(show_all) or positive_value_exists(find_candidates_linked_to_multiple_offices):
             candidate_list = list(candidate_query)
+            hide_pagination = True
         else:
-            number_to_show_per_page = 50
-            if candidate_list_count <= number_to_show_per_page:
-                # Ignore pagination
-                candidate_list = list(candidate_query)
-                hide_pagination = True
+            # we add 1 extra candidate so we don't have to run .count() to check if we've reached the end...
+            candidate_count_end = candidate_count_start + number_to_show_per_page + 1
+            candidate_slice = list(candidate_query[candidate_count_start:candidate_count_end])
+
+            if len(candidate_slice) > number_to_show_per_page:
+                # ... but we don't include that extra 1 candidate
+                candidate_list = candidate_slice[:number_to_show_per_page]
             else:
-                candidate_count_start = number_to_show_per_page * page
-                candidate_count_end = candidate_count_start + number_to_show_per_page
-                candidate_list = candidate_query[candidate_count_start:candidate_count_end]
+                next_page_url = None
+                candidate_list = candidate_slice
+            hide_pagination = len(candidate_query) <= number_to_show_per_page
     except CandidateCampaign.DoesNotExist:
         pass
 
