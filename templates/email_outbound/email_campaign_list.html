@@ -9,9 +9,11 @@
 {% include "admin_tools/loading_banner.html" %}
 
 <h1>Email Campaigns</h1>
-    
-    <a href="{% url 'email_outbound:email_template_edit' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}"
-      target="_blank">
-        Create Email Template <span class="glyphicon glyphicon-new-window"></span></a>
+        
+    <a href="{% url 'email_outbound:email_template_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+        Email Template List</a>,
+
+    <a href="{% url 'email_outbound:email_campaign_edit' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+        Create Email Campaign</a>
 
 {% endblock %}

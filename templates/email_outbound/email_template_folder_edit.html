@@ -1,7 +1,7 @@
-{# templates/email_outbound/email_template_edit.html #}
+{# templates/email_outbound/email_template_folder_edit.html #}
 {% extends "template_base.html" %}
 
-{% block title %}Email Templates > New Email Template{% endblock %}
+{% block title %}Email Templates > New Folder{% endblock %}
 
 {%  block content %}
 {% load template_filters %}
@@ -11,6 +11,6 @@
     <a href="{% url 'email_outbound:email_template_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
         < Back to Email Templates</a>
 
-<h1>Email Templates > New Email Template</h1>
+<h1>Email Templates > New Folder</h1>
 
 {% endblock %}
