@@ -640,6 +640,7 @@ def politician_list_view(request):
     politician_search = request.GET.get('politician_search', '')
     # run_scripts = positive_value_exists(request.GET.get('run_scripts', False))
     run_scripts = True
+    sort_by = request.GET.get('sort_by', '')
     show_all = positive_value_exists(request.GET.get('show_all', False))
     show_battleground = positive_value_exists(request.GET.get('show_battleground', False))
     show_related_candidates = positive_value_exists(request.GET.get('show_related_candidates', False))
@@ -760,16 +761,29 @@ def politician_list_view(request):
             politician_query = politician_query.filter(politician_ultimate_election_date__gte=20240101)
 
         politician_list_count = politician_query.count()
+
+        if sort_by == "twitter":
+            politician_query = politician_query.annotate(has_twitter=(
+                        Q(politician_twitter_handle__isnull=False, politician_twitter_handle__gt='') |
+                        Q(politician_twitter_handle2__isnull=False, politician_twitter_handle2__gt='') |
+                        Q(politician_twitter_handle3__isnull=False, politician_twitter_handle3__gt='') |
+                        Q(politician_twitter_handle4__isnull=False, politician_twitter_handle4__gt='') |
+                        Q(politician_twitter_handle5__isnull=False, politician_twitter_handle5__gt='')))
+            politician_query = politician_query.order_by('-has_twitter', '-twitter_followers_count', 'politician_name')
+        else:
+            politician_query = politician_query.order_by('politician_name')
+
+        start_index = 0
         if not positive_value_exists(show_all):
             start_index = page * items_per_page
             end_index = start_index + items_per_page
-            politician_list = politician_query.order_by('politician_name')[start_index:end_index]
+            politician_list = politician_query[start_index:end_index]
             hide_pagination = politician_list_count <= items_per_page
             has_previous_page = page > 0
             has_next_page = end_index < politician_list_count
         else:
             # We still want to limit to 200
-            politician_list = politician_query.order_by('politician_name')[:200]
+            politician_list = politician_query[:200]
             hide_pagination = True
             has_previous_page = False
             has_next_page = False
@@ -914,6 +928,7 @@ def politician_list_view(request):
         "&show_ocd_id_state_mismatch={show_ocd_id_state_mismatch}" \
         "&show_politicians_with_email={show_politicians_with_email}" \
         "&show_related_candidates={show_related_candidates}" \
+        "&sort_by={sort_by}" \
         "&was_candidate_recently={was_candidate_recently}" \
         "".format(
             exclude_politician_analysis_done=exclude_politician_analysis_done,
@@ -925,6 +940,7 @@ def politician_list_view(request):
             show_ocd_id_state_mismatch=show_ocd_id_state_mismatch,
             show_politicians_with_email=show_politicians_with_email,
             show_related_candidates=show_related_candidates,
+            sort_by=sort_by,
             was_candidate_recently=was_candidate_recently,
             )
     # Update URLs for previous and next pages
@@ -947,6 +963,7 @@ def politician_list_view(request):
         'politician_search':            politician_search,
         'previous_page_url':            previous_page_url,
         'show_all':                     show_all,
+        'sort_by':                      sort_by,
         'show_battleground':            show_battleground,
         'show_politicians_with_email':  show_politicians_with_email,
         'show_related_candidates':      show_related_candidates,
@@ -2317,8 +2334,8 @@ def set_missing_gender_ids_view(request):
         if not hasattr(person, 'politician_name'):
             continue
         name = person.politician_name
-        cleaned = re.sub("\(|\)|\"|\'", " ", name)
-        cleaned = re.sub("\s+", "+", cleaned)
+        cleaned = re.sub(r"[\(\)\"']", " ", name)
+        cleaned = re.sub(r"\s+", "+", cleaned)
         search = 'https://www.google.com/search?q=' + cleaned
         politician_url = "/politician/{politician_id}/edit".format(politician_id=person.id)
         politician_state_code = person.state_code.upper() if person.state_code else ''
