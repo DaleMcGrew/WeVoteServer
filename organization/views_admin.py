@@ -3778,7 +3778,8 @@ def find_and_merge_duplicate_organizations_view(request):
     status = ""
     organization_manager = OrganizationManager()
 
-
+    # ################################
+    # Assemble a list of organizations that we already think might be duplicates
     queryset = OrganizationsArePossibleDuplicates.objects.using('readonly').all()
     if positive_value_exists(state_code):
         queryset = queryset.filter(state_code__iexact=state_code)
@@ -3791,13 +3792,16 @@ def find_and_merge_duplicate_organizations_view(request):
     exclude_organization_we_vote_id_list = \
         list(set(exclude_organization1_we_vote_id_list + exclude_organization2_we_vote_id_list))
    
+    # ################################
+    # Retrieve list of organizations to compare
     organization_query = Organization.objects.using('readonly').all()
     organization_query = organization_query.exclude(we_vote_id__in=exclude_organization_we_vote_id_list)
     if positive_value_exists(state_code):
         organization_query = organization_query.filter(state_served_code__iexact=state_code)
     organization_list = list(organization_query)
 
-
+    # ################################
+    # When this search is run, give scoreboard credit to the volunteer who started this search
     try:
         # Give the volunteer who entered this credit
         volunteer_task_manager = VolunteerTaskManager()

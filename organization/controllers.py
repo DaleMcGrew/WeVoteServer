@@ -251,7 +251,6 @@ def create_organization_from_politician(
     return results
 
 
-
 def find_duplicate_organization(we_vote_organization, ignore_organization_id_list, read_only=True):
     status = ''
     success = True
@@ -266,6 +265,7 @@ def find_duplicate_organization(we_vote_organization, ignore_organization_id_lis
         return error_results
     
     organization_manager = OrganizationManager()
+    organization_list_manager = OrganizationListManager()
 
     # Collect the organization's Twitter handle for duplicate checking
     organization_twitter_handle_list = []
@@ -274,7 +274,7 @@ def find_duplicate_organization(we_vote_organization, ignore_organization_id_lis
 
     # Search for other organizations with matching identifiers
     try:
-        results = organization_manager.retrieve_organizations_from_non_unique_identifiers(
+        results = organization_list_manager.retrieve_organizations_from_non_unique_identifiers(
             state_served_code=we_vote_organization.state_served_code,
             twitter_handle_list=organization_twitter_handle_list,
             organization_name=we_vote_organization.organization_name,

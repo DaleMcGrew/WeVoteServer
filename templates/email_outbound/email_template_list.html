@@ -1,0 +1,22 @@
+{# templates/email_outbound/email_template_list.html #}
+{% extends "template_base.html" %}
+
+{% block title %}Email Templates{% endblock %}
+
+{%  block content %}
+{% load template_filters %}
+{% load humanize %}
+{% include "admin_tools/loading_banner.html" %}
+    
+    <a href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+        < Back to Email Campaigns</a>
+
+<h1>Email Templates</h1>
+     
+    <a href="{% url 'email_outbound:email_template_folder_edit' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+        Create Folder</a>,
+   
+    <a href="{% url 'email_outbound:email_template_edit' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+        Create Email Template</a>
+
+{% endblock %}

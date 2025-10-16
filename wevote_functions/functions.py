@@ -1644,6 +1644,7 @@ def generate_random_string(
         chars = chars.replace("o", "")
         chars = chars.replace("O", "")
         chars = chars.replace("1", "")
+        chars = chars.replace("I", "")
         chars = chars.replace("l", "")
     return ''.join(random.SystemRandom().choice(chars) for _ in range(string_length))
 
