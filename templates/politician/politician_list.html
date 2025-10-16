@@ -23,6 +23,7 @@
 
 <form name="state_code_form" method="get" action="{% url 'politician:politician_list' %}">
     <input type="hidden" name="page" id="page_input" value="{{ current_page_number }}">
+    <input type="hidden" name="sort_by" value="{{ sort_by }}">
     {% csrf_token %}
     {% if state_code != "" %}
     <a href="#" onclick="showAllStates(); return false;">
@@ -111,10 +112,24 @@
         <tr>
             <th>&nbsp;</th>
             <th>&nbsp;</th>
-            <th>Politician Name</th>
+            <th>
+                <a href="?{{ request.GET.urlencode|cut:'&sort_by=twitter'|cut:'&sort_by=politician' }}&sort_by=politician">
+                    {% if sort_by == "politician" %}<strong>Politician Name</strong>{% else %}Politician Name{% endif %}
+                </a>
+            </th>
             <th>State</th>
             <th>ID - We Vote ID</th>
-            <th>Twitter Handle</th>
+            <th>
+                {% if sort_by == "twitter" %}
+                    <a href="?{{ request.GET.urlencode|cut:'&sort_by=twitter' }}">
+                        Twitter <span class="glyphicon glyphicon-triangle-bottom"></span>
+                    </a>
+                    {% else %}
+                    <a href="?{{ request.GET.urlencode|cut:'&sort_by=politician' }}&sort_by=twitter">
+                        Twitter (click to sort)
+                    </a>
+                {% endif %}
+            </th>
             <th>Email(s)</th>
             <th>Website(s)</th>
 {#            <th>Candidates Linked</th>#}
@@ -239,10 +254,10 @@
 {% if not hide_pagination %}
 <span class="float-right">
     {% if has_previous_page %}
-    <a href="{{ previous_page_url }}" onclick="displayLoadingBanner()">Previous page</a>
+    <a href="{{ previous_page_url }}" onclick="displayLoadingBanner()">Previous page</a> |
     {% endif %}
     Page {{ current_page_number|add:1 }}
-    {% if next_page_url %}
+    {% if has_next_page %}
         | <a href="{{ next_page_url }}" onclick="displayLoadingBanner()">Next page</a>
     {% endif %}
 </span>
