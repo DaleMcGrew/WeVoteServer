@@ -48,6 +48,14 @@
       Endorsers
     </div>
   </a>
+  <a href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+    <div class="sidebar-item">
+      <span class="glyphicon glyphicon-envelope"></span>
+      <span style="margin-top: 4px;">
+          Email Campaigns
+      </span>
+    </div>
+  </a>
   <a href="{% url 'challenge:challenge_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
     <div class="sidebar-item">
       <span class="glyphicon glyphicon-bullhorn"></span>
