@@ -29,6 +29,7 @@
     <input type="hidden" name="show_candidates_without_twitter" value="{{ show_candidates_without_twitter }}" />
     <input type="hidden" name="show_candidates_with_best_twitter_options" value="{{ show_candidates_with_best_twitter_options }}" />
     <input type="hidden" name="show_candidates_with_twitter_options" value="{{ show_candidates_with_twitter_options }}" />
+    <input type="hidden" name="sort_by" value="{{ sort_by }}" />
 {% if find_candidates_linked_to_multiple_offices %}<input type="hidden" name="find_candidates_linked_to_multiple_offices" value="1" />{% endif %}
 
     {% if election_list %}
@@ -380,6 +381,7 @@
     <input type="hidden" name="show_election_statistics" value="{{ show_election_statistics }}" />
     <input type="hidden" name="show_marquee_or_battleground" value="{{ show_marquee_or_battleground }}" />
     <input type="hidden" name="show_this_year_of_candidates" value="{{ show_this_year_of_candidates }}" />
+    <input type="hidden" name="sort_by" value="{{ sort_by }}">
 
     <input type="submit" value="Search for Candidate" />
 
@@ -461,13 +463,28 @@
             <tr>
                 <th>&nbsp;</th>
                 <th>&nbsp;</th>
-                <th>Candidate Name</th>
+                <th>
+                    <a href="?{{ request.GET.urlencode|cut:'&sort_by=twitter'|cut:'&sort_by=candidate' }}&sort_by=candidate">
+                    {% if sort_by == "candidate" %}<strong>Candidate Name</strong>{% else %}Candidate Name{% endif %}
+                    </a>
+                </th>
                 <th>State</th>
               {% if not google_civic_election_id %}
                 <th>Election</th>
               {% endif %}
                 <th>Office</th>
-                <th>Twitter Handle</th>
+                <th>
+                    {% if sort_by == "twitter" %}
+                        <a href="?{{ request.GET.urlencode|cut:'&sort_by=twitter' }}">
+                        Twitter <span class="glyphicon glyphicon-triangle-bottom"></span>
+                        </a>
+                    {% else %}
+                        <a href="?{{ request.GET.urlencode|cut:'&sort_by=candidate' }}&sort_by=twitter">
+
+                        Twitter (click to sort)
+                        </a>
+                    {% endif %}
+                </th>
                 <th>Google Search Results</th>
                 <th>Website / Facebook / Instagram / Email</th>
                 <th>IDs</th>
