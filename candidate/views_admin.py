@@ -446,6 +446,7 @@ def candidate_list_view(request):
     page = page if positive_value_exists(page) else 0  # Prevent negative pages
     run_scripts = positive_value_exists(request.GET.get('run_scripts', False))
     # run_scripts = True
+    sort_by = request.GET.get('sort_by', '')
     show_all = positive_value_exists(request.GET.get('show_all', False))
     show_all_elections = positive_value_exists(request.GET.get('show_all_elections', False))
     show_candidates_without_twitter = positive_value_exists(request.GET.get('show_candidates_without_twitter', False))
@@ -808,6 +809,18 @@ def candidate_list_view(request):
         if positive_value_exists(show_candidates_with_email):
             candidate_query = candidate_query.annotate(candidate_email_length=Length('candidate_email'))
             candidate_query = candidate_query.filter(candidate_email_length__gt=2)
+
+        if sort_by == "twitter":
+            candidate_query = candidate_query.annotate(has_twitter=(
+                        Q(candidate_twitter_handle__isnull=False, candidate_twitter_handle__gt='') |
+                        Q(candidate_twitter_handle2__isnull=False, candidate_twitter_handle2__gt='') |
+                        Q(candidate_twitter_handle3__isnull=False, candidate_twitter_handle3__gt='')))
+            candidate_query = candidate_query.order_by(
+                '-has_twitter',
+                '-twitter_followers_count',
+                'candidate_name')
+        else:
+            candidate_query = candidate_query.order_by('candidate_name')
 
         candidate_list_count = candidate_query.count()
 
@@ -1348,6 +1361,7 @@ def candidate_list_view(request):
         'show_marquee_or_battleground':             show_marquee_or_battleground,
         'show_this_year_of_candidates':             show_this_year_of_candidates,
         'show_candidates_with_email':              show_candidates_with_email,
+        'sort_by':                                  sort_by,
         'state_code':                               state_code,
         'state_list':                               sorted_state_list,
         'total_twitter_handles':                    total_twitter_handles,
