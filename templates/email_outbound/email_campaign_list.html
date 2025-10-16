@@ -1,0 +1,17 @@
+{# templates/email_outbound/email_campaign_list.html #}
+{% extends "template_base.html" %}
+
+{% block title %}Email Campaigns{% endblock %}
+
+{%  block content %}
+{% load template_filters %}
+{% load humanize %}
+{% include "admin_tools/loading_banner.html" %}
+
+<h1>Email Campaigns</h1>
+    
+    <a href="{% url 'email_outbound:email_template_edit' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}"
+      target="_blank">
+        Create Email Template <span class="glyphicon glyphicon-new-window"></span></a>
+
+{% endblock %}
