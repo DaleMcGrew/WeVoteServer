@@ -103,7 +103,8 @@
       const elapsed = (performance.now() - startBrowserLoadTime) / 1000;
       document.getElementById('browserLoadTimeDisplay').textContent =
         elapsed.toFixed(4);
-
+        
+        // Remove the renderLoadTimePlaceholder element and display the renderLoadTime in the renderLoadTimeDisplay element
         const elementToRemove = document.getElementById('renderLoadTimePlaceholder');
         if (elementToRemove) {
             document.getElementById('renderLoadTimeDisplay').textContent = elementToRemove.textContent;
