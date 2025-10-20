@@ -2,6 +2,9 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
+import json
+
+import requests
 from django.http import HttpResponse
 
 import wevote_functions.admin
@@ -74,3 +77,36 @@ def get_sitemap_xml_file(request):
         logger.error('get_sitemap_xml_file get_googlebot_map_xml_body threw ', e)
     xml += "</urlset>"
     return HttpResponse(xml)
+
+# Not related to sitemap, but a convenient place to leave this without making a new Django 'APP'
+def do_webapp_autocomplete_proxy(request):
+    # Example:  https://wevotedeveloper.com:8000/apis/v1/webAppAutocompleteProxy?input=37
+    # Uses the "Places (New)" API
+    apiKey = get_environment_variable("GOOGLE_API_KEY_FOR_SERVERS")
+    matches = []
+    success = False
+    status = ''
+
+    inputText = request.GET.get('input')
+    url = f'https://places.googleapis.com/v1/places:autocomplete?input={inputText}&key={apiKey}'
+    print(url)
+
+    r = requests.post(url, data={'input': inputText})
+    if r.status_code == 200:
+        data = r.json()
+        suggestions = data['suggestions']
+        for leaf in suggestions:
+            loc = leaf['placePrediction']['text']['text']
+            matches.append(loc)
+        success = True
+    else:
+        logger.error('webAppAutocompleteProxy POST to Google error: %s', str(r))
+        status = 'webAppAutocompleteProxy POST to Google error: %s', str(r)
+    json_data = {
+        'matches': matches,
+        'success': success,
+        'status': status,
+        'input': inputText,
+    }
+
+    return HttpResponse(json.dumps(json_data), content_type='application/json')
