@@ -89,7 +89,6 @@ def do_webapp_autocomplete_proxy(request):
 
     inputText = request.GET.get('input')
     url = f'https://places.googleapis.com/v1/places:autocomplete?input={inputText}&key={apiKey}'
-    print(url)
 
     r = requests.post(url, data={'input': inputText})
     if r.status_code == 200:
