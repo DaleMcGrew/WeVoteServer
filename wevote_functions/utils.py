@@ -6,7 +6,8 @@ from datetime import datetime, date
 from django.db import connection
 from django.utils.timezone import localtime
 
-from wevote_functions.functions_date import DATE_FORMAT_YMD_T_HMS_Z, DATE_FORMAT_YMD_HMS
+from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS, DATE_FORMAT_YMD_T_HMSMS_Z
+
 
 def staticUserAgent():
     # Updated March 26, 2024
@@ -50,13 +51,17 @@ def scrape_url(site_url, with_soup=True):
 
 def get_git_commit_date():
     scrape_res = scrape_url(get_git_commit_hash(True), False)
+    html = scrape_res['all_html']
     try:
-        reg = re.search(r"<relative-time datetime=\"(.*?)\"", scrape_res['all_html'])
+        pattern = re.compile(r'\"committedDate\":\"(.*?)\'')
+        reg = re.search(pattern, html)
         date_string = "Not found"
         if date and reg.group(1):
-            dt = reg.group(1)
-            utc_time = datetime.strptime(dt, DATE_FORMAT_YMD_T_HMS_Z) # "%Y-%m-%dT%H:%M:%S%z"
-            date_string = localtime(utc_time).strftime(DATE_FORMAT_YMD_HMS) # now: "%Y-%m-%d %H:%M:%S" original: "%m/%d/%Y %H:%M"
+            match = reg.group(1)
+            date_string_bad_tz = match.split("\"")[0]  # '2025-10-11T17:33:07.000-07:00'
+            date_string = ''.join(date_string_bad_tz.rsplit(':', 1))  # '2025-10-11T17:33:07.000-0700'
+            utc_time = datetime.strptime(date_string, DATE_FORMAT_YMD_T_HMSMS_Z)
+            date_string = localtime(utc_time).strftime(DATE_FORMAT_YMD_HMS)
         return date_string
     except Exception as e:
         return 'Not found: ' + str(e)
