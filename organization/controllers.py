@@ -274,21 +274,22 @@ def find_duplicate_organization(we_vote_organization, ignore_organization_id_lis
     # Search for other organizations with matching identifiers
     try:
         results = organization_list_manager.retrieve_organizations_from_non_unique_identifiers(
-            twitter_handle_list=organization_twitter_handle_list,
-            organization_name=we_vote_organization.organization_name,
             ignore_organization_id_list=ignore_organization_id_list,
-            read_only=read_only)
+            organization_name=we_vote_organization.organization_name,
+            read_only=read_only,
+            state_code=we_vote_organization.state_served_code,
+            twitter_handle_list=organization_twitter_handle_list,
+        )
         
         # If one duplicate organization is found, find and deal with conflict values
         if results['organization_found']:
-            organization_merge_conflict_values = figure_out_organization_conflict_values(we_vote_organization, results['organization'])
+            conflict_results = figure_out_organization_conflict_values(we_vote_organization, results['organization'])
+            organization_merge_conflict_values = conflict_results['conflict_values']
 
-            # organization_merge_conflict_values = conflict_results['organization_merge_conflict_values']
-
-            # if not conflict_results['success']:
-            #     status += conflict_results['status']
-            #     success = conflict_results['success']
-            # status += "FIND_DUPLICATE_ORGANIZATION_DUPLICATE_FOUND "
+            if not conflict_results['success']:
+                status += conflict_results['status']
+                success = conflict_results['success']
+            status += "FIND_DUPLICATE_ORGANIZATION_DUPLICATE_FOUND "
             results = {
                 'success':                              success,
                 'status':                               status,
@@ -301,12 +302,14 @@ def find_duplicate_organization(we_vote_organization, ignore_organization_id_lis
         # If multiple duplicate organizations are found, find and deal with conflict values.
         elif results['organization_list_found']:
             # Only deal with merging the incoming organization and the first on found
-            organization_merge_conflict_values = figure_out_organization_conflict_values(we_vote_organization, results['organization_list'][0])
-            # organization_merge_conflict_values = conflict_results['organization_merge_conflict_values']
-            # if not conflict_results['success']:
-            #     status += conflict_results['status']
-            #     success = conflict_results['success']
-            # status += "FIND_DUPLICATE_ORGANIZATION_DUPLICATE_FOUND_FROM_LIST "
+            conflict_results = figure_out_organization_conflict_values(
+                we_vote_organization,
+                results['organization_list'][0])
+            organization_merge_conflict_values = conflict_results['conflict_values']
+            if not conflict_results['success']:
+                status += conflict_results['status']
+                success = conflict_results['success']
+            status += "FIND_DUPLICATE_ORGANIZATION_DUPLICATE_FOUND_FROM_LIST "
             results = {
                 'success':                              success,
                 'status':                               status,
@@ -763,6 +766,8 @@ def delete_organization_complete(from_organization_id, from_organization_we_vote
 
 
 def figure_out_organization_conflict_values(organization1, organization2):
+    status = ''
+    success = True
     organization_merge_conflict_values = {}
 
     for attribute in ORGANIZATION_UNIQUE_IDENTIFIERS:
@@ -778,11 +783,21 @@ def figure_out_organization_conflict_values(organization1, organization2):
             elif organization2_attribute_value is None or organization2_attribute_value == "":
                 organization_merge_conflict_values[attribute] = 'ORGANIZATION1'
             else:
-                if attribute == "organization_twitter_handle" or attribute == "state_serving_code":
+                if attribute == "organization_state" or \
+                        attribute == "organization_twitter_handle" or \
+                        attribute == "state_served_code":
                     if organization1_attribute_value.lower() == organization2_attribute_value.lower():
                         organization_merge_conflict_values[attribute] = 'MATCHING'
                     else:
                         organization_merge_conflict_values[attribute] = 'CONFLICT'
+                elif attribute == "issue_analysis_done":
+                    # If either value is true, set the value to the object which is True
+                    if positive_value_exists(organization1_attribute_value):
+                        organization_merge_conflict_values[attribute] = 'ORGANIZATION1'
+                    elif positive_value_exists(organization2_attribute_value):
+                        organization_merge_conflict_values[attribute] = 'ORGANIZATION2'
+                    else:
+                        organization_merge_conflict_values[attribute] = 'ORGANIZATION1'
                 else:
                     if organization1_attribute_value == organization2_attribute_value:
                         organization_merge_conflict_values[attribute] = 'MATCHING'
@@ -791,7 +806,12 @@ def figure_out_organization_conflict_values(organization1, organization2):
         except AttributeError:
             pass
 
-    return organization_merge_conflict_values
+    results = {
+        'status':           status,
+        'success':          success,
+        'conflict_values':  organization_merge_conflict_values,
+    }
+    return results
 
 
 def full_domain_string_available(full_domain_string, requesting_organization_id):
@@ -1353,17 +1373,25 @@ def merge_these_two_organizations(organization1_we_vote_id, organization2_we_vot
     status = ""
     organization_manager = OrganizationManager()
     voter_manager = VoterManager()
+    to_voter_we_vote_id = ''
+    to_voter_id = 0
 
-    # Check to make sure that organization2 isn't linked to a voter. If so, cancel out for now.
+    # If organization2 is linked to a voter, make sure that organization1 is NOT.
     results = voter_manager.retrieve_voter_by_organization_we_vote_id(organization2_we_vote_id, read_only=True)
     if results['voter_found']:
-        results = {
-            'success': False,
-            'status': "MERGE_THESE_TWO_ORGANIZATIONS-ORGANIZATION2_LINKED_TO_A_VOTER ",
-            'organizations_merged': False,
-            'organization': None,
-        }
-        return results
+        voter2 = results['voter']
+        results = voter_manager.retrieve_voter_by_organization_we_vote_id(organization1_we_vote_id, read_only=True)
+        if results['voter_found']:
+            results = {
+                'success': False,
+                'status': "MERGE_THESE_TWO_ORGANIZATIONS-ORGANIZATION1_AND2_LINKED_TO_A_VOTER ",
+                'organizations_merged': False,
+                'organization': None,
+            }
+            return results
+        else:
+            to_voter_id = voter2.id
+            to_voter_we_vote_id = voter2.we_vote_id
 
     # Candidate 1 is the one we keep, and Candidate 2 is the one we will merge into Candidate 1
     organization1_results = \
@@ -1424,35 +1452,20 @@ def merge_these_two_organizations(organization1_we_vote_id, organization2_we_vot
         except Exception as e:
             status += "ORG2_ATTRIBUTE_CLEAR_FAILED: " + str(e) + " "
 
-    # Merge public positions
+    # Merge public and friends-only positions
     public_positions_results = move_positions_to_another_organization(
         from_organization_id=organization2_id,
         from_organization_we_vote_id=organization2_we_vote_id,
         to_organization_id=organization1_id,
-        to_organization_we_vote_id=organization1_we_vote_id)
+        to_organization_we_vote_id=organization1_we_vote_id,
+        to_voter_id=to_voter_id,
+        to_voter_we_vote_id=to_voter_we_vote_id,
+    )
     if not public_positions_results['success'] \
             or positive_value_exists(public_positions_results['position_entries_not_moved']) \
             or positive_value_exists(public_positions_results['position_entries_not_deleted']):
         status += public_positions_results['status']
-        status += "MERGE_THESE_TWO_ORGANIZATIONS-COULD_NOT_MOVE_PUBLIC_POSITIONS_TO_ORGANIZATION1 "
-        results = {
-            'success': False,
-            'status': status,
-            'organizations_merged': False,
-            'organization': None,
-        }
-        return results
-
-    # Merge friends-only positions
-    friends_positions_results = move_positions_to_another_organization(
-        organization2_id, organization2_we_vote_id,
-        organization1_id, organization1_we_vote_id,
-        False)
-    if not friends_positions_results['success'] \
-            or positive_value_exists(public_positions_results['position_entries_not_moved']) \
-            or positive_value_exists(public_positions_results['position_entries_not_deleted']):
-        status += friends_positions_results['status']
-        status += "MERGE_THESE_TWO_ORGANIZATIONS-COULD_NOT_MOVE_FRIENDS_POSITIONS_TO_ORGANIZATION1 "
+        status += "MERGE_THESE_TWO_ORGANIZATIONS-COULD_NOT_MOVE_POSITIONS_TO_ORGANIZATION1 "
         results = {
             'success': False,
             'status': status,
