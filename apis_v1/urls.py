@@ -7,9 +7,8 @@ This is called from config/urls.py like this:
 """
 
 from django.conf import settings
-
-from django.urls import path, re_path
 from django.conf.urls.static import static
+from django.urls import path, re_path
 
 from analytics.views_admin import analytics_action_sync_out_view, organization_daily_metrics_sync_out_view, \
     organization_election_metrics_sync_out_view, sitewide_daily_metrics_sync_out_view, \
@@ -19,7 +18,7 @@ from apis_v1.views import views_activity, views_apple, views_docs, views_analyti
     views_election, views_extension, views_facebook, views_friend, \
     views_issues, views_measure, views_misc, views_organization, \
     views_pledge_to_vote, views_politician, views_position, views_reaction, views_representative, \
-    views_retrieve_tables, views_task, views_share, views_twitter, views_voter, views_voter_guide, \
+    views_retrieve_tables, views_share, views_twitter, views_voter, views_voter_guide, \
     views_googlebot_site_map
 from apis_v1.views.views_retrieve_tables import backup_one_table_to_s3_view
 from ballot.views_admin import ballot_items_sync_out_view, ballot_returned_sync_out_view
@@ -59,6 +58,8 @@ urlpatterns = [
                   path('appleSignInSave/', views_apple.sign_in_with_apple_view, name='appleSignInSaveView'),
                   re_path(r'^appleValidateSignInWithAppleToken/',
                           views_apple.validate_sign_in_with_apple_token, name='appleValidateSignInWithAppleToken'),
+                  re_path(r'^webAppAutocompleteProxy/', views_googlebot_site_map.do_webapp_autocomplete_proxy,
+                          name='googlebotSiteMapView'),
                   re_path(r'^ballotItemHighlightsRetrieve/',
                           views_ballot.ballot_item_highlights_retrieve_view, name='ballotItemHighlightsRetrieveView'),
                   re_path(r'^ballotItemOptionsRetrieve/',
