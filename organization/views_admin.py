@@ -3924,7 +3924,7 @@ def find_and_merge_duplicate_organizations_view(request):
                 )
                 messages.add_message(
                     request, messages.INFO,
-                    "Organization {organization_name} automatically merged."
+                    "Endorser {organization_name} automatically merged."
                     "".format(organization_name=organization.organization_name))
             else:
                 # Add an entry showing that this is a possible match
