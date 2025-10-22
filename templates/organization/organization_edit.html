@@ -569,12 +569,14 @@
       $('#facebook_a_tag').removeAttr('href').attr('type', 'button').attr('disabled');
       $('#facebook_a_tag').css('color', 'lightblue');
     });
+    {% if organization %}
     // When loading the page, setup the href for the button
 <!--    const rev = "{% url 'organization:organization_position_list' organization.id %}";  // django does this substitution when rendering the template serverside-->
 <!--    const revEncoded = encodeURIComponent(rev);-->
 <!--    const initial_href = $('#facebook_a_tag').attr('href');-->
 <!--    const new_href = initial_href + '&reverse_path=' + revEncoded;-->
 <!--    $('#facebook_a_tag').attr('href', new_href);-->
+    {% endif %}
   });
 </script>
 <script>

@@ -106,6 +106,7 @@ ORGANIZATION_TYPE_MAP = {
 ORGANIZATION_UNIQUE_IDENTIFIERS = [
     'ballotpedia_page_title',
     'ballotpedia_photo_url',
+    'bluesky_handle',
     'chosen_domain_string',
     'chosen_domain_string2',
     'chosen_domain_string3',
@@ -155,6 +156,7 @@ ORGANIZATION_UNIQUE_IDENTIFIERS = [
     'state_served_code',
     'subscription_plan_end_day_text',
     'subscription_plan_features_active',
+    'tiktok_url',
     # 'twitter_description',
     # 'twitter_followers_count',
     # 'twitter_location',
@@ -164,9 +166,21 @@ ORGANIZATION_UNIQUE_IDENTIFIERS = [
     # 'twitter_profile_image_url_https',
     # 'twitter_user_id',
     'vote_smart_id',
+    'we_vote_hosted_profile_facebook_image_url_large',
+    'we_vote_hosted_profile_facebook_image_url_medium',
+    'we_vote_hosted_profile_facebook_image_url_tiny',
     'we_vote_hosted_profile_image_url_large',
     'we_vote_hosted_profile_image_url_medium',
     'we_vote_hosted_profile_image_url_tiny',
+    'we_vote_hosted_profile_twitter_image_url_large',
+    'we_vote_hosted_profile_twitter_image_url_medium',
+    'we_vote_hosted_profile_twitter_image_url_tiny',
+    'we_vote_hosted_profile_uploaded_image_url_large',
+    'we_vote_hosted_profile_uploaded_image_url_medium',
+    'we_vote_hosted_profile_uploaded_image_url_tiny',
+    'we_vote_hosted_profile_vote_usa_image_url_large',
+    'we_vote_hosted_profile_vote_usa_image_url_medium',
+    'we_vote_hosted_profile_vote_usa_image_url_tiny',
     'wikipedia_page_id',
     'wikipedia_page_title',
     'wikipedia_photo_url',
@@ -2456,7 +2470,7 @@ class OrganizationManager(models.Manager):
                 status += "ORGANIZATIONS_ARE_NOT_DUPLICATES_UPDATED_OR_CREATED "
             except OrganizationsAreNotDuplicates.MultipleObjectsReturned as e:
                 success = False
-                status += 'MULTIPLE_MATCHING_ORGANIZATIONS_ARE_NOT_DUPLICATES_FOUND_BY_ORGANIZATION_WE_VOTE_ID '
+                status += 'MULTIPLE_MATCHING_ORGANIZATIONS_ARE_NOT_DUPLICATES_FOUND_BY_ORG_WE_VOTE_ID ' + str(e) + ' '
                 exception_multiple_object_returned = True
             except Exception as e:
                 status += 'EXCEPTION_UPDATE_OR_CREATE_ORGANIZATIONS_ARE_NOT_DUPLICATES ' \
@@ -2472,7 +2486,8 @@ class OrganizationManager(models.Manager):
         }
         return results
 
-    def retrieve_organizations_are_not_duplicates_list(self, organization_we_vote_id, read_only=True):
+    @staticmethod
+    def retrieve_organizations_are_not_duplicates_list(organization_we_vote_id, read_only=True):
         """
         Get a list of other organization_we_vote_id's that are not duplicates
         :param organization_we_vote_id:
@@ -3181,11 +3196,12 @@ class OrganizationListManager(models.Manager):
         }
         return results
 
+    @staticmethod
     def retrieve_organizations_from_non_unique_identifiers(
-            self,
             ignore_organization_id_list=[],
             organization_name='',
             read_only=True,
+            state_code='',
             twitter_handle_list=[],
             vote_smart_id=0):
         filters = []
@@ -3200,6 +3216,10 @@ class OrganizationListManager(models.Manager):
                 queryset = Organization.objects.using('readonly').all()
             else:
                 queryset = Organization.objects.all()
+
+            # If there is a state_code, add a filter to the queryset
+            if positive_value_exists(state_code):
+                queryset = queryset.filter(state_served_code__iexact=state_code)
 
             twitter_filters = []
             for one_twitter_handle in twitter_handle_list:

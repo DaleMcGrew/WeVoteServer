@@ -47,12 +47,14 @@
                         {% endif %}
                     {% endfor %}
                 {% endfor %}
+                {% if performance_dict %}
                 <tr style="font-weight: bold; background-color: #C0DDED;">
                     <td>Total</td>
                     <td>{{ performance_dict|performance_total|floatformat:4 }}</td>
                     <td style="font-weight: bold; color: #666; text-align: left;">
                         Sum of all performance snapshots</td>
                 </tr>
+                {% endif %}
             {% endwith %}
           {# ric0de Changes END #}
           {# mjacquot1 Changes START #}
