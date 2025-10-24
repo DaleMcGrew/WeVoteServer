@@ -69,6 +69,7 @@ TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON"
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 WEB_APP_ROOT_URL = get_environment_variable("WEB_APP_ROOT_URL")
 from wevote_functions import functions_test_links
+from politician.enums import SpeedStatistics
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -1567,9 +1568,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
     politician_on_stage = Politician()
 
     performance_list.append({
-        'name': 'Retrieve politician form fields',
-        'description': 'These is done becase there was an error on the edit_process_view and the voter needs to try again',
-        'time_difference': time() - t0,
+        'enum_key': 'RET_POLITICIAN_FF_ERROR',
+        'time_difference': round(time() - t0, 4),
     })
     
     try:
@@ -1655,9 +1655,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 status += 'ERROR_RETRIEVING_FROM_ORGANIZATION: ' + str(e) + ' '
         
         performance_list.append({
-            'name': 'PoliticianSEOFriendlyPath',
-            'description': 'Retrieve PoliticianSEOFriendlyPath objects for this politician',
-            'time_difference': time() - t0,
+            'enum_key': 'RET_POLITICIAN_SEO',
+            'time_difference': round(time() - t0, 4),
         })
 
         t0 = time()
@@ -1692,16 +1691,9 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             organization_we_vote_id_linked_to_politician = politician_on_stage.organization_we_vote_id
         
         performance_list.append({
-            'name': 'Find organization(s) connected to this politician by politician_we_vote_id',
-            'description': 'Retrieve Organization objects for this politician',
-            'time_difference': time() - t0,
+            'enum_key': 'RET_ORGS',
+            'time_difference': round(time() - t0, 4),
         })
-        # performance_snapshot = {
-        #     'name': 'Find organization(s) connected to this politician by politician_we_vote_id',
-        #     'description': 'Retrieve Organization objects for this politician',
-        #     'time_difference': t1 - t0,
-        # }
-        # performance_list.append(performance_snapshot)
 
         # ##################################
         # Attach FollowOrganization information
@@ -1744,9 +1736,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 politician_position.organization_is_following_politician = True
         
         performance_list.append({
-            'name': 'Attach FollowOrganization information',
-            'description': 'Attach organization_is_following_politician to the position',
-            'time_difference': time() - t0,
+            'enum_key': 'ATT_FOLLOW_ORG',
+            'time_difference': round(time() - t0, 4),
         })
 
         # ##################################
@@ -1782,9 +1773,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 linked_candidate_list = modified_linked_candidate_list
         
         performance_list.append({
-            'name': 'Find Candidate "children" of this politician',
-            'description': 'Retrieve CandidateCampaign objects for this politician',
-            'time_difference': time() - t0,
+            'enum_key': 'RET_CANDIDATES',
+            'time_difference': round(time() - t0, 4),
         })
 
         # ##################################
@@ -1896,9 +1886,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 pass
 
         performance_list.append({
-            'name': 'Find possible duplicate politicians',
-            'description': 'Retrieve Politician objects for this politician',
-            'time_difference': time() - t0,
+            'enum_key': 'RET_DUPLICATE_POLITICIANS',
+            'time_difference': round(time() - t0, 4),
         })
 
         # ##################################
@@ -1911,9 +1900,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             linked_representative_list = list(queryset)
         
         performance_list.append({
-            'name': 'Find Representatives Linked to this Politician',
-            'description': 'Retrieve Representative objects for this politician',
-            'time_difference': time() - t0,
+            'enum_key': 'RET_REPS_LINKED',
+            'time_difference': round(time() - t0, 4),
         })
 
         # ##################################
@@ -1924,9 +1912,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         related_representative_list = find_representatives_to_link_to_this_politician(politician=politician_on_stage)
 
         performance_list.append({
-            'name': 'Find Representatives to Link to this Politician',
-            'description': 'Retrieve Representative objects for this politician',
-            'time_difference': time() - t0,
+            'enum_key': 'RET_REPS_TO_LINK',
+            'time_difference': round(time() - t0, 4),
         })
 
         # ##################################
@@ -1941,9 +1928,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             linked_campaignx_list = list(queryset)
         
         performance_list.append({
-            'name': 'Find Campaigns Linked to this Politician',
-            'description': 'Retrieve CampaignX objects for this politician',
-            'time_difference': time() - t0,
+            'enum_key': 'RET_CAMPAIGNX',
+            'time_difference': round(time() - t0, 4),
         })
 
         t0 = time()
@@ -1956,9 +1942,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             politician_linked_campaignx_we_vote_id = politician_on_stage.linked_campaignx_we_vote_id
         
         performance_list.append({
-            'name': 'PoliticianLinkedCampaignxWeVoteId',
-            'description': 'Retrieve politician_linked_campaignx_we_vote_id',
-            'time_difference': time() - t0,
+            'enum_key': 'RET_POL_LINKED_CAMPAIGNX',
+            'time_difference': round(time() - t0, 4),
         })
 
         # ##################################
@@ -1969,9 +1954,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         related_campaignx_list = find_campaignx_list_to_link_to_this_politician(politician=politician_on_stage)
 
         performance_list.append({
-            'name': 'Find Campaigns to Link to this Politician',
-            'description': 'Retrieve CampaignX objects for this politician',
-            'time_difference': time() - t0,
+            'enum_key': 'RET_CAMPAIGNX',
+            'time_difference': round(time() - t0, 4),
         })
 
         # ##################################
@@ -1989,9 +1973,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             recommended_politicians_list = Politician.objects.filter(we_vote_id__in=recommended_politician_we_vote_ids)
         
         performance_list.append({
-            'name': 'Find Recommendations related to this Politician',
-            'description': 'Retrieve RecommendedPoliticianLinkByPolitician objects for this politician',
-            'time_difference': time() - t0,
+            'enum_key': 'RET_REC_POLITICIANS',
+            'time_difference': round(time() - t0, 4),
         })
 
         politician_linked_campaignx_we_vote_id = ''
@@ -2018,9 +2001,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         change_log_list = list(queryset)
 
         performance_list.append({
-            'name': 'PoliticianChangeLogFilter',
-            'description': 'Query PoliticianChangeLog and filter on politician_we_vote_id, order by log_datetime',
-            'time_difference': time() - t0,
+            'enum_key': 'POL_CHANGE_LOG',
+            'time_difference': round(time() - t0, 4),
         })
 
         t0 = time()
@@ -2032,10 +2014,16 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 messages.add_message(request, messages.INFO, "Background color generated")
 
         performance_list.append({
-            'name': 'Background Color Generation',
-            'description': 'Background Color Generation',
-            'time_difference': time() - t0,
+            'enum_key': 'BG_COLOR',
+            'time_difference': round(time() - t0, 4),
         })
+
+        ##################################
+        # Use performance_dict enum_key to add name and description
+        for _, performance_dict_list in performance_dict.items():
+            for performance_item in performance_dict_list:
+                performance_item.update(SpeedStatistics[performance_item['enum_key']].value)
+
 
         if 'localhost' in WEB_APP_ROOT_URL:
             web_app_root_url = 'https://localhost:3000'
@@ -2558,9 +2546,8 @@ def politician_edit_process_view(request):
     # is_battleground_race_ values taken in below
 
     performance_list.append({
-        'name': 'Retrieve politician form fields',
-        'description': 'Retrieve form fields from Post request',
-        'time_difference': time() - t0,
+        'enum_key': 'RET_POLITICIAN_FF',
+        'time_difference': round(time() - t0, 4),
     })
 
     from campaign.controllers import update_campaignx_from_politician
@@ -2584,9 +2571,8 @@ def politician_edit_process_view(request):
             success = False
 
     performance_list.append({
-        'name': 'Retrieve existing politician',
-        'description': 'Retrieve existing politician from db',
-        'time_difference': time() - t0,
+        'enum_key': 'RET_EXISTING_POLITICIAN',
+        'time_difference': round(time() - t0, 4),
     })
 
     # Check to see if there is a duplicate politician already saved
@@ -2659,9 +2645,8 @@ def politician_edit_process_view(request):
             success = False
     
     performance_list.append({
-        'name': 'Retrieve existing politician duplicates',
-        'description': 'Retrieve existing politician duplicates from db',
-        'time_difference': time() - t0,
+        'enum_key': 'RET_POLITICIAN_DUPS',
+        'time_difference': round(time() - t0, 4),
     })
 
     # We can use the same url_variables with any processing failures below
@@ -2705,9 +2690,8 @@ def politician_edit_process_view(request):
                     "&youtube_url=" + str(youtube_url)
     
     performance_list.append({
-        'name': 'Set url_variables',
-        'description': 'Set url_variables',
-        'time_difference': time() - t0,
+        'enum_key': 'SET_URL_VARS',
+        'time_difference': round(time() - t0, 4),
     })
 
     if not success:
@@ -2742,9 +2726,8 @@ def politician_edit_process_view(request):
                 politician_on_stage_found = True
 
                 performance_list.append({
-                    'name': 'Create new politician',
-                    'description': 'Create new politician object and name and state code.',
-                    'time_difference': time() - t0,
+                    'enum_key': 'CREATE_POLITICIAN',
+                    'time_difference': round(time() - t0, 4),
                 })
 
         if politician_on_stage_found:
@@ -2820,9 +2803,8 @@ def politician_edit_process_view(request):
                         # politician_on_stage.profile_image_background_color_needed = False
 
             performance_list.append({
-                'name': 'Process incoming uploaded photo',
-                'description': 'Process incoming uploaded photo if there is one',
-                'time_difference': time() - t0,
+                'enum_key': 'UP_IMG',
+                'time_difference': round(time() - t0, 4),
             })
 
             # ###############################################
@@ -3017,9 +2999,8 @@ def politician_edit_process_view(request):
                     status += 'ERROR_RETRIEVING_FROM_ORGANIZATION: ' + str(e) + ' '
 
             performance_list.append({
-                'name': 'Process politician fields',
-                'description': 'Processing all other fields in field',
-                'time_difference': time() - t0,
+                'enum_key': 'PROC_FIELDS',
+                'time_difference': round(time() - t0, 4),
             })
 
             if not positive_value_exists(politician_on_stage.organization_we_vote_id):
@@ -3043,9 +3024,8 @@ def politician_edit_process_view(request):
                     status += 'ERROR_RETRIEVING_ORGANIZATION_ATTACHED_TO_POLITICIAN: ' + str(e) + ' '
 
                 performance_list.append({
-                    'name': 'Find Linked Organization',
-                    'description': 'Find Organization that already thinks it is linked to this politician.',
-                    'time_difference': time() - t0,
+                    'enum_key': 'RET_ORGS',
+                    'time_difference': round(time() - t0, 4),
                 })
 
             if politician_contact_form_url is not False:
@@ -3242,9 +3222,8 @@ def politician_edit_process_view(request):
                 politician_on_stage.state_code = state_code
             
             performance_list.append({
-                'name': 'Process politician Twitter, url, political_party fields',
-                'description': 'Process politician Twitter, url, political_party fields',
-                'time_difference': time() - t0,
+                'enum_key': 'PROC_TWITTER_URL_POLITICAL_PARTY',
+                'time_difference': round(time() - t0, 4),
             })
 
 
@@ -3294,9 +3273,8 @@ def politician_edit_process_view(request):
                     status += seo_results['status'] + ' '
 
             performance_list.append({
-                'name': 'Process or generate SEO friendly path',
-                'description': 'Process or generate SEO friendly path',
-                'time_difference': time() - t0,
+                'enum_key': 'PROC_SEO_PATH',
+                'time_difference': round(time() - t0, 4),
             })
 
             # #################################################
@@ -3318,9 +3296,8 @@ def politician_edit_process_view(request):
                 politician_on_stage.tiktok_url = tiktok_url
              
             performance_list.append({
-                'name': 'Process tiktok_url field',
-                'description': 'Process tiktok_url field',
-                'time_difference': time() - t0,
+                'enum_key': 'PROC_TIKTOK',
+                'time_difference': round(time() - t0, 4),
             })
 
             # if politician_on_stage.twitter_handle_updates_failing != twitter_handle_updates_failing:
@@ -3357,9 +3334,8 @@ def politician_edit_process_view(request):
             politician_on_stage.twitter_handle2_updates_failing = twitter_handle2_updates_failing
 
             performance_list.append({
-                'name': 'Process Twitter handle updates failing fields',
-                'description': 'Process Twitter handle updates failing fields',
-                'time_difference': time() - t0,
+                'enum_key': 'PROC_TWITTER_FAILING',
+                'time_difference': round(time() - t0, 4),
             })
 
             # #################################################
@@ -3391,9 +3367,8 @@ def politician_edit_process_view(request):
                 politician_on_stage.youtube_url = youtube_url
 
             performance_list.append({
-                'name': 'Process Ids',
-                'description': 'Process vote_smart_id, politician_we_vote_id, vote_usa_politician_id, wikipedia_url, youtube_url fields if they exist',
-                'time_difference': time() - t0,
+                'enum_key': 'PROC_IDS',
+                'time_difference': round(time() - t0, 4),
             })
 
             # #################################################
@@ -3405,9 +3380,8 @@ def politician_edit_process_view(request):
             politician_id = politician_on_stage.id
 
             performance_list.append({
-                'name': 'Save politician',
-                'description': 'Save politician object',
-                'time_difference': time() - t0,
+                'enum_key': 'SAVE_POLITICIAN',
+                'time_difference': round(time() - t0, 4),
             })
 
             # #################################################
@@ -3426,9 +3400,8 @@ def politician_edit_process_view(request):
                     messages.add_message(request, messages.INFO, results['info_message_to_print'])
 
             performance_list.append({
-                'name': 'Process ballotpedia_politician_url field',
-                'description': 'Process ballotpedia_politician_url field',
-                'time_difference': time() - t0,
+                'enum_key': 'PROC_BALLOTPEDIA',
+                'time_difference': round(time() - t0, 4),
             })
 
             if positive_value_exists(politician_on_stage.linked_campaignx_we_vote_id):
@@ -3444,9 +3417,8 @@ def politician_edit_process_view(request):
                         campaignx.save()
 
                 performance_list.append({
-                    'name': 'Update CampaignX from politician',
-                    'description': 'Update linked CampaignX from politician if one is found',
-                    'time_difference': time() - t0,
+                    'enum_key': 'UP_CAMPAIGNX',
+                    'time_difference': round(time() - t0, 4),
                 })
 
             # #################################################
@@ -3468,15 +3440,13 @@ def politician_edit_process_view(request):
                         representative.save()
                 
                 performance_list.append({
-                    'name': 'Update Representative from politician',
-                    'description': 'Update linked Representative from politician if one is found',
-                    'time_difference': time() - t0,
+                    'enum_key': 'UP_REPRESENTATIVE',
+                    'time_difference': round(time() - t0, 4),
                 })
             else:
                 performance_list.append({
-                    'name': 'Query Representative Manager',
-                    'description': 'Queried Representative Manager, but no Representative found for this politician.',
-                    'time_difference': time() - t0,
+                    'enum_key': 'RET_REP_MNGR_FAIL',
+                    'time_difference': round(time() - t0, 4),
                 })
 
         else:
@@ -3490,9 +3460,8 @@ def politician_edit_process_view(request):
                                             url_variables)
             
             performance_list.append({
-                'name': 'Save politician',
-                'description': 'Save politician object',
-                'time_difference': time() - t0,
+                'enum_key': 'SAVE_POLITICIAN',
+                'time_difference': round(time() - t0, 4),
             })
 
     except Exception as e:
@@ -3515,9 +3484,8 @@ def politician_edit_process_view(request):
             messages.add_message(request, messages.ERROR, status)
 
     performance_list.append({
-        'name': 'Update parallel fields',
-        'description': 'Update parallel fields with years in related objects',
-        'time_difference': time() - t0,
+        'enum_key': 'UP_PRLL_FIELDS',
+        'time_difference': round(time() - t0, 4),
     })
 
     # ##################################
@@ -3556,9 +3524,8 @@ def politician_edit_process_view(request):
                 pass
 
     performance_list.append({
-        'name': 'Unlink Candidates',
-        'description': 'Unlink Candidates',
-        'time_difference': time() - t0,
+        'enum_key': 'UNLNK_CANDIDATES',
+        'time_difference': round(time() - t0, 4),
     })
 
     # ##################################
@@ -3589,9 +3556,8 @@ def politician_edit_process_view(request):
                 pass
 
     performance_list.append({
-        'name': 'Unlink Representatives',
-        'description': 'Unlink Representatives',
-        'time_difference': time() - t0,
+        'enum_key': 'UNLNK_REPS',
+        'time_difference': round(time() - t0, 4),
     })
 
     # ##################################
@@ -3603,9 +3569,8 @@ def politician_edit_process_view(request):
     related_candidate_list = find_candidates_to_link_to_this_politician(politician=politician_on_stage)
 
     performance_list.append({
-        'name': 'Find Candidates to Link',
-        'description': 'Find Candidates to Link',
-        'time_difference': time() - t0,
+        'enum_key': 'RET_CANDIDATES_TO_LINK',
+        'time_difference': round(time() - t0, 4),
     })
 
     # ##################################
@@ -3638,9 +3603,8 @@ def politician_edit_process_view(request):
                     pass
 
     performance_list.append({
-        'name': 'Link Candidates',
-        'description': 'Link Candidates',
-        'time_difference': time() - t0,
+        'enum_key': 'LINK_CANDIDATES',
+        'time_difference': round(time() - t0, 4),
     })
 
     # ##################################
@@ -3651,9 +3615,8 @@ def politician_edit_process_view(request):
     related_representative_list = find_representatives_to_link_to_this_politician(politician=politician_on_stage)
     
     performance_list.append({
-        'name': 'Find Representatives to Link',
-        'description': 'Find Representatives to Link',
-        'time_difference': time() - t0,
+        'enum_key': 'RET_REPS_TO_LINK',
+        'time_difference': round(time() - t0, 4),
     })
 
     # ##################################
@@ -3673,9 +3636,8 @@ def politician_edit_process_view(request):
                 representative.save()
     
     performance_list.append({
-        'name': 'Link Representatives',
-        'description': 'Link Representatives',
-        'time_difference': time() - t0,
+        'enum_key': 'LINK_REPS',
+        'time_difference': round(time() - t0, 4),
     })
 
     # ##################################
@@ -3810,9 +3772,8 @@ def politician_edit_process_view(request):
         pass
 
     performance_list.append({
-        'name': 'Update seo_friendly_path(s)',
-        'description': 'Update linked CampainXs, Candidates, Representatives with seo_friendly_path',
-        'time_difference': time() - t0,
+        'enum_key': 'UP_SEO',
+        'time_difference': round(time() - t0, 4),
     })
 
     # ####################################################################
@@ -3884,9 +3845,8 @@ def politician_edit_process_view(request):
                 update_message += results['update_message']
 
     performance_list.append({
-        'name': 'Update supporters_count',
-        'description': 'Update supporters_count',
-        'time_difference': time() - t0,
+        'enum_key': 'UP_SUPS_COUNT',
+        'time_difference': round(time() - t0, 4),
     })
 
     # ##################################################
@@ -3959,9 +3919,8 @@ def politician_edit_process_view(request):
                               '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
     
     performance_list.append({
-        'name': 'Change log and volunteer scoring',
-        'description': 'Change log and volunteer scoring',
-        'time_difference': time() - t0,
+        'enum_key': 'CHANGE_LOG_VOLUNTEER',
+        'time_difference': round(time() - t0, 4),
     })
 
     t0 = time()
@@ -3974,9 +3933,8 @@ def politician_edit_process_view(request):
         messages.add_message(request, messages.INFO, info_message_to_print)
     
     performance_list.append({
-        'name': 'Update needed messages',
-        'description': 'Update needed messages',
-        'time_difference': time() - t0,
+        'enum_key': 'UP_MSGS',
+        'time_difference': round(time() - t0, 4),
     })
 
     # Since a pointer to performance_list was attached to performance_dict above, the performance_list
