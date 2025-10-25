@@ -2798,6 +2798,8 @@ class CandidateCampaign(models.Model):
     candidate_participation_status = models.CharField(verbose_name="candidate participation status",
                                                       max_length=255, null=True, blank=True)
     is_battleground_race = models.BooleanField(default=False, null=False)
+    # Politician has claimed this profile - this is copy. is_claimed_profile in Politician table is master
+    is_claimed_profile = models.BooleanField(default=False, null=False)
     withdrawn_from_election = models.BooleanField(verbose_name='Candidate has withdrawn from election', default=False)
     withdrawal_date = models.DateField(verbose_name='Withdrawal date from election', null=True, auto_now=False)
     # Set to true if we don't want to display this candidate for some reason

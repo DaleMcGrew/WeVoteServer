@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 import wevote_functions.admin
 from config.base import get_environment_variable
 from politician.controllers import politicians_query_for_api, politician_retrieve_for_api, politician_save_for_api
+from politician.controllers_managed_politician import politicians_managed_retrieve_for_api
 from politician.views_admin import politician_change_gender_id_view
 from wevote_functions.functions import convert_to_int, get_voter_device_id, positive_value_exists
 
@@ -48,20 +49,6 @@ WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 #     return HttpResponse(json.dumps(json_data), content_type='application/json')
 
 
-def politicians_query_view(request):  # politiciansQuery
-    index_start = convert_to_int(request.GET.get('index_start', 0))
-    limit_to_this_state_code = request.GET.get('state', '')
-    number_requested = convert_to_int(request.GET.get('number_requested', 100))
-    race_office_level_list = request.GET.getlist('race_office_level[]', False)
-    search_text = request.GET.get('search_text', '')
-    return politicians_query_for_api(
-        index_start=index_start,
-        limit_to_this_state_code=limit_to_this_state_code,
-        number_requested=number_requested,
-        race_office_level_list=race_office_level_list,
-        search_text=search_text)
-
-
 # def politician_supporter_retrieve_view(request):  # politicianSupporterRetrieve
 #     voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
 #     politician_we_vote_id = request.GET.get('politician_we_vote_id', '')
@@ -70,6 +57,28 @@ def politicians_query_view(request):  # politiciansQuery
 #         politician_we_vote_id=politician_we_vote_id,
 #     )
 #     return HttpResponse(json.dumps(json_data), content_type='application/json')
+
+
+def politician_managed_retrieve_view(request):  # politicianManagedRetrieve
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
+    politician_we_vote_id = request.GET.get('politician_we_vote_id', '')
+    json_data = politician_retrieve_for_api(  # TODO UPDATE
+        request=request,
+        voter_device_id=voter_device_id,
+        politician_we_vote_id=politician_we_vote_id,
+    )
+    return HttpResponse(json.dumps(json_data), content_type='application/json')
+
+
+def politician_managed_save_view(request):  # politicianManagedSave
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
+    politician_we_vote_id = request.GET.get('politician_we_vote_id', '')
+    json_data = politician_retrieve_for_api(  # TODO UPDATE
+        request=request,
+        voter_device_id=voter_device_id,
+        politician_we_vote_id=politician_we_vote_id,
+    )
+    return HttpResponse(json.dumps(json_data), content_type='application/json')
 
 
 def politician_retrieve_view(request):  # politicianRetrieve (CDN)
@@ -144,6 +153,29 @@ def politician_save_view(request):  # politicianSave
         voter_device_id=voter_device_id,
     )
     return HttpResponse(json.dumps(json_data), content_type='application/json')
+
+
+def politicians_managed_retrieve_view(request):  # politiciansManagedRetrieve
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
+    json_data = politicians_managed_retrieve_for_api(
+        request=request,
+        voter_device_id=voter_device_id,
+    )
+    return HttpResponse(json.dumps(json_data), content_type='application/json')
+
+
+def politicians_query_view(request):  # politiciansQuery
+    index_start = convert_to_int(request.GET.get('index_start', 0))
+    limit_to_this_state_code = request.GET.get('state', '')
+    number_requested = convert_to_int(request.GET.get('number_requested', 100))
+    race_office_level_list = request.GET.getlist('race_office_level[]', False)
+    search_text = request.GET.get('search_text', '')
+    return politicians_query_for_api(
+        index_start=index_start,
+        limit_to_this_state_code=limit_to_this_state_code,
+        number_requested=number_requested,
+        race_office_level_list=race_office_level_list,
+        search_text=search_text)
 
 
 def save_repaired_gender_ids_view(request):  # politicianSaveRepairedGenderIds
