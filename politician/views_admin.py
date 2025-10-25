@@ -1488,6 +1488,7 @@ def politician_edit_by_we_vote_id_view(request, politician_we_vote_id):
 
 @login_required
 def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
+    status = ''
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'verified_volunteer'}
     if not voter_has_authority(request, authority_required):
@@ -1555,12 +1556,10 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
     politician_url5 = request.GET.get('politician_url5', False)
     political_party = request.GET.get('political_party', False)
     state_code = request.GET.get('state_code', False)
-    status = ''
     vote_smart_id = request.GET.get('vote_smart_id', False)
     vote_usa_politician_id = request.GET.get('vote_usa_politician_id', False)
     youtube_url = request.GET.get('youtube_url', False)
     maplight_id = request.GET.get('maplight_id', False)
-
 
     messages_on_stage = get_messages(request)
     politician_id = convert_to_int(politician_id)
