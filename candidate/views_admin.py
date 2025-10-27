@@ -710,6 +710,7 @@ def candidate_list_view(request):
         filters = Q()
         excludes = Q()
 
+        t0_A = time()
         if positive_value_exists(google_civic_election_id_list_generated) \
                 or positive_value_exists(show_marquee_or_battleground) \
                 or positive_value_exists(show_this_year_of_candidates_restriction):
@@ -733,6 +734,14 @@ def candidate_list_view(request):
         if positive_value_exists(state_code):
             filters &= Q(state_code__iexact=state_code)
 
+        t1_A = time()
+        performance_list.append({
+            'name': 'Subsnapshot_FilterSetup',
+            'description': 'Build Q() "filters" and "excludes" before main search query',
+            'time_difference': t1_A - t0_A,
+        })
+
+        t0_B = time()
         if positive_value_exists(candidate_search):
             search_words = candidate_search.split()
             search_fields = [
@@ -751,6 +760,15 @@ def candidate_list_view(request):
                 for field in search_fields:
                     word_filter |= Q(**{f"{field}__icontains": word})
                 filters &= word_filter
+
+        t1_B = time()
+        performance_list.append({
+            'name': 'Subsnapshot_SearchWordFilters',
+            'description': 'Build filters for main search query',
+            'time_difference': t1_B - t0_B,
+        })
+
+        t0_C = time()
         if positive_value_exists(hide_candidates_with_links):
             # Show candidates that do NOT have links: Twitter, Instagram, Facebook, Web, Ballotpedia
             # If you make changes here, please also search for 'hide_candidates_with_links' in election/views_admin.py
@@ -770,6 +788,15 @@ def candidate_list_view(request):
             # Show candidates that do NOT have photos
             filters &= (Q(we_vote_hosted_profile_image_url_medium__isnull=True) |
                         Q(we_vote_hosted_profile_image_url_medium=""))
+
+        t1_C = time()
+        performance_list.append({
+            'name': 'Subsnapshot_LinkFederalStatePhotoFilters',
+            'description': 'Build filters for link/federal/state/photos',
+            'time_difference': t1_C - t0_C,
+        })
+
+        t0_D = time()
         if positive_value_exists(show_candidates_with_best_twitter_options):
             # Show candidates with TwitterLinkPossibilities of greater than 60
             filters &= (Q(candidate_twitter_handle__isnull=True) | Q(candidate_twitter_handle=""))
@@ -800,6 +827,14 @@ def candidate_list_view(request):
             # Don't show candidates that already have Twitter handles
             filters &= (Q(candidate_twitter_handle__isnull=True) | Q(candidate_twitter_handle=""))
 
+        t1_D = time()
+        performance_list.append({
+            'name': 'Subsnapshot_TwitterFilters',
+            'description': 'Build filters for twitter-related searching',
+            'time_difference': t1_D - t0_D,
+        })
+
+        t0_E = time()
         if not filters and not excludes and not show_all_elections:
             candidate_query = CandidateCampaign.objects.none()
         else:
@@ -824,6 +859,14 @@ def candidate_list_view(request):
 
         candidate_list_count = candidate_query.count()
 
+        t1_E = time()
+        performance_list.append({
+            'name': 'Subsnapshot_BuildAndCountQuery',
+            'description': 'Build CandidateCampaign query',
+            'time_difference': t1_E - t0_E,
+        })
+
+        t0_F = time()
         number_to_show_per_page = 50
         candidate_count_start = page * number_to_show_per_page
         if positive_value_exists(show_all) or positive_value_exists(find_candidates_linked_to_multiple_offices):
@@ -841,6 +884,13 @@ def candidate_list_view(request):
                 next_page_url = None
                 candidate_list = candidate_slice
             hide_pagination = len(candidate_query) <= number_to_show_per_page
+
+        t1_F = time()
+        performance_list.append({
+            'name': 'Subsnapshot_QueryEvalAndPagination',
+            'description': 'Execute final query and pagination/slicing operations if needed',
+            'time_difference': t1_F - t0_F,
+        })
     except CandidateCampaign.DoesNotExist:
         pass
 
