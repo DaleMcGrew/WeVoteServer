@@ -26,14 +26,11 @@
             <a href="{% url 'organization:reserved_domain_list' %}">Reserved Website Domains</a>.
         </li>
 
-{#        WORK IN PROGRESS #}
-{#        <li><a href="{% url 'organization:find_and_merge_duplicate_organizations' %}?state_code={{ state_code }}"#}
-{#                        target="_blank" >#}
-{#            Find and Merge Duplicate Endorsers <span class="glyphicon glyphicon-new-window"></span></a> (about 1 minute)&nbsp;&nbsp;#}
-{#            <a href="{% url 'organization:duplicates_list' %}?state_code={{ state_code }}"#}
-{#                        target="_blank" >#}
-{#            Possible Duplicates <span class="glyphicon glyphicon-new-window"></span></a>#}
-{#        </li>#}
+       <li>
+            <a href="{% url 'organization:duplicates_list' %}?state_code={{ state_code }}"
+                        target="_blank" >
+            Possible Duplicate Endorsers <span class="glyphicon glyphicon-new-window"></span></a>
+        </li>
 </ul>
 <p>
     <a href="{% url 'import_export_twitter:scrape_social_media_from_all_organizations' %}?organization_state={{ state_code }}&google_civic_election_id={{ google_civic_election_id }}">

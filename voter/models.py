@@ -5184,6 +5184,8 @@ class VoterAddressManager(models.Manager):
             county = county_leaf['name'].replace('County', '').strip()
         except Exception:
             # On July 29, 2023, the fcc api started failing for many coordinates, but was working again on the 31st
+            # In August 2025, the fcc api was removed (at least 100 days ago) with no notice or warning, probably a political decision
+            # This function falls back to the fipsCodesWithPosition.json for as long as that static file stays current
             logger.error('Failing FCC Fips Lookup: ' + url)
 
         if fips == '':

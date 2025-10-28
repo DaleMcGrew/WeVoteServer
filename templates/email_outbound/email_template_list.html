@@ -7,16 +7,285 @@
 {% load template_filters %}
 {% load humanize %}
 {% include "admin_tools/loading_banner.html" %}
+
+    <style>
+        .wv-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .wv-modal-backdrop.open { display: flex; }
+        .wv-modal { background: #fff; border-radius: 12px; padding: 20px; width: 100%; max-width: 480px; box-shadow: 0 10px 30px; }
+        .wv-modal-header { display:flex; align-items:center; justify-content: space-between; margin-bottom: 12px; }
+
+        .wv-input { width:100%; padding:10px 12px; border:1px solid black; border-radius: 8px; outline:none; }
+        .wv-input:focus { border-color:blue; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15); }
+
+        .wv-actions { display:flex; gap:8px; justify-content:flex-end; margin-top: 12px; }
+
+        .wv-btn-close { background:#e5e7eb; color:black; }
+
+        .wv-update-btn {margin-top: 12px;}
+
+        .email_template_folder_table {width:100%; border-collapse: collapse; margin-top: 2rem; }
+        .email_template_folder_table th, .email_template_folder_table td {
+             overflow: auto; text-align:left; padding:10px; border:1px solid #e5e7eb;
+        }
+
+        .email_template_table {width:100%; border-collapse: collapse; margin-top: 2rem; }
+        .email_template_table th, .email_template_table td {
+             overflow: auto; text-align:left; padding:10px; border:1px solid #e5e7eb;
+        }
+
+    </style>
     
     <a href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
         < Back to Email Campaigns</a>
 
-<h1>Email Templates</h1>
-     
-    <a href="{% url 'email_outbound:email_template_folder_edit' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
-        Create Folder</a>,
-   
-    <a href="{% url 'email_outbound:email_template_edit' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
-        Create Email Template</a>
+    <h1>Email Templates</h1>
+    {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+    <a id="createEmailTemplateButton"
+        class="btn btn-primary"
+        href="{% url 'email_outbound:email_template_edit' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+        Create Email Template
+    </a>
+
+   <form id="updateTemplateTable" class="template-table" method="post" action="{{ template_process_url }}" >
+        {% csrf_token %}
+        <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
+        <input type="hidden" name="state_code" value="{{ state_code }}">
+
+        <!-- Table -->
+        <table class="email_template_table" id="template_table">
+            <thead>
+                <tr>
+                    <th>Template Name</th>
+                    <th>Subject</th>
+                    <th>Folder</th>
+                    <th>Archive Template</th>
+                    <th>Delete Template</th>
+                    <th>Edit Template</th>
+                </tr>
+            </thead>
+            <tbody id="templateTableBody">
+                {% for t in templates %}
+                <tr id="template_id_{{ t.id }}">
+                    <td>{{ t.email_template_name }}</td>
+                    <td>{{ t.subject }}</td>
+                    <td>
+                        {% for f in folders %}
+                            {% if f.id == t.email_template_folder_id %}
+                                {{ f.email_template_name }}
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <input type="hidden" name="email_template_archived_{{ t.id }}_exists" value="1">
+                        <input
+                            type="checkbox"
+                            name="email_template_archived_{{ t.id }}"
+                            id="email_template_archived_{{ t.id }}_id"
+                            value="True"
+                            {% if t.archived %}
+                                checked="checked"
+                            {% endif %}
+                        />
+                    </td>
+                    <td>
+                        <input type="hidden" name="email_template_deleted_{{ t.id }}_exists" value="1">
+                        <input
+                            type="checkbox"
+                            name="email_template_deleted_{{ t.id }}"
+                            id="email_template_deleted_{{ t.id }}_id"
+                            value="True"
+                            {% if t.deleted %}
+                                checked="checked"
+                            {% endif %}
+                        />
+                    </td>
+                    <td>
+                        <a href="{% url 'email_outbound:email_template_edit' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&email_template_id={{ t.id }}" class="btn btn-primary">
+                            Edit
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-primary wv-update-btn" id="updateTemplateTable">Update</button>
+    </form>
+
+    <h2>Email Template Folder List</h2>
+    <button id="openCreateFolder" class="btn btn-primary">
+        Create Folder
+    </button>
+
+    <form id="updateFolderTable" class="folder-table" method="post" action="{{ process_url }}" >
+        {% csrf_token %}
+        <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
+        <input type="hidden" name="state_code" value="{{ state_code }}">
+
+        <!-- Table -->
+        <table class="email_template_folder_table" id="folder_table">
+            <thead>
+                <tr>
+                    <th>Folder Name</th>
+                    <th>Archive Folder</th>
+                    <th>Delete Folder</th>
+                    <th>Edit Folder Name</th>
+                </tr>
+            </thead>
+            <tbody id="folderTableBody">
+                {% for f in folders %}
+                <tr id="folder_id_{{ f.id }}">
+                    <td>{{ f.email_template_name }}</td>
+                    <td>
+                        <input type="hidden" name="email_template_folder_archived_{{ f.id }}_exists" value="1">
+                        <input
+                            type="checkbox"
+                            name="email_template_folder_archived_{{ f.id }}"
+                            id="email_template_folder_archived_{{ f.id }}_id"
+                            value="True"
+                            {% if f.archived %}
+                                checked="checked"
+                            {% endif %}
+                        />
+                    </td>
+                    <td>
+                        <input type="hidden" name="email_template_folder_deleted_{{ f.id }}_exists" value="1">
+                        <input
+                            type="checkbox"
+                            name="email_template_folder_deleted_{{ f.id }}"
+                            id="email_template_folder_deleted_{{ f.id }}_id"
+                            value="True"
+                            {% if f.deleted %}
+                                checked="checked"
+                            {% endif %}
+                        />
+                    </td>
+                    <td>
+                        <input type="hidden" name="email_template_folder_edit_name_{{ f.id }}_exists" value="1">
+                        <button type="button"
+                                class="btn btn-primary rename_folder folder_id_{{ f.id }}"
+                                data-id="{{ f.id }}"
+                                id="rename_folder_{{ f.id }}_id">
+                            Edit
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-primary wv-update-btn" id="updateTable">Update</button>
+    </form>
+
+    <!-- Create Folder Modal -->
+    <div id="createFolderModal" class="wv-modal-backdrop" aria-hidden="true">
+        <div class="wv-modal" role="dialog" aria-modal="true" aria-labelledby="createFolderTitle">
+          <div class="wv-modal-header">
+            <h3 class="wv-modal-title" id="createFolderTitle">Create Email Template Folder</h3>
+            <button type="button" id="closeCreateFolder" class="btn wv-btn-close">✕</button>
+          </div>
+
+          <form id="createFolderForm" method="post" action="{{ process_url }}">
+            {% csrf_token %}
+            <label for="email_template_name" style="display:block; font-weight:500; margin-bottom:6px;">Folder name</label>
+            <input class="wv-input" id="email_template_name" name="email_template_name" maxlength="255" required />
+
+            <div class="wv-actions">
+              <button type="button" class="btn wv-btn-close" id="cancelCreate">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="submitCreate">Create</button>
+            </div>
+          </form>
+        </div>
+    </div>
+
+    <!-- Edit Folder Name Modal -->
+    <div id="editFolderNameModal" class="wv-modal-backdrop" aria-hidden="true">
+        <div class="wv-modal" role="dialog" aria-modal="true" aria-labelledby="editFolderTitle">
+            <div class="wv-modal-header">
+                <h3 class="wv-modal-title" id="editFolderTitle">Edit Email Template Folder Name</h3>
+                <button type="button" id="closeEditFolder" class="btn wv-btn-close">✕</button>
+            </div>
+            <form id="editFolderForm" method="post" action="{{ process_url }}">
+                {% csrf_token %}
+                <label for="edit_email_template_name" style="display:block; font-weight:500; margin-bottom:6px;">New folder name</label>
+                <input class="wv-input" id="edit_email_template_name" name="edit_email_template_name" maxlength="255" required />
+
+                <div class="wv-actions">
+                    <button type="button" class="btn wv-btn-close" id="cancelEditName">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submitEditName">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+
+        {# Create folder modal elements #}
+        const createModal = document.getElementById('createFolderModal');
+        const createOpenBtn = document.getElementById('openCreateFolder');
+        const createCloseBtn = document.getElementById('closeCreateFolder');
+        const createCancelBtn = document.getElementById('cancelCreate');
+
+        {#handle open create modal#}
+        function openModal() {
+            createModal.classList.add('open');
+            createModal.setAttribute('aria-hidden', 'false');
+        }
+
+        createOpenBtn.addEventListener('click', openModal)
+
+        {#handle closing create modal#}
+        function closeModal() {
+            createModal.classList.remove('open');
+            createModal.setAttribute('aria-hidden', 'true');
+        }
+
+        createCloseBtn.addEventListener('click', closeModal);
+        createCancelBtn.addEventListener('click', closeModal);
+        createModal.addEventListener('click', (e) => {
+            if (e.target === createModal) closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && createModal.classList.contains('open')) closeModal();
+        });
+
+        {# Edit modal elements #}
+        const editModal = document.getElementById('editFolderNameModal');
+        const editOpenBtns = document.querySelectorAll('.rename_folder');
+        const editCloseBtn = document.getElementById('closeEditFolder');
+        const editCancelBtn = document.getElementById('cancelEditName');
+
+        {# Handle open edit modal #}
+        function openEditModal(folder_id) {
+            console.log("opening modal with id: " + folder_id)
+            editModal.classList.add('open');
+            editModal.setAttribute('aria-hidden', 'false');
+            editModal.setAttribute('data-id', folder_id);
+            const inputName = document.getElementById('edit_email_template_name');
+            inputName.setAttribute('name', 'edit_email_template_name_' + folder_id)
+        }
+
+
+        editOpenBtns.forEach(editOpenBtn => {
+            editOpenBtn.addEventListener('click', () => {
+                console.log("clicked button")
+                openEditModal(editOpenBtn.getAttribute('data-id'))
+            })
+        })
+
+        {#handle closing edit modal#}
+        function closeEditModal() {
+            editModal.classList.remove('open');
+            editModal.setAttribute('aria-hidden', 'true');
+        }
+
+        editCloseBtn.addEventListener('click', closeEditModal);
+        editCancelBtn.addEventListener('click', closeEditModal);
+        editModal.addEventListener('click', (e) => {
+            if (e.target === editModal) closeEditModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && editModal.classList.contains('open')) closeEditModal();
+        });
+
+    </script>
 
 {% endblock %}

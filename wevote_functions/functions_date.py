@@ -75,6 +75,7 @@ DATE_FORMAT_YMD = "%Y-%m-%d"                                    # 2024-03-04
 # DATE_FORMAT_YMD_SLASH = "%Y/%m/%d"                            # 2024/03/04 did not find any instances
 # DATE_FORMAT_B_D_Y = "%b. %d, %Y"                              # Mar. 04, 2024 did not find any instances
 DATE_FORMAT_YMD_T_HMS_Z = "%Y-%m-%dT%H:%M:%S%z"                 # 2024-03-04T21:58:40Z Kept this format because it was a necessary format for the particular function
+DATE_FORMAT_YMD_T_HMSMS_Z = "%Y-%m-%dT%H:%M:%S.%f%z"            # 2025-10-11T17:33:07.000-07:00
 DATE_FORMAT_A_DBY_HMS_GMT = "%a, %d-%b-%Y %H:%M:%S GMT"         # Wed, 04-Mar-2024 21:58:40 GMT Kept this format because it was a necessary format for the particular function
 # DATE_FORMAT_MDY_IMS_P_SLASH = "%m/%d/%Y %I:%M:%S %p"          # 03/04/2024 09:58:40 PM did not find any instances
 # DATE_FORMAT_MDY_HM = "%m/%d/%Y %H:%M"                         # 03/04/2024 21:58 folded this instance into DATE_FORMAT_YMD_HMS

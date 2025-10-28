@@ -1134,8 +1134,10 @@ def move_positions_to_another_organization(
                 if positive_value_exists(from_position_entry.statement_text):
                     to_position_entry.statement_text = from_position_entry.statement_text
             # Update the voter values to the new "to" voter
-            to_position_entry.voter_id = to_voter_id
-            to_position_entry.voter_we_vote_id = to_voter_we_vote_id
+            if positive_value_exists(to_voter_id):
+                to_position_entry.voter_id = to_voter_id
+            if positive_value_exists(to_voter_we_vote_id):
+                to_position_entry.voter_we_vote_id = to_voter_we_vote_id
             # Update cached organization information
             if positive_value_exists(to_organization_name):
                 to_position_entry.speaker_display_name = to_organization_name
@@ -1155,8 +1157,10 @@ def move_positions_to_another_organization(
             try:
                 from_position_entry.organization_id = to_organization_id
                 from_position_entry.organization_we_vote_id = to_organization_we_vote_id
-                from_position_entry.voter_id = to_voter_id
-                from_position_entry.voter_we_vote_id = to_voter_we_vote_id
+                if positive_value_exists(to_voter_id):
+                    from_position_entry.voter_id = to_voter_id
+                if positive_value_exists(to_voter_we_vote_id):
+                    from_position_entry.voter_we_vote_id = to_voter_we_vote_id
                 # Update cached organization information
                 if positive_value_exists(to_organization_name):
                     from_position_entry.speaker_display_name = to_organization_name
@@ -1186,7 +1190,7 @@ def move_positions_to_another_organization(
             status += "FROM_POSITION_NOT_DELETED: " + str(e) + " "
             success = False
 
-    # Find public positions for the "from_voter" that we are moving away from
+    # Find public positions for the "from_organization" that we are moving away from
     stance_we_are_looking_for = ANY_STANCE
     friends_vs_public = PUBLIC_ONLY
     from_position_public_list = position_list_manager.retrieve_all_positions_for_organization(
@@ -1230,8 +1234,10 @@ def move_positions_to_another_organization(
                 if positive_value_exists(from_position_entry.statement_text):
                     to_position_entry.statement_text = from_position_entry.statement_text
             # Update the voter values to the new "to" voter
-            to_position_entry.voter_id = to_voter_id
-            to_position_entry.voter_we_vote_id = to_voter_we_vote_id
+            if positive_value_exists(to_voter_id):
+                to_position_entry.voter_id = to_voter_id
+            if positive_value_exists(to_voter_we_vote_id):
+                to_position_entry.voter_we_vote_id = to_voter_we_vote_id
             # Update cached organization information
             if positive_value_exists(to_organization_name):
                 to_position_entry.speaker_display_name = to_organization_name
@@ -1251,8 +1257,10 @@ def move_positions_to_another_organization(
             try:
                 from_position_entry.organization_id = to_organization_id
                 from_position_entry.organization_we_vote_id = to_organization_we_vote_id
-                from_position_entry.voter_id = to_voter_id
-                from_position_entry.voter_we_vote_id = to_voter_we_vote_id
+                if positive_value_exists(to_voter_id):
+                    from_position_entry.voter_id = to_voter_id
+                if positive_value_exists(to_voter_we_vote_id):
+                    from_position_entry.voter_we_vote_id = to_voter_we_vote_id
                 # Update cached organization information
                 if positive_value_exists(to_organization_name):
                     from_position_entry.speaker_display_name = to_organization_name

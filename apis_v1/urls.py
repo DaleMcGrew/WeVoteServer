@@ -7,9 +7,8 @@ This is called from config/urls.py like this:
 """
 
 from django.conf import settings
-
-from django.urls import path, re_path
 from django.conf.urls.static import static
+from django.urls import path, re_path
 
 from analytics.views_admin import analytics_action_sync_out_view, organization_daily_metrics_sync_out_view, \
     organization_election_metrics_sync_out_view, sitewide_daily_metrics_sync_out_view, \
@@ -19,7 +18,7 @@ from apis_v1.views import views_activity, views_apple, views_docs, views_analyti
     views_election, views_extension, views_facebook, views_friend, \
     views_issues, views_measure, views_misc, views_organization, \
     views_pledge_to_vote, views_politician, views_position, views_reaction, views_representative, \
-    views_retrieve_tables, views_task, views_share, views_twitter, views_voter, views_voter_guide, \
+    views_retrieve_tables, views_share, views_twitter, views_voter, views_voter_guide, \
     views_googlebot_site_map
 from apis_v1.views.views_retrieve_tables import backup_one_table_to_s3_view
 from ballot.views_admin import ballot_items_sync_out_view, ballot_returned_sync_out_view
@@ -59,6 +58,8 @@ urlpatterns = [
                   path('appleSignInSave/', views_apple.sign_in_with_apple_view, name='appleSignInSaveView'),
                   re_path(r'^appleValidateSignInWithAppleToken/',
                           views_apple.validate_sign_in_with_apple_token, name='appleValidateSignInWithAppleToken'),
+                  re_path(r'^webAppAutocompleteProxy/', views_googlebot_site_map.do_webapp_autocomplete_proxy,
+                          name='googlebotSiteMapView'),
                   re_path(r'^ballotItemHighlightsRetrieve/',
                           views_ballot.ballot_item_highlights_retrieve_view, name='ballotItemHighlightsRetrieveView'),
                   re_path(r'^ballotItemOptionsRetrieve/',
@@ -117,7 +118,8 @@ urlpatterns = [
                           views_challenge.challenge_news_item_save_view, name='challengeNewsItemSaveView'),
                   re_path(r'^challengeSave/', views_challenge.challenge_save_view, name='challengeSaveView'),
                   # challenge_save_view also used for challengeStartSave
-                  re_path(r'^challengeStartSave/', views_challenge.challenge_start_save_view, name='challengeStartSaveView'),
+                  re_path(r'^challengeStartSave/', views_challenge.challenge_start_save_view,
+                          name='challengeStartSaveView'),
                   re_path(r'^challengeParticipantRetrieve/',
                           views_challenge.challenge_participant_retrieve_view, name='challengeParticipantRetrieveView'),
                   re_path(r'^challengeParticipantSave/', views_challenge.challenge_participant_save_view,
@@ -277,6 +279,10 @@ urlpatterns = [
                   re_path(r'^pledgeToVoteWithVoterGuide/',
                           views_pledge_to_vote.pledge_to_vote_with_voter_guide_view,
                           name='pledgeToVoteWithVoterGuideView'),
+                  re_path(r'^politicianManagedSave/', views_politician.politician_managed_save_view,
+                          name='politicianManagedSaveView'),
+                  re_path(r'^politicianManagedRetrieve/', views_politician.politician_managed_retrieve_view,
+                          name='politicianManagedRetrieveView'),
                   re_path(r'^politicianSaveRepairedGenderIds/',
                           views_politician.save_repaired_gender_ids_view,
                           name='saveRepairedGenderIdsView'),
@@ -285,6 +291,8 @@ urlpatterns = [
                   re_path(r'^politicianRetrieveAsOwner/', views_politician.politician_retrieve_as_owner_view,
                           name='politicianRetrieveAsOwnerView'),
                   re_path(r'^politicianSave/', views_politician.politician_save_view, name='politicianSaveView'),
+                  re_path(r'^politiciansManagedRetrieve/', views_politician.politicians_managed_retrieve_view,
+                          name='politiciansManagedRetrieveView'),
                   re_path(r'^politiciansQuery/', views_politician.politicians_query_view,
                           name='politiciansQueryView'),
                   re_path(r'^politiciansSyncOut/', politicians_sync_out_view, name='politiciansSyncOutView'),
@@ -593,7 +601,8 @@ urlpatterns = [
                   path('docs/challengeParticipantSave/',
                        views_docs.challenge_participant_save_doc_view, name='challengeParticipantSaveDocs'),
                   path('docs/challengeParticipantListRetrieve/',
-                       views_docs.challenge_participant_list_retrieve_doc_view, name='challengeParticipantListRetrieveDocs'),
+                       views_docs.challenge_participant_list_retrieve_doc_view,
+                       name='challengeParticipantListRetrieveDocs'),
                   path('docs/deviceIdGenerate/', views_docs.device_id_generate_doc_view,
                        name='deviceIdGenerateDocs'),
                   path('docs/deviceStoreFirebaseCloudMessagingToken/',
@@ -702,10 +711,16 @@ urlpatterns = [
                           views_docs.organization_suggestion_tasks_doc_view, name='organizationSuggestionTasksDocs'),
                   path('docs/pledgeToVoteWithVoterGuide/',
                        views_docs.pledge_to_vote_with_voter_guide_doc_view, name='pledgeToVoteWithVoterGuideDocs'),
+                  path('docs/politicianManagedRetrieve/',
+                       views_docs.politician_managed_retrieve_doc_view, name='politicianManagedRetrieveDocs'),
+                  path('docs/politicianManagedSave/',
+                       views_docs.politician_managed_save_doc_view, name='politicianManagedSaveDocs'),
                   path('docs/politicianRetrieve/',
                        views_docs.politician_retrieve_doc_view, name='politicianRetrieveDocs'),
                   path('docs/politicianSave/',
                        views_docs.politician_save_doc_view, name='politicianSaveDocs'),
+                  path('docs/politiciansManagedRetrieve/',
+                       views_docs.politicians_managed_retrieve_doc_view, name='politiciansManagedRetrieveDocs'),
                   path('docs/politiciansQuery/', views_docs.politicians_query_doc_view,
                        name='politiciansQueryDocs'),
                   path('docs/politiciansSyncOut/', views_docs.politicians_sync_out_doc_view,

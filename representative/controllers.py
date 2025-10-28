@@ -429,6 +429,8 @@ def generate_representative_dict_from_representative_object(
         'is_battleground_race_2024':    positive_value_exists(representative.is_battleground_race_2024),
         'is_battleground_race_2025':    positive_value_exists(representative.is_battleground_race_2025),
         'is_battleground_race_2026':    positive_value_exists(representative.is_battleground_race_2026),
+        'is_claimed_profile':           representative.is_claimed_profile
+        if positive_value_exists(representative.is_claimed_profile) else False,  # TO BE IMPLEMENTED FROM POLITICIAN
         'last_updated':                 date_last_updated,
         'linked_campaignx_we_vote_id':  representative.linked_campaignx_we_vote_id,
         'linkedin_url':                 representative.linkedin_url,
@@ -1515,6 +1517,20 @@ def update_representative_details_from_politician(representative=None, politicia
     status = ''
     success = True
     save_changes = False
+
+    # For identically named fields - lock together existing values
+    from candidate.controllers import copy_field_value_from_object1_to_object2
+    results = copy_field_value_from_object1_to_object2(
+        object1=politician,
+        object2=representative,
+        object1_field_name_list=[
+            'is_claimed_profile',
+        ],
+        only_change_object2_field_if_incoming_value=False,
+        only_change_object2_field_if_no_existing_value=False)
+    representative = results['object2'] if results['success'] and results['values_changed'] else representative
+    save_changes = save_changes or results['values_changed']
+
     if not positive_value_exists(representative.ballotpedia_representative_url) and \
             positive_value_exists(politician.ballotpedia_politician_url):
         representative.ballotpedia_representative_url = politician.ballotpedia_politician_url

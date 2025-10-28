@@ -1973,6 +1973,8 @@ def generate_candidate_dict_from_candidate_object(
         'instagram_handle':                 candidate.instagram_handle,
         'is_battleground_race':             candidate.is_battleground_race
         if positive_value_exists(candidate.is_battleground_race) else False,
+        'is_claimed_profile':               candidate.is_claimed_profile
+        if positive_value_exists(candidate.is_claimed_profile) else False,
         'kind_of_ballot_item':              CANDIDATE,
         'last_updated':                     date_last_updated,
         'linked_campaignx_we_vote_id':      candidate.linked_campaignx_we_vote_id,
@@ -3660,6 +3662,7 @@ def update_candidate_details_from_politician(candidate=None, politician=None):
                 object2=candidate,
                 object1_field_name_list=[
                     'ballot_guide_official_statement',
+                    'is_claimed_profile',
                 ],
                 only_change_object2_field_if_incoming_value=False,
                 only_change_object2_field_if_no_existing_value=False)
@@ -3855,6 +3858,7 @@ def update_candidate_details_from_politician(candidate=None, politician=None):
                     save_changes = True
                     if 'profile_image_type_currently_active' not in fields_updated:
                         fields_updated.append('profile_image_type_currently_active')
+            # Only update parallel fields with values if there isn't a candidate value
             results = copy_field_value_from_object1_to_object2(
                 object1=politician,
                 object2=candidate,

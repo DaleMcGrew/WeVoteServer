@@ -112,8 +112,10 @@
   "GOOGLE_RECAPTCHA_SECRET_KEY":    "",
 
   "_comment":                       "import_export_google_civic",
+  "GOOGLE_API_KEY_FOR_SERVERS":     "",
   "GOOGLE_CIVIC_API_KEY":           "",
   "GOOGLE_MAPS_API_KEY":            "",
+
   "ELECTION_QUERY_URL":             "https://www.googleapis.com/civicinfo/v2/elections",
   "VOTER_INFO_URL":                 "https://www.googleapis.com/civicinfo/v2/voterinfo",
   "VOTER_INFO_JSON_FILE":           "import_export_google_civic/import_data/voterinfo_sample.json",
@@ -190,6 +192,7 @@
   "SYSTEM_SENDER_SMS_PHONE_NUMBER": "",
 
   "_comment":                       "import_export_twitter",
+  "TWITTER_API_ON":                 false,
   "_comment":                       "Search_Google_Drive_for_TWITTER_CONSUMER_KEY_for_more_details",
   "_comment":                       "SOCIAL_AUTH_TWITTER_KEY == TWITTER_CONSUMER_KEY",
   "_comment":                       "SOCIAL_AUTH_TWITTER_SECRET == TWITTER_CONSUMER_SECRET",
@@ -199,6 +202,7 @@
   "TWITTER_ACCESS_TOKEN_SECRET":    "<This is Twitter's Oauth 1.0a `Authentication Token Access Secret`>",
   "TWITTER_BEARER_TOKEN":           "<This is Twitter's Oauth 1.0a `Authentication Token Bearer Token`>",
   "TWITTER_LOG_OAUTH_STEPS":        "False",
+  "TWITTER_API_ON":                 "False",
 
   "_comment":                       "import_export_vote_smart",
   "VOTE_SMART_API_KEY":             "",
@@ -237,6 +241,7 @@
 
   "_comment":                       "Directory path to store temporary files",
   "PATH_FOR_TEMP_FILES":            "/tmp",
+  "DATA_UPLOAD_MAX_MEMORY_SIZE":    "20000000",
 
   "_comment":                       "Settings for running Selenium tests on BrowserStack",
   "BROWSERSTACK_USERNAME":          "",
