@@ -23,7 +23,7 @@ Refer to https://medium.com/yavar/install-and-configure-postgresql-and-pgadmin-o
 We recommend installing pgAdmin 4 as a WYSIWYG database administration tool.
 NOTE: You may need to turn off the restriction in "Security & Privacy" on "unidentified developers"
 to allow this tool to be installed.
-In WSL if pgAdmin4 not installed properly, intall in windows machine to add server adn database.
+In WSL if pgAdmin4 not installed properly, install in windows machine to add server and database.
 
 
 In pgadmin add a server. You can use your sign in name as the server name.
