@@ -112,26 +112,22 @@ def retrieve_sql_files_from_master_server(request):
 
 
 def restore_one_file_to_local_server(aws_s3_file_url, table_name):
-    import boto3
     import tempfile
     results = {
         'success': False
     }
 
     try:
-        # s3 = boto3.client('s3')
-        session = boto3.session.Session(region_name=AWS_REGION_NAME,
-                                        aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                        aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-        s3 = session.resource(AWS_STORAGE_SERVICE)
-
-        head, tail = os.path.split(aws_s3_file_url)
-
         diff_t0 = int((time.time() - global_stats['global_t0']))
         print(f"About to download {table_name} from S3 at {diff_t0} seconds")
         tf = tempfile.NamedTemporaryFile(mode='r+b')
-        # print(f"AWS_STORAGE_BUCKET_NAME: {AWS_STORAGE_BUCKET_NAME}, tail: {tail}, tf.name: {tf.name}")
-        s3.Bucket(AWS_STORAGE_BUCKET_NAME).download_file(tail, tf.name)
+        with requests.get(aws_s3_file_url, stream=True) as response:
+            response.raise_for_status()
+            for chunk in response.iter_content(chunk_size=100000):
+                if chunk:
+                    tf.write(chunk)
+        tf.close()
+
         print("Downloaded", tf.name)
         diff_t0 = int(time.time() - global_stats['global_t0'])
         print(f"Done with download from S3 at {diff_t0} seconds")
