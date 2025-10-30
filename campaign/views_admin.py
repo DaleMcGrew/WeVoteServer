@@ -244,25 +244,68 @@ def campaign_edit_owners_process_view(request):
         if re.fullmatch(email_regex, incoming_campaignx_owner_we_vote_id):
 
             # set email address
-            campaignx_owner_email = incoming_campaignx_owner_we_vote_id
             incoming_email_manager = EmailManager()
+            campaignx_owner_email = incoming_campaignx_owner_we_vote_id
+            email_address_object = None
 
-            # fetch email address object that is verified
-            results = incoming_email_manager.retrieve_primary_email_with_ownership_verified(
+            # fetch email address object
+            results = incoming_email_manager.retrieve_email_address_object(
                 normalized_email_address=campaignx_owner_email,
-                read_only=False)
+                read_only=False,
+            )
 
-            # check if email exists
+            # if only 1 email is returned
             if results['email_address_object_found']:
-                email_address_object = results['email_address_object']
+
+                # check if verified
+                if results['email_address_object'].email_ownership_is_verified:
+                    email_address_object = results['email_address_object']
+
+            # if multiple emails with same name returned
+            elif results['email_address_list_found']:
+                for em in results['email_address_list']:
+
+                    # check if verified
+                    if em.email_ownership_is_verified:
+                        email_address_object = em
+                        break
+
+            # If no verified email is found, create new one
+            if email_address_object is None:
+                results = incoming_email_manager.create_email_address(
+                    normalized_email_address=campaignx_owner_email,
+                    voter_we_vote_id=None,
+                    email_ownership_is_verified=True
+                )
+
+                if results['email_address_object_saved']:
+                    email_address_object = results['email_address_object']
+                else:
+                    messages.add_message(request, messages.ERROR, results['status'])
+
+            # if email address object is still not created correctly, error with creation
+            if email_address_object is None or email_address_object.normalized_email_address != campaignx_owner_email:
+                messages.add_message(request, messages.ERROR, 'Email address object creation failed')
+            else:
+
+                # voter object
+                voter_object_from_email = None
+
+                # organization object
+                organization_object_from_email = None
 
                 # fetch voter related to email address
                 fetch_voter = False
-                voter_object_from_email = None
+
+                # should not reach flag
+                should_not_reach = False
 
                 # check if email address object has valid voter we vote id and voter exists
                 temp_voter_we_vote_id = email_address_object.voter_we_vote_id
-                voter_fetch_results = voter_manager.retrieve_voter_by_we_vote_id(temp_voter_we_vote_id)
+                voter_fetch_results = voter_manager.retrieve_voter_by_we_vote_id(
+                    voter_we_vote_id=temp_voter_we_vote_id,
+                    read_only=False,
+                )
 
                 # if found set values
                 if temp_voter_we_vote_id and voter_fetch_results['voter_found']:
@@ -271,32 +314,62 @@ def campaign_edit_owners_process_view(request):
 
                 # else, search for voter containing email
                 else:
-                    voter_fetch_results = voter_manager.retrieve_voter_by_email(email_address_object.normalized_email_address)
+                    voter_fetch_results = voter_manager.retrieve_voter_by_email(
+                        email_address_object.normalized_email_address
+                    )
 
-                    # if found set values
+                    # if found and email connected to voter is verified, set values
                     if voter_fetch_results['voter_found']:
-                        fetch_voter = True
-                        voter_object_from_email = voter_fetch_results['voter']
+
+                        # THIS SHOULD NOT BE THE CASE [Dale TEAM REVIEW]
+                        if not voter_fetch_results['voter'].email_ownership_is_verified:
+                            should_not_reach = True
+                            messages.add_message(request, messages.ERROR,
+                                                 'Voter: ' + voter_fetch_results['voter'].we_vote_id +
+                                                 ' with email verified status: ' + str(
+                                                     voter_fetch_results['voter'].email_ownership_is_verified))
+                        else:
+                            fetch_voter = True
+                            voter_object_from_email = voter_fetch_results['voter']
+                            temp_voter_we_vote_id = voter_object_from_email.we_vote_id
+
+                # if voter still not found
+                if not fetch_voter and not should_not_reach:
+
+                    # create voter
+                    voter_create_results = voter_manager.create_voter(
+                        email=email_address_object.normalized_email_address)
+
+                    # if successfully created get voter object
+                    if voter_create_results['voter_created']:
+                        voter_object_from_email = voter_create_results['voter']
                         temp_voter_we_vote_id = voter_object_from_email.we_vote_id
+                        fetch_voter = True
+                    else:
+                        messages.add_message(request, messages.ERROR,voter_create_results['status'])
 
-                # check if voter related to email exists
-                if fetch_voter:
-
+                        # if voter object is still not found/created correctly, error with creation
+                if voter_object_from_email is None or not temp_voter_we_vote_id:
+                    messages.add_message(request, messages.ERROR, 'Voter Object fetch/creation failed')
+                else:
                     # set voter id
                     campaignx_owner_voter_we_vote_id = temp_voter_we_vote_id
 
-                    # set organization id
-                    campaignx_owner_organization_we_vote_id = \
-                        voter_manager.fetch_linked_organization_we_vote_id_by_voter_we_vote_id(
-                            campaignx_owner_voter_we_vote_id)
-
+                    # check if created voter has linked organization id
+                    temp_organization_we_vote_id = voter_object_from_email.linked_organization_we_vote_id
                     # check if organization exists
-                    fetch_org_id_from_org_we_vote_id = organization_manager.fetch_organization_id(
-                        we_vote_id=campaignx_owner_organization_we_vote_id)
+                    organization_fetch_results = organization_manager.retrieve_organization(
+                        we_vote_id=temp_organization_we_vote_id,
+                        read_only=False,
+                    )
+
+                    # if found set values
+                    if temp_organization_we_vote_id and organization_fetch_results['organization_found']:
+                        organization_object_from_email = organization_fetch_results['organization']
+                        campaignx_owner_organization_we_vote_id = temp_organization_we_vote_id
 
                     # If no associated organization exists, create one
-                    if fetch_org_id_from_org_we_vote_id == 0:
-
+                    else:
                         # create an organization
                         create_organization_results = organization_manager.create_organization(
                             organization_name=email_address_object.normalized_email_address,
@@ -305,25 +378,28 @@ def campaign_edit_owners_process_view(request):
                         )
 
                         # if successfully created get organization object
-                        if create_organization_results['success']:
+                        if create_organization_results['organization_created']:
                             organization_object_from_email = create_organization_results['organization']
-                            if organization_object_from_email.we_vote_id:
+                            campaignx_owner_organization_we_vote_id = organization_object_from_email.we_vote_id
 
-                                # check and update voter name
-                                if not voter_object_from_email.first_name:
-                                    voter_first_name_update_results = voter_manager.update_voter_name_by_object(
-                                        voter=voter_object_from_email,
-                                        first_name="Voter-" + campaignx_owner_voter_we_vote_id)
-                                    if voter_first_name_update_results['success'] and \
-                                            voter_first_name_update_results['voter_updated']:
-                                        voter_object_from_email = voter_first_name_update_results['voter']
+                            # update voter with organization we vote id
+                            # first, check and update voter name
+                            if not voter_object_from_email.first_name:
+                                voter_first_name_update_results = voter_manager.update_voter_name_by_object(
+                                    voter=voter_object_from_email,
+                                    first_name="Voter-" + campaignx_owner_voter_we_vote_id)
+                                if voter_first_name_update_results['success'] and \
+                                        voter_first_name_update_results['voter_updated']:
+                                    voter_object_from_email = voter_first_name_update_results['voter']
 
-                                # update voter with newly created organization id (needs voter to have name)
-                                voter_manager.alter_linked_organization_we_vote_id(voter=voter_object_from_email,
-                                                                                   linked_organization_we_vote_id=organization_object_from_email.we_vote_id)
-
-                                # set organization id
-                                campaignx_owner_organization_we_vote_id = organization_object_from_email.we_vote_id
+                            # update voter with organization we vote id (needs voter to have name)
+                            voter_manager.alter_linked_organization_we_vote_id(voter=voter_object_from_email,
+                                                                               linked_organization_we_vote_id=organization_object_from_email.we_vote_id)
+                # update all related object fields
+                if email_address_object and voter_object_from_email and organization_object_from_email:
+                    # set we vote ids
+                    campaignx_owner_voter_we_vote_id = voter_object_from_email.we_vote_id
+                    campaignx_owner_organization_we_vote_id = organization_object_from_email.we_vote_id
 
                     # update email object with voter we vote id
                     email_address_object.voter_we_vote_id = campaignx_owner_voter_we_vote_id
@@ -333,75 +409,9 @@ def campaign_edit_owners_process_view(request):
                     update_email_to_voter_results = voter_manager.update_voter_email_ownership_verified(voter=voter_object_from_email,
                                                                         email_address_object=email_address_object)
                     if not update_email_to_voter_results['success']:
-                        messages.add_message(request, messages.ERROR, 'issue with updating email to voter: '
+                        messages.add_message(request, messages.ERROR, 'Issue with updating voter with email info: '
                                              + update_email_to_voter_results['status'])
-                # If no associated voter object exists, create one
-                else:
 
-                    voter_create_results = voter_manager.create_voter(
-                        email=email_address_object.normalized_email_address)
-
-                    # if successfully created get voter object
-                    if voter_create_results['voter_created']:
-                        voter_object_from_email = voter_create_results['voter']
-                        if voter_object_from_email.we_vote_id:
-
-                            # set voter id
-                            campaignx_owner_voter_we_vote_id = voter_object_from_email.we_vote_id
-
-                            # check if created voter has linked organization id
-                            if voter_object_from_email.linked_organization_we_vote_id:
-
-                                # set organization id
-                                campaignx_owner_organization_we_vote_id = voter_object_from_email.linked_organization_we_vote_id
-
-                            # check if organization exists
-                            fetch_org_id_from_org_we_vote_id = organization_manager.fetch_organization_id(
-                                we_vote_id=campaignx_owner_organization_we_vote_id)
-
-                            # If no associated organization exists, create one
-                            if fetch_org_id_from_org_we_vote_id == 0:
-
-                                # create an organization
-                                create_organization_results = organization_manager.create_organization(
-                                    organization_name=email_address_object.normalized_email_address,
-                                    organization_email=email_address_object.normalized_email_address,
-                                    # organization_type='I',
-                                )
-
-                                # if successfully created get organization object
-                                if create_organization_results['success']:
-                                    organization_object_from_email = create_organization_results['organization']
-                                    if organization_object_from_email.we_vote_id:
-
-                                        # check and update voter name
-                                        if not voter_object_from_email.first_name:
-                                            voter_first_name_update_results = voter_manager.update_voter_name_by_object(
-                                                voter=voter_object_from_email,
-                                                first_name="Voter-" + campaignx_owner_voter_we_vote_id)
-                                            if voter_first_name_update_results['success'] and \
-                                                    voter_first_name_update_results['voter_updated']:
-                                                voter_object_from_email = voter_first_name_update_results['voter']
-
-                                        # update voter with newly created organization id
-                                        voter_manager.alter_linked_organization_we_vote_id(
-                                            voter=voter_object_from_email,
-                                            linked_organization_we_vote_id=organization_object_from_email.we_vote_id)
-
-                                        # set organization id
-                                        campaignx_owner_organization_we_vote_id = organization_object_from_email.we_vote_id
-
-                            # update email object with voter we vote id
-                            email_address_object.voter_we_vote_id = campaignx_owner_voter_we_vote_id
-                            email_address_object.save()
-
-                            # set email address we vote id and verified status in found voter
-                            update_email_to_voter_results = voter_manager.update_voter_email_ownership_verified(
-                                voter=voter_object_from_email,
-                                email_address_object=email_address_object)
-                            if not update_email_to_voter_results['success']:
-                                messages.add_message(request, messages.ERROR, 'issue with updating email to voter: '
-                                                     + update_email_to_voter_results['status'])
 
         elif 'org' in incoming_campaignx_owner_we_vote_id:
             campaignx_owner_organization_we_vote_id = incoming_campaignx_owner_we_vote_id
