@@ -6,9 +6,9 @@ from selenium.webdriver.chrome.options import Options
 from urllib.parse import urlparse
 from langdetect import detect, LangDetectException
 from config.base import get_environment_variable
-# import dns.resolver
+import DNS
 import tldextract
-# from ipwhois import IPWhois
+from ipwhois import IPWhois
 import re
 
 
@@ -162,28 +162,33 @@ def is_registrar_parked(domain: str) -> bool:
         extracted = tldextract.extract(domain)
         clean_domain = f"{extracted.domain}.{extracted.suffix}"
 
-        # TURNING OFF DNS CHECKS UNTIL WE GET npm installable package
-        # # Check if domain resolves
-        # try:
-        #     answers = dns.resolver.resolve(clean_domain, "A")
-        # except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
-        #     return True  # Domain doesn't resolve → parked or expired
+        # Initialize and discover name servers
+        DNS.DiscoverNameServers()
 
-        # # Get IP info from first resolved IP
-        # ip_address = answers[0].to_text()
-        # obj = IPWhois(ip_address)
-        # res = obj.lookup_rdap(asn_methods=["whois"])
+        # Perform an A record lookup
+        request = DNS.Request(qtype="A")
+        response = request.req(name=clean_domain)
 
-        # # Check if the domain is on known parking networks
-        # parked_networks = [
-        #     "godaddy", "namecheap", "network solutions", "domain.com",
-        #     "google", "squarespace", "hover", "register.com",
-        #     "tucows", "enom", "porkbun"
-        # ]
+        # If no answers, domain likely parked or expired
+        if not response.answers:
+            return True
 
-        # registrar = (res.get("network", {}) or {}).get("name", "")
-        # if registrar and any(pn in registrar.lower() for pn in parked_networks):
-        #     return True
+        # Get IP address of the domain
+        ip_address = response.answers[0]['data']
+        obj = IPWhois(ip_address)
+        res = obj.lookup_rdap(asn_methods=["whois"])
+
+
+        # Known parked domain registrars (can extend this list)
+        parked_networks = [
+            "godaddy", "namecheap", "network solutions", "domain.com",
+            "google", "squarespace", "hover", "register.com",
+            "tucows", "enom", "porkbun", "flywheel", "bluehost", "1&1", "ionos"
+        ]
+
+        registrar = (res.get("network", {}) or {}).get("name", "")
+        if registrar and any(pn in registrar.lower() for pn in parked_networks):
+            return True
 
         return False
     except Exception as e:
