@@ -123,7 +123,8 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         tf = tempfile.NamedTemporaryFile(mode='r+b')
         with requests.get(aws_s3_file_url, stream=True) as response:
             response.raise_for_status()
-            for chunk in response.iter_content(chunk_size=100000):
+            # Process in 1MB chunks
+            for chunk in response.iter_content(chunk_size=(1000*1000)):
                 if chunk:
                     tf.write(chunk)
         tf.close()
