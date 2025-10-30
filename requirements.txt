@@ -89,4 +89,4 @@ beautifulsoup4==4.12.3
 selenium==4.25.0
 langdetect==1.0.9
 tldextract==5.1.2
-ipwhois==1.2.0
+# ipwhois==1.2.0
