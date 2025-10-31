@@ -29,7 +29,7 @@ For WSL pgAdmin4 need to be installed in windows machine to add server and datab
 
 In pgadmin add a server. You can use your sign in name as the server name.
 
-Open this file:
+Open this file: Verify version of installed postfres to edit pg_hba.conf
 
     $ sudo vi /etc/postgres/9.6/main/pg_hba.conf
 
