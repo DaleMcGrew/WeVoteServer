@@ -24,9 +24,9 @@ Retrieve “WeVoteServer” into that folder:
 
 1. Go to your fork repo page, click green 'Clone or Download' button, copy the URL and clone your fork to local dev:
 
-    $ cd  ~/PythonProjects
+   ` $ cd  ~/PythonProjects`
 
-    $ git clone https://github.com/<git USERNAME>/WeVoteServer.git
+    `$ git clone https://github.com/<YOUR GITHUB USERNAME HERE>/WeVoteServer.git`
  
 1. Change into your local WeVoteServer repository folder, and set up a remote for upstream: 
     
