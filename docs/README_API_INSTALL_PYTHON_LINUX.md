@@ -54,6 +54,11 @@ Now activate this new virtual environment for WeVoteServer:
 If installing requirements.txt does not work because of different dependencies, attempt install -r requirements.txt several times.
 Also,relying on IDEs like PyCharm may help installing the packages.
 
+Note:In case if you encounter installtion issues due to permission access in WSL perform following
+####
+    $sudo chown -R <User Name>:<User Name> /home/
+    $sudo chown -R <User Name>:<User Name> /home/<User Name>/PythonProjects
+
 Test with this command: Before testing make sure to Set up Environment to avoid errors.
     
     (WeVoteServer3.11) $ python manage.py makemigrations
