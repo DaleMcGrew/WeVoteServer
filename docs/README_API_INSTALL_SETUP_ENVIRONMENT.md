@@ -44,9 +44,9 @@ Add an empty file named "\_\_init\_\_.py" to "WeVoteServer/wevote_settings/migra
 
 You will need to makemigrations and migrate again.
 
-    $ source ~/WeVoteServer3.5/WeVoteServer/bin/activate
-    (WeVoteServer) $ python manage.py makemigrations
-    (WeVoteServer) $ python manage.py migrate
+    $ source ~/WeVoteServer3.11/WeVoteServer/bin/activate
+    (WeVoteServer3.11) $ python manage.py makemigrations
+    (WeVoteServer3.11) $ python manage.py migrate
 
 [NEXT: 5. Set up Database](README_API_INSTALL_SETUP_DATABASE.md)
     
