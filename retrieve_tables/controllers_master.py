@@ -401,8 +401,13 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name):
 
             s3.Bucket(AWS_STORAGE_BUCKET_NAME).upload_file(
                 results['temp_file_name'], tail, ExtraArgs={'Expires': date_tomorrow, 'ContentType': 'text/html'})
-            aws_s3_file_url = "https://{bucket_name}.s3.amazonaws.com/{file_location}" \
-                              "".format(bucket_name=AWS_STORAGE_BUCKET_NAME, file_location=tail)
+
+            aws_s3_file_url = s3.meta.client.generate_presigned_url(
+                                ClientMethod='get_object',
+                                Params={'Bucket': AWS_STORAGE_BUCKET_NAME, 'Key': tail},
+                                ExpiresIn=date_tomorrow,
+                            )
+
             ts = '{:.2f} seconds'.format(time.time() - t0)
             results['tmp_file_to_s3_completed'] = str(ts)
 

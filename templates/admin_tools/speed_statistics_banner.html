@@ -35,29 +35,14 @@
                         {% endif %}
                     </tr>
                 {% endfor %}
-            {% endfor %}
-
-          {# ric0de Changes START #}
-            {% with total=0 %}
-                {% for view, stats in performance_dict.items %}
-                    {% for stat in stats %}
-                        {% if stat.time_difference %}
-                            {% with total=total|add:stat.time_difference %}
-                            {% endwith %}
-                        {% endif %}
-                    {% endfor %}
-                {% endfor %}
-                {% if performance_dict %}
                 <tr style="font-weight: bold; background-color: #C0DDED;">
-                    <td>Total</td>
-                    <td>{{ performance_dict|performance_total|floatformat:4 }}</td>
+                    <td>Total for {{ view }}</td>
+                    <td>{{ stats|performance_total|floatformat:4 }}</td>
                     <td style="font-weight: bold; color: #666; text-align: left;">
-                        Sum of all performance snapshots</td>
+                        Sum of performance snapshots for {{ view }}</td>
                 </tr>
-                {% endif %}
-            {% endwith %}
-          {# ric0de Changes END #}
-          {# mjacquot1 Changes START #}
+            {% endfor %}
+            {# mjacquot1 Changes START #}
             {% comment %} comment out the load time display {% endcomment %}
             <tr>
                 <td colspan="3" style="font-weight: bold; text-align: left">rendering</td>
