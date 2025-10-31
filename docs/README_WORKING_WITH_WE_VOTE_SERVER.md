@@ -7,12 +7,21 @@
 If you are returning to work on WeVoteServer after a few weeks or months, these are the steps:
 
 Pull the latest code from the repository. Then:
-
+For MAC:
+####
     $ cd /Users/<YOUR NAME HERE>/PythonProjects/WeVoteServer/
     $ source /Users/<YOUR NAME HERE>/PythonEnvironments/WeVoteServer3.11/bin/activate
-    $ pip install -r requirements.txt
-    $ python manage.py makemigrations
-    $ python manage.py migrate
+    (WeVoteServer3.11)$ pip install -r requirements.txt
+    (WeVoteServer3.11)$ python manage.py makemigrations
+    (WeVoteServer3.11)$ python manage.py migrate
+
+For Linux/WSL:
+####
+    $ cd ~/<YOUR NAME HERE>/PythonProjects/WeVoteServer/
+    $ source ~/<YOUR NAME HERE>/PythonEnvironments/WeVoteServer3.11/bin/activate
+    (WeVoteServer3.11)$ pip install -r requirements.txt
+    (WeVoteServer3.11)$ python manage.py makemigrations
+    (WeVoteServer3.11)$ python manage.py migrate
     
 Compare your local version of "config/environment_variables.json" with the master template version 
 "[config/environment_variables-template.json](config/environment_variables-template.json)" and add or remove entries.
@@ -21,10 +30,17 @@ Compare your local version of "config/environment_variables.json" with the maste
 ## Start up the Django server
 
 Here are some commands we use quite a lot:
-
+For MAC:
+####
     $ cd /Users/<YOUR NAME HERE>/PythonProjects/WeVoteServer/
     $ source /Users/<YOUR NAME HERE>/PythonEnvironments/WeVoteServer3.11/bin/activate
-    $ python manage.py runserver
+    (WeVoteServer3.11)$ python manage.py runserver
+
+For Linux/WSL:
+####
+    $ cd ~/<YOUR NAME HERE>/PythonProjects/WeVoteServer/
+    $ source ~/<YOUR NAME HERE>/PythonEnvironments/WeVoteServer3.11/bin/activate
+    (WeVoteServer3.11)$ python manage.py runserver
 
 Find API admin tools here [http://localhost:8000/admin](http://localhost:8000/admin)
 
