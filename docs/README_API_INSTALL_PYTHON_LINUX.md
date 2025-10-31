@@ -22,6 +22,10 @@ If, instead, you plan on using version 3 of Python, you can install pip by typin
 If you installed the Python 3 version of pip, you should type this instead:
 
     $ sudo pip3 install virtualenv
+    
+In WSL if you encounter installion error: externally-managed-environment, you should type this instead:
+####
+    $ sudo apt install python3-virtualenv
 
 Now, whenever you start a new project, you can create a virtual environment for it. Start by creating and moving into a new project directory:
 
@@ -29,7 +33,7 @@ Now, whenever you start a new project, you can create a virtual environment for 
     
     $ cd ~/VirtualEnvironments
 
-Now, create a virtual environment within the project directory by typing:
+Now, create a virtual environment within the project directory by typing: Make sure to keep pyhton version in WeVoteServer virtual environment name Eg: Python3.12 --> WeVoteServer3.12
 
     $ virtualenv --python=/usr/bin/python3.11 WeVoteServer3.11
     
@@ -50,11 +54,11 @@ Now activate this new virtual environment for WeVoteServer:
 If installing requirements.txt does not work because of different dependencies, attempt install -r requirements.txt several times.
 Also,relying on IDEs like PyCharm may help installing the packages.
 
-Test with this command:
+Test with this command: Before testing make sure to Set up Environment to avoid errors.
     
-    (WeVoteServer) $ python manage.py makemigrations
-    (WeVoteServer) $ python manage.py migrate
-    (WeVoteServer) $ python3 manage.py runserver
+    (WeVoteServer3.11) $ python manage.py makemigrations
+    (WeVoteServer3.11) $ python manage.py migrate
+    (WeVoteServer3.11) $ python3 manage.py runserver
 
 
     
