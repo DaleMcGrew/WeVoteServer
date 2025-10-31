@@ -15,7 +15,7 @@ Please make sure you have installed PostgreSQL:
 ## Setup - Database Creation
 
 Make sure you have a database that matches the local database settings from the "config/environment_variables.json" file,
-(Search for "DATABASES"). Using the database tool you prefer create the following Database. (You probably already created
+(Search for "DATABASES"), update "DATABASE_NAME":"wevoteserverdb". Using the database tool you prefer create the following Database. (You probably already created
 the database in a previous step.)
 
     WeVoteServerDB
