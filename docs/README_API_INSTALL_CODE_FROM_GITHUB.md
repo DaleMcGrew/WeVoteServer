@@ -26,7 +26,7 @@ Retrieve “WeVoteServer” into that folder:
 
     $ cd  ~/PythonProjects
 
-    $ git clone https://github.com/wevote/WeVoteServer.git
+    $ git clone https://github.com/<git USERNAME>/WeVoteServer.git
  
 1. Change into your local WeVoteServer repository folder, and set up a remote for upstream: 
     
