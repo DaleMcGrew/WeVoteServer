@@ -27,7 +27,7 @@ Solution:
 1. Look in WeVoteServer/config
 
 2. Make sure you update timezone setting in `environment_variables.json` from
-   "TIME_ZONE": "US/Pacific", to  "TIME_ZONE": ""America/New_York",
+   "TIME_ZONE": "US/Pacific", to  "TIME_ZONE": "America/New_York",
 
     
 ## “libGeoIP.so.1: cannot open..."
