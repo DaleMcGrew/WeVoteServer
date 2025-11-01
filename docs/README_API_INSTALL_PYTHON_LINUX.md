@@ -33,7 +33,7 @@ Now, whenever you start a new project, you can create a virtual environment for 
     
     $ cd ~/VirtualEnvironments
 
-Now, create a virtual environment within the project directory by typing: Make sure to keep pyhton version in WeVoteServer virtual environment name Eg: Python3.12 --> WeVoteServer3.12
+Now, create a virtual environment within the project directory by typing the following. (Make sure to keep pyhton version in WeVoteServer virtual environment name Eg: Python3.12 --> WeVoteServer3.12)
 
     $ virtualenv --python=/usr/bin/python3.11 WeVoteServer3.11
     
@@ -54,7 +54,7 @@ Now activate this new virtual environment for WeVoteServer:
 If installing requirements.txt does not work because of different dependencies, attempt install -r requirements.txt several times.
 Also,relying on IDEs like PyCharm may help installing the packages.
 
-Note:In case if you encounter installtion issues due to permission access in WSL perform following
+Note: In case if you encounter installtion issues due to permission access in WSL perform following:
 ####
     $sudo chown -R <User Name>:<User Name> /home/
     $sudo chown -R <User Name>:<User Name> /home/<User Name>/PythonProjects
