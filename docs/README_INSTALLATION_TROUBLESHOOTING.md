@@ -16,6 +16,19 @@ Solution:
 
 2. Make sure you made a copy from `environment_variables-template.json` to `environment_variables.json`
 
+## ValueError: Incorrect timezone setting: US/Eastern
+
+Problem: I see this error when I run this `python manage.py runserver`:
+
+    django.core.exceptions.ImproperlyConfigured: ValueError: Incorrect timezone setting: US/Eastern
+    
+Solution: 
+
+1. Look in WeVoteServer/config
+
+2. Make sure you update timezone setting in `environment_variables.json` from
+   "TIME_ZONE": "US/Pacific", to  "TIME_ZONE": "America/New_York",
+
     
 ## “libGeoIP.so.1: cannot open..."
 On Amazon Linux (Fedora), if you get a “libGeoIP.so.1: cannot open shared object No such file or directory” error 

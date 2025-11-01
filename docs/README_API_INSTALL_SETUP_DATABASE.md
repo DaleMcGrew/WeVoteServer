@@ -15,7 +15,7 @@ Please make sure you have installed PostgreSQL:
 ## Setup - Database Creation
 
 Make sure you have a database that matches the local database settings from the "config/environment_variables.json" file,
-(Search for "DATABASES"). Using the database tool you prefer create the following Database. (You probably already created
+(Search for "DATABASES"), update "DATABASE_NAME":"wevoteserverdb". Using the database tool you prefer create the following Database. (You probably already created
 the database in a previous step.)
 
     WeVoteServerDB
@@ -25,9 +25,9 @@ Also make sure you are running in your virtual environment, signified by the "(W
 Populate your database with the latest database tables using these terminal commands (You probably already did this in 
 a previous step, but it doesn't hurt anything to do this twice):
 
-    (WeVoteServer) $ pip install psycopg2 
-    (WeVoteServer) $ python manage.py makemigrations
-    (WeVoteServer) $ python manage.py migrate
+    (WeVoteServer3.11) $ pip install psycopg2 
+    (WeVoteServer3.11) $ python manage.py makemigrations
+    (WeVoteServer3.11) $ python manage.py migrate
 
 When prompted for a super user, enter your email address and a simple password. This admin account is only used in development.
 
@@ -40,17 +40,17 @@ If you are not prompted to create a superuser, run the following command:
 Start up the WeVoteServer on Mac (You probably already installed requirements.txt in an earlier step, but it doesn't
 hurt to do it again.):
 
-    (WeVoteServer) $ cd /Users/<YOUR NAME HERE>/PythonProjects/WeVoteServer/
-    (WeVoteServer) $ source /Users/<YOUR NAME HERE>/PythonEnvironments/WeVoteServer3.11/bin/activate
-    (WeVoteServer) $ pip install -r requirements.txt
-    (WeVoteServer) $ python manage.py runserver
+    $ cd /Users/<YOUR NAME HERE>/PythonProjects/WeVoteServer/
+    $ source /Users/<YOUR NAME HERE>/PythonEnvironments/WeVoteServer3.11/bin/activate
+    (WeVoteServer3.11) $ pip install -r requirements.txt
+    (WeVoteServer3.11) $ python manage.py runserver
 
 Start up the WeVoteServer on Linux:
 
-    (WeVoteServer) $ cd ~/PythonProjects/WeVoteServer/
-    (WeVoteServer) $ source ~/PythonEnvironments/WeVoteServer3.11/bin/activate
-    (WeVoteServer) $ pip install -r requirements.txt
-    (WeVoteServer) $ python manage.py runserver
+    $ cd ~/PythonProjects/WeVoteServer/
+    $ source ~/PythonEnvironments/WeVoteServer3.11/bin/activate
+    (WeVoteServer3.11) $ pip install -r requirements.txt
+    (WeVoteServer3.11) $ python manage.py runserver
 
 [Having troubles? See Installation Troubleshooting](README_INSTALLATION_TROUBLESHOOTING.md)
 

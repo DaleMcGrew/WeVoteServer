@@ -3,6 +3,7 @@
 [Back to Install Table of Contents](README_API_INSTALL.md)
 
 ## Installing PostgreSQL on Linux
+Refer to https://medium.com/yavar/install-and-configure-postgresql-and-pgadmin-on-ubuntu-20-04-22-04-52c52c249b9e for detailed steps.
 
 	# Create the file repository configuration:
 	$ sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
@@ -22,11 +23,13 @@
 We recommend installing pgAdmin 4 as a WYSIWYG database administration tool.
 NOTE: You may need to turn off the restriction in "Security & Privacy" on "unidentified developers"
 to allow this tool to be installed.
-See: http://blog.tcs.de/program-cant-be-opened-because-it-is-from-an-unidentified-developer/
+
+For WSL pgAdmin4 need to be installed in windows machine to add server and database.
+
 
 In pgadmin add a server. You can use your sign in name as the server name.
 
-Open this file:
+Open this file: Verify version of installed postgres to edit pg_hba.conf
 
     $ sudo vi /etc/postgres/9.6/main/pg_hba.conf
 
