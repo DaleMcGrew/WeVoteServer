@@ -2565,6 +2565,7 @@ class CandidateCampaign(models.Model):
         verbose_name="we vote permanent id for the office this candidate is running for", max_length=255, default=None,
         null=True, blank=True, unique=False, db_index=True)
     contest_office_name = models.CharField(verbose_name="name of the office", max_length=255, null=True, blank=True)
+    contest_office_name_calculated = models.BooleanField(db_index=True, default=False)
     district_name = models.CharField(verbose_name="district name", max_length=255, null=True, blank=True)
     # Which office held is this candidate running for?
     office_held_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
@@ -2621,6 +2622,7 @@ class CandidateCampaign(models.Model):
     instagram_followers_count = models.IntegerField(null=True, blank=True)
     # The date of the last election this candidate relates to, converted to integer, ex/ 20201103
     candidate_ultimate_election_date = models.PositiveIntegerField(default=None, null=True)
+    candidate_ultimate_election_date_calculated = models.BooleanField(db_index=True, default=False, null=False)
     # The year this candidate is running for office
     candidate_year = models.PositiveIntegerField(default=None, null=True)
     # State code

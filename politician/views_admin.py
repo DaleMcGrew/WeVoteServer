@@ -4592,47 +4592,20 @@ def update_politician_ultimate_election_date_from_candidates_action(request):
     }
     return results
 
+
 def update_profile_image_background_color_view_for_politicians(request):
     number_to_update = 5000
-    politician_query = Politician.objects.all()
     state_code = request.GET.get('state_code', '')
-    if positive_value_exists(state_code):
-        politician_query = politician_query.filter(state_code__iexact=state_code)
-    politician_query = politician_query.exclude(profile_image_background_color_needed=False)
-    politician_list_count = politician_query.count()
-    politician_list = list(politician_query[:number_to_update])
-    message = ''
-    if politician_list_count == 0:
-        message += "All politicians have been updated with a background color for profile photo."
-        messages.add_message(request, messages.INFO, message)
-    else:
-        message += "{count:,} politicians need a background color for profile photo. ".format(count=politician_list_count)
-
-    bulk_update_list = []
-    politicians_updated = 0
-    politicians_not_updated = 0
-    for politician in politician_list:
-        politician.profile_image_background_color_needed = False
-        if positive_value_exists(politician.we_vote_hosted_profile_image_url_large):
-            hex = generate_background(politician)
-            politician.profile_image_background_color = hex
-            politicians_updated += 1
+    from politician.controllers_data_cleaning import generate_politician_photo_backgrounds
+    results = generate_politician_photo_backgrounds(
+        number_to_generate=number_to_update,
+        state_code=state_code,
+    )
+    if positive_value_exists(results['status']):
+        if positive_value_exists(results['success']):
+            messages.add_message(request, messages.INFO, results['status'])
         else:
-            politicians_not_updated += 1
-        bulk_update_list.append(politician)
-    try:
-        Politician.objects.bulk_update(
-            bulk_update_list,
-            ['profile_image_background_color', 'profile_image_background_color_needed'])
-        message += \
-            "Politicians updated: {politicians_updated:,}. " \
-            "Politicians without picture URL:  {politicians_not_updated:,}. " \
-            "".format(politicians_updated=politicians_updated, politicians_not_updated=politicians_not_updated)
-        messages.add_message(request, messages.INFO, message)
-    except Exception as e:
-        messages.add_message(request, messages.ERROR,
-                             "ERROR with update_profile_image_background_color_view: {e}"
-                             "".format(e=e))
+            messages.add_message(request, messages.ERROR, results['status'])
 
     return HttpResponseRedirect(reverse('politician:politician_list', args=()))
 

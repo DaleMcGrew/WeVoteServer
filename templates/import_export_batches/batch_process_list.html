@@ -93,6 +93,7 @@ OFF:
         </span>
         </a>
         &nbsp;&nbsp;
+    <br />
         <a href="{% url 'import_export_batches:batch_process_system_toggle' %}?kind_of_process=SEARCH_TWITTER&{{ toggle_system_url_variables }}" >
         {% if batch_process_system_general_maintenance_on %}<span>{% else %}<span style="text-decoration: line-through">{% endif %}
             {% if batch_process_system_search_twitter_on %}Turn OFF Twitter Search{% else %}<strong>Turn ON Twitter Search</strong>{% endif %}
@@ -104,6 +105,18 @@ OFF:
             {% if batch_process_system_update_twitter_on %}Turn OFF Twitter Updates{% else %}<strong>Turn ON Twitter Updates</strong>{% endif %}
         </span>
         </a>
+        &nbsp;&nbsp;
+    <br />
+        Maintenance Scripts:
+        &nbsp;&nbsp;
+        {% for item in batch_process_system_maintenance_script_items %}
+        <a href="{% url 'import_export_batches:batch_process_system_toggle' %}?kind_of_process=MAINTENANCE_SCRIPTS_{{ item.upper }}&{{ toggle_system_url_variables }}" >
+        {% if batch_process_system_general_maintenance_on %}<span>{% else %}<span style="text-decoration: line-through">{% endif %}
+            {% if item.is_on %}Turn OFF {{ item.title }}{% else %}<strong>Turn ON {{ item.title }}</strong>{% endif %}
+        </span>
+        </a>
+        &nbsp;&nbsp;
+        {% endfor %}
     </li>
     <li>
         <a href="{% url 'import_export_batches:batch_set_list' %}" target="_blank" >
@@ -202,6 +215,15 @@ OFF:
         <option value="BALLOT_ITEMS"
         {% if kind_of_processes_to_show == "BALLOT_ITEMS" %} selected="selected"{% endif %}>
             Ballot Items</option>
+    
+        {% for item in batch_process_system_maintenance_script_items %}
+            <option value="{{ item.kind_of_process }}"
+                {% if kind_of_processes_to_show == item.kind_of_process %} selected="selected"{% endif %}
+            >
+                Maintenance Scripts: {{ item.title }}
+            </option>
+        {% endfor %}
+    
         <option value="MATCH_POLITICIANS_TO_ORGANIZATIONS"
         {% if kind_of_processes_to_show == "MATCH_POLITICIANS_TO_ORGANIZATIONS" %} selected="selected"{% endif %}>
             Match Politicians to Endorsers</option>

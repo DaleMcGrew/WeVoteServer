@@ -324,6 +324,7 @@ class Politician(models.Model):
     linked_campaignx_we_vote_id = models.CharField(max_length=255, null=True, unique=True, db_index=True)
     linked_campaignx_we_vote_id_date_last_updated = models.DateTimeField(null=True)
     linked_campaignx_we_vote_id_verified = models.BooleanField(default=False, null=False)
+    linked_campaignx_we_vote_id_verified_in_campaignx = models.BooleanField(default=False, null=False)
     linkedin_url = models.TextField(null=True, blank=True)
     linkedin_photo_url = models.TextField(verbose_name='url of remote linkedin profile photo', blank=True, null=True)
     linkedin_profile_image_url_https = models.TextField(
