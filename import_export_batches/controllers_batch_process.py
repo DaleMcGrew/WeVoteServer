@@ -624,10 +624,10 @@ def process_next_general_maintenance():
     # ############################
     # Add maintenance scripts to the queue (as they are implemented)
     maintenance_script_items_list = [
-        # {
-        #     'kind_of_process': MAINTENANCE_SCRIPTS_CAMPAIGNX,
-        #     'maintenance_type': 'campaignx',
-        # },
+        {
+            'kind_of_process': MAINTENANCE_SCRIPTS_CAMPAIGNX,
+            'maintenance_type': 'campaignx',
+        },
         {
             'kind_of_process': MAINTENANCE_SCRIPTS_CANDIDATE,
             'maintenance_type': 'candidate',
@@ -2863,7 +2863,10 @@ def process_one_maintenance_script_batch_process(batch_process):
         }
         return results
 
-    if kind_of_process == MAINTENANCE_SCRIPTS_CANDIDATE:
+    if kind_of_process == MAINTENANCE_SCRIPTS_CAMPAIGNX:
+        from campaign.controllers_data_cleaning import batch_process_maintenance_scripts_campaignx
+        process_results = batch_process_maintenance_scripts_campaignx()
+    elif kind_of_process == MAINTENANCE_SCRIPTS_CANDIDATE:
         from candidate.controllers_data_cleaning import batch_process_maintenance_scripts_candidate
         process_results = batch_process_maintenance_scripts_candidate()
     elif kind_of_process == MAINTENANCE_SCRIPTS_POLITICIAN:

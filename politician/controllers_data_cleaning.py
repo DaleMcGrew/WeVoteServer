@@ -21,7 +21,7 @@ logger = wevote_functions.admin.get_logger(__name__)
 
 
 def batch_process_maintenance_scripts_politician():
-    status = ''
+    status = ':||: '
     success = True
 
     # ##################
@@ -30,15 +30,15 @@ def batch_process_maintenance_scripts_politician():
         number_to_generate=1000,
     )
     if positive_value_exists(results['status']):
-        status += results['status'] + ":: "
+        status += results['status'] + " :||: "
 
     # ##################
     # Generate a unique background color for each politician so their photo has a rectangle to sit in
     results = generate_politician_photo_backgrounds(
-        number_to_generate=10,
+        number_to_generate=50,
     )
     if positive_value_exists(results['status']):
-        status += results['status'] + ":: "
+        status += results['status'] + " :||: "
 
     # ##################
     # Create seo_friendly_path for all politicians who currently don't have one
@@ -46,7 +46,7 @@ def batch_process_maintenance_scripts_politician():
         number_to_create=1000,
     )
     if positive_value_exists(results['status']):
-        status += results['status'] + ":: "
+        status += results['status'] + " :||: "
 
     # ##################
     # Check all entries that have Politician.linked_campaignx_we_vote_id and
@@ -56,7 +56,7 @@ def batch_process_maintenance_scripts_politician():
         number_to_verify=1000,
     )
     if positive_value_exists(results['status']):
-        status += results['status'] + ":: "
+        status += results['status'] + " :||: "
 
     # ##################
     # Create default CampaignX for all politicians who currently don't have one
@@ -64,7 +64,7 @@ def batch_process_maintenance_scripts_politician():
         number_to_create=1000,
     )
     if positive_value_exists(results['status']):
-        status += results['status'] + ":: "
+        status += results['status'] + " :||: "
 
     # ##################
     # Find all politicians with linked_campaignx_we_vote_id and make sure Campaignx
@@ -74,7 +74,7 @@ def batch_process_maintenance_scripts_politician():
         number_to_update=1000,
     )
     if positive_value_exists(results['status']):
-        status += results['status'] + ":: "
+        status += results['status'] + " :||: "
 
     results = {
         'status': status,
@@ -165,7 +165,7 @@ def delete_linked_campaignx_we_vote_id_if_campaignx_not_found(
                     'linked_campaignx_we_vote_id_date_last_updated',
                     'linked_campaignx_we_vote_id_verified'])
             status += \
-                "delete_linked_campaignx_we_vote_id_if_campaignx_not_found " \
+                "delete_linked_campaignx_we_vote_id_if_campaignx_not_found: " \
                 "{updates_made:,} politicians scanned for a current linked_campaignx_we_vote_id. " \
                 "{records_cleared:,} records had Politician.linked_campaignx_we_vote_id cleared out. " \
                 "{total_to_convert_after:,} remaining. " \
@@ -179,7 +179,7 @@ def delete_linked_campaignx_we_vote_id_if_campaignx_not_found(
             success = False
     else:
         status += \
-            "delete_linked_campaignx_we_vote_id_if_campaignx_not_found " \
+            "delete_linked_campaignx_we_vote_id_if_campaignx_not_found: " \
             "{total_to_convert_after:,} remaining. " \
             "".format(
                 total_to_convert_after=total_to_convert_after)
@@ -301,7 +301,7 @@ def generate_politician_photo_backgrounds(
             Politician.objects.bulk_update(update_list, ['profile_image_background_color',
                                                          'profile_image_background_color_needed'])
             status += \
-                "generate_politician_photo_backgrounds {updates_made:,} updates made. " \
+                "generate_politician_photo_backgrounds: {updates_made:,} updates made. " \
                 "Politicians without picture URL:  {politicians_not_updated:,}. " \
                 "{total_to_convert_after:,} remaining. " \
                 "".format(
@@ -365,7 +365,7 @@ def generate_politician_seo_friendly_paths(
             Politician.objects.bulk_update(update_list,
                                            ['seo_friendly_path', 'seo_friendly_path_date_last_updated'])
             status += \
-                "generate_politician_seo_friendly_paths " \
+                "generate_politician_seo_friendly_paths: " \
                 "{updates_made:,} politicians updated with new seo_friendly_path. " \
                 "{total_to_convert_after:,} remaining. " \
                 "".format(
@@ -522,7 +522,7 @@ def update_campaignx_with_linked_politician_we_vote_id(
             CampaignX.objects.bulk_update(
                 update_list, ['linked_politician_we_vote_id'])
             status += \
-                "update_campaignx_with_linked_politician_we_vote_id " \
+                "update_campaignx_with_linked_politician_we_vote_id: " \
                 "{updates_made:,} politicians updated with new linked_campaignx_we_vote_id. " \
                 "{total_to_convert_after:,} remaining. " \
                 "".format(
