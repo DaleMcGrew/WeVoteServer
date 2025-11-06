@@ -236,7 +236,8 @@ def campaignx_we_vote_id_updates(
                     " (" + one_candidate.we_vote_id + "/" + one_candidate.politician_we_vote_id + ") "
     if positive_value_exists(linked_campaignx_we_vote_id_missing):
         status += \
-            "{linked_campaignx_we_vote_id_missing:,} politicians missing linked_campaignx_we_vote_id. " \
+            "{linked_campaignx_we_vote_id_missing:,} " \
+            "politicians attached to candidates missing linked_campaignx_we_vote_id. " \
             "(Add campaigns by visiting Campaigns list.) " \
             "EXAMPLES: {candidate_without_linked_campaignx_we_vote_id_status}" \
             "".format(
@@ -514,7 +515,7 @@ def populate_contest_office_data(
                     else:
                         office_by_candidate_we_vote_id_dict[candidate.we_vote_id] = office
 
-    why_candidates_did_not_update = ""
+    why_candidates_did_not_update = "WHY_CANDIDATES_DID_NOT_UPDATE_EXAMPLES: [["
     for candidate in cleaning_candidate_list:
         if positive_value_exists(candidate.we_vote_id) and \
                 candidate.we_vote_id in office_by_candidate_we_vote_id_dict:
@@ -532,18 +533,19 @@ def populate_contest_office_data(
                     candidate.contest_office_name_calculated = True
                     candidate_bulk_update_list.append(candidate)
                     candidates_not_updated += 1
-                    if candidates_not_updated < 10:
+                    if candidates_not_updated < 5:
                         why_candidates_did_not_update += "[" + contest_office.office_name + " (" + \
                                                          contest_office.we_vote_id + ") "
-                        why_candidates_did_not_update += ":: " + candidate.candidate_name + " (" + \
+                        why_candidates_did_not_update += "/ " + candidate.candidate_name + " (" + \
                                                          candidate.we_vote_id + ")] "
         else:
             candidate.contest_office_name_calculated = True
             candidate_bulk_update_list.append(candidate)
             candidates_not_matched += 1
-            if candidates_not_matched < 10:
-                why_candidates_did_not_update += ":: " + candidate.candidate_name + " (" + \
+            if candidates_not_matched < 5:
+                why_candidates_did_not_update += "[ " + candidate.candidate_name + " (" + \
                                                  candidate.we_vote_id + ")] "
+    why_candidates_did_not_update += "]] "
     if candidate_bulk_update_list and len(candidate_bulk_update_list) > 0:
         try:
             CandidateCampaign.objects.bulk_update(
@@ -578,7 +580,7 @@ def populate_contest_office_data(
 
 
 def batch_process_maintenance_scripts_candidate():
-    status = ''
+    status = ' :||: '
     success = True
 
     # ##################
@@ -587,7 +589,7 @@ def batch_process_maintenance_scripts_candidate():
         number_to_populate=1000,
     )
     if positive_value_exists(results['status']):
-        status += results['status'] + ":: "
+        status += results['status'] + ":||: "
 
     # ##################
     # We use contest_office_name and/or district_name some places. Update candidates missing this data.
@@ -595,7 +597,7 @@ def batch_process_maintenance_scripts_candidate():
         number_to_populate=1000,
     )
     if positive_value_exists(results['status']):
-        status += results['status'] + ":: "
+        status += results['status'] + " :||: "
 
     # ##################
     # Update candidates who currently don't have seo_friendly_path, if there is seo_friendly_path
@@ -604,7 +606,7 @@ def batch_process_maintenance_scripts_candidate():
         number_to_update=1000,
     )
     if positive_value_exists(results['status']):
-        status += results['status'] + ":: "
+        status += results['status'] + " :||: "
 
     # ##################
     # Update candidates who currently don't have linked_campaignx_we_vote_id, with value from linked politician
@@ -612,7 +614,7 @@ def batch_process_maintenance_scripts_candidate():
         number_to_update=1000,
     )
     if positive_value_exists(results['status']):
-        status += results['status'] + ":: "
+        status += results['status'] + " :||: "
 
     results = {
         'status': status,
