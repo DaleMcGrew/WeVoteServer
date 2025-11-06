@@ -4,6 +4,7 @@
 
 import json
 import os
+import subprocess
 import time
 
 import psycopg2
@@ -21,11 +22,6 @@ logger = wevote_functions.admin.get_logger(__name__)
 global_stats = {}
 dummy_unique_id = 10000000
 LOCAL_TMP_PATH = '/tmp/'
-AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
-AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
-AWS_STORAGE_BUCKET_NAME = get_environment_variable("AWS_STORAGE_BUCKET_NAME")
-AWS_STORAGE_SERVICE = "s3"
 
 
 def update_fast_load_db(host, voter_api_device_id, table_name, additional_records):
@@ -62,6 +58,8 @@ def retrieve_sql_files_from_master_server(request):
     voter_api_device_id = get_voter_api_device_id(request)
 
     try:
+        if connected_to_aws():
+            raise Exception('Can connect to AWS on Local Server, not allowed to Fast Load for risk of data loss.')
         # hack, call master from local...
         # results = backup_one_table_to_s3_controller('id', 'ballot_ballotitem')
         # ballot_ballotitem has 40,999,358 records in December 2024 and takes about 69 seconds to dump and 10 more to
@@ -77,7 +75,6 @@ def retrieve_sql_files_from_master_server(request):
         global_stats['step'] = 0
         global_stats['elapsed'] = 0
         global_stats['global_t0'] = time.time()
-
 
         for table_name in allowable_tables:
             global_stats['table_name_text'] = ('<b>Saving</b>&nbsp;&nbsp;<i>' + table_name +
@@ -117,17 +114,16 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         'success': False
     }
 
+    tf = tempfile.NamedTemporaryFile(mode='r+b')
     try:
         diff_t0 = int((time.time() - global_stats['global_t0']))
         print(f"About to download {table_name} from S3 at {diff_t0} seconds")
-        tf = tempfile.NamedTemporaryFile(mode='r+b')
         with requests.get(aws_s3_file_url, stream=True) as response:
             response.raise_for_status()
             # Process in 1MB chunks
             for chunk in response.iter_content(chunk_size=(1024*1024)):
                 if chunk:
                     tf.write(chunk)
-        tf.close()
 
         print("Downloaded", tf.name)
         diff_t0 = int(time.time() - global_stats['global_t0'])
@@ -143,6 +139,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         db_user = get_environment_variable('DATABASE_USER')
         db_host = get_environment_variable('DATABASE_HOST')
         db_port = get_environment_variable('DATABASE_PORT')
+        db_pass = get_environment_variable('DATABASE_PASSWORD')
 
         diff_t0 = int(time.time() - global_stats['global_t0'])
         print(f"About to TRUNCATE {table_name} at {diff_t0} seconds")
@@ -160,16 +157,28 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         diff_t0 = int((time.time() - global_stats['global_t0']))
         print(f"About to pg_restore from tempfile at {diff_t0} seconds")
 
-        command_str = f"pg_restore -v --data-only --disable-triggers -U {db_user} "
-        if positive_value_exists(db_host):
-            command_str += f"-h {db_host} "
-        if positive_value_exists(db_port):
-            command_str += f"-p {db_port} "
-        command_str += f"-d {db_name} -t {table_name} "
-        command_str += f"\"{tf.name}\""
-        # print(command_str)
+        command_list = ['pg_restore',
+                        '-v', 
+                        '--data-only', 
+                        '--disable-triggers',
+                        '--no-password',
+                        '-U', db_user]
+        command_list.extend(['-h', db_host] if positive_value_exists(db_host) else [])
+        command_list.extend(['-p', db_port] if positive_value_exists(db_port) else [])
+        command_list.extend(['-d', db_name,
+                            '-t', table_name,
+                            tf.name])
 
-        os.system(command_str)
+        # Get password and set environment. If no password, don't set the environment variable.
+        # Pssing 'None' to the environment variable will cause the command to fail.
+        env = os.environ.copy()
+        if db_pass:
+            env['PGPASSWORD'] = db_pass
+
+        table_restore_result = subprocess.run(command_list, env=env, capture_output=True, text=True)
+        # Any return code other than 0 is an error
+        if table_restore_result.returncode != 0:
+            raise RuntimeError(f"pg_restore failed: {table_restore_result.stderr}")
 
         diff_t0 = int((time.time() - global_stats['global_t0']))
         print(f"Restore completed at {diff_t0} seconds")
@@ -179,6 +188,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         logger.error("Problem occurred in pg_restore step: ", e)
         results['success'] = False,
         results['error string'] = str(e)
+    tf.close()
 
     return results
 
@@ -266,3 +276,22 @@ def fetch_data_from_api(url, params, max_retries=1000, timeout=8):
 
     raise Exception("API request failed after maximum retries")
 
+
+def connected_to_aws():
+    import boto3
+    AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
+    AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
+
+    sts_client = boto3.client(
+        "sts",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION_NAME
+    )
+
+    try:
+        sts_client.get_caller_identity()
+        return True
+    except:
+        return False
