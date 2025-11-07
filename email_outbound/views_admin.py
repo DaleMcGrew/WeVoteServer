@@ -118,6 +118,7 @@ def email_template_edit_view(request):
     google_civic_election_id = request.GET.get('google_civic_election_id', '')
     state_code = request.GET.get('state_code', '')
     email_template_id = request.GET.get('email_template_id', 0)
+    default_folder_id = request.GET.get('default_email_template_folder_id', None)
 
     # Load existing template if editing
     email_template = None
@@ -127,11 +128,18 @@ def email_template_edit_view(request):
         except EmailTemplate.DoesNotExist:
             email_template = None
 
+    selected_folder_id = None
+    if email_template:
+        selected_folder_id = email_template.email_template_folder_id
+    elif default_folder_id:
+        selected_folder_id = int(default_folder_id)
+
     template_values = {
         # 'election':                                 election,
         # 'election_list':                            election_list,
         'email_template':                           email_template,
         'folder_list':                              EmailTemplateFolder.objects.filter(deleted=False).order_by('email_template_name'),
+        'selected_folder_id':                        selected_folder_id,
         'google_civic_election_id':                 google_civic_election_id,
         'state_code':                               state_code,
         # 'state_list':                               sorted_state_list,
@@ -168,30 +176,42 @@ def email_template_edit_process_view(request):
     subject = request.POST.get('subject', '').strip()
     message = request.POST.get('message', '').strip()
     folder_id = request.POST.get('folder', 0)
+    email_template_id = request.POST.get('email_template_id', None)
 
     # if positive_value_exists(email_template_name):
     #     email_template_name = email_template_name.strip()
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
     state_code = request.POST.get('state_code', '')
 
+    if folder_id == "null":
+        folder_id = None
+
     try:
-        email_template, created = EmailTemplate.objects.get_or_create(
-            email_template_name=email_template_name,
-            defaults={
-                'subject': subject,
-                'message': message,
-                'email_template_folder_id': folder_id or 0,
-            }
-        )
-        if not created:
-            # Update existing one
+        if email_template_id and EmailTemplate.objects.filter(
+            id=email_template_id,
+            deleted=False,
+        ).exists():
+            email_template = EmailTemplate.objects.filter(
+                id=email_template_id,
+                deleted=False,
+            ).first()
+            email_template.email_template_name = email_template_name
             email_template.subject = subject
             email_template.message = message
-            email_template.email_template_folder_id = folder_id or 0
+            email_template.email_template_folder_id = folder_id
             email_template.save()
             status += "Existing template updated. "
         else:
-            status += "New template created. "
+            email_template = EmailTemplate.objects.create(
+                email_template_name=email_template_name,
+                subject=subject,
+                message=message,
+                email_template_folder_id=folder_id,
+                deleted=False,
+                archived=False,
+            )
+            if email_template is not None:
+                status += "New template created. "
     except Exception as e:
         status += f"Error saving template: {e}"
 
@@ -210,141 +230,6 @@ def email_template_edit_process_view(request):
         "&state_code=" + str(state_code) + "&" + performance_process_dict_encoded
     return HttpResponseRedirect(redirect_url)
 
-
-@login_required
-def email_template_folder_edit_process_view(request):
-    """
-    Process the new or edit template folder form
-    :param request:
-    :return:
-    """
-    # The performance_dict variable contains list(s) of performance_snapshots.
-    performance_dict = {}
-    # Set up performance_list for this view. A pointer to the performance_list variable is established here.
-    #  Throughout the rest of this view, we add snapshots to the performance_list. Since the performance_list
-    #  is "attached" to the performance_dict with a pointer, when we pass performance_dict to the template,
-    #  the performance_list data is included.
-    performance_list = []
-    performance_dict.update({
-        'email_campaign_edit_process_view': performance_list,
-    })
-
-    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
-    authority_required = {'verified_volunteer'}
-    if not voter_has_authority(request, authority_required):
-        return redirect_to_sign_in_page(request, authority_required)
-
-    status = ""
-
-    email_template_name = request.POST.get('email_template_name', '')
-    if positive_value_exists(email_template_name):
-        email_template_name = email_template_name.strip()
-    google_civic_election_id = request.POST.get('google_civic_election_id', 0)
-    state_code = request.POST.get('state_code', False)
-
-    # # Basic validations
-    # if not email_template_name:
-    #     err = 'Folder name is required.'
-    #     messages.add_message(request, messages.ERROR, err)
-
-    # Duplicate check, ignoring deleted folders
-    exists = EmailTemplateFolder.objects.filter(
-        deleted=False,
-        email_template_name__iexact=email_template_name
-    ).exists()
-    if exists:
-        err = f'A folder named "{email_template_name}" already exists.'
-        messages.add_message(request, messages.ERROR, err)
-
-    # Create
-    folder = None
-    if email_template_name and not exists:
-        folder = EmailTemplateFolder.objects.create(
-            email_template_name=email_template_name,
-            archived=False,
-            deleted=False,
-        )
-
-    # Since a pointer to performance_list was attached to performance_dict above, the performance_list
-    # data gets passed along within performance_dict. We pass this performance_dict
-    # with the name 'performance_process_dict' so it is clear this is from a "process" view.
-    performance_process_dict_encoded = urlencode({
-        'performance_process_dict': json.dumps(performance_dict)
-    })
-    if folder is not None:
-        messages.add_message(request, messages.INFO, 'EmailTemplateFolder created.')
-
-    # update folders:
-    folder_list = EmailTemplateFolder.objects.filter(deleted=False)
-    for folder in folder_list:
-        # flag to check for changes
-        folder_changed = False
-
-        # check if row exists
-        folder_archived_variable_exists_name = \
-        "email_template_folder_archived_" + str(folder.id) + "_exists"
-        folder_archived_variable_exists = \
-            request.POST.get(folder_archived_variable_exists_name, None)
-
-        # get variables
-        folder_archived_variable_name = \
-            "email_template_folder_archived_" + str(folder.id)
-        folder_archived = \
-            positive_value_exists(request.POST.get(folder_archived_variable_name, False))
-        folder_deleted_variable_name = \
-            "email_template_folder_deleted_" + str(folder.id)
-        folder_deleted = \
-            positive_value_exists(request.POST.get(folder_deleted_variable_name, False))
-
-        # get edit folder name
-        edit_email_template_folder_variable_name = 'edit_email_template_name_' + str(folder.id)
-        edit_email_template_folder_name = request.POST.get(edit_email_template_folder_variable_name, '')
-        if positive_value_exists(edit_email_template_folder_name):
-            edit_email_template_folder_name = edit_email_template_folder_name.strip()
-
-        # set variables only if row exists
-        if folder_archived_variable_exists is not None:
-            folder.archived = folder_archived
-            folder.deleted = folder_deleted
-            folder_changed = True
-
-        # edit folder name is edit was called
-        if edit_email_template_folder_name:
-            folder.email_template_name = edit_email_template_folder_name
-            folder_changed = True
-
-        # save folder if changed
-        if folder_changed:
-            folder.save()
-
-
-    redirect_url = reverse(
-        'email_outbound:email_template_list',
-        args=()) + "?google_civic_election_id=" + str(google_civic_election_id) + \
-        "&state_code=" + str(state_code) + "&" + performance_process_dict_encoded
-    return HttpResponseRedirect(redirect_url)
-
-
-@login_required
-def email_template_folder_edit_view(request):
-    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
-    authority_required = {'political_data_manager', 'verified_volunteer'}
-    if not voter_has_authority(request, authority_required):
-        return redirect_to_sign_in_page(request, authority_required)
-
-    google_civic_election_id = request.GET.get('google_civic_election_id', '')
-    state_code = request.GET.get('state_code', '')
-
-    template_values = {
-        # 'election':                                 election,
-        # 'election_list':                            election_list,
-        'google_civic_election_id':                 google_civic_election_id,
-        'state_code':                               state_code,
-        # 'state_list':                               sorted_state_list,
-    }
-    return render(request, 'email_outbound/email_template_folder_edit.html', template_values)
-
-
 @login_required
 def email_template_list_process_view(request):
     """
@@ -352,64 +237,134 @@ def email_template_list_process_view(request):
     :param request:
     :return:
     """
-    # The performance_dict variable contains list(s) of performance_snapshots.
-    performance_dict = {}
-    performance_list = []
-    performance_dict.update({
-        'email_template_list_process_view': performance_list,
-    })
 
-    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
-    authority_required = {'verified_volunteer'}
-    if not voter_has_authority(request, authority_required):
-        return redirect_to_sign_in_page(request, authority_required)
+    if request.method != "POST":
+        return HttpResponseRedirect(reverse('email_outbound:email_template_list'))
 
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
-    state_code = request.POST.get('state_code', False)
+    state_code = request.POST.get('state_code', '')
 
-    # Update templates:
-    template_list = EmailTemplate.objects.filter(deleted=False)
-    for template in template_list:
-        # flag to check for changes
-        template_changed = False
+    def back():
+        return HttpResponseRedirect(
+            f"{reverse('email_outbound:email_template_list')}?google_civic_election_id={google_civic_election_id}&state_code={state_code}")
 
-        # check if row exists
-        template_archived_variable_exists_name = \
-            "email_template_archived_" + str(template.id) + "_exists"
-        template_archived_variable_exists = \
-            request.POST.get(template_archived_variable_exists_name, None)
+    action = request.POST.get("action", "").strip()
 
-        # get variables
-        template_archived_variable_name = \
-            "email_template_archived_" + str(template.id)
-        template_archived = \
-            positive_value_exists(request.POST.get(template_archived_variable_name, False))
-        template_deleted_variable_name = \
-            "email_template_deleted_" + str(template.id)
-        template_deleted = \
-            positive_value_exists(request.POST.get(template_deleted_variable_name, False))
+    try:
+        if action == "create_folder":
+            name = (request.POST.get("email_template_name") or "").strip()
+            if not name:
+                messages.error(request, "Folder name is required.")
+                return back()
+            exists = EmailTemplateFolder.objects.filter(
+                deleted=False,
+                email_template_name__iexact=name
+            ).exists()
+            if exists:
+                err = f'A folder named "{name}" already exists.'
+                messages.error(request, err)
+                return back()
+            EmailTemplateFolder.objects.create(email_template_name=name)
+            messages.success(request, f"Folder “{name}” created.")
+            return back()
 
-        # set variables only if row exists
-        if template_archived_variable_exists is not None:
-            template.archived = template_archived
-            template.deleted = template_deleted
-            template_changed = True
+        if action == "rename_folder":
+            folder_id = request.POST.get("folder_id")
+            new_name = (request.POST.get("edit_email_template_name") or "").strip()
+            folder = EmailTemplateFolder.objects.get(id=folder_id, deleted=False)
+            old = folder.email_template_name
+            folder.email_template_name = new_name
+            folder.save(update_fields=["email_template_name"])
+            messages.success(request, f"Folder renamed from “{old}” to “{new_name}”.")
+            return back()
 
-        # save template if changed
-        if template_changed:
-            template.save()
+        if action == "delete_folder":
+            folder_id = request.POST.get("folder_id")
+            folder = EmailTemplateFolder.objects.get(id=folder_id, deleted=False)
+            # Move templates to Unfiled (NULL)
+            EmailTemplate.objects.filter(email_template_folder_id=folder.id).update(email_template_folder_id=None)
+            folder.deleted = True
+            folder.archived = False
+            folder.save(update_fields=["deleted", "archived"])
+            messages.success(request, "Folder deleted. Templates moved to Unfiled.")
+            return back()
 
-    messages.add_message(request, messages.INFO, 'Email templates updated.')
+        if action == "archive_folder":
+            folder_id = request.POST.get("folder_id")
+            folder = EmailTemplateFolder.objects.get(id=folder_id, deleted=False)
+            folder.archived = True
+            folder.save(update_fields=["archived"])
+            messages.success(request, f"Folder “{folder.email_template_name}” archived.")
+            return back()
 
-    performance_process_dict_encoded = urlencode({
-        'performance_process_dict': json.dumps(performance_dict)
-    })
+        if action == "unarchive_folder":
+            folder_id = request.POST.get("folder_id")
+            folder = EmailTemplateFolder.objects.get(id=folder_id, deleted=False)
+            folder.archived = False
+            folder.save(update_fields=["archived"])
+            messages.success(request, f"Folder “{folder.email_template_name}” unarchived.")
+            return back()
 
-    redirect_url = reverse(
-        'email_outbound:email_template_list',
-        args=()) + "?google_civic_election_id=" + str(google_civic_election_id) + \
-        "&state_code=" + str(state_code) + "&" + performance_process_dict_encoded
-    return HttpResponseRedirect(redirect_url)
+        if action == "create_template":
+            # Optionally pick a default folder for the new template (can be blank/unfiled)
+            folder_id = request.POST.get("folder_id")
+            # Redirect to template edit page (creation flow)
+            edit_url = reverse("email_outbound:email_template_edit")
+            qs = f"?google_civic_election_id={google_civic_election_id}&state_code={state_code}"
+            if folder_id and folder_id != "null":
+                qs += f"&default_email_template_folder_id={folder_id}"
+            return HttpResponseRedirect(edit_url + qs)
+
+        if action == "change_template_folder":
+            template_id = request.POST.get("template_id")
+            new_folder_id = request.POST.get("new_folder_id")  # can be "null"
+            tmpl = EmailTemplate.objects.get(id=template_id, deleted=False)
+            if new_folder_id == "null" or new_folder_id == "":
+                tmpl.email_template_folder_id = None
+            else:
+                folder = EmailTemplateFolder.objects.get(id=new_folder_id, deleted=False)
+                tmpl.email_template_folder_id = folder.id
+            tmpl.save(update_fields=["email_template_folder_id"])
+            messages.success(request, "Template moved.")
+            return back()
+
+        if action == "archive_template":
+            template_id = request.POST.get("template_id")
+            tmpl = EmailTemplate.objects.get(id=template_id, deleted=False)
+            tmpl.archived = True
+            tmpl.save(update_fields=["archived"])
+            messages.success(request, f"Template “{tmpl.email_template_name}” archived.")
+            return back()
+
+        if action == "unarchive_template":
+            template_id = request.POST.get("template_id")
+            tmpl = EmailTemplate.objects.get(id=template_id, deleted=False)
+            tmpl.archived = False
+            tmpl.save(update_fields=["archived"])
+            messages.success(request, f"Template “{tmpl.email_template_name}” unarchived.")
+            return back()
+
+        if action == "delete_template":
+            template_id = request.POST.get("template_id")
+            tmpl = EmailTemplate.objects.get(id=template_id, deleted=False)
+            tmpl.deleted = True
+            tmpl.email_template_folder_id = None
+            tmpl.save(update_fields=["deleted", "email_template_folder_id"])
+            messages.success(request, "Template deleted.")
+            return back()
+
+        messages.error(request, "Unknown action.")
+        return back()
+
+    except EmailTemplateFolder.DoesNotExist:
+        messages.error(request, "Folder not found.")
+        return back()
+    except EmailTemplate.DoesNotExist:
+        messages.error(request, "Template not found.")
+        return back()
+    except Exception as e:
+        messages.error(request, f"Error: {e}")
+        return back()
 
 
 @login_required
@@ -419,21 +374,48 @@ def email_template_list_view(request):
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
 
-    google_civic_election_id = request.GET.get('google_civic_election_id', '')
-    state_code = request.GET.get('state_code', '')
+    google_civic_election_id = request.GET.get('google_civic_election_id',
+                                               request.POST.get('google_civic_election_id', 0))
+    state_code = request.GET.get('state_code', request.POST.get('state_code', ''))
 
-    template_values = {
-        # 'election':                                 election,
-        # 'election_list':                            election_list,
-        'google_civic_election_id':                 google_civic_election_id,
-        'state_code':                               state_code,
-        # 'state_list':                               sorted_state_list,
-        # Any data you want to show in the list, e.g. folders:
-        'folders': EmailTemplateFolder.objects.filter(deleted=False).order_by('email_template_name'),
-        'templates': EmailTemplate.objects.filter(deleted=False).order_by('email_template_name'),
-        # The process URL (used by the modal form)
-        'process_url': reverse('email_outbound:email_template_folder_edit_process'),
-        'template_process_url': reverse('email_outbound:email_template_list_process'),
+    # Folders
+    folder_qs = EmailTemplateFolder.objects.filter(deleted=False)
+    folders_active = folder_qs.filter(archived=False).order_by('email_template_name')
+    folders_archived = folder_qs.filter(archived=True).order_by('email_template_name')
 
+    # Templates
+    template_qs = EmailTemplate.objects.filter(deleted=False)
+    templates_active = template_qs.filter(archived=False).order_by('email_template_name')
+    templates_archived = template_qs.filter(archived=True).order_by('email_template_name')
+
+    # Map active templates by folder id
+    templates_by_folder = {}
+    for t in templates_active:
+        fid = t.email_template_folder_id  # None means "Unfiled"
+        templates_by_folder.setdefault(fid, []).append(t)
+
+    unfiled_templates = templates_by_folder.get(None, [])
+
+    # Map folder id to folder name
+    all_folders_by_id = {}
+    for folder in folder_qs:
+        all_folders_by_id[folder.id] = folder.email_template_name
+
+    context = {
+        "google_civic_election_id": google_civic_election_id,
+        "state_code": state_code,
+
+        # Groupings for UI
+        "all_folders_by_id": all_folders_by_id,
+        "folders_active": folders_active,
+        "folders_archived": folders_archived,
+        "templates_by_folder": templates_by_folder,  # keyed by folder id (None for Unfiled)
+        "unfiled_templates": unfiled_templates,
+        "archived_templates": templates_archived,
+
+        # URLs
+        "process_url": reverse('email_outbound:email_template_list_process'),
+        "template_edit_url": reverse('email_outbound:email_template_edit'),
     }
-    return render(request, 'email_outbound/email_template_list.html', template_values)
+    # messages.add_message(request, messages.INFO, '')
+    return render(request, "email_outbound/email_template_list.html", context)

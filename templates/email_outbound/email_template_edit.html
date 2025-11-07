@@ -35,13 +35,26 @@
         <input type="text" id="subject" name="subject" class="form-control" value="{% if email_template %}{{ email_template.subject }}{% endif %}" required>
     </div>
 
+
+
     <div class="mb-3">
         <label for="folder" class="form-label">Folder</label>
         <select id="folder" name="folder" class="form-select">
             <option value="">-- Choose folder --</option>
             {% for folder in folder_list %}
-            <option value="{{ folder.id }}" {% if email_template and email_template.email_template_folder_id == folder.id %}selected{% endif %}>{{ folder.email_template_name }}</option>
+            <option value="{{ folder.id }}"
+                    {% if selected_folder_id and selected_folder_id == folder.id %}
+                        selected
+                    {% endif %}>
+                {{ folder.email_template_name }}
+            </option>
             {% endfor %}
+            <option value="null"
+                    {% if not selected_folder_id %}
+                        selected
+                    {% endif %}>
+                Unfiled
+            </option>
         </select>
     </div>
 
@@ -52,16 +65,29 @@
 
     <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
     <input type="hidden" name="state_code" value="{{ state_code }}">
+    <input type="hidden" name="email_template_id" value="{% if email_template %}{{ email_template.id }}{% endif %}">
+    <input type="hidden" name="selected_folder_id" value="{{ selected_folder_id }}">
   </form>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <!-- Use TinyMCE via CDN -->
+<script>
+    console.log("check if it works!")
+</script>
 <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 <script>
+    console.log("here!!!!")
   // Wait for DOM to be ready
   document.addEventListener('DOMContentLoaded', function() {
+
+    if (!window.tinymce) {
+        console.log('TinyMCE did not load (CSP/adblock/network?).');
+        {#return;#}
+    } else {
+        console.log("tinymce loaded")
+    }
     // Remove TinyMCE instance if it exists
     if (tinymce.get('message')) {
       tinymce.get('message').remove();
