@@ -297,6 +297,26 @@ def fetch_batch_process_system_ballot_items_on():
     return fetch_batch_process_system_on_by_process_name('batch_process_system_ballot_items_on')
 
 
+def fetch_batch_process_system_by_maintenance_scripts_type_on(script_type=''):
+    if script_type == 'campaignx':
+        return fetch_batch_process_system_on_by_process_name('batch_process_maintenance_scripts_campaignx_on')
+    elif script_type == 'candidate':
+        return fetch_batch_process_system_on_by_process_name('batch_process_maintenance_scripts_candidate_on')
+    elif script_type == 'challenge':
+        return fetch_batch_process_system_on_by_process_name('batch_process_maintenance_scripts_challenge_on')
+    elif script_type == 'office':
+        return fetch_batch_process_system_on_by_process_name('batch_process_maintenance_scripts_office_on')
+    elif script_type == 'office_held':
+        return fetch_batch_process_system_on_by_process_name('batch_process_maintenance_scripts_office_held_on')
+    elif script_type == 'politician':
+        return fetch_batch_process_system_on_by_process_name('batch_process_maintenance_scripts_politician_on')
+    elif script_type == 'position':
+        return fetch_batch_process_system_on_by_process_name('batch_process_maintenance_scripts_position_on')
+    elif script_type == 'representative':
+        return fetch_batch_process_system_on_by_process_name('batch_process_maintenance_scripts_representative_on')
+    return False
+
+
 def fetch_batch_process_system_match_politicians_to_organizations_on():
     return fetch_batch_process_system_on_by_process_name('batch_process_system_match_politicians_to_organizations_on')
 

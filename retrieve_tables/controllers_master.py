@@ -395,6 +395,7 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name):
             head, tail = os.path.split(results['temp_file_name'])
 
             date_tomorrow = datetime.now() + timedelta(days=2)
+            date_tomorrow_seconds = timedelta(days=2).total_seconds()
 
             ts = '{:.2f} seconds'.format(time.time() - t0)
             print(f"About to upload to S3 at {ts} seconds")
@@ -405,7 +406,7 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name):
             aws_s3_file_url = s3.meta.client.generate_presigned_url(
                                 ClientMethod='get_object',
                                 Params={'Bucket': AWS_STORAGE_BUCKET_NAME, 'Key': tail},
-                                ExpiresIn=date_tomorrow,
+                                ExpiresIn=date_tomorrow_seconds,
                             )
 
             ts = '{:.2f} seconds'.format(time.time() - t0)

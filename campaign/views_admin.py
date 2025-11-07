@@ -18,7 +18,7 @@ from admin_tools.views import redirect_to_sign_in_page
 from config.base import get_environment_variable
 from datetime import datetime, timedelta
 from election.models import ElectionManager
-from follow.models import FOLLOW_DISLIKE, FOLLOWING, FollowOrganization, FollowOrganizationManager
+from follow.models import FOLLOW_DISLIKE, FOLLOWING, FollowOrganizationManager
 from follow.controllers import create_followers_from_positions
 from organization.models import Organization, OrganizationManager
 from politician.models import Politician, PoliticianManager
@@ -60,7 +60,6 @@ def campaign_delete_process_view(request):
     campaignx_owner_organization_we_vote_id = request.POST.get('campaignx_owner_organization_we_vote_id', '')
     campaignx_search = request.POST.get('campaignx_search', '')
 
-
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'political_data_manager', 'admin'}
     if not voter_has_authority(request, authority_required):
@@ -90,6 +89,7 @@ def campaign_delete_process_view(request):
                                 "?campaignx_owner_organization_we_vote_id=" +
                                 str(campaignx_owner_organization_we_vote_id) +
                                 "&campaignx_search=" + str(campaignx_search))
+
 
 @login_required
 def campaignx_duplicates_list_view(request):
@@ -346,7 +346,7 @@ def campaign_edit_owners_process_view(request):
                         temp_voter_we_vote_id = voter_object_from_email.we_vote_id
                         fetch_voter = True
                     else:
-                        messages.add_message(request, messages.ERROR,voter_create_results['status'])
+                        messages.add_message(request, messages.ERROR, voter_create_results['status'])
 
                         # if voter object is still not found/created correctly, error with creation
                 if voter_object_from_email is None or not temp_voter_we_vote_id:
@@ -393,8 +393,9 @@ def campaign_edit_owners_process_view(request):
                                     voter_object_from_email = voter_first_name_update_results['voter']
 
                             # update voter with organization we vote id (needs voter to have name)
-                            voter_manager.alter_linked_organization_we_vote_id(voter=voter_object_from_email,
-                                                                               linked_organization_we_vote_id=organization_object_from_email.we_vote_id)
+                            voter_manager.alter_linked_organization_we_vote_id(
+                                voter=voter_object_from_email,
+                                linked_organization_we_vote_id=organization_object_from_email.we_vote_id)
                 # update all related object fields
                 if email_address_object and voter_object_from_email and organization_object_from_email:
                     # set we vote ids
@@ -406,12 +407,12 @@ def campaign_edit_owners_process_view(request):
                     email_address_object.save()
 
                     # set email address we vote id and verified status in found voter
-                    update_email_to_voter_results = voter_manager.update_voter_email_ownership_verified(voter=voter_object_from_email,
-                                                                        email_address_object=email_address_object)
+                    update_email_to_voter_results = voter_manager.update_voter_email_ownership_verified(
+                        voter=voter_object_from_email,
+                        email_address_object=email_address_object)
                     if not update_email_to_voter_results['success']:
                         messages.add_message(request, messages.ERROR, 'Issue with updating voter with email info: '
                                              + update_email_to_voter_results['status'])
-
 
         elif 'org' in incoming_campaignx_owner_we_vote_id:
             campaignx_owner_organization_we_vote_id = incoming_campaignx_owner_we_vote_id
@@ -1007,160 +1008,39 @@ def campaign_list_view(request):
     success = True
     update_campaigns_from_politicians = \
         positive_value_exists(request.GET.get('update_campaigns_from_politicians', False))
-    update_campaigns_that_need_organization = \
+    add_organization_we_vote_id_from_politician_to_campaignx_on = \
         positive_value_exists(request.GET.get('update_campaigns_that_need_organization', False))
 
     messages_on_stage = get_messages(request)
     campaignx_manager = CampaignXManager()
-    campaignx_list_to_update = []
 
     # ################################################
     # Maintenance script section START
     # ################################################
 
-    clean_campaigns_with_dead_politician_we_vote_id = True
-    # If a CampaignX entry has a linked_politician_we_vote_id which no longer exists, remove the seo_friendly_path
-    #  so that entry doesn't block the use of that seo_friendly_path
-    if clean_campaigns_with_dead_politician_we_vote_id:
-        number_to_update = 5000  # Set to 5,000 at a time
-        politician_we_vote_id_list = []
-        total_to_update_after = 0
-        try:
-            queryset = CampaignX.objects.using('readonly').all()
-            queryset = queryset.exclude(
-                Q(linked_politician_we_vote_id__isnull=True) | Q(linked_politician_we_vote_id=''))
-            queryset = queryset.exclude(linked_politician_we_vote_id_verified=True)
-            total_to_update = queryset.count()
-            total_to_update_after = total_to_update - number_to_update if total_to_update > number_to_update else 0
-            campaignx_list_to_update = list(queryset[:number_to_update])
-            for one_campaignx in campaignx_list_to_update:
-                if positive_value_exists(one_campaignx.linked_politician_we_vote_id):
-                    if one_campaignx.linked_politician_we_vote_id not in politician_we_vote_id_list:
-                        politician_we_vote_id_list.append(one_campaignx.linked_politician_we_vote_id)
-        except Exception as e:
-            status += "CAMPAIGNX_CLEAN_QUERY_FAILED: " + str(e) + " "
-
-        politician_we_vote_ids_not_found_list = []
-        if len(politician_we_vote_id_list) > 0:
-            queryset = Politician.objects.using('readonly').all()
-            queryset = queryset.filter(we_vote_id__in=politician_we_vote_id_list)
-            queryset = queryset.values_list('we_vote_id', flat=True).distinct()
-            politician_we_vote_ids_found_list = list(queryset)
-            politician_we_vote_ids_not_found_list = politician_we_vote_id_list.copy()
-            for one_politician_we_vote_id in politician_we_vote_ids_found_list:
-                politician_we_vote_ids_not_found_list.remove(one_politician_we_vote_id)
-        update_list = []
-        for one_campaignx in campaignx_list_to_update:
-            one_campaignx.linked_politician_we_vote_id_verified = True
-            if one_campaignx.linked_politician_we_vote_id in politician_we_vote_ids_not_found_list:
-                one_campaignx.date_last_updated_from_politician = localtime(now()).date()
-                one_campaignx.linked_politician_we_vote_id = None
-                one_campaignx.seo_friendly_path = None
-            update_list.append(one_campaignx)
-
-        if len(update_list) > 0:
-            try:
-                CampaignX.objects.bulk_update(
-                    update_list,
-                    ['date_last_updated_from_politician',
-                     'linked_politician_we_vote_id',
-                     'linked_politician_we_vote_id_verified',
-                     'seo_friendly_path'])
-                messages.add_message(request, messages.INFO,
-                                     "{updates_made:,} campaignx entries cleaned from missing politicians. "
-                                     "{total_to_update_after:,} remaining."
-                                     "".format(total_to_update_after=total_to_update_after,
-                                               updates_made=len(campaignx_list_to_update)))
-            except Exception as e:
-                messages.add_message(
-                    request, messages.ERROR,
-                    "ERROR with clean_campaigns_with_dead_politician_we_vote_id: {e} "
-                    "politician_we_vote_ids_not_found_list: {politician_we_vote_ids_not_found_list}"
-                    "".format(e=e,
-                              politician_we_vote_ids_not_found_list=politician_we_vote_ids_not_found_list))
+    clean_campaigns_with_dead_politician_we_vote_id_on = True
+    number_to_update = 1000  # Set to 1,000 at a time
+    # Check all entries that have Politician.linked_campaignx_we_vote_id and
+    # make sure we have that corresponding CampaignX entry. If not, delete the Politician.linked_campaignx_we_vote_id
+    # value.
+    if clean_campaigns_with_dead_politician_we_vote_id_on:
+        from campaign.controllers_data_cleaning import clean_campaigns_with_dead_politician_we_vote_id
+        results = clean_campaigns_with_dead_politician_we_vote_id(
+            number_to_update=number_to_update,
+            state_code=state_code)
+        if positive_value_exists(results['status']):
+            messages.add_message(request, messages.INFO, results['status'])
 
     # If a CampaignX entry has a linked_politician_we_vote_id, but no organization_we_vote_id,
     #  then add organization_we_vote_id to the entry
-    if update_campaigns_that_need_organization:
-        number_to_update = 5000
-        politician_we_vote_id_list = []
-        total_to_update_after = 0
-        update_count = 0
-        try:
-            queryset = CampaignX.objects.all()  # Cannot be 'readonly' because we need to update below.
-            if positive_value_exists(state_code):
-                queryset = queryset.filter(state_code__iexact=state_code)
-            queryset = queryset.exclude(
-                Q(linked_politician_we_vote_id__isnull=True) | Q(linked_politician_we_vote_id=''))
-            # NOTE: IF instead of checking for existing organization_we_vote_id, we use an analysis boolean,
-            #  we could use this script to verify we have stored the correct organization_we_vote_id
-            queryset = queryset.filter(
-                Q(organization_we_vote_id__isnull=True) | Q(organization_we_vote_id=''))
-            total_to_update = queryset.count()
-            total_to_update_after = total_to_update - number_to_update if total_to_update > number_to_update else 0
-            campaignx_list_to_update = list(queryset[:number_to_update])
-            for one_campaignx in campaignx_list_to_update:
-                if positive_value_exists(one_campaignx.linked_politician_we_vote_id):
-                    if one_campaignx.linked_politician_we_vote_id not in politician_we_vote_id_list:
-                        politician_we_vote_id_list.append(one_campaignx.linked_politician_we_vote_id)
-        except Exception as e:
-            status += "CAMPAIGNX_ORG_LINKS_QUERY_FAILED: " + str(e) + " "
-
-        # Organization table has the master link to politician_we_vote_id, which is why we use that table
-        organization_dict_by_politician_we_vote_id = {}
-        organization_list = []
-        politician_we_vote_ids_not_found_list = []
-        if len(politician_we_vote_id_list) > 0:
-            queryset = Organization.objects.using('readonly').all()
-            queryset = queryset.filter(politician_we_vote_id__in=politician_we_vote_id_list)
-            organization_list = list(queryset)
-        for one_organization in organization_list:
-            organization_dict_by_politician_we_vote_id[one_organization.politician_we_vote_id] = one_organization
-
-        if len(organization_list) == 0:
-            messages.add_message(
-                request, messages.ERROR,
-                "No organizations found by politician_we_vote_id from the Campaigns reviewed. "
-                "politician_we_vote_id_list: {politician_we_vote_id_list}"
-                "".format(politician_we_vote_id_list=politician_we_vote_id_list))
-
-        update_list = []
-        for one_campaignx in campaignx_list_to_update:
-            if one_campaignx.linked_politician_we_vote_id in organization_dict_by_politician_we_vote_id:
-                organization = organization_dict_by_politician_we_vote_id[one_campaignx.linked_politician_we_vote_id]
-                one_campaignx.organization_we_vote_id = organization.we_vote_id
-                update_list.append(one_campaignx)
-                update_count += 1
-            else:
-                politician_we_vote_ids_not_found_list.append(one_campaignx.linked_politician_we_vote_id)
-
-        if len(update_list) > 0:
-            try:
-                CampaignX.objects.bulk_update(update_list, ['organization_we_vote_id'])
-                messages.add_message(
-                    request, messages.INFO,
-                    "{updates_made:,} campaignx entries updated with organization_we_vote_id "
-                    "out of {updates_planned}. "
-                    "{total_to_update_after:,} remaining. "
-                    "politician_we_vote_ids_not_found_list: {politician_we_vote_ids_not_found_list}"
-                    "".format(
-                        politician_we_vote_ids_not_found_list=politician_we_vote_ids_not_found_list,
-                        total_to_update_after=total_to_update_after,
-                        updates_planned=len(campaignx_list_to_update),
-                        updates_made=update_count))
-            except Exception as e:
-                messages.add_message(
-                    request, messages.ERROR,
-                    "ERROR with update_campaigns_that_need_organization: {e} "
-                    "politician_we_vote_ids_not_found_list: {politician_we_vote_ids_not_found_list}"
-                    "".format(e=e,
-                              politician_we_vote_ids_not_found_list=politician_we_vote_ids_not_found_list))
-        # else:
-        #     messages.add_message(
-        #         request, messages.ERROR,
-        #         "No updates to be made. "
-        #         "politician_we_vote_id_list: {politician_we_vote_id_list}"
-        #         "".format(politician_we_vote_id_list=politician_we_vote_id_list))
+    number_to_update = 1000  # Set to 1,000 at a time
+    if add_organization_we_vote_id_from_politician_to_campaignx_on:
+        from campaign.controllers_data_cleaning import add_organization_we_vote_id_from_politician_to_campaignx
+        results = add_organization_we_vote_id_from_politician_to_campaignx(
+            number_to_update=number_to_update,
+            state_code=state_code)
+        if positive_value_exists(results['status']):
+            messages.add_message(request, messages.INFO, results['status'])
 
     # Bring over updated politician profile photos to the campaignx entries with linked_politician_we_vote_id
     if update_campaigns_from_politicians:
@@ -1623,7 +1503,8 @@ def campaign_summary_view(request, campaignx_we_vote_id=""):
     campaignx_supporters_count = 0
     if positive_value_exists(campaignx.linked_politician_we_vote_id):
         organization_manager = OrganizationManager()
-        results = organization_manager.retrieve_organization(politician_we_vote_id=campaignx.linked_politician_we_vote_id)
+        results = organization_manager.retrieve_organization(
+            politician_we_vote_id=campaignx.linked_politician_we_vote_id)
         if results['organization_found']:
             organization = results['organization']
             organization_we_vote_id = organization.we_vote_id
@@ -1761,7 +1642,6 @@ def campaign_supporters_list_view(request, campaignx_we_vote_id=""):
         supporter.chip_in_total = StripeManager.retrieve_chip_in_total(supporter.voter_we_vote_id,
                                                                        supporter.campaignx_we_vote_id)
 
-
     state_list = STATE_CODE_MAP
     sorted_state_list = sorted(state_list.items())
 
@@ -1802,7 +1682,8 @@ def campaign_supporters_list_process_view(request):
     google_civic_election_id = request.POST.get('google_civic_election_id', '')
     incoming_campaignx_supporter_we_vote_id = request.POST.get('incoming_campaignx_supporter_we_vote_id', '')
     incoming_campaignx_supporter_endorsement = request.POST.get('incoming_campaignx_supporter_endorsement', '')
-    incoming_campaignx_supporter_wants_visibility = request.POST.get('incoming_campaignx_supporter_wants_visibility', '')
+    incoming_campaignx_supporter_wants_visibility = \
+        request.POST.get('incoming_campaignx_supporter_wants_visibility', '')
     incoming_visibility_blocked_by_we_vote = request.POST.get('incoming_visibility_blocked_by_we_vote', '')
     state_code = request.POST.get('state_code', '')
     show_all = request.POST.get('show_all', False)
@@ -2413,7 +2294,9 @@ def campaignx_merge_process_view(request):
                                     '&show_this_year_of_campaignx_entries=' + str(campaignx_year) +
                                     '&state_code=' + str(state_code))
 
-    campaignx2_results = campaignx_manager.retrieve_campaignx(campaignx_we_vote_id=campaignx2_we_vote_id, read_only=True)
+    campaignx2_results = campaignx_manager.retrieve_campaignx(
+        campaignx_we_vote_id=campaignx2_we_vote_id,
+        read_only=True)
     if campaignx2_results['campaignx_found']:
         campaignx2_on_stage = campaignx2_results['campaignx']
     else:

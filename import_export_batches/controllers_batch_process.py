@@ -12,7 +12,10 @@ from .models import ACTIVITY_NOTICE_PROCESS, API_REFRESH_REQUEST, \
     CALCULATE_SITEWIDE_DAILY_METRICS, \
     CALCULATE_SITEWIDE_ELECTION_METRICS, \
     CALCULATE_SITEWIDE_VOTER_METRICS, \
-    GENERATE_VOTER_GUIDES, IMPORT_CREATE, IMPORT_DELETE, MATCH_POLITICIANS_TO_ORGANIZATIONS, \
+    GENERATE_VOTER_GUIDES, IMPORT_CREATE, IMPORT_DELETE, \
+    MAINTENANCE_SCRIPTS_CAMPAIGNX, MAINTENANCE_SCRIPTS_CANDIDATE, MAINTENANCE_SCRIPTS_CHALLENGE, \
+    MAINTENANCE_SCRIPTS_OFFICE, MAINTENANCE_SCRIPTS_OFFICE_HELD, MAINTENANCE_SCRIPTS_POLITICIAN, \
+    MAINTENANCE_SCRIPTS_POSITION, MAINTENANCE_SCRIPTS_REPRESENTATIVE, MATCH_POLITICIANS_TO_ORGANIZATIONS, \
     REFRESH_BALLOT_ITEMS_FROM_POLLING_LOCATIONS, REFRESH_BALLOT_ITEMS_FROM_VOTERS, \
     RETRIEVE_BALLOT_ITEMS_FROM_POLLING_LOCATIONS, RETRIEVE_FROM_BALLOTPEDIA, \
     RETRIEVE_REPRESENTATIVES_FROM_POLLING_LOCATIONS, \
@@ -49,7 +52,7 @@ import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists
 from wevote_settings.models import fetch_batch_process_system_on, fetch_batch_process_system_activity_notices_on, \
     fetch_batch_process_system_api_refresh_on, fetch_batch_process_system_ballot_items_on, \
-    fetch_batch_process_system_general_maintenance_on, \
+    fetch_batch_process_system_by_maintenance_scripts_type_on, fetch_batch_process_system_general_maintenance_on, \
     fetch_batch_process_system_match_politicians_to_organizations_on, \
     fetch_batch_process_system_representatives_on, \
     fetch_batch_process_system_calculate_analytics_on, fetch_batch_process_system_generate_voter_guides_on, \
@@ -76,6 +79,8 @@ NUMBER_OF_SIMULTANEOUS_BATCH_PROCESSES = 4  # Four processes at a time
 NUMBER_OF_SIMULTANEOUS_BALLOT_ITEM_BATCH_PROCESSES = 4  # Four processes at a time
 NUMBER_OF_SIMULTANEOUS_GENERAL_MAINTENANCE_BATCH_PROCESSES = 1
 NUMBER_OF_SIMULTANEOUS_REPRESENTATIVE_BATCH_PROCESSES = 1  # One processes at a time because of rate limiting
+
+RUN_MAINTENANCE_SCRIPTS_EVERY_N_MINUTES = 10  # Schedule all maintenance scripts every 10 minutes
 
 
 def pass_through_batch_list_incoming_variables(request):
@@ -119,7 +124,7 @@ def process_next_activity_notices():
         return results
 
     if not fetch_batch_process_system_activity_notices_on():
-        status += "BATCH_PROCESS_SYSTEM_ACTIVITY_NOTICES_TURNED_OFF "
+        status += "BATCH_PROCESS_SYSTEM_ACTIVITY_NOTICES_OFF "
         results = {
             'success': success,
             'status': status,
@@ -249,7 +254,7 @@ def process_next_ballot_items():
         return results
 
     if not fetch_batch_process_system_ballot_items_on():
-        status += "BATCH_PROCESS_SYSTEM_BALLOT_ITEMS_TURNED_OFF "
+        status += "BATCH_PROCESS_SYSTEM_BALLOT_ITEMS_OFF "
         results = {
             'success': success,
             'status': status,
@@ -451,7 +456,7 @@ def process_next_general_maintenance():
         api_refresh_process_list = [API_REFRESH_REQUEST]
         kind_of_processes_to_run = kind_of_processes_to_run + api_refresh_process_list
     if fetch_batch_process_system_calculate_analytics_on():
-        analytics_process_list = [
+        new_type_list = [
             AUGMENT_ANALYTICS_ACTION_WITH_ELECTION_ID,
             AUGMENT_ANALYTICS_ACTION_WITH_FIRST_VISIT,
             CALCULATE_SITEWIDE_VOTER_METRICS,
@@ -459,22 +464,46 @@ def process_next_general_maintenance():
             CALCULATE_SITEWIDE_ELECTION_METRICS,
             CALCULATE_ORGANIZATION_DAILY_METRICS,
             CALCULATE_ORGANIZATION_ELECTION_METRICS]
-        kind_of_processes_to_run = kind_of_processes_to_run + analytics_process_list
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
     if fetch_batch_process_system_generate_voter_guides_on():
-        generate_voter_guides_process_list = [GENERATE_VOTER_GUIDES]
-        kind_of_processes_to_run = kind_of_processes_to_run + generate_voter_guides_process_list
+        new_type_list = [GENERATE_VOTER_GUIDES]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
     if fetch_batch_process_system_retrieve_from_ballotpedia_on():
-        retrieve_from_ballotpedia_process_list = [RETRIEVE_FROM_BALLOTPEDIA]
-        kind_of_processes_to_run = kind_of_processes_to_run + retrieve_from_ballotpedia_process_list
+        new_type_list = [RETRIEVE_FROM_BALLOTPEDIA]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
     if fetch_batch_process_system_search_twitter_on():
-        search_twitter_process_list = [SEARCH_TWITTER_FOR_CANDIDATE_TWITTER_HANDLE]
-        kind_of_processes_to_run = kind_of_processes_to_run + search_twitter_process_list
+        new_type_list = [SEARCH_TWITTER_FOR_CANDIDATE_TWITTER_HANDLE]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
     if fetch_batch_process_system_update_twitter_on():
-        update_twitter_process_list = [UPDATE_TWITTER_DATA_FROM_TWITTER]
-        kind_of_processes_to_run = kind_of_processes_to_run + update_twitter_process_list
+        new_type_list = [UPDATE_TWITTER_DATA_FROM_TWITTER]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
     if fetch_batch_process_system_match_politicians_to_organizations_on():
-        match_politicians_to_organizations_process_list = [MATCH_POLITICIANS_TO_ORGANIZATIONS]
-        kind_of_processes_to_run = kind_of_processes_to_run + match_politicians_to_organizations_process_list
+        new_type_list = [MATCH_POLITICIANS_TO_ORGANIZATIONS]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
+    if fetch_batch_process_system_by_maintenance_scripts_type_on('campaignx'):
+        new_type_list = [MAINTENANCE_SCRIPTS_CAMPAIGNX]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
+    if fetch_batch_process_system_by_maintenance_scripts_type_on('candidate'):
+        new_type_list = [MAINTENANCE_SCRIPTS_CANDIDATE]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
+    if fetch_batch_process_system_by_maintenance_scripts_type_on('challenge'):
+        new_type_list = [MAINTENANCE_SCRIPTS_CHALLENGE]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
+    if fetch_batch_process_system_by_maintenance_scripts_type_on('office'):
+        new_type_list = [MAINTENANCE_SCRIPTS_OFFICE]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
+    if fetch_batch_process_system_by_maintenance_scripts_type_on('office_held'):
+        new_type_list = [MAINTENANCE_SCRIPTS_OFFICE_HELD]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
+    if fetch_batch_process_system_by_maintenance_scripts_type_on('politician'):
+        new_type_list = [MAINTENANCE_SCRIPTS_POLITICIAN]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
+    if fetch_batch_process_system_by_maintenance_scripts_type_on('position'):
+        new_type_list = [MAINTENANCE_SCRIPTS_POSITION]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
+    if fetch_batch_process_system_by_maintenance_scripts_type_on('representative'):
+        new_type_list = [MAINTENANCE_SCRIPTS_REPRESENTATIVE]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
 
     if not fetch_batch_process_system_on():
         status += "BATCH_PROCESS_SYSTEM_TURNED_OFF-GENERAL "
@@ -493,7 +522,7 @@ def process_next_general_maintenance():
         return results
 
     if not positive_value_exists(len(kind_of_processes_to_run)):
-        status += "ALL_BATCH_PROCESS_SYSTEM_KINDS_TURNED_OFF "
+        status += "ALL_BATCH_PROCESS_SYSTEM_KINDS_OFF "
         results = {
             'success': success,
             'status': status,
@@ -547,7 +576,7 @@ def process_next_general_maintenance():
     # ############################
     # Are there any API's that need to have their internal cache updated?
     if not fetch_batch_process_system_api_refresh_on():
-        status += "BATCH_PROCESS_SYSTEM_API_REFRESH_TURNED_OFF "
+        status += "BATCH_PROCESS_SYSTEM_API_REFRESH_OFF "
     else:
         # We only want one API Refresh process to be running at a time
         # Check to see if one of the existing batches is for API Refresh. If so, skip creating a new one.
@@ -593,10 +622,106 @@ def process_next_general_maintenance():
                     )
 
     # ############################
+    # Add maintenance scripts to the queue (as they are implemented)
+    maintenance_script_items_list = [
+        {
+            'kind_of_process': MAINTENANCE_SCRIPTS_CAMPAIGNX,
+            'maintenance_type': 'campaignx',
+        },
+        {
+            'kind_of_process': MAINTENANCE_SCRIPTS_CANDIDATE,
+            'maintenance_type': 'candidate',
+        },
+        # {
+        #     'kind_of_process': MAINTENANCE_SCRIPTS_CHALLENGE,
+        #     'maintenance_type': 'challenge',
+        # },
+        # {
+        #     'kind_of_process': MAINTENANCE_SCRIPTS_OFFICE,
+        #     'maintenance_type': 'office',
+        # },
+        # {
+        #     'kind_of_process': MAINTENANCE_SCRIPTS_OFFICE_HELD,
+        #     'maintenance_type': 'office_held',
+        # },
+        {
+            'kind_of_process': MAINTENANCE_SCRIPTS_POLITICIAN,
+            'maintenance_type': 'politician',
+        },
+        # {
+        #     'kind_of_process': MAINTENANCE_SCRIPTS_POSITION,
+        #     'maintenance_type': 'position',
+        # },
+        # {
+        #     'kind_of_process': MAINTENANCE_SCRIPTS_REPRESENTATIVE,
+        #     'maintenance_type': 'representative',
+        # },
+    ]
+
+    for maintenance_script_item in maintenance_script_items_list:
+        if not fetch_batch_process_system_by_maintenance_scripts_type_on(maintenance_script_item['maintenance_type']):
+            status += "{kind_of_process}_OFF ".format(kind_of_process=maintenance_script_item['kind_of_process'])
+        else:
+            # We only want one MAINTENANCE_SCRIPTS_... process to be running at a time
+            maintenance_scripts_of_this_type_already_in_queue = False
+            for batch_process in batch_process_list_already_scheduled:
+                if batch_process.kind_of_process in [maintenance_script_item['kind_of_process']]:
+                    status += \
+                        "{kind_of_process}_ALREADY_SCHEDULED({batch_process_id}) " \
+                        "".format(
+                            batch_process_id=batch_process.id,
+                            kind_of_process=maintenance_script_item['kind_of_process'])
+                    maintenance_scripts_of_this_type_already_in_queue = True
+            for batch_process in batch_process_list_already_running:
+                if batch_process.kind_of_process in [maintenance_script_item['kind_of_process']]:
+                    status += \
+                        "{kind_of_process}_ALREADY_RUNNING({batch_process_id}) " \
+                        "".format(
+                            batch_process_id=batch_process.id,
+                            kind_of_process=maintenance_script_item['kind_of_process'])
+                    maintenance_scripts_of_this_type_already_in_queue = True
+            if not maintenance_scripts_of_this_type_already_in_queue:
+                # Only start maintenance scripts every 10 minutes
+                current_minute = now().minute
+                run_every_n_minutes = RUN_MAINTENANCE_SCRIPTS_EVERY_N_MINUTES  # Normally set to every 10 minutes
+                if current_minute % run_every_n_minutes != 0:
+                    status += \
+                        "{kind_of_process}-ONLY_RUNS_EVERY-{run_every_x_minutes}-MINUTES " \
+                        "".format(
+                            kind_of_process=maintenance_script_item['kind_of_process'],
+                            run_every_x_minutes=run_every_n_minutes)
+                else:
+                    results = batch_process_manager.create_batch_process(
+                        kind_of_process=maintenance_script_item['kind_of_process'])
+                    status += results['status']
+                    success = results['success']
+                    if results['batch_process_saved']:
+                        batch_process = results['batch_process']
+                        status += \
+                            "SCHEDULED_NEW-{kind_of_process} " \
+                            "".format(
+                                kind_of_process=maintenance_script_item['kind_of_process'])
+                        batch_process_manager.create_batch_process_log_entry(
+                            batch_process_id=batch_process.id,
+                            kind_of_process=batch_process.kind_of_process,
+                            status=status,
+                        )
+                    else:
+                        status += \
+                            "FAILED_TO_SCHEDULE-{kind_of_process} " \
+                            "".format(
+                                kind_of_process=maintenance_script_item['kind_of_process'])
+                        batch_process_manager.create_batch_process_log_entry(
+                            batch_process_id=0,
+                            kind_of_process=maintenance_script_item['kind_of_process'],
+                            status=status,
+                        )
+
+    # ############################
     # Generate voter guides - make sure we have a voter guide for every Organization + Election pair
     #  if an endorsement has been added since the last voter guides were generated
     if not fetch_batch_process_system_generate_voter_guides_on():
-        status += "BATCH_PROCESS_SYSTEM_GENERATE_VOTER_GUIDES_TURNED_OFF "
+        status += "BATCH_PROCESS_SYSTEM_GENERATE_VOTER_GUIDES_OFF "
     else:
         # We only want one GENERATE_VOTER_GUIDES process to be running at a time
         generate_voter_guides_process_is_already_in_queue = False
@@ -752,7 +877,7 @@ def process_next_general_maintenance():
     # ############################
     # Twitter Search - Possible Twitter Handle Matches
     if not fetch_batch_process_system_search_twitter_on():
-        status += "BATCH_PROCESS_SYSTEM_SEARCH_TWITTER_TURNED_OFF "
+        status += "BATCH_PROCESS_SYSTEM_SEARCH_TWITTER_OFF "
     else:
         # We only want one SEARCH_TWITTER process to be running at a time
         # Check to see if one of the existing batches is for SEARCH_TWITTER. If so, skip creating a new one.
@@ -799,7 +924,7 @@ def process_next_general_maintenance():
     # ############################
     # Twitter Update Data from Twitter
     if not fetch_batch_process_system_update_twitter_on():
-        status += "BATCH_PROCESS_SYSTEM_UPDATE_TWITTER_TURNED_OFF "
+        status += "BATCH_PROCESS_SYSTEM_UPDATE_TWITTER_OFF "
     else:
         # We only want one UPDATE_TWITTER process to be running at a time
         # Check to see if one of the existing batches is for UPDATE_TWITTER. If so, skip creating a new one.
@@ -862,7 +987,7 @@ def process_next_general_maintenance():
     # ############################
     # Processing Analytics - Generate Next BatchProcess to run
     if not fetch_batch_process_system_calculate_analytics_on():
-        status += "BATCH_PROCESS_SYSTEM_CALCULATE_ANALYTICS_TURNED_OFF "
+        status += "BATCH_PROCESS_SYSTEM_CALCULATE_ANALYTICS_OFF "
     else:
         # We only want one analytics process to be running at a time
         # Check to see if one of the existing batches is for analytics. If so,
@@ -988,6 +1113,12 @@ def process_next_general_maintenance():
         elif batch_process.kind_of_process in [GENERATE_VOTER_GUIDES]:
             results = process_one_generate_voter_guides_batch_process(batch_process)
             status += results['status']
+        elif batch_process.kind_of_process in [
+                MAINTENANCE_SCRIPTS_CAMPAIGNX, MAINTENANCE_SCRIPTS_CANDIDATE, MAINTENANCE_SCRIPTS_CHALLENGE,
+                MAINTENANCE_SCRIPTS_OFFICE, MAINTENANCE_SCRIPTS_OFFICE_HELD, MAINTENANCE_SCRIPTS_POLITICIAN,
+                MAINTENANCE_SCRIPTS_POSITION, MAINTENANCE_SCRIPTS_REPRESENTATIVE]:
+            results = process_one_maintenance_script_batch_process(batch_process)
+            status += results['status']
         elif batch_process.kind_of_process in [MATCH_POLITICIANS_TO_ORGANIZATIONS]:
             results = process_one_match_politicians_to_organizations_batch_process(batch_process)
             status += results['status']
@@ -1023,7 +1154,7 @@ def process_next_representatives():
         return results
 
     if not fetch_batch_process_system_representatives_on():
-        status += "BATCH_PROCESS_SYSTEM_REPRESENTATIVES_TURNED_OFF "
+        status += "BATCH_PROCESS_SYSTEM_REPRESENTATIVES_OFF "
         results = {
             'success': success,
             'status': status,
@@ -2691,6 +2822,126 @@ def process_one_generate_voter_guides_batch_process(batch_process):
     results = {
         'success':              success,
         'status':               status,
+    }
+    return results
+
+
+def process_one_maintenance_script_batch_process(batch_process):
+    status = ""
+    success = True
+    batch_process_manager = BatchProcessManager()
+    try:
+        kind_of_process = batch_process.kind_of_process
+    except Exception as e:
+        status += "BATCH_PROCESS.KIND_OF_PROCESS_FAILURE: " + str(e) + " "
+        success = False
+        results = {
+            'success': success,
+            'status': status,
+        }
+        return results
+
+    # When a batch_process is running, we mark when it was "taken off the shelf" to be worked on.
+    #  When the process is complete, we should reset this to "NULL"
+    try:
+        if batch_process.date_started is None:
+            batch_process.date_started = now()
+        batch_process.date_checked_out = now()
+        batch_process.save()
+    except Exception as e:
+        status += "ERROR-CHECKED_OUT_TIME_NOT_SAVED: " + str(e) + " "
+        handle_exception(e, logger=logger, exception_message=status)
+        success = False
+        batch_process_manager.create_batch_process_log_entry(
+            batch_process_id=batch_process.id,
+            kind_of_process=kind_of_process,
+            status=status,
+        )
+        results = {
+            'success': success,
+            'status': status,
+        }
+        return results
+
+    if kind_of_process == MAINTENANCE_SCRIPTS_CAMPAIGNX:
+        from campaign.controllers_data_cleaning import batch_process_maintenance_scripts_campaignx
+        process_results = batch_process_maintenance_scripts_campaignx()
+    elif kind_of_process == MAINTENANCE_SCRIPTS_CANDIDATE:
+        from candidate.controllers_data_cleaning import batch_process_maintenance_scripts_candidate
+        process_results = batch_process_maintenance_scripts_candidate()
+    elif kind_of_process == MAINTENANCE_SCRIPTS_POLITICIAN:
+        from politician.controllers_data_cleaning import batch_process_maintenance_scripts_politician
+        process_results = batch_process_maintenance_scripts_politician()
+    else:
+        status += "MAINTENANCE_SCRIPT_PROCESS_NOT_DEFINED_YET: " + str(kind_of_process) + " "
+        process_results = {
+            'status': status,
+            'success': False,
+        }
+
+    status += process_results['status']
+
+    if process_results['success']:
+        try:
+            completion_summary = \
+                "Maintenance scripts: {kind_of_process} " \
+                "status: {status} " \
+                "".format(kind_of_process=kind_of_process,
+                          status=status)
+            status += "Maintenance script kind_of_process: " + str(kind_of_process) + " "
+            batch_process.completion_summary = completion_summary
+            batch_process.date_checked_out = None
+            batch_process.date_completed = now()
+            batch_process.save()
+
+            batch_process_manager.create_batch_process_log_entry(
+                batch_process_id=batch_process.id,
+                kind_of_process=kind_of_process,
+                status=status,
+            )
+        except Exception as e:
+            status += "ERROR-DATE_COMPLETED_TIME_NOT_SAVED: " + str(e) + " "
+            handle_exception(e, logger=logger, exception_message=status)
+            batch_process_manager.create_batch_process_log_entry(
+                batch_process_id=batch_process.id,
+                kind_of_process=kind_of_process,
+                status=status,
+            )
+            results = {
+                'success': success,
+                'status': status,
+            }
+            return results
+    else:
+        status += str(kind_of_process) + "_FAILED-MARKED_COMPLETED "
+        success = False
+        try:
+            completion_summary = \
+                str(kind_of_process) + " FAILED: {status} " \
+                "".format(status=status)
+            status += completion_summary + " "
+            batch_process.completion_summary = completion_summary
+            batch_process.date_checked_out = None
+            batch_process.date_completed = now()
+            batch_process.save()
+
+            batch_process_manager.create_batch_process_log_entry(
+                batch_process_id=batch_process.id,
+                kind_of_process=kind_of_process,
+                status=status,
+            )
+        except Exception as e:
+            status += "ERROR-COMPLETION_SUMMARY_NOT_SAVED: " + str(e) + " "
+            handle_exception(e, logger=logger, exception_message=status)
+            batch_process_manager.create_batch_process_log_entry(
+                batch_process_id=batch_process.id,
+                kind_of_process=kind_of_process,
+                status=status,
+            )
+
+    results = {
+        'success':  success,
+        'status':   status,
     }
     return results
 

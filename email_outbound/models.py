@@ -1387,7 +1387,7 @@ class EmailTemplate(models.Model):
     """
     archived = models.BooleanField(default=False)
     deleted = models.BooleanField(default=False)
-    email_template_folder_id = models.PositiveIntegerField(default=0, null=False)
+    email_template_folder_id = models.PositiveIntegerField(default=0, null=True)
     email_template_name = models.CharField(db_index=True, max_length=255, null=True)
     message = models.TextField(null=True, blank=True)
     subject = models.CharField(max_length=255, null=True)

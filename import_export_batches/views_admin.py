@@ -1536,6 +1536,22 @@ def batch_process_system_toggle_view(request):
         setting_name = 'batch_process_system_general_maintenance_on'
     elif kind_of_process == 'GENERATE_VOTER_GUIDES':
         setting_name = 'batch_process_system_generate_voter_guides_on'
+    elif kind_of_process == 'MAINTENANCE_SCRIPTS_CAMPAIGNX':
+        setting_name = 'batch_process_maintenance_scripts_campaignx_on'
+    elif kind_of_process == 'MAINTENANCE_SCRIPTS_CANDIDATE':
+        setting_name = 'batch_process_maintenance_scripts_candidate_on'
+    elif kind_of_process == 'MAINTENANCE_SCRIPTS_CHALLENGE':
+        setting_name = 'batch_process_maintenance_scripts_challenge_on'
+    elif kind_of_process == 'MAINTENANCE_SCRIPTS_OFFICE':
+        setting_name = 'batch_process_maintenance_scripts_office_on'
+    elif kind_of_process == 'MAINTENANCE_SCRIPTS_OFFICE_HELD':
+        setting_name = 'batch_process_maintenance_scripts_office_held_on'
+    elif kind_of_process == 'MAINTENANCE_SCRIPTS_POLITICIAN':
+        setting_name = 'batch_process_maintenance_scripts_politician_on'
+    elif kind_of_process == 'MAINTENANCE_SCRIPTS_POSITION':
+        setting_name = 'batch_process_maintenance_scripts_position_on'
+    elif kind_of_process == 'MAINTENANCE_SCRIPTS_REPRESENTATIVE':
+        setting_name = 'batch_process_maintenance_scripts_representative_on'
     elif kind_of_process == 'MATCH_POLITICIANS_TO_ORGANIZATIONS':
         setting_name = 'batch_process_system_match_politicians_to_organizations_on'
     elif kind_of_process == 'RETRIEVE_FROM_BALLOTPEDIA':
@@ -1694,6 +1710,30 @@ def batch_process_list_view(request):
                 batch_process_queryset = batch_process_queryset.filter(kind_of_process__in=ballot_item_processes)
             elif kind_of_processes_to_show == "GENERATE_VOTER_GUIDES":
                 processes = ['GENERATE_VOTER_GUIDES']
+                batch_process_queryset = batch_process_queryset.filter(kind_of_process__in=processes)
+            elif kind_of_processes_to_show == "MAINTENANCE_SCRIPTS_CAMPAIGNX":
+                processes = ['MAINTENANCE_SCRIPTS_CAMPAIGNX']
+                batch_process_queryset = batch_process_queryset.filter(kind_of_process__in=processes)
+            elif kind_of_processes_to_show == "MAINTENANCE_SCRIPTS_CANDIDATE":
+                processes = ['MAINTENANCE_SCRIPTS_CANDIDATE']
+                batch_process_queryset = batch_process_queryset.filter(kind_of_process__in=processes)
+            elif kind_of_processes_to_show == "MAINTENANCE_SCRIPTS_CHALLENGE":
+                processes = ['MAINTENANCE_SCRIPTS_CHALLENGE']
+                batch_process_queryset = batch_process_queryset.filter(kind_of_process__in=processes)
+            elif kind_of_processes_to_show == "MAINTENANCE_SCRIPTS_OFFICE":
+                processes = ['MAINTENANCE_SCRIPTS_OFFICE']
+                batch_process_queryset = batch_process_queryset.filter(kind_of_process__in=processes)
+            elif kind_of_processes_to_show == "MAINTENANCE_SCRIPTS_OFFICE_HELD":
+                processes = ['MAINTENANCE_SCRIPTS_OFFICE_HELD']
+                batch_process_queryset = batch_process_queryset.filter(kind_of_process__in=processes)
+            elif kind_of_processes_to_show == "MAINTENANCE_SCRIPTS_POLITICIAN":
+                processes = ['MAINTENANCE_SCRIPTS_POLITICIAN']
+                batch_process_queryset = batch_process_queryset.filter(kind_of_process__in=processes)
+            elif kind_of_processes_to_show == "MAINTENANCE_SCRIPTS_POSITION":
+                processes = ['MAINTENANCE_SCRIPTS_POSITION']
+                batch_process_queryset = batch_process_queryset.filter(kind_of_process__in=processes)
+            elif kind_of_processes_to_show == "MAINTENANCE_SCRIPTS_REPRESENTATIVE":
+                processes = ['MAINTENANCE_SCRIPTS_REPRESENTATIVE']
                 batch_process_queryset = batch_process_queryset.filter(kind_of_process__in=processes)
             elif kind_of_processes_to_show == "MATCH_POLITICIANS_TO_ORGANIZATIONS":
                 processes = ['MATCH_POLITICIANS_TO_ORGANIZATIONS']
@@ -1903,7 +1943,8 @@ def batch_process_list_view(request):
 
     messages_on_stage = get_messages(request)
 
-    from wevote_settings.models import fetch_batch_process_system_on, fetch_batch_process_system_activity_notices_on, \
+    from wevote_settings.models import fetch_batch_process_system_by_maintenance_scripts_type_on, \
+        fetch_batch_process_system_on, fetch_batch_process_system_activity_notices_on, \
         fetch_batch_process_system_api_refresh_on, fetch_batch_process_system_ballot_items_on, \
         fetch_batch_process_system_calculate_analytics_on, fetch_batch_process_system_general_maintenance_on, \
         fetch_batch_process_system_generate_voter_guides_on, \
@@ -1921,6 +1962,18 @@ def batch_process_list_view(request):
 
         ballot_returned_voter_oldest_date = ballot_returned_list_manager.fetch_oldest_date_last_updated(
             google_civic_election_id, state_code, for_voter=True)
+
+    batch_process_system_maintenance_script_items_raw = [
+        'CampaignX', 'Candidate', 'Challenge', 'Office', 'Office_Held', 'Politician', 'Position', 'Representative']
+    batch_process_system_maintenance_script_items = []
+    for item_name in batch_process_system_maintenance_script_items_raw:
+        is_on = fetch_batch_process_system_by_maintenance_scripts_type_on(item_name.lower())
+        batch_process_system_maintenance_script_items.append({
+            'is_on': is_on,
+            'kind_of_process': "MAINTENANCE_SCRIPTS_" + item_name.upper(),
+            'title': item_name.replace('_', ' '),
+            'upper': item_name.upper(),
+        })
 
     toggle_system_url_variables = "s=1"  # Add a dummy variable at the start so all remaining variables have &
     if positive_value_exists(batch_process_search):
@@ -1954,9 +2007,10 @@ def batch_process_list_view(request):
         'batch_process_system_calculate_analytics_on':  fetch_batch_process_system_calculate_analytics_on(),
         'batch_process_system_general_maintenance_on':  fetch_batch_process_system_general_maintenance_on(),
         'batch_process_system_generate_voter_guides_on': fetch_batch_process_system_generate_voter_guides_on(),
-        'batch_process_system_match_politicians_to_organizations_on': \
+        'batch_process_system_maintenance_script_items': batch_process_system_maintenance_script_items,
+        'batch_process_system_match_politicians_to_organizations_on':
             fetch_batch_process_system_match_politicians_to_organizations_on(),
-        'batch_process_system_retrieve_from_ballotpedia_on': \
+        'batch_process_system_retrieve_from_ballotpedia_on':
             fetch_batch_process_system_retrieve_from_ballotpedia_on(),
         'batch_process_system_representatives_on':      fetch_batch_process_system_representatives_on(),
         'batch_process_system_search_twitter_on':       fetch_batch_process_system_search_twitter_on(),

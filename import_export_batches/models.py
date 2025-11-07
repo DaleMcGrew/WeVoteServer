@@ -643,6 +643,14 @@ CALCULATE_SITEWIDE_DAILY_METRICS = "CALCULATE_SITEWIDE_DAILY_METRICS"
 CALCULATE_SITEWIDE_ELECTION_METRICS = "CALCULATE_SITEWIDE_ELECTION_METRICS"
 CALCULATE_SITEWIDE_VOTER_METRICS = "CALCULATE_SITEWIDE_VOTER_METRICS"
 GENERATE_VOTER_GUIDES = "GENERATE_VOTER_GUIDES"
+MAINTENANCE_SCRIPTS_CAMPAIGNX = "MAINTENANCE_SCRIPTS_CAMPAIGNX"
+MAINTENANCE_SCRIPTS_CANDIDATE = "MAINTENANCE_SCRIPTS_CANDIDATE"
+MAINTENANCE_SCRIPTS_CHALLENGE = "MAINTENANCE_SCRIPTS_CHALLENGE"
+MAINTENANCE_SCRIPTS_OFFICE = "MAINTENANCE_SCRIPTS_OFFICE"
+MAINTENANCE_SCRIPTS_OFFICE_HELD = "MAINTENANCE_SCRIPTS_OFFICE_HELD"
+MAINTENANCE_SCRIPTS_POLITICIAN = "MAINTENANCE_SCRIPTS_POLITICIAN"
+MAINTENANCE_SCRIPTS_POSITION = "MAINTENANCE_SCRIPTS_POSITION"
+MAINTENANCE_SCRIPTS_REPRESENTATIVE = "MAINTENANCE_SCRIPTS_REPRESENTATIVE"
 MATCH_POLITICIANS_TO_ORGANIZATIONS = "MATCH_POLITICIANS_TO_ORGANIZATIONS"
 REFRESH_BALLOT_ITEMS_FROM_POLLING_LOCATIONS = "REFRESH_BALLOT_ITEMS_FROM_POLLING_LOCATIONS"
 REFRESH_BALLOT_ITEMS_FROM_VOTERS = "REFRESH_BALLOT_ITEMS_FROM_VOTERS"
@@ -663,6 +671,14 @@ KIND_OF_PROCESS_CHOICES = (
     (CALCULATE_ORGANIZATION_DAILY_METRICS,  'Organization specific daily metrics'),
     (CALCULATE_ORGANIZATION_ELECTION_METRICS,  'Organization specific election metrics'),
     (GENERATE_VOTER_GUIDES,  'Generate voter guides'),
+    (MAINTENANCE_SCRIPTS_CAMPAIGNX,  'Maintenance Scripts for CampaignX'),
+    (MAINTENANCE_SCRIPTS_CANDIDATE,  'Maintenance Scripts for Candidate'),
+    (MAINTENANCE_SCRIPTS_CHALLENGE,  'Maintenance Scripts for Challenge'),
+    (MAINTENANCE_SCRIPTS_OFFICE,  'Maintenance Scripts for Office'),
+    (MAINTENANCE_SCRIPTS_OFFICE_HELD,  'Maintenance Scripts for Office Held'),
+    (MAINTENANCE_SCRIPTS_POLITICIAN,  'Maintenance Scripts for Politician'),
+    (MAINTENANCE_SCRIPTS_POSITION,  'Maintenance Scripts for Position'),
+    (MAINTENANCE_SCRIPTS_REPRESENTATIVE,  'Maintenance Scripts for Representative'),
     (MATCH_POLITICIANS_TO_ORGANIZATIONS,  'Match politicians to organizations'),
     (RETRIEVE_BALLOT_ITEMS_FROM_POLLING_LOCATIONS,  'Retrieve Ballot Items from Map Points'),
     (RETRIEVE_FROM_BALLOTPEDIA,  'Retrieve Data from Ballotpedia'),
@@ -5007,6 +5023,14 @@ class BatchProcessManager(models.Manager):
                     CALCULATE_ORGANIZATION_DAILY_METRICS,
                     CALCULATE_ORGANIZATION_ELECTION_METRICS,
                     GENERATE_VOTER_GUIDES,
+                    MAINTENANCE_SCRIPTS_CAMPAIGNX,
+                    MAINTENANCE_SCRIPTS_CANDIDATE,
+                    MAINTENANCE_SCRIPTS_CHALLENGE,
+                    MAINTENANCE_SCRIPTS_OFFICE,
+                    MAINTENANCE_SCRIPTS_OFFICE_HELD,
+                    MAINTENANCE_SCRIPTS_POLITICIAN,
+                    MAINTENANCE_SCRIPTS_POSITION,
+                    MAINTENANCE_SCRIPTS_REPRESENTATIVE,
                     MATCH_POLITICIANS_TO_ORGANIZATIONS,
                     REFRESH_BALLOT_ITEMS_FROM_POLLING_LOCATIONS,
                     REFRESH_BALLOT_ITEMS_FROM_VOTERS,
@@ -5416,6 +5440,16 @@ class BatchProcessManager(models.Manager):
                         checked_out_expiration_time = 360  # 6 minutes * 60 seconds
                     elif batch_process.kind_of_process == GENERATE_VOTER_GUIDES:
                         checked_out_expiration_time = 600  # 10 minutes * 60 seconds
+                    elif batch_process.kind_of_process in [
+                            MAINTENANCE_SCRIPTS_CAMPAIGNX,
+                            MAINTENANCE_SCRIPTS_CANDIDATE,
+                            MAINTENANCE_SCRIPTS_CHALLENGE,
+                            MAINTENANCE_SCRIPTS_OFFICE,
+                            MAINTENANCE_SCRIPTS_OFFICE_HELD,
+                            MAINTENANCE_SCRIPTS_POLITICIAN,
+                            MAINTENANCE_SCRIPTS_POSITION,
+                            MAINTENANCE_SCRIPTS_REPRESENTATIVE]:
+                        checked_out_expiration_time = 420  # 7 minutes * 60 seconds
                     elif batch_process.kind_of_process == MATCH_POLITICIANS_TO_ORGANIZATIONS:
                         checked_out_expiration_time = 600  # 10 minutes * 60 seconds
                     elif batch_process.kind_of_process in [
