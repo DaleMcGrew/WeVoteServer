@@ -58,7 +58,7 @@ from voter.models import fetch_voter_from_voter_device_link, VoterDeviceLinkMana
 from voter_guide.models import VoterGuide
 from wevote_functions.functions import convert_to_int, \
     extract_instagram_handle_from_text_string, extract_twitter_handle_from_text_string, \
-    get_voter_api_device_id, get_voter_device_id, list_intersection, normalize_bluesky_handle, normalize_tiktok_url, \
+    get_voter_api_device_id, get_voter_device_id, list_intersection, normalize_bluesky_handle, normalize_threads_handle, normalize_tiktok_url, \
     positive_value_exists, STATE_CODE_MAP, display_full_name_with_correct_capitalization, \
     extract_state_from_ocd_division_id
 from wevote_functions.functions_date import convert_we_vote_date_string_to_date_as_integer, \
@@ -2510,6 +2510,13 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
                 'name':     'state_code',
                 'value':     state_code if state_code else candidate_on_stage.state_code
             },
+            'threads_handle_dict':
+            {
+                'label':    'Threads',
+                'id':       'threads_handle_id',
+                'name':     'threads_handle',
+                'value':     candidate_on_stage.threads_handle
+            },
             'tiktok_url_dict':
             {
                 'label':    'TikTok',
@@ -2770,6 +2777,7 @@ def candidate_edit_process_view(request):
     remove_duplicate_process = request.POST.get('remove_duplicate_process', False)
     select_for_marking_twitter_link_possibility_ids = request.POST.getlist('select_for_marking_checks[]')
     state_code = request.POST.get('state_code', False)
+    threads_handle = request.POST.get('threads_handle', False)
     tiktok_url = request.POST.get('tiktok_url', False)
     twitter_handle_updates_failing = request.POST.get('twitter_handle_updates_failing', False)
     twitter_handle_updates_failing = positive_value_exists(twitter_handle_updates_failing)
@@ -3492,6 +3500,20 @@ def candidate_edit_process_view(request):
                 except Exception as e:
                     state_code_filtered = None
                     status += "PROBLEM_WITH_STATE_CODE: " + str(e) + " "
+            if threads_handle is not False:
+                threads_handle = normalize_threads_handle(threads_handle)
+                change_results = change_tracking(
+                    existing_value=candidate_on_stage.threads_handle,
+                    new_value=threads_handle,
+                    changes_found_dict=changes_found_dict,
+                    changes_found_key_base='is_threads',
+                    changes_found_key_name='Threads',
+                )
+                changes_found_dict = change_results['changes_found_dict']
+                if change_results['change_description_changed']:
+                    change_description += change_results['change_description']
+                    change_description_changed = True
+                candidate_on_stage.threads_handle = threads_handle
             if tiktok_url is not False:
                 tiktok_url = normalize_tiktok_url(tiktok_url)
                 change_results = change_tracking(

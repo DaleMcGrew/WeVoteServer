@@ -850,6 +850,7 @@ def generate_politician_dict_from_politician_object(politician=None):
     politician_dict = {
         'ballot_guide_official_statement':  politician.ballot_guide_official_statement,
         'ballotpedia_politician_url':       politician.ballotpedia_politician_url,
+        'bluesky_handle':                   politician.bluesky_handle,
         'final_election_date_in_past':      final_election_date_in_past,
         'instagram_handle':                 instagram_handle,
         'is_claimed_profile':               positive_value_exists(politician.is_claimed_profile),
@@ -875,6 +876,7 @@ def generate_politician_dict_from_politician_object(politician=None):
         'state_code':                       politician.state_code,
         'supporters_count':                 politician.supporters_count,
         # 'supporters_count_victory_goal':    politician.supporters_count_victory_goal,
+        'threads_handle':                   politician.threads_handle,
         'twitter_followers_count':          politician.twitter_followers_count,
         # 'visible_on_this_site':             politician.visible_on_this_site,
         'we_vote_hosted_profile_ballotpedia_image_url_large':   politician.we_vote_hosted_profile_ballotpedia_image_url_large,

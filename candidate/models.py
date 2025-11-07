@@ -186,6 +186,8 @@ class CandidateChangeLog(models.Model):  # Formerly called CandidateLogEntry
     is_official_statement_removed = models.BooleanField(db_index=True, default=None, null=True)
     is_photo_added = models.BooleanField(db_index=True, default=None, null=True)  # New Photo added
     is_photo_removed = models.BooleanField(db_index=True, default=None, null=True)
+    is_threads_handle_added = models.BooleanField(db_index=True, default=None, null=True)
+    is_threads_handle_removed = models.BooleanField(db_index=True, default=None, null=True)
     is_tiktok_added = models.BooleanField(db_index=True, default=None, null=True)
     is_tiktok_removed = models.BooleanField(db_index=True, default=None, null=True)
     is_twitter_handle_added = models.BooleanField(db_index=True, default=None, null=True)  # New Twitter handle saved
@@ -2645,9 +2647,9 @@ class CandidateCampaign(models.Model):
     seo_friendly_path = models.CharField(max_length=255, null=True, unique=False, db_index=True)
     seo_friendly_path_date_last_updated = models.DateTimeField(null=True)
     supporters_count = models.PositiveIntegerField(default=0)  # From linked_campaignx_we_vote_id CampaignX entry
-
+    threads_handle = models.TextField(blank=True, null=True)
     tiktok_url = models.TextField(blank=True, null=True)
-
+    
     twitter_url = models.URLField(verbose_name='twitter url of candidate', blank=True, null=True)
     twitter_user_id = models.BigIntegerField(verbose_name="twitter id", null=True, blank=True)
     # TODO Update whole system to handle candidate_twitter_handle2 and 3

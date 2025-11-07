@@ -346,6 +346,7 @@ class Politician(models.Model):
     # The date of the last election this candidate relates to, converted to integer, ex/ 20201103
     politician_ultimate_election_date = models.PositiveIntegerField(default=None, null=True)
     bluesky_handle = models.TextField(blank=True, null=True)
+    threads_handle = models.TextField(blank=True, null=True)
     tiktok_url = models.TextField(blank=True, null=True)
     twitter_name = models.CharField(
         verbose_name="politician plain text name from twitter", max_length=255, null=True, blank=True)
@@ -596,6 +597,8 @@ class PoliticianChangeLog(models.Model):
     is_politician_analysis_done = models.BooleanField(db_index=True, default=None, null=True)  # Analysis complete
     is_politician_url_added = models.BooleanField(db_index=True, default=None, null=True)  # New Ballotpedia link
     is_politician_url_removed = models.BooleanField(db_index=True, default=None, null=True)
+    is_threads_handle_added = models.BooleanField(db_index=True, default=None, null=True)
+    is_threads_handle_removed = models.BooleanField(db_index=True, default=None, null=True)
     is_tiktok_added = models.BooleanField(db_index=True, default=None, null=True)
     is_tiktok_removed = models.BooleanField(db_index=True, default=None, null=True)
     is_twitter_handle_added = models.BooleanField(db_index=True, default=None, null=True)  # New Twitter handle saved
