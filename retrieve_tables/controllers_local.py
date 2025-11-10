@@ -10,12 +10,12 @@ import time
 import psycopg2
 import requests
 import sqlalchemy as sa
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseServerError
 
 import wevote_functions.admin
 from config.base import get_environment_variable
 from retrieve_tables.retrieve_common import allowable_tables
-from wevote_functions.functions import get_voter_api_device_id, positive_value_exists
+from wevote_functions.functions import get_voter_api_device_id, positive_value_exists, server_is_source_of_truth
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -58,8 +58,6 @@ def retrieve_sql_files_from_master_server(request):
     voter_api_device_id = get_voter_api_device_id(request)
 
     try:
-        if connected_to_aws():
-            raise Exception('Can connect to AWS on Local Server, not allowed to Fast Load for risk of data loss.')
         # hack, call master from local...
         # results = backup_one_table_to_s3_controller('id', 'ballot_ballotitem')
         # ballot_ballotitem has 40,999,358 records in December 2024 and takes about 69 seconds to dump and 10 more to
@@ -67,6 +65,9 @@ def retrieve_sql_files_from_master_server(request):
         # in a day
         # Example: https://wevote-images.s3.amazonaws.com/backup-ballot_ballotitem-2024-12-06T13:25:13.backup
         # This same backup file takes 21 seconds to download to a local tempfile, and then 3 seconds to pg_restore
+
+        if server_is_source_of_truth():
+            raise Exception('Server may be a source of truth. Not allowed to Fast Load to maintain data integrity.')
 
         num_tables = len(allowable_tables)
         print(f"Fast loading {num_tables} tables")
@@ -77,6 +78,7 @@ def retrieve_sql_files_from_master_server(request):
         global_stats['global_t0'] = time.time()
 
         for table_name in allowable_tables:
+            global_stats['table_size'] = ''
             global_stats['table_name_text'] = ('<b>Saving</b>&nbsp;&nbsp;<i>' + table_name +
                                           '</i>&nbsp;&nbsp;to s3 from the <b>master</b> server')
             global_stats['table_name'] = table_name
@@ -104,6 +106,7 @@ def retrieve_sql_files_from_master_server(request):
     except Exception as e:
         results['status'] = 'Error ' + str(e)
         logger.error(f"Error retrieving {str(e)}")
+        return HttpResponseServerError(json.dumps(results), content_type='application/json')
 
     return HttpResponse(json.dumps(results), content_type='application/json')
 
@@ -119,11 +122,15 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         diff_t0 = int((time.time() - global_stats['global_t0']))
         print(f"About to download {table_name} from S3 at {diff_t0} seconds")
         with requests.get(aws_s3_file_url, stream=True) as response:
+            global_stats['table_size'] = int(response.headers.get('Content-Length'))
             response.raise_for_status()
             # Process in 1MB chunks
             for chunk in response.iter_content(chunk_size=(1024*1024)):
                 if chunk:
                     tf.write(chunk)
+        
+        if tf.tell() != global_stats['table_size']:
+            raise Exception(f"Downloaded {int(tf.tell()/1024)} Kb, expected {int(global_stats['table_size']/1024)} Kb")
 
         print("Downloaded", tf.name)
         diff_t0 = int(time.time() - global_stats['global_t0'])
@@ -151,11 +158,12 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         return results
 
     try:
-        truncate_table_psycopg2(table_name)
-        # drop_table(engine, table_name)
+        table_truncated = truncate_table_psycopg2(table_name)
+        if isinstance(table_truncated, Exception):
+            raise Exception(f"Truncate table {table_name} failed: {table_truncated}")
 
         diff_t0 = int((time.time() - global_stats['global_t0']))
-        print(f"About to pg_restore from tempfile at {diff_t0} seconds")
+        print(f"About to sync data from tempfile at {diff_t0} seconds")
 
         command_list = ['pg_restore',
                         '-v', 
@@ -234,6 +242,7 @@ def truncate_table_psycopg2(table_name):
         # print(f"TRUNCATE TABLE {table_name} re {str(ret)}")
     except Exception as e:
         logger.error(f'FAILED_TABLE_TRUNCATE: {table_name} -- {str(e)}')
+        return e
 
 
 def drop_table(engine, table_name):
@@ -275,23 +284,3 @@ def fetch_data_from_api(url, params, max_retries=1000, timeout=8):
         time.sleep(2 ** attempt)  # Exponential backoff
 
     raise Exception("API request failed after maximum retries")
-
-
-def connected_to_aws():
-    import boto3
-    AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
-    AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
-
-    sts_client = boto3.client(
-        "sts",
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        region_name=AWS_REGION_NAME
-    )
-
-    try:
-        sts_client.get_caller_identity()
-        return True
-    except:
-        return False

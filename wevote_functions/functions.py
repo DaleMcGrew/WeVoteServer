@@ -16,6 +16,7 @@ from django.core.validators import URLValidator
 from nameparser import HumanName
 from nameparser.config import CONSTANTS
 import wevote_functions.admin
+from config.base import get_environment_variable
 # from wevote_functions.functions_date import DATE_FORMAT_A_DBY_HMS_GMT
 CONSTANTS.string_format = "{title} {first} {middle} \"{nickname}\" {last} {suffix}"
 
@@ -2063,3 +2064,9 @@ def strip_html_tags(value):
         return django.utils.html.strip_tags(value)
     else:
         return ""
+
+
+def server_is_source_of_truth():
+    # If 'SERVER_IS_SOURCE_OF_TRUTH' is not False
+    # then the default value has been modified in the environment_variables.json file.
+    return get_environment_variable('SERVER_IS_SOURCE_OF_TRUTH') is not False

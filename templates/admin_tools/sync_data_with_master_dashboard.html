@@ -28,6 +28,7 @@
         <progress id="progress" value="0" max="100" style="display: none"></progress>
         <div id="table_count" style="padding-top: 10px"></div>
         <div id="current_table"></div>
+        <div id="current_table_size"></div>
         <div id="current_table_wordy"></div>
         <div id="total_time"></div>
         <div id="current_status"></div>
@@ -333,6 +334,7 @@ These imports are best run in order from top-to-bottom.
     const table_count = $("#table_count");
     const current_status = $("#current_status");
     const current_table = $("#current_table");
+    const current_table_size = $("#current_table_size");
     const current_table_wordy = $("#current_table_wordy");
     const elapsed_seconds = $("#elapsed_seconds");
     const total_time = $("#total_time");
@@ -374,6 +376,7 @@ These imports are best run in order from top-to-bottom.
             }
 
             current_table_wordy.html(`Current table: ${data.table_name_text}`);
+            current_table_size.html(`Table size: ${data.table_size === ''? 'Waiting for size...' : (data.table_size / (1024*1024)).toFixed(2) + ' MB'}`);
             current_table.html(data.table_name);
             table_count.text(`Table: ${data.count} of ${data.num_tables}`);
           },
