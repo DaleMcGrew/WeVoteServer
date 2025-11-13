@@ -7,6 +7,7 @@
   "CAMPAIGNS_ROOT_URL":             "http://localhost:3000",
   "CHALLENGES_ROOT_URL":            "http://localhost:3000",
   "TIME_ZONE":                      "US/Pacific",
+  "SERVER_IS_SOURCE_OF_TRUTH":      false,
   "SERVER_IN_DEBUG_MODE":           true,
 
   "_comment":                       "read/write database settings for local.py",
