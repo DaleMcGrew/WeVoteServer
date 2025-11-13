@@ -50,7 +50,7 @@ from wevote_functions.functions import convert_to_int, convert_to_political_part
     extract_middle_name_from_full_name, extract_last_name_from_full_name, \
     extract_state_from_ocd_division_id, extract_twitter_handle_from_text_string, \
     generate_random_string, get_voter_api_device_id, \
-    normalize_bluesky_handle, \
+    normalize_bluesky_handle, normalize_threads_handle,\
     normalize_tiktok_url, positive_value_exists, STATE_CODE_MAP, display_full_name_with_correct_capitalization
 from wevote_functions.functions_date import convert_date_to_we_vote_date_string, \
     convert_we_vote_date_string_to_date_as_integer, generate_localized_datetime_from_obj, DATE_FORMAT_YMD_HMS
@@ -2205,6 +2205,13 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
                 'name':     'state_code',
                 'value':     state_code if state_code else politician_on_stage.state_code
             },
+            'threads_handle_dict':
+            {
+                'label':    'Threads',
+                'id':       'threads_handle_id',
+                'name':     'threads_handle',
+                'value':     politician_on_stage.threads_handle
+            },
             'tiktok_url_dict':
             {
                 'label':    'TikTok',
@@ -2531,6 +2538,7 @@ def politician_edit_process_view(request):
     politician_we_vote_id = request.POST.get('politician_we_vote_id', False)
     seo_friendly_path = request.POST.get('seo_friendly_path', False)
     state_code = request.POST.get('state_code', False)
+    threads_handle = request.POST.get('threads_handle', False)
     tiktok_url = request.POST.get('tiktok_url', False)
     twitter_handle_updates_failing = request.POST.get('twitter_handle_updates_failing', False)
     twitter_handle_updates_failing = positive_value_exists(twitter_handle_updates_failing)
@@ -3275,6 +3283,21 @@ def politician_edit_process_view(request):
                 'enum_key': 'PROC_SEO_PATH',
                 'time_difference': round(time() - t0, 4),
             })
+
+            if threads_handle is not False:
+                threads_handle = normalize_threads_handle(threads_handle)
+                change_results = change_tracking(
+                    existing_value=politician_on_stage.threads_handle,
+                    new_value=threads_handle,
+                    changes_found_dict=changes_found_dict,
+                    changes_found_key_base='is_threads',
+                    changes_found_key_name='Threads',
+                )
+                changes_found_dict = change_results['changes_found_dict']
+                if change_results['change_description_changed']:
+                    change_description += change_results['change_description']
+                    change_description_changed = True
+                politician_on_stage.threads_handle = threads_handle
 
             # #################################################
             # Process tiktok_url field

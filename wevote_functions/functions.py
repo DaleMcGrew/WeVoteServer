@@ -1798,6 +1798,32 @@ def generate_bluesky_url(input_value):
         # If it doesn't match expected patterns, return an empty string
         return ''
 
+def normalize_threads_handle(input_value):
+    if not input_value:
+        return ''
+
+    # Remove leading/trailing whitespace and convert to lowercase
+    input_value = input_value.strip().lower()
+
+    # Regular expression to match Threads usernames
+    username_pattern = r'^@?[\w.]+$'
+
+    # Regular expression to match Threads URLs
+    url_pattern = r'^(https?://)?(www\.)?(threads\.com/)?(@[\w.]+)/?$'
+
+    if re.match(username_pattern, input_value):
+        # If it's just a username (with or without @), convert to full URL
+        username = input_value.lstrip('@')
+        return f'https://www.threads.com/@{username}'
+    elif re.match(url_pattern, input_value):
+        # If it's already a URL, ensure it's in the correct format
+        match = re.match(url_pattern, input_value)
+        username = match.group(4)
+        return f'https://www.threads.com/{username}'
+    else:
+        # If it doesn't match expected patterns, return an empty string
+        return ''
+
 def normalize_tiktok_url(input_value):
     if not input_value:
         return ''
