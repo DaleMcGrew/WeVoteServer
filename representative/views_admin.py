@@ -443,6 +443,7 @@ def representative_list_view(request):
     show_all = positive_value_exists(request.GET.get('show_all', False))
     show_battleground = positive_value_exists(request.GET.get('show_battleground', False))
     show_representatives_with_email = positive_value_exists(request.GET.get('show_representatives_with_email', False))
+    show_representatives_with_claimed_profile = positive_value_exists(request.GET.get('show_representatives_with_claimed_profile', False))
     show_this_year = convert_to_int(request.GET.get('show_this_year', 9999))
     if show_this_year == 9999:
         datetime_now = localtime(now()).date()  # We Vote uses Pacific Time for TIME_ZONE
@@ -677,6 +678,11 @@ def representative_list_view(request):
                 Q(politician_we_vote_id='')
             )
 
+        if positive_value_exists(show_representatives_with_claimed_profile):
+            queryset = queryset.filter(
+                Q(is_claimed_profile=True)
+            )
+
         if positive_value_exists(show_this_year):
             if show_this_year in OFFICE_HELD_YEARS_AVAILABLE:
                 year_field_name = 'year_in_office_' + str(show_this_year)
@@ -790,6 +796,7 @@ def representative_list_view(request):
         'show_all':                         show_all,
         'show_battleground':                show_battleground,
         'show_representatives_with_email':  show_representatives_with_email,
+        'show_representatives_with_claimed_profile': show_representatives_with_claimed_profile,
         'show_this_year':                   show_this_year,
         'show_ocd_id_state_mismatch':       show_ocd_id_state_mismatch,
         'state_code':                       state_code,
