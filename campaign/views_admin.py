@@ -1018,14 +1018,14 @@ def campaign_list_view(request):
     # Maintenance script section START
     # ################################################
 
-    clean_campaigns_with_dead_politician_we_vote_id_on = True
+    clean_campaigns_with_stale_politician_we_vote_id_on = True
     number_to_update = 1000  # Set to 1,000 at a time
     # Check all entries that have Politician.linked_campaignx_we_vote_id and
     # make sure we have that corresponding CampaignX entry. If not, delete the Politician.linked_campaignx_we_vote_id
     # value.
-    if clean_campaigns_with_dead_politician_we_vote_id_on:
-        from campaign.controllers_data_cleaning import clean_campaigns_with_dead_politician_we_vote_id
-        results = clean_campaigns_with_dead_politician_we_vote_id(
+    if clean_campaigns_with_stale_politician_we_vote_id_on:
+        from campaign.controllers_data_cleaning import clean_campaigns_with_stale_politician_we_vote_id
+        results = clean_campaigns_with_stale_politician_we_vote_id(
             number_to_update=number_to_update,
             state_code=state_code)
         if positive_value_exists(results['status']):

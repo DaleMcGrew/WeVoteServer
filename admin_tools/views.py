@@ -59,6 +59,8 @@ MEASURES_SYNC_URL = get_environment_variable("MEASURES_SYNC_URL")  # measuresSyn
 POLITICIANS_SYNC_URL = get_environment_variable("POLITICIANS_SYNC_URL")  # politiciansSyncOut
 POLLING_LOCATIONS_SYNC_URL = get_environment_variable("POLLING_LOCATIONS_SYNC_URL")  # pollingLocationsSyncOut
 POSITIONS_SYNC_URL = get_environment_variable("POSITIONS_SYNC_URL")  # positionsSyncOut
+SERVER_IS_SOURCE_OF_TRUTH = positive_value_exists(get_environment_variable("SERVER_IS_SOURCE_OF_TRUTH",
+                                                                           no_exception=True))
 VOTER_GUIDES_SYNC_URL = get_environment_variable("VOTER_GUIDES_SYNC_URL")  # voterGuidesSyncOut
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
@@ -131,6 +133,7 @@ def admin_home_view(request):
         'git_commit_date':                    get_git_commit_date(),
         'postgres_version':                   get_postgres_version(),
         'pg_dump_version':                    get_pg_dump_version(),
+        'SERVER_IS_SOURCE_OF_TRUTH':          SERVER_IS_SOURCE_OF_TRUTH,
         'shared_link_clicked_unique_sharer_count': shared_link_clicked_unique_sharer_count,
         'shared_link_clicked_unique_viewer_count': shared_link_clicked_unique_viewer_count,
         'shared_links_count':                 shared_links_count,
