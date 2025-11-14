@@ -80,7 +80,7 @@ NUMBER_OF_SIMULTANEOUS_BALLOT_ITEM_BATCH_PROCESSES = 4  # Four processes at a ti
 NUMBER_OF_SIMULTANEOUS_GENERAL_MAINTENANCE_BATCH_PROCESSES = 1
 NUMBER_OF_SIMULTANEOUS_REPRESENTATIVE_BATCH_PROCESSES = 1  # One processes at a time because of rate limiting
 
-RUN_MAINTENANCE_SCRIPTS_EVERY_N_MINUTES = 10  # Schedule all maintenance scripts every 10 minutes
+RUN_MAINTENANCE_SCRIPTS_EVERY_N_MINUTES = 1  # Schedule all maintenance scripts every 10 minutes
 
 
 def pass_through_batch_list_incoming_variables(request):
@@ -648,10 +648,10 @@ def process_next_general_maintenance():
             'kind_of_process': MAINTENANCE_SCRIPTS_POLITICIAN,
             'maintenance_type': 'politician',
         },
-        # {
-        #     'kind_of_process': MAINTENANCE_SCRIPTS_POSITION,
-        #     'maintenance_type': 'position',
-        # },
+        {
+            'kind_of_process': MAINTENANCE_SCRIPTS_POSITION,
+            'maintenance_type': 'position',
+        },
         # {
         #     'kind_of_process': MAINTENANCE_SCRIPTS_REPRESENTATIVE,
         #     'maintenance_type': 'representative',
@@ -660,14 +660,14 @@ def process_next_general_maintenance():
 
     for maintenance_script_item in maintenance_script_items_list:
         if not fetch_batch_process_system_by_maintenance_scripts_type_on(maintenance_script_item['maintenance_type']):
-            status += "{kind_of_process}_OFF ".format(kind_of_process=maintenance_script_item['kind_of_process'])
+            status += "{kind_of_process}-OFF ".format(kind_of_process=maintenance_script_item['kind_of_process'])
         else:
             # We only want one MAINTENANCE_SCRIPTS_... process to be running at a time
             maintenance_scripts_of_this_type_already_in_queue = False
             for batch_process in batch_process_list_already_scheduled:
                 if batch_process.kind_of_process in [maintenance_script_item['kind_of_process']]:
                     status += \
-                        "{kind_of_process}_ALREADY_SCHEDULED({batch_process_id}) " \
+                        "{kind_of_process}-ALREADY_SCHEDULED({batch_process_id}) " \
                         "".format(
                             batch_process_id=batch_process.id,
                             kind_of_process=maintenance_script_item['kind_of_process'])
@@ -675,7 +675,7 @@ def process_next_general_maintenance():
             for batch_process in batch_process_list_already_running:
                 if batch_process.kind_of_process in [maintenance_script_item['kind_of_process']]:
                     status += \
-                        "{kind_of_process}_ALREADY_RUNNING({batch_process_id}) " \
+                        "{kind_of_process}-ALREADY_RUNNING({batch_process_id}) " \
                         "".format(
                             batch_process_id=batch_process.id,
                             kind_of_process=maintenance_script_item['kind_of_process'])
@@ -2872,6 +2872,9 @@ def process_one_maintenance_script_batch_process(batch_process):
     elif kind_of_process == MAINTENANCE_SCRIPTS_POLITICIAN:
         from politician.controllers_data_cleaning import batch_process_maintenance_scripts_politician
         process_results = batch_process_maintenance_scripts_politician()
+    elif kind_of_process == MAINTENANCE_SCRIPTS_POSITION:
+        from position.controllers_data_cleaning import batch_process_maintenance_scripts_position
+        process_results = batch_process_maintenance_scripts_position()
     else:
         status += "MAINTENANCE_SCRIPT_PROCESS_NOT_DEFINED_YET: " + str(kind_of_process) + " "
         process_results = {

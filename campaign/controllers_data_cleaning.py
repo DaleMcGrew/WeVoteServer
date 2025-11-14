@@ -28,7 +28,7 @@ def batch_process_maintenance_scripts_campaignx():
     # Check all entries that have Politician.linked_campaignx_we_vote_id and
     # make sure we have that corresponding CampaignX entry. If not, delete the Politician.linked_campaignx_we_vote_id
     # value.
-    results = clean_campaigns_with_dead_politician_we_vote_id(
+    results = clean_campaigns_with_stale_politician_we_vote_id(
         number_to_update=1000,
     )
     if positive_value_exists(results['status']):
@@ -50,7 +50,7 @@ def batch_process_maintenance_scripts_campaignx():
     return results
 
 
-def clean_campaigns_with_dead_politician_we_vote_id(
+def clean_campaigns_with_stale_politician_we_vote_id(
         number_to_update=1000,
         state_code=None,
 ):
@@ -88,7 +88,7 @@ def clean_campaigns_with_dead_politician_we_vote_id(
         status += "CAMPAIGNX_CLEAN_QUERY_FAILED: " + str(e) + " "
 
     if campaignx_list_to_update and len(campaignx_list_to_update) == 0:
-        status += "clean_campaigns_with_dead_politician_we_vote_id_NO_CAMPAIGNX_RECORDS_FOUND_TO_UPDATE "
+        status += "clean_campaigns_with_stale_politician_we_vote_id_NO_CAMPAIGNX_RECORDS_FOUND_TO_UPDATE "
         return {
            'status': status,
            'success': success,
@@ -114,7 +114,7 @@ def clean_campaigns_with_dead_politician_we_vote_id(
             updates_needed = True
             records_cleared += 1
     except Exception as e:
-        status += "ERROR_POLITICIAN_QUERY_clean_campaigns_with_dead_politician_we_vote_id query: {e} " \
+        status += "ERROR_POLITICIAN_QUERY_clean_campaigns_with_stale_politician_we_vote_id query: {e} " \
                   "".format(e=e)
         success = False
 
@@ -127,7 +127,7 @@ def clean_campaigns_with_dead_politician_we_vote_id(
                  'linked_politician_we_vote_id_verified',
                  'seo_friendly_path'])
             status += \
-                "clean_campaigns_with_dead_politician_we_vote_id: " \
+                "clean_campaigns_with_stale_politician_we_vote_id: " \
                 "{updates_made:,} campaignx entries cleaned from missing politicians. " \
                 "{records_cleared:,} records had Politician.linked_campaignx_we_vote_id cleared out. " \
                 "{total_to_update_after:,} remaining. " \
@@ -136,7 +136,7 @@ def clean_campaigns_with_dead_politician_we_vote_id(
                     total_to_update_after=total_to_update_after,
                     updates_made=updates_made)
         except Exception as e:
-            status += "ERROR_CAMPAIGNX_BULK_UPDATE_clean_campaigns_with_dead_politician_we_vote_id: {e} " \
+            status += "ERROR_CAMPAIGNX_BULK_UPDATE_clean_campaigns_with_stale_politician_we_vote_id: {e} " \
                       "politician_we_vote_ids_not_found_list: {politician_we_vote_ids_not_found_list}" \
                       "".format(
                           e=e,
@@ -144,7 +144,7 @@ def clean_campaigns_with_dead_politician_we_vote_id(
             success = False
     else:
         status += \
-            "clean_campaigns_with_dead_politician_we_vote_id: " \
+            "clean_campaigns_with_stale_politician_we_vote_id: " \
             "{total_to_update_after:,} remaining. " \
             "".format(
                 total_to_update_after=total_to_update_after)
