@@ -449,6 +449,7 @@ def candidate_list_view(request):
     sort_by = request.GET.get('sort_by', '')
     show_all = positive_value_exists(request.GET.get('show_all', False))
     show_all_elections = positive_value_exists(request.GET.get('show_all_elections', False))
+    show_candidates_with_claimed_profile = positive_value_exists(request.GET.get('show_candidates_with_claimed_profile', False))
     show_candidates_without_twitter = positive_value_exists(request.GET.get('show_candidates_without_twitter', False))
     show_candidates_with_best_twitter_options = \
         positive_value_exists(request.GET.get('show_candidates_with_best_twitter_options', False))
@@ -833,6 +834,9 @@ def candidate_list_view(request):
             'description': 'Build filters for twitter-related searching',
             'time_difference': t1_D - t0_D,
         })
+
+        if positive_value_exists(show_candidates_with_claimed_profile):
+            filters &= (Q(is_claimed_profile=True))
 
         t0_E = time()
         if not filters and not excludes and not show_all_elections:
@@ -1404,6 +1408,7 @@ def candidate_list_view(request):
         'performance_dict':                         performance_dict,
         'review_mode':                              review_mode,
         'show_all_elections':                       show_all_elections,
+        'show_candidates_with_claimed_profile': show_candidates_with_claimed_profile,
         'show_candidates_with_best_twitter_options':    show_candidates_with_best_twitter_options,
         'show_candidates_with_twitter_options':     show_candidates_with_twitter_options,
         'show_candidates_without_twitter':          show_candidates_without_twitter,

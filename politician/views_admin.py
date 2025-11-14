@@ -648,6 +648,7 @@ def politician_list_view(request):
     show_related_candidates = positive_value_exists(request.GET.get('show_related_candidates', False))
     show_ocd_id_state_mismatch = positive_value_exists(request.GET.get('show_ocd_id_state_mismatch', False))
     show_politicians_with_email = positive_value_exists(request.GET.get('show_politicians_with_email', False))
+    show_politicians_with_claimed_profile = positive_value_exists(request.GET.get('show_politicians_with_claimed_profile', False))
     state_code = request.GET.get('state_code', '')
     state_list = STATE_CODE_MAP
     sorted_state_list = sorted(state_list.items())
@@ -696,6 +697,9 @@ def politician_list_view(request):
 
         if positive_value_exists(organization_manual_intervention_needed):
             politician_query = politician_query.filter(organization_manual_intervention_needed=True)
+
+        if positive_value_exists(show_politicians_with_claimed_profile):
+            politician_query = politician_query.filter(is_claimed_profile=True)
 
         if positive_value_exists(politician_search):
             search_words = politician_search.split()
@@ -932,6 +936,7 @@ def politician_list_view(request):
         "&show_related_candidates={show_related_candidates}" \
         "&sort_by={sort_by}" \
         "&was_candidate_recently={was_candidate_recently}" \
+        "&show_politicians_with_claimed_profile={show_politicians_with_claimed_profile}" \
         "".format(
             exclude_politician_analysis_done=exclude_politician_analysis_done,
             hide_politicians_with_photos=hide_politicians_with_photos,
@@ -944,6 +949,7 @@ def politician_list_view(request):
             show_related_candidates=show_related_candidates,
             sort_by=sort_by,
             was_candidate_recently=was_candidate_recently,
+            show_politicians_with_claimed_profile=show_politicians_with_claimed_profile,
             )
     # Update URLs for previous and next pages
     previous_page_url = f"?page={page - 1}&state_code={state_code}&{checkbox_url_variables}"
@@ -967,6 +973,7 @@ def politician_list_view(request):
         'show_all':                     show_all,
         'sort_by':                      sort_by,
         'show_battleground':            show_battleground,
+        'show_politicians_with_claimed_profile': show_politicians_with_claimed_profile,
         'show_politicians_with_email':  show_politicians_with_email,
         'show_related_candidates':      show_related_candidates,
         'show_ocd_id_state_mismatch':   show_ocd_id_state_mismatch,

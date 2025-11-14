@@ -92,6 +92,11 @@
       <input type="checkbox" name="exclude_politician_analysis_done" id="exclude_politician_analysis_done_id" value="1"
              {% if exclude_politician_analysis_done %}checked{% endif %} /> Exclude Analyzed
     </label>
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <label for="show_politicians_with_claimed_profile_id">
+      <input type="checkbox" name="show_politicians_with_claimed_profile" id="show_politicians_with_claimed_profile_id" value="1"
+             {% if show_politicians_with_claimed_profile %}checked{% endif %} /> Is Claimed Profile
+    </label>
 </form>
 <!-- Pagination Section -->
 {% if not hide_pagination %}
@@ -325,6 +330,12 @@
         });
 
         $('#show_politicians_with_email_id').change(function() {
+            displayLoadingBanner();
+            $('#page_input').val("{{ current_page_number }}");  // Retain page number
+            this.form.submit();
+        });
+
+        $('#show_politicians_with_claimed_profile_id').change(function() {
             displayLoadingBanner();
             $('#page_input').val("{{ current_page_number }}");  // Retain page number
             this.form.submit();

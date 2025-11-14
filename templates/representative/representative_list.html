@@ -106,6 +106,11 @@
       <input type="checkbox" name="show_all" id="show_all_id" value="1"
              {% if show_all %}checked{% endif %} /> Show up to 1,000 representatives
     </label>
+    &nbsp;&nbsp;
+    <label for="show_representatives_with_claimed_profile_id">
+      <input type="checkbox" name="show_representatives_with_claimed_profile" id="show_representatives_with_claimed_profile_id" value="1"
+             {% if show_representatives_with_claimed_profile %}checked{% endif %} /> Is Claimed Profile
+    </label>
 </form>
 <br/>
 
@@ -226,6 +231,11 @@
         });
 
         $('#show_representatives_with_email_id').change(function() {
+            displayLoadingBanner()
+            this.form.submit();
+        });
+
+        $('#show_representatives_with_claimed_profile_id').click(function() {
             displayLoadingBanner()
             this.form.submit();
         });
