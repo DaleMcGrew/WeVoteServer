@@ -19,4 +19,5 @@ urlpatterns = [
     re_path(r'^email_template_list/$', views_admin.email_template_list_view, name='email_template_list'),
     re_path(r'^email_template_list_process/$', views_admin.email_template_list_process_view,
             name='email_template_list_process'),
+    re_path(r'^template_content/$', views_admin.email_template_content_view, name='email_template_content'),
 ]

@@ -1,16 +1,489 @@
 {# templates/email_outbound/email_campaign_edit.html #}
 {% extends "template_base.html" %}
+{% load static %}
 
-{% block title %}Email Campaigns > New Email Campaign{% endblock %}
+{% block title %}Email Campaigns › New Campaign{% endblock %}
 
-{%  block content %}
-{% load template_filters %}
-{% load humanize %}
+{% block content %}
 {% include "admin_tools/loading_banner.html" %}
+
+<a href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+    &lt; Back to Email Campaigns
+</a>
+
+<div class="container-fluid mt-4" style="max-width: 1400px;">
+  <div class="row">
+    <!-- Saved Campaigns List (Left Column) -->
+    <div class="col-md-4">
+      <div class="p-3 bg-light rounded border sticky-top" style="top: 20px; max-height: calc(100vh - 100px); overflow-y: auto;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0">📋 Saved Campaigns</h5>
+          <button type="button" class="btn btn-sm btn-success" onclick="createNewCampaign()" title="Create new campaign">
+            <strong>+ Create</strong>
+          </button>
+        </div>
+        
+        <div class="list-group" id="campaigns-list">
+          {% if saved_campaigns %}
+            {% for campaign in saved_campaigns %}
+            <div class="list-group-item campaign-item {% if email_campaign and email_campaign.id == campaign.id %}active{% endif %}"
+                 data-campaign-id="{{ campaign.id }}">
+              <div class="d-flex justify-content-between align-items-center">
+                <div style="flex: 1; min-width: 0;">
+                  <strong class="d-block text-truncate">{{ campaign.email_campaign_name }}</strong>
+                  <small class="text-muted">
+                    ID: #{{ campaign.id }}{% if campaign.emails_sent %} | <span class="badge badge-success">Sent</span>{% endif %}
+                  </small>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary ml-2" onclick="loadCampaign({{ campaign.id }})">
+                  Edit
+                </button>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted text-center py-3">No saved campaigns yet.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Campaign Form (Right Column) -->
+    <div class="col-md-8">
+<div class="p-4 bg-white rounded shadow-sm border">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">
+      Email Campaigns › {% if email_campaign %}Edit Campaign{% else %}New Email Campaign{% endif %}
+    </h4>
+    <div>
+      <a href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}" class="btn btn-outline-secondary me-2">Cancel</a>
+      <button type="submit" form="email-campaign-form" class="btn btn-primary me-2">Save</button>
+      <button type="button" id="send-campaign-btn" class="btn btn-success" disabled>Send</button>
+    </div>
+  </div>
+
+  <form id="email-campaign-form" method="post" action="{% url 'email_outbound:email_campaign_edit_process' %}">
+    {% csrf_token %}
+
+    <!-- Campaign Name -->
+    <div class="mb-3">
+        <label for="campaign_title" class="form-label">Campaign Name <span class="text-danger">*</span></label>
+        <input type="text"
+               id="campaign_title"
+               name="campaign_title"
+               class="form-control"
+               value="{% if email_campaign %}{{ email_campaign.email_campaign_name }}{% endif %}"
+               placeholder="Enter campaign name"
+               required>
+    </div>
+
+    <!-- Template Selection -->
+    <div class="mb-3">
+      <label for="folder_select" class="form-label">Template Folder</label>
+      <select id="folder_select" class="form-select mb-2">
+        <option value="">-- Select a folder --</option>
+        {% for folder in folder_list %}
+          <option value="{{ forloop.counter0 }}">
+            {% if folder.folder_name == "Unfiled" %}📋{% else %}📁{% endif %} {{ folder.folder_name }}
+          </option>
+        {% endfor %}
+      </select>
+      
+      <label for="template_select" class="form-label">Email Template <span class="text-danger">*</span></label>
+      <select id="template_select" name="email_template_id" class="form-select" required disabled>
+        <option value="">-- Select a folder first --</option>
+      </select>
+    </div>
+
+    <!-- Recipients Section -->
+    <div class="mb-3">
+      <label class="form-label">Search Recipients</label>
+      <div class="input-group mb-2">
+        <input type="text" id="recipient_search" class="form-control" placeholder="Search by name or email...">
+        <button type="button" class="btn btn-outline-secondary" id="search_btn">Add Recipient</button>
+      </div>
+      
+      <div id="search_results" class="border rounded p-2 mb-2" style="max-height: 300px; overflow-y: auto; display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small">Select recipients to add</span>
+          <button type="button" class="btn btn-sm btn-primary" id="add_selected_btn">Add Selected</button>
+        </div>
+        <div id="search_results_list"></div>
+      </div>
+      
+      <div class="border rounded p-3" style="min-height: 100px; background-color: #f8f9fa;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Selected Recipients (<span id="recipient_count">0</span>)</strong>
+          <button type="button" class="btn btn-sm btn-outline-danger" id="clear_all_btn">Clear All</button>
+        </div>
+        <div id="selected_recipients"></div>
+      </div>
+      
+      <input type="hidden" name="recipient_ids" id="recipient_ids_input" value="">
+    </div>
+
+    <!-- Subject Line -->
+    <div class="mb-3">
+      <label for="email_subject" class="form-label">Subject<span class="text-danger">*</span></label>
+      <input type="text" 
+             id="email_subject" 
+             name="email_subject" 
+             class="form-control" 
+             value="{% if email_campaign %}{{ email_campaign.email_subject_template_raw }}{% endif %}"
+             placeholder="Enter email subject"
+             required>
+    </div>
+
+    <!-- Email Preview/Editor -->
+    <div class="mb-3">
+      <label for="email_body" class="form-label">Email Preview</label>
+      <textarea id="email_body" name="email_body" class="form-control" rows="10">{% if email_campaign %}{{ email_campaign.email_body_template_raw }}{% endif %}</textarea>
+      <small class="text-muted">This will auto-populate when you select a template above. You can edit it before sending.</small>
+    </div>
+
+    <!-- Hidden Context Inputs -->
+    <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
+    <input type="hidden" name="state_code" value="{{ state_code }}">
+    <input type="hidden" name="email_campaign_id" id="email_campaign_id" value="{% if email_campaign %}{{ email_campaign.id }}{% endif %}">
+    <input type="hidden" name="selected_template_id" value="{{ selected_template_id }}">
+  </form>
+</div>
+    </div><!-- end col-md-8 -->
+  </div><!-- end row -->
+</div><!-- end container-fluid -->
+{% endblock %}
+
+{% block extrabody %}
+<style>
+  .recipient-chip {
+    display: inline-block;
+    background-color: #007bff;
+    color: white;
+    padding: 5px 10px;
+    margin: 3px;
+    border-radius: 15px;
+    font-size: 0.9em;
+  }
+  .recipient-chip .remove-btn {
+    margin-left: 8px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  .search-result-item {
+    padding: 8px;
+    border-bottom: 1px solid #dee2e6;
+    cursor: pointer;
+  }
+  .search-result-item:hover {
+    background-color: #f8f9fa;
+  }
+  .search-result-item input[type="checkbox"] {
+    margin-right: 8px;
+  }
+  .campaign-item.active {
+    background-color: #007bff !important;
+    color: white;
+  }
+  .campaign-item.active .text-muted {
+    color: rgba(255, 255, 255, 0.8) !important;
+  }
+  .campaign-item.active .btn-outline-primary {
+    color: white;
+    border-color: white;
+    background-color: transparent;
+  }
+  .campaign-item.active .btn-outline-primary:hover {
+    background-color: white;
+    color: #007bff;
+  }
+</style>
+<script>
+  // Store folder data from Django template
+  const folderData = JSON.parse('{{ folder_list_json|escapejs }}');
+  const selectedRecipients = new Set();
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    const folderSelect = document.getElementById('folder_select');
+    const templateSelect = document.getElementById('template_select');
+    const searchBtn = document.getElementById('search_btn');
+    const recipientSearch = document.getElementById('recipient_search');
+    const searchResults = document.getElementById('search_results');
+    const searchResultsList = document.getElementById('search_results_list');
+    const selectedRecipientsDiv = document.getElementById('selected_recipients');
+    const addSelectedBtn = document.getElementById('add_selected_btn');
+    const clearAllBtn = document.getElementById('clear_all_btn');
     
-    <a href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
-        < Back to Email Campaigns</a>
-
-<h1>Email Campaigns > New Email Campaign</h1>
-
+    // Handle folder selection
+    folderSelect.addEventListener('change', function() {
+      const folderIndex = this.value;
+      templateSelect.innerHTML = '<option value="">-- Select a template --</option>';
+      
+      if (folderIndex !== '') {
+        const folder = folderData[folderIndex];
+        if (folder.templates && folder.templates.length > 0) {
+          folder.templates.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = template.email_template_name;
+            templateSelect.appendChild(option);
+          });
+          templateSelect.disabled = false;
+        } else {
+          templateSelect.innerHTML = '<option value="">-- No templates in this folder --</option>';
+          templateSelect.disabled = true;
+        }
+      } else {
+        templateSelect.disabled = true;
+      }
+    });
+    
+    // Handle recipient search
+    searchBtn.addEventListener('click', performSearch);
+    recipientSearch.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        performSearch();
+      }
+    });
+    
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+    
+    function performSearch() {
+      const query = recipientSearch.value.trim();
+      if (query.length < 2) {
+        alert('Please enter at least 2 characters to search');
+        return;
+      }
+      
+      // If it's an email address, add it directly
+      if (isValidEmail(query)) {
+        addRecipientByEmail(query);
+        recipientSearch.value = '';
+        return;
+      }
+      
+      // Make AJAX call to search for voters
+      fetch(`/apis/v1/voterSearch/?search_term=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+          displaySearchResults(data.voters || []);
+        })
+        .catch(error => {
+          console.error('Search error:', error);
+          searchResultsList.innerHTML = '<p class="text-danger">Error searching for recipients</p>';
+        });
+    }
+    
+    function addRecipientByEmail(email) {
+      const emailId = 'email_' + email;
+      addRecipient(emailId, email);
+      updateRecipientInput();
+    }
+    
+    function displaySearchResults(voters) {
+      searchResultsList.innerHTML = '';
+      
+      if (voters.length === 0) {
+        searchResultsList.innerHTML = '<p class="text-muted">No voters found</p>';
+        searchResults.style.display = 'block';
+        return;
+      }
+      
+      voters.forEach(voter => {
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        item.innerHTML = `
+          <input type="checkbox" id="voter_${voter.id}" value="${voter.id}" 
+                 ${selectedRecipients.has(voter.id) ? 'checked disabled' : ''}>
+          <label for="voter_${voter.id}" style="cursor: pointer;">
+            ${voter.first_name || ''} ${voter.last_name || ''} 
+            ${voter.email ? '(' + voter.email + ')' : ''}
+          </label>
+        `;
+        searchResultsList.appendChild(item);
+      });
+      
+      searchResults.style.display = 'block';
+    }
+    
+    // Handle adding selected recipients
+    addSelectedBtn.addEventListener('click', function() {
+      const checkboxes = searchResultsList.querySelectorAll('input[type="checkbox"]:checked:not(:disabled)');
+      checkboxes.forEach(checkbox => {
+        const voterId = parseInt(checkbox.value);
+        const label = checkbox.nextElementSibling.textContent.trim();
+        addRecipient(voterId, label);
+      });
+      updateRecipientInput();
+    });
+    
+    function addRecipient(id, name) {
+      if (selectedRecipients.has(id)) return;
+      
+      selectedRecipients.add(id);
+      
+      const chip = document.createElement('span');
+      chip.className = 'recipient-chip';
+      chip.dataset.recipientId = id;
+      const safeId = String(id).replace(/[@.]/g, '_');
+      chip.innerHTML = `${name}<span class="remove-btn" onclick="removeRecipient('${safeId}')">&times;</span>`;
+      
+      selectedRecipientsDiv.appendChild(chip);
+      updateRecipientCount();
+    }
+    
+    window.removeRecipient = function(safeId) {
+      // Find and remove the original ID from the set
+      for (let id of selectedRecipients) {
+        const testSafeId = String(id).replace(/[@.]/g, '_');
+        if (testSafeId === safeId) {
+          selectedRecipients.delete(id);
+          break;
+        }
+      }
+      const chip = selectedRecipientsDiv.querySelector(`[data-recipient-id="${safeId.replace(/_/g, '.')}"]`);
+      if (!chip) {
+        // Try finding by safe ID
+        const chips = selectedRecipientsDiv.querySelectorAll('.recipient-chip');
+        chips.forEach(c => {
+          const cId = String(c.dataset.recipientId).replace(/[@.]/g, '_');
+          if (cId === safeId) c.remove();
+        });
+      } else {
+        chip.remove();
+      }
+      updateRecipientCount();
+      updateRecipientInput();
+    }
+    
+    clearAllBtn.addEventListener('click', function() {
+      if (confirm('Remove all recipients?')) {
+        selectedRecipients.clear();
+        selectedRecipientsDiv.innerHTML = '';
+        updateRecipientCount();
+        updateRecipientInput();
+      }
+    });
+    
+    function updateRecipientCount() {
+      document.getElementById('recipient_count').textContent = selectedRecipients.size;
+    }
+    
+    function updateRecipientInput() {
+      document.getElementById('recipient_ids_input').value = Array.from(selectedRecipients).join(',');
+      checkFormValidity();
+    }
+    
+    function checkFormValidity() {
+      const campaignTitle = document.getElementById('campaign_title').value.trim();
+      const templateId = document.getElementById('template_select').value;
+      const hasRecipients = selectedRecipients.size > 0;
+      const sendBtn = document.getElementById('send-campaign-btn');
+      
+      if (campaignTitle && templateId && hasRecipients) {
+        sendBtn.disabled = false;
+      } else {
+        sendBtn.disabled = true;
+      }
+    }
+    
+    // Monitor form changes
+    document.getElementById('campaign_title').addEventListener('input', checkFormValidity);
+    templateSelect.addEventListener('change', function() {
+      checkFormValidity();
+      loadTemplateContent();
+    });
+    
+    // Load template content when template is selected
+    function loadTemplateContent() {
+      const templateId = templateSelect.value;
+      if (!templateId) return;
+      
+      console.log('Loading template content for ID:', templateId);
+      
+      // Fetch template content
+      fetch('/email/template_content/?template_id=' + templateId, {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin'
+      })
+        .then(response => {
+          console.log('Response status:', response.status);
+          if (!response.ok) {
+            throw new Error('HTTP error ' + response.status);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Template data received:', data);
+          
+          if (data.subject) {
+            document.getElementById('email_subject').value = data.subject;
+          }
+          
+          if (data.message) {
+            // Set textarea value directly
+            document.getElementById('email_body').value = data.message;
+            console.log('Content set successfully');
+          }
+        })
+        .catch(error => {
+          console.error('Error loading template:', error);
+          alert('Failed to load template content. Please try again.');
+        });
+    }
+    
+    // Handle Send button
+    document.getElementById('send-campaign-btn').addEventListener('click', function() {
+      if (confirm('Send this email campaign to ' + selectedRecipients.size + ' recipient(s)?')) {
+        alert('Send functionality will be implemented on the backend.');
+        // TODO: Implement actual send logic
+      }
+    });
+    
+    // Load existing campaign data if editing
+    {% if email_campaign %}
+      // Populate campaign title
+      document.getElementById('campaign_title').value = '{{ email_campaign.email_campaign_name|escapejs }}';
+      
+      // Set template if available
+      {% if email_campaign.email_template_id %}
+        // Find the folder containing this template
+        let templateId = {{ email_campaign.email_template_id }};
+        folderData.forEach((folder, index) => {
+          if (folder.templates.some(t => t.id === templateId)) {
+            folderSelect.value = index;
+            folderSelect.dispatchEvent(new Event('change'));
+            setTimeout(() => {
+              templateSelect.value = templateId;
+              checkFormValidity();
+            }, 100);
+          }
+        });
+      {% endif %}
+      
+      // Load recipients if available
+      const campaignRecipients = JSON.parse('{{ campaign_recipients|escapejs }}');
+      if (campaignRecipients && campaignRecipients.length > 0) {
+        campaignRecipients.forEach(recipient => {
+          addRecipient(recipient.id, recipient.name);
+        });
+        updateRecipientInput();
+      }
+    {% endif %}
+  });
+  
+  // Global functions for campaign management
+  window.createNewCampaign = function() {
+    window.location.href = '{% url "email_outbound:email_campaign_edit" %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}';
+  }
+  
+  window.loadCampaign = function(campaignId) {
+    window.location.href = '{% url "email_outbound:email_campaign_edit" %}?id=' + campaignId + '&google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}';
+  }
+</script>
 {% endblock %}
