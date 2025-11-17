@@ -80,7 +80,7 @@ NUMBER_OF_SIMULTANEOUS_BALLOT_ITEM_BATCH_PROCESSES = 4  # Four processes at a ti
 NUMBER_OF_SIMULTANEOUS_GENERAL_MAINTENANCE_BATCH_PROCESSES = 1
 NUMBER_OF_SIMULTANEOUS_REPRESENTATIVE_BATCH_PROCESSES = 1  # One processes at a time because of rate limiting
 
-RUN_MAINTENANCE_SCRIPTS_EVERY_N_MINUTES = 1  # Schedule all maintenance scripts every 10 minutes
+RUN_MAINTENANCE_SCRIPTS_EVERY_N_MINUTES = 10  # Schedule all maintenance scripts every 10 minutes
 
 
 def pass_through_batch_list_incoming_variables(request):
@@ -636,10 +636,10 @@ def process_next_general_maintenance():
         #     'kind_of_process': MAINTENANCE_SCRIPTS_CHALLENGE,
         #     'maintenance_type': 'challenge',
         # },
-        # {
-        #     'kind_of_process': MAINTENANCE_SCRIPTS_OFFICE,
-        #     'maintenance_type': 'office',
-        # },
+        {
+            'kind_of_process': MAINTENANCE_SCRIPTS_OFFICE,
+            'maintenance_type': 'office',
+        },
         # {
         #     'kind_of_process': MAINTENANCE_SCRIPTS_OFFICE_HELD,
         #     'maintenance_type': 'office_held',
@@ -652,10 +652,10 @@ def process_next_general_maintenance():
             'kind_of_process': MAINTENANCE_SCRIPTS_POSITION,
             'maintenance_type': 'position',
         },
-        # {
-        #     'kind_of_process': MAINTENANCE_SCRIPTS_REPRESENTATIVE,
-        #     'maintenance_type': 'representative',
-        # },
+        {
+            'kind_of_process': MAINTENANCE_SCRIPTS_REPRESENTATIVE,
+            'maintenance_type': 'representative',
+        },
     ]
 
     for maintenance_script_item in maintenance_script_items_list:
@@ -2869,12 +2869,18 @@ def process_one_maintenance_script_batch_process(batch_process):
     elif kind_of_process == MAINTENANCE_SCRIPTS_CANDIDATE:
         from candidate.controllers_data_cleaning import batch_process_maintenance_scripts_candidate
         process_results = batch_process_maintenance_scripts_candidate()
+    elif kind_of_process == MAINTENANCE_SCRIPTS_OFFICE:
+        from office.controllers_data_cleaning import batch_process_maintenance_scripts_office
+        process_results = batch_process_maintenance_scripts_office()
     elif kind_of_process == MAINTENANCE_SCRIPTS_POLITICIAN:
         from politician.controllers_data_cleaning import batch_process_maintenance_scripts_politician
         process_results = batch_process_maintenance_scripts_politician()
     elif kind_of_process == MAINTENANCE_SCRIPTS_POSITION:
         from position.controllers_data_cleaning import batch_process_maintenance_scripts_position
         process_results = batch_process_maintenance_scripts_position()
+    elif kind_of_process == MAINTENANCE_SCRIPTS_REPRESENTATIVE:
+        from representative.controllers_data_cleaning import batch_process_maintenance_scripts_representative
+        process_results = batch_process_maintenance_scripts_representative()
     else:
         status += "MAINTENANCE_SCRIPT_PROCESS_NOT_DEFINED_YET: " + str(kind_of_process) + " "
         process_results = {

@@ -1166,12 +1166,15 @@ def create_followers_from_positions(
 
     # Assemble we_vote_id lists, so we can retrieve the objects to work with them
     for one_position in position_list_to_create_follower:
-        if positive_value_exists(one_position.voter_we_vote_id):
+        if positive_value_exists(one_position.voter_we_vote_id) and \
+                one_position.voter_we_vote_id not in voter_we_vote_id_list_following:
             voter_we_vote_id_list_following.append(one_position.voter_we_vote_id)
         # politician_we_vote_id_list_being_followed.append(one_position.politician_we_vote_id)
         # position_we_vote_id_list_to_create_follower.append(one_position.we_vote_id)
         # We are taking the organization endorsing a politician, and creating a FollowOrganization entry
-        organization_we_vote_id_following_politician_list.append(one_position.organization_we_vote_id)
+        if positive_value_exists(one_position.organization_we_vote_id) and \
+                one_position.organization_we_vote_id not in organization_we_vote_id_following_politician_list:
+            organization_we_vote_id_following_politician_list.append(one_position.organization_we_vote_id)
 
     # Retrieve all relevant voters associated with positions, in a single query, so we can access voter.is_signed_in
     #  For friends_only_positions, we want to only create a follow_organization entry if the voter is signed in

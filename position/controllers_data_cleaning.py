@@ -32,6 +32,14 @@ def batch_process_maintenance_scripts_position():
     if positive_value_exists(results['status']):
         status += results['status'] + " :||: "
 
+    # ##################
+    # Create FollowOrganization entries based on positions
+    results = create_followers_from_positions_batch(
+        number_to_create=1000,  # Should be 1000
+    )
+    if positive_value_exists(results['status']):
+        status += results['status'] + " :||: "
+
     results = {
         'status': status,
         'success': success,
@@ -161,3 +169,109 @@ def add_politician_we_vote_ids_to_candidate_positions(
     }
     return results
 
+
+def create_followers_from_positions_batch(
+        number_to_create=1000,
+        state_code=None,
+):
+    error_message_to_print = ''
+    info_message_to_print = ''
+    status = ""
+    success = True
+    update_message = ''
+
+    from follow.controllers import create_followers_from_positions
+    from campaign.controllers import delete_campaignx_supporters_after_positions_removed, \
+        refresh_campaignx_supporters_count_in_all_children, \
+        refresh_campaignx_supporters_count_for_campaignx_we_vote_id_list
+    campaignx_we_vote_id_list_to_refresh = []
+    # #############################
+    # Create FollowOrganization entries
+    # From PUBLIC positions
+    results = create_followers_from_positions(
+        friends_only_positions=False,
+        number_to_create=number_to_create,
+        state_code=state_code)
+    if positive_value_exists(results['error_message_to_print']):
+        error_message_to_print += results['error_message_to_print']
+    if positive_value_exists(results['info_message_to_print']):
+        info_message_to_print += results['info_message_to_print']
+    campaignx_we_vote_id_list_changed = results['campaignx_we_vote_id_list_to_refresh']
+    if len(campaignx_we_vote_id_list_changed) > 0:
+        campaignx_we_vote_id_list_to_refresh = \
+            list(set(campaignx_we_vote_id_list_changed + campaignx_we_vote_id_list_to_refresh))
+
+    # #############################
+    # From FRIENDS_ONLY positions
+    only_turn_on_for_initial_conversion = False
+    if only_turn_on_for_initial_conversion:
+        results = create_followers_from_positions(
+            friends_only_positions=True,
+            number_to_create=number_to_create,
+            state_code=state_code)
+        if positive_value_exists(results['error_message_to_print']):
+            error_message_to_print += results['error_message_to_print']
+        if positive_value_exists(results['info_message_to_print']):
+            info_message_to_print += results['info_message_to_print']
+        campaignx_we_vote_id_list_changed = results['campaignx_we_vote_id_list_to_refresh']
+        if len(campaignx_we_vote_id_list_changed) > 0:
+            campaignx_we_vote_id_list_to_refresh = \
+                list(set(campaignx_we_vote_id_list_changed + campaignx_we_vote_id_list_to_refresh))
+
+    # # #############################
+    # # Delete campaignx_supporters
+    # delete_from_friends_only_positions = False
+    # results = delete_campaignx_supporters_after_positions_removed(
+    #     request,
+    #     friends_only_positions=False,
+    #     state_code=state_code)
+    # campaignx_we_vote_id_list_changed = results['campaignx_we_vote_id_list_to_refresh']
+    # if len(campaignx_we_vote_id_list_changed) > 0:
+    #     campaignx_we_vote_id_list_to_refresh = \
+    #         list(set(campaignx_we_vote_id_list_changed + campaignx_we_vote_id_list_to_refresh))
+    # if not positive_value_exists(results['campaignx_supporter_entries_deleted']):
+    #     delete_from_friends_only_positions = True
+    # if delete_from_friends_only_positions:
+    #     results = delete_campaignx_supporters_after_positions_removed(
+    #         request,
+    #         friends_only_positions=True,
+    #         state_code=state_code)
+    #     campaignx_we_vote_id_list_changed = results['campaignx_we_vote_id_list_to_refresh']
+    #     if len(campaignx_we_vote_id_list_changed) > 0:
+    #         campaignx_we_vote_id_list_to_refresh = \
+    #             list(set(campaignx_we_vote_id_list_changed + campaignx_we_vote_id_list_to_refresh))
+
+    # #############################
+    # Now refresh the campaignx.supporters count and in all the objects that cache this count
+    if len(campaignx_we_vote_id_list_to_refresh) > 0:
+        results = refresh_campaignx_supporters_count_for_campaignx_we_vote_id_list(
+            campaignx_we_vote_id_list=campaignx_we_vote_id_list_to_refresh)
+        status += results['status']
+        if positive_value_exists(results['error_message_to_print']):
+            error_message_to_print += results['error_message_to_print']
+        if positive_value_exists(results['update_message']):
+            update_message += results['update_message']
+
+    # Now push updates to campaignx entries out to candidates and politicians linked to the campaignx entries
+    if len(campaignx_we_vote_id_list_to_refresh) > 0:
+        results = refresh_campaignx_supporters_count_in_all_children(
+            request=None,
+            campaignx_we_vote_id_list=campaignx_we_vote_id_list_to_refresh)
+        status += results['status']
+        if positive_value_exists(results['update_message']):
+            update_message += results['update_message']
+
+    if positive_value_exists(info_message_to_print):
+        status += "INFO_MESSAGE_TO_PRINT: " + info_message_to_print + " "
+
+    if positive_value_exists(error_message_to_print):
+        status += "ERROR_MESSAGE_TO_PRINT: " + error_message_to_print + " "
+
+    if positive_value_exists(update_message):
+        status += "UPDATE_MESSAGE: " + update_message + " "
+
+    results = {
+        'status': status,
+        'success': success,
+    }
+    return results
