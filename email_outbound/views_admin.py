@@ -51,6 +51,8 @@ def email_campaign_edit_process_view(request):
     campaign_title = request.POST.get('campaign_title', '').strip()
     email_template_id = request.POST.get('email_template_id', 0)
     recipient_ids = request.POST.get('recipient_ids', '')
+    email_subject = request.POST.get('email_subject', '').strip()
+    email_body = request.POST.get('email_body', '')
     email_campaign_id = request.POST.get('email_campaign_id', '')
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
     state_code = request.POST.get('state_code', '')
@@ -63,6 +65,8 @@ def email_campaign_edit_process_view(request):
             campaign = EmailCampaign.objects.get(id=email_campaign_id)
             campaign.email_campaign_name = campaign_title
             campaign.email_template_id = email_template_id
+            campaign.email_subject_template_raw = email_subject
+            campaign.email_body_template_raw = email_body
             campaign.save()
             
             # Clear existing recipients for this campaign
@@ -72,12 +76,16 @@ def email_campaign_edit_process_view(request):
             campaign = EmailCampaign.objects.create(
                 email_campaign_name=campaign_title,
                 email_template_id=email_template_id,
+                email_subject_template_raw=email_subject,
+                email_body_template_raw=email_body,
             )
             messages.add_message(request, messages.SUCCESS, 'Email campaign created.')
     else:
         campaign = EmailCampaign.objects.create(
             email_campaign_name=campaign_title,
             email_template_id=email_template_id,
+            email_subject_template_raw=email_subject,
+            email_body_template_raw=email_body,
         )
         messages.add_message(request, messages.SUCCESS, 'Email campaign created.')
     
@@ -535,3 +543,27 @@ def email_template_list_view(request):
     }
     # messages.add_message(request, messages.INFO, '')
     return render(request, "email_outbound/email_template_list.html", context)
+
+
+@login_required
+def email_template_content_view(request):
+    """
+    API endpoint to fetch template content
+    """
+    from django.http import JsonResponse
+    from email_outbound.models import EmailTemplate
+    
+    template_id = request.GET.get('template_id', '')
+    
+    try:
+        template = EmailTemplate.objects.get(id=template_id)
+        return JsonResponse({
+            'success': True,
+            'subject': template.subject or '',
+            'message': template.message or '',
+        })
+    except EmailTemplate.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Template not found'
+        }, status=404)

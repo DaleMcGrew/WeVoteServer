@@ -97,7 +97,7 @@
 
     <!-- Recipients Section -->
     <div class="mb-3">
-      <label class="form-label">Recipients</label>
+      <label class="form-label">Search Recipients</label>
       <div class="input-group mb-2">
         <input type="text" id="recipient_search" class="form-control" placeholder="Search by name or email...">
         <button type="button" class="btn btn-outline-secondary" id="search_btn">Add Recipient</button>
@@ -120,6 +120,25 @@
       </div>
       
       <input type="hidden" name="recipient_ids" id="recipient_ids_input" value="">
+    </div>
+
+    <!-- Subject Line -->
+    <div class="mb-3">
+      <label for="email_subject" class="form-label">Subject<span class="text-danger">*</span></label>
+      <input type="text" 
+             id="email_subject" 
+             name="email_subject" 
+             class="form-control" 
+             value="{% if email_campaign %}{{ email_campaign.email_subject_template_raw }}{% endif %}"
+             placeholder="Enter email subject"
+             required>
+    </div>
+
+    <!-- Email Preview/Editor -->
+    <div class="mb-3">
+      <label for="email_body" class="form-label">Email Preview</label>
+      <textarea id="email_body" name="email_body" class="form-control" rows="10">{% if email_campaign %}{{ email_campaign.email_body_template_raw }}{% endif %}</textarea>
+      <small class="text-muted">This will auto-populate when you select a template above. You can edit it before sending.</small>
     </div>
 
     <!-- Hidden Context Inputs -->
@@ -372,7 +391,51 @@
     
     // Monitor form changes
     document.getElementById('campaign_title').addEventListener('input', checkFormValidity);
-    templateSelect.addEventListener('change', checkFormValidity);
+    templateSelect.addEventListener('change', function() {
+      checkFormValidity();
+      loadTemplateContent();
+    });
+    
+    // Load template content when template is selected
+    function loadTemplateContent() {
+      const templateId = templateSelect.value;
+      if (!templateId) return;
+      
+      console.log('Loading template content for ID:', templateId);
+      
+      // Fetch template content
+      fetch('/email/template_content/?template_id=' + templateId, {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin'
+      })
+        .then(response => {
+          console.log('Response status:', response.status);
+          if (!response.ok) {
+            throw new Error('HTTP error ' + response.status);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Template data received:', data);
+          
+          if (data.subject) {
+            document.getElementById('email_subject').value = data.subject;
+          }
+          
+          if (data.message) {
+            // Set textarea value directly
+            document.getElementById('email_body').value = data.message;
+            console.log('Content set successfully');
+          }
+        })
+        .catch(error => {
+          console.error('Error loading template:', error);
+          alert('Failed to load template content. Please try again.');
+        });
+    }
     
     // Handle Send button
     document.getElementById('send-campaign-btn').addEventListener('click', function() {
