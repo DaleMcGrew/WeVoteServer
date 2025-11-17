@@ -457,176 +457,39 @@ def representative_list_view(request):
 
     # Update representatives who currently don't have seo_friendly_path, with value from linked politician
     number_to_update = 1000
-    seo_friendly_path_updates = True
-    if seo_friendly_path_updates:
-        seo_update_query = Representative.objects.all()
-        seo_update_query = seo_update_query.exclude(
-            Q(politician_we_vote_id__isnull=True) |
-            Q(politician_we_vote_id="")
+    seo_friendly_path_updates_on = True
+    if seo_friendly_path_updates_on:
+        from representative.controllers_data_cleaning import seo_friendly_path_updates
+        results = seo_friendly_path_updates(
+            number_to_update=number_to_update,
+            state_code=state_code,
         )
-        seo_update_query = seo_update_query.filter(
-            Q(seo_friendly_path__isnull=True) |
-            Q(seo_friendly_path="")
-        )
-        # After initial updates to all representatives, include in the search logic to find representatives with
-        # seo_friendly_path_date_last_updated older than Politician.seo_friendly_path_date_last_updated
-        if positive_value_exists(state_code):
-            seo_update_query = seo_update_query.filter(state_code__iexact=state_code)
-        total_to_convert = seo_update_query.count()
-        total_to_convert_after = total_to_convert - number_to_update if total_to_convert > number_to_update else 0
-        representative_list = list(seo_update_query[:number_to_update])
-        update_list = []
-        updates_needed = False
-        updates_made = 0
-        politician_we_vote_id_list = []
-        # Retrieve all relevant politicians in a single query
-        for one_representative in representative_list:
-            politician_we_vote_id_list.append(one_representative.politician_we_vote_id)
-        politician_manager = PoliticianManager()
-        politician_list = []
-        if len(politician_we_vote_id_list) > 0:
-            politician_results = politician_manager.retrieve_politician_list(
-                politician_we_vote_id_list=politician_we_vote_id_list)
-            politician_list = politician_results['politician_list']
-        politician_dict_list = {}
-        for one_politician in politician_list:
-            politician_dict_list[one_politician.we_vote_id] = one_politician
-        # timezone = pytz.timezone("America/Los_Angeles")
-        # datetime_now = timezone.localize(datetime.now())
-        datetime_now = generate_localized_datetime_from_obj()[1]
-        for one_representative in representative_list:
-            one_politician = politician_dict_list.get(one_representative.politician_we_vote_id)
-            if one_politician and positive_value_exists(one_politician.seo_friendly_path):
-                one_representative.seo_friendly_path = one_politician.seo_friendly_path
-                one_representative.seo_friendly_path_date_last_updated = datetime_now
-                update_list.append(one_representative)
-                updates_needed = True
-                updates_made += 1
-        if updates_needed:
-            Representative.objects.bulk_update(
-                update_list, ['seo_friendly_path', 'seo_friendly_path_date_last_updated'])
-            messages.add_message(request, messages.INFO,
-                                 "{updates_made:,} representatives updated with new seo_friendly_path. "
-                                 "{total_to_convert_after:,} remaining."
-                                 "".format(total_to_convert_after=total_to_convert_after, updates_made=updates_made))
+        if positive_value_exists(results['status']):
+            messages.add_message(request, messages.INFO, results['status'])
 
     # Update representatives who don't have representative.office_held_district_name
     number_to_update = 1000
-    populate_once_with_cached_data = True
-    if populate_once_with_cached_data:
-        cache_query = Representative.objects.all()
-        cache_query = cache_query.exclude(
-            Q(office_held_we_vote_id__isnull=True) |
-            Q(office_held_we_vote_id="")
+    update_representatives_with_office_held_district_name_on = True
+    if update_representatives_with_office_held_district_name_on:
+        from representative.controllers_data_cleaning import update_representatives_with_office_held_district_name
+        results = update_representatives_with_office_held_district_name(
+            number_to_update=number_to_update,
+            state_code=state_code,
         )
-        cache_query = cache_query.filter(
-            Q(office_held_district_name__isnull=True) |
-            Q(office_held_district_name="")
-        )
-        cache_query = cache_query.values_list('office_held_we_vote_id', flat=True).distinct()
-        total_to_convert = cache_query.count()
-        total_to_convert_after = total_to_convert - number_to_update if total_to_convert > number_to_update else 0
-        office_held_we_vote_id_list = cache_query[:number_to_update]
-
-        office_held_dict_list = {}
-        if len(office_held_we_vote_id_list) > 0:
-            office_held_queryset = OfficeHeld.objects.all()
-            office_held_queryset = office_held_queryset.filter(we_vote_id__in=office_held_we_vote_id_list)
-            office_held_list = list(office_held_queryset)
-            for office_held in office_held_list:
-                if office_held.we_vote_id not in office_held_dict_list:
-                    office_held_dict_list[office_held.we_vote_id] = office_held
-
-        cache_query2 = Representative.objects.all()
-        cache_query2 = cache_query2.filter(office_held_we_vote_id__in=office_held_we_vote_id_list)
-        cache_query2 = cache_query2.filter(
-            Q(office_held_district_name__isnull=True) |
-            Q(office_held_district_name="")
-        )
-        representative_list_to_update = list(cache_query2)
-        update_list = []
-        updates_made = 0
-        updates_needed = False
-        for representative in representative_list_to_update:
-            one_office_held = office_held_dict_list.get(representative.office_held_we_vote_id)
-            if positive_value_exists(one_office_held.district_name):
-                representative.office_held_district_name = one_office_held.district_name
-                update_list.append(representative)
-                updates_needed = True
-                updates_made += 1
-        if updates_needed:
-            Representative.objects.bulk_update(update_list, ['office_held_district_name'])
-            messages.add_message(request, messages.INFO,
-                                 "{updates_made:,} representatives updated with new district_name. "
-                                 "{total_to_convert_after:,} remaining."
-                                 "".format(total_to_convert_after=total_to_convert_after, updates_made=updates_made))
+        if positive_value_exists(results['status']):
+            messages.add_message(request, messages.INFO, results['status'])
 
     # Update candidates who currently don't have linked_campaignx_we_vote_id, with value from linked politician
     number_to_update = 1000
-    campaignx_we_vote_id_updates = True
-    if campaignx_we_vote_id_updates:
-        campaignx_update_query = Representative.objects.all()
-        campaignx_update_query = campaignx_update_query.exclude(
-            Q(politician_we_vote_id__isnull=True) |
-            Q(politician_we_vote_id="")
+    update_representatives_with_campaignx_we_vote_id_on = True
+    if update_representatives_with_campaignx_we_vote_id_on:
+        from representative.controllers_data_cleaning import update_representatives_with_campaignx_we_vote_id
+        results = update_representatives_with_campaignx_we_vote_id(
+            number_to_update=number_to_update,
+            state_code=state_code,
         )
-        campaignx_update_query = campaignx_update_query.filter(
-            Q(linked_campaignx_we_vote_id__isnull=True) |
-            Q(linked_campaignx_we_vote_id="")
-        )
-        # After initial updates to all representatives, include in the search logic to find representatives with
-        # linked_campaignx_we_vote_id_date_last_updated older than
-        # Politician.linked_campaignx_we_vote_id_date_last_updated
-        if positive_value_exists(state_code):
-            campaignx_update_query = campaignx_update_query.filter(state_code__iexact=state_code)
-        total_to_convert = campaignx_update_query.count()
-        total_to_convert_after = total_to_convert - number_to_update if total_to_convert > number_to_update else 0
-        campaignx_update_query = campaignx_update_query.order_by('-id')
-        representative_list = list(campaignx_update_query[:number_to_update])
-        politician_we_vote_id_list = []
-        # Retrieve all relevant politicians in a single query
-        for one_representative in representative_list:
-            if positive_value_exists(one_representative.politician_we_vote_id):
-                politician_we_vote_id_list.append(one_representative.politician_we_vote_id)
-        politician_manager = PoliticianManager()
-        politician_list = []
-        if len(politician_we_vote_id_list) > 0:
-            politician_results = politician_manager.retrieve_politician_list(
-                politician_we_vote_id_list=politician_we_vote_id_list)
-            politician_list = politician_results['politician_list']
-        politician_dict_list = {}
-        for one_politician in politician_list:
-            politician_dict_list[one_politician.we_vote_id] = one_politician
-        # timezone = pytz.timezone("America/Los_Angeles")
-        # datetime_now = timezone.localize(datetime.now())
-        datetime_now = generate_localized_datetime_from_obj()[1]
-        linked_campaignx_we_vote_id_missing = 0
-        update_list = []
-        updates_needed = False
-        updates_made = 0
-        for one_representative in representative_list:
-            one_politician = politician_dict_list.get(one_representative.politician_we_vote_id)
-            if not hasattr(one_politician, 'linked_campaignx_we_vote_id'):
-                continue
-            if positive_value_exists(one_politician.linked_campaignx_we_vote_id):
-                one_representative.linked_campaignx_we_vote_id = one_politician.linked_campaignx_we_vote_id
-                one_representative.linked_campaignx_we_vote_id_date_last_updated = datetime_now
-                update_list.append(one_representative)
-                updates_needed = True
-                updates_made += 1
-            else:
-                linked_campaignx_we_vote_id_missing += 1
-        if positive_value_exists(linked_campaignx_we_vote_id_missing):
-            messages.add_message(request, messages.ERROR,
-                                 "{linked_campaignx_we_vote_id_missing:,} missing linked_campaignx_we_vote_id."
-                                 "".format(linked_campaignx_we_vote_id_missing=linked_campaignx_we_vote_id_missing))
-        if updates_needed:
-            Representative.objects.bulk_update(
-                update_list, ['linked_campaignx_we_vote_id', 'linked_campaignx_we_vote_id_date_last_updated'])
-            messages.add_message(request, messages.INFO,
-                                 "{updates_made:,} representatives updated with new linked_campaignx_we_vote_id. "
-                                 "{total_to_convert_after:,} remaining."
-                                 "".format(total_to_convert_after=total_to_convert_after, updates_made=updates_made))
+        if positive_value_exists(results['status']):
+            messages.add_message(request, messages.INFO, results['status'])
 
     # ################################################
     # Maintenance script section END
