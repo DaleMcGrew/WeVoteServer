@@ -8,13 +8,13 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 
 from admin_tools.views import redirect_to_sign_in_page
-from email_outbound.models import EmailTemplate, EmailTemplateFolder
+from email_outbound.models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient
 from voter.models import voter_has_authority
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
@@ -56,8 +56,6 @@ def email_campaign_edit_process_view(request):
     email_campaign_id = request.POST.get('email_campaign_id', '')
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
     state_code = request.POST.get('state_code', '')
-
-    from email_outbound.models import EmailCampaign, EmailCampaignRecipient
     
     # Create or update campaign
     if email_campaign_id:
@@ -134,7 +132,6 @@ def email_campaign_edit_view(request):
     campaign_recipients = []
     if campaign_id:
         try:
-            from email_outbound.models import EmailCampaign, EmailCampaignRecipient
             email_campaign = EmailCampaign.objects.get(id=campaign_id)
             
             # Load recipients for this campaign
@@ -155,7 +152,6 @@ def email_campaign_edit_view(request):
             pass
     
     # Get list of saved campaigns
-    from email_outbound.models import EmailCampaign
     saved_campaigns = EmailCampaign.objects.filter(deleted=False).order_by('-id')[:10]
 
     # Step 1: Get folders that are not deleted
@@ -550,9 +546,6 @@ def email_template_content_view(request):
     """
     API endpoint to fetch template content
     """
-    from django.http import JsonResponse
-    from email_outbound.models import EmailTemplate
-    
     template_id = request.GET.get('template_id', '')
     
     try:
