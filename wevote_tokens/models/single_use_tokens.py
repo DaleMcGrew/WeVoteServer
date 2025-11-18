@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 import json
 from wevote_functions.functions import positive_value_exists
 
@@ -72,7 +72,7 @@ class SingleUseToken(models.Model):
         if not isinstance(validation_key, (bytes)):
             raise ValueError("Validation key must be a bytes object.")
         if not isinstance(expiration_seconds, (int, float, type(None))):
-            raise ValueError("Expiration datetime must be an integer or float.")
+            raise ValueError("Expiration time must be an integer or float, in seconds.")
         if not isinstance(json_data, (dict, type(None))):
             raise ValueError("JSON data must be a dictionary or None.")
 
@@ -81,7 +81,7 @@ class SingleUseToken(models.Model):
             
         #default to 5 minutes expiration time
         if expiration_seconds is None:
-            expiration_seconds = timedelta(minutes=5)
+            expiration_seconds = 300
         elif expiration_seconds < 0:
             raise ValueError("Expiration Seconds must be a positive value.")
         elif expiration_seconds > 1800: # 30 minutes
@@ -99,7 +99,7 @@ class SingleUseToken(models.Model):
         
         self._user = user
         self._created_at = time_now
-        self._validation = cipher.encrypt(validation_key.encode('utf-8'))
+        self._validation = cipher.encrypt(validation_key)
         self._expiration_datetime = time_now + timedelta(seconds=int(expiration_seconds))
         self._json_data_encrypted = json_data_encrypted
 
@@ -111,7 +111,7 @@ class SingleUseTokenManager(models.Manager):
         return "Single Use Token Manager"
 
     @staticmethod
-    def create_token(user, validation_key=None, expiration_datetime=None, json_data=None):
+    def create_token(user, validation_key=None, expiration_seconds=None, json_data=None):
         token_info = {
             'success': False,
             'status': '',
@@ -121,11 +121,13 @@ class SingleUseTokenManager(models.Manager):
             'token_user': None,
         }
 
-        new_token = SingleUseToken()
+        if isinstance(validation_key, (str)):
+            validation_key = validation_key.encode('utf-8')
 
+        new_token = SingleUseToken()
         try:
             new_token.save(user, validation_key=validation_key,
-                expiration_datetime=expiration_datetime,
+                expiration_seconds=expiration_seconds,
                 json_data=json_data)
         except Exception as e:
             token_info['status'] = f"TOKEN SAVE FAILED: {e}"
@@ -153,6 +155,7 @@ class SingleUseTokenManager(models.Manager):
             'expiration_datetime': None,
             'json_data': None,
             'token_user': None,
+            'expired': False,
         }
         
         cipher = Fernet(validation_key)
@@ -163,27 +166,34 @@ class SingleUseTokenManager(models.Manager):
             token_info['status'] = 'TOKEN NOT FOUND: ' + str(e)
             return token_info
         
-        decrypted_validation_key = ''
         try:
-            decrypted_validation_key = cipher.decrypt(token._validation).decode('utf-8')
+            # Convert BinaryField (memoryview) to bytes for Fernet.decrypt()
+            validation_bytes = bytes(token._validation) if token._validation else b''
+            cipher.decrypt(validation_bytes)
+        except InvalidToken:
+            token_info['status'] = 'VALIDATION DECRYPTION ERROR: Invalid Key'
+            return token_info
         except Exception as e:
             token_info['status'] = 'VALIDATION DECRYPTION ERROR: ' + str(e)
-            return token_info
-        if decrypted_validation_key != validation_key:
-            token_info['status'] = 'INVALID VALIDATION KEY'
             return token_info
 
         if timezone.now() > token._expiration_datetime:
             token_info['status'] = 'TOKEN EXPIRED'
-            token_info['token_expired'] = True
+            token_info['expired'] = True
+            token_info['expiration_datetime'] = token._expiration_datetime
+            token.delete()
             return token_info
 
+
         if token._json_data_encrypted is not None:
-            json_data = token_info['json_data'] = json.loads(cipher.decrypt(token._json_data_encrypted).decode('utf-8'))
+            # Convert BinaryField (memoryview) to bytes for Fernet.decrypt()
+            json_data_bytes = bytes(token._json_data_encrypted)
+            json_data = json.loads(cipher.decrypt(json_data_bytes).decode('utf-8'))
         else:
             json_data = token_info['json_data'] = None
 
         token_info['success'] = True
+        token_info['status'] = 'TOKEN RETRIEVED AND AUTHENTICATED'
         token_info['expiration_datetime'] = token._expiration_datetime
         token_info['json_data'] = json_data
         token_info['token_user'] = token._user
