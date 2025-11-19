@@ -126,7 +126,6 @@ class TestSingleUseTokenManager(TestCase):
     def setUp(self):
         self.test_voter = VoterManager().create_voter(email='test@example.com', password='testpassword')['voter']
         self.test_validation_key = Fernet.generate_key()
-        self.test_cipher = Fernet(self.test_validation_key)
 
     def _assert_equal(self, values_dict, keys_to_check, expected_value, reason):
         for i, key in enumerate(keys_to_check):
