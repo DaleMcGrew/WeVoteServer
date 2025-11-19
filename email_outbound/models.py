@@ -1126,7 +1126,7 @@ class EmailManager(models.Manager):
                 message.content = Content(
                     MimeType.text,
                     email_scheduled.message_text)
-            else:
+            if email_scheduled.message_html:
                 message.content = Content(
                     MimeType.html,
                     email_scheduled.message_html)
