@@ -39,12 +39,22 @@ class TestSingleUseToken(TestCase):
             (timezone.now() + timedelta(seconds=expiration)) - token._expiration_datetime,
             timedelta(seconds=1),
             "_expiration_datetime Not Set Correctly")
+    
+    def test_single_use_token_creation_with_invalid_user(self):
+        invalid_user = 'invalid'
+        validation_key = self.test_validation_key
+
+        token = SingleUseToken()
+
+        with self.assertRaisesMessage(ValueError, 'Cannot assign'):
+            token.save(user=invalid_user, validation_key=validation_key)
 
     def test_single_use_token_creation_with_invalid_validation_key(self):
         voter = self.test_voter
         invalid_validation_key = 'invalid'
 
         token = SingleUseToken()
+
         with self.assertRaisesMessage(ValueError, "Validation key must be a bytes object."):
             token.save(user=voter, validation_key=invalid_validation_key)
 
@@ -53,6 +63,7 @@ class TestSingleUseToken(TestCase):
         invalid_json_data = 1
 
         token = SingleUseToken()
+
         with self.assertRaisesMessage(ValueError, "JSON data must be a dictionary or None."):
             token.save(user=voter, validation_key=self.test_validation_key, json_data=invalid_json_data)
     
@@ -62,6 +73,7 @@ class TestSingleUseToken(TestCase):
         large_json_data_size = len(bytes(json.dumps(large_json_data), "utf-8"))
 
         token = SingleUseToken()
+
         with self.assertRaisesMessage(ValueError, f"Json Data must be <= 8kb, currently {large_json_data_size} bytes."):
             token.save(user=voter, validation_key=self.test_validation_key, json_data=large_json_data)
     
@@ -84,6 +96,7 @@ class TestSingleUseToken(TestCase):
         validation_key = self.test_validation_key
 
         token = SingleUseToken()
+
         with self.assertRaisesMessage(ValueError, "Expiration time must be an integer or float, in seconds."):
             token.save(user=voter, validation_key=validation_key, expiration_seconds=invalid_expiration)
 
@@ -93,6 +106,7 @@ class TestSingleUseToken(TestCase):
         validation_key = self.test_validation_key
 
         token = SingleUseToken()
+
         with self.assertRaisesMessage(ValueError, "Expiration Seconds must be a positive value."):
             token.save(user=voter, validation_key=validation_key, expiration_seconds=negative_expiration)
 
@@ -102,6 +116,7 @@ class TestSingleUseToken(TestCase):
         validation_key = self.test_validation_key
 
         token = SingleUseToken()
+
         with self.assertRaisesMessage(ValueError, "Expiration Seconds must be <= 1800."):
             token.save(user=voter, validation_key=validation_key, expiration_seconds=large_expiration)
 
@@ -113,144 +128,177 @@ class TestSingleUseTokenManager(TestCase):
         self.test_validation_key = Fernet.generate_key()
         self.test_cipher = Fernet(self.test_validation_key)
 
+    def _assert_equal(self, values_dict, keys_to_check, expected_value, reason):
+        for i, key in enumerate(keys_to_check):
+            self.assertEqual(values_dict[key], expected_value[i], f"'{key}' Should Be {expected_value[i]} on {reason} but was {values_dict[key]}")
+
+    def _assert_is_none(self, values_dict, keys_to_check, reason):
+        for key in keys_to_check:
+            self.assertIsNone(values_dict[key], f"'{key}' Should Be None on {reason} but was {values_dict[key]}")
+
+    def _assert_is_not_none(self, values_dict, keys_to_check, reason):
+        for key in keys_to_check:
+            self.assertIsNotNone(values_dict[key], f"'{key}' Should Be Not None on {reason} but was {values_dict[key]}")
+
+    def _assert_true(self, values_dict, keys_to_check, reason):
+        for key in keys_to_check:
+            self.assertTrue(values_dict[key], f"'{key}' Should Be True on {reason} but was {values_dict[key]}")
+
+    def _assert_false(self, values_dict, keys_to_check, reason):
+        for key in keys_to_check:
+            self.assertFalse(values_dict[key], f"'{key}' Should Be False on {reason} but was {values_dict[key]}")
+
+    def _get_test_token_pk(self, voter=None, validation_key=None, expiration_seconds=None, json_data=None):
+        if voter is None:
+            voter = self.test_voter
+        if validation_key is None:
+            validation_key = self.test_validation_key
+            
+        token_info = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, expiration_seconds=expiration_seconds, json_data=json_data)
+        return token_info['token_pk']
+
     def test_generate_encryption_key(self):
         
         encryption_key = SingleUseTokenManager.generate_encryption_key()
-
-        self.assertEqual(len(encryption_key), len(Fernet.generate_key()), "Encryption Key Length Not Correct")
+        
+        self._assert_equal(
+            {'encryption_key': len(encryption_key)},
+            ['encryption_key'],
+            [len(Fernet.generate_key())],
+            "Encryption Key Generation")
+        self._assert_is_not_none({'encryption_key': encryption_key}, ['encryption_key'], "Encryption Key Should Not Be None")
         self.assertIsInstance(encryption_key, bytes, "Encryption Key Not a bytes object")
-        self.assertIsNotNone(encryption_key, "Encryption Key Should Not Be None")
 
     def test_create_token(self):
         voter = self.test_voter
         validation_key = self.test_validation_key
         expiration = 300
+        message_addon = "Token Creation Success"
 
         token_info = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, expiration_seconds=expiration)
 
-        self.assertEqual(token_info['success'], True, "Token Creation Failed")
-        self.assertEqual(token_info['status'], "TOKEN CREATED", "Token Creation Status Not Correct")
-        self.assertNotEqual(token_info['token_pk'], None, "Token PK Should Be Set")
+        self._assert_equal(token_info, ['status', 'token_user'], ["TOKEN CREATED", voter], message_addon)
+        self._assert_is_not_none(token_info, ['token_pk'], message_addon)
         self.assertLessEqual(
             (timezone.now() + timedelta(seconds=expiration)) - token_info['expiration_datetime'],
             timedelta(seconds=1),
             "Expiration Datetime Not Set Correctly")
-        self.assertEqual(token_info['token_user'], voter, "Token User Not Correct")
 
     def test_create_token_failure(self):
         voter = self.test_voter
         validation_key = self.test_validation_key
-        expiration = 300
+        message_addon = "Token Creation Failure"
 
         token_info = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, expiration_seconds='invalid')
         
-        self.assertEqual(token_info['success'], False, "Token Creation Should Have Failed")
-        self.assertEqual(
-            token_info['status'],
-            "TOKEN SAVE FAILED: Expiration time must be an integer or float, in seconds.",
-            "Token Creation Status Not Correct")
-        self.assertEqual(token_info['token_pk'], None, "Token PK Should Not Be Set On Save Failure")
-        self.assertEqual(token_info['expiration_datetime'], None, "Expiration Datetime Should Not Be Set On Save Failure")
-        self.assertEqual(token_info['token_user'], None, "Token User Should Not Be Set On Save Failure")
+        self._assert_false(token_info, ['success'], message_addon)
+        self._assert_is_none(token_info, ['token_pk', 'expiration_datetime', 'token_user'], message_addon)
+        self._assert_equal(
+            token_info,
+            ['status'],
+            ["TOKEN SAVE FAILED: Expiration time must be an integer or float, in seconds."],
+            message_addon)
+
+    def test_create_token_with_invalid_validation_key(self):
+        voter = self.test_voter
+        invalid_validation_key = 99999999
+        message_addon = "Invalid Validation Key"
         
+        token_info = SingleUseTokenManager.create_token(user=voter, validation_key=invalid_validation_key)
+
+        self._assert_false(token_info, ['success'], message_addon)
+        self._assert_is_none(token_info, ['token_pk', 'expiration_datetime', 'token_user'], message_addon)
+        self._assert_equal(token_info, ['status'], ["VALIDATION KEY MUST BE A BYTES OR STRING."], message_addon)
+
     def test_authenticate_retrieve_token(self):
         voter = self.test_voter
-        validation_key = self.test_validation_key
         json_data = {'test': 'test'}
+        message_addon = "Authentication Success"
+        
+        token_pk = self._get_test_token_pk(voter=voter, json_data=json_data)
+        token_info = SingleUseTokenManager.authenticate_retrieve_token(token_pk, self.test_validation_key)
 
-        token_pk = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, json_data=json_data)['token_pk']
+        self._assert_false(token_info, ['expired'], message_addon)
+        self._assert_false({'exists': SingleUseToken.objects.filter(pk=token_pk).exists()}, ['exists'], message_addon)
+        self._assert_equal(
+            token_info,
+            ['status', 'json_data', 'token_user'],
+            ["TOKEN RETRIEVED AND AUTHENTICATED", json_data, voter],
+            message_addon)
+        self._assert_is_not_none(token_info, ['expiration_datetime'], message_addon)
+        self._assert_true(token_info, ['success'], message_addon)
 
-        token_info = SingleUseTokenManager.authenticate_retrieve_token(token_pk, validation_key)
-
-        print(token_info)
-        self.assertTrue(token_info['success'], "Token Authentication Should Have Succeeded")
-        self.assertEqual(token_info['status'], "TOKEN RETRIEVED AND AUTHENTICATED", "Token Authentication Status Not Correct")
-        self.assertIsNotNone(token_info['expiration_datetime'], "Expiration Datetime Should Be Retrieved")
-        self.assertEqual(token_info['json_data'], {'test': 'test'}, "JSON Data Should Be Retrieved")
-        self.assertEqual(token_info['token_user'], voter, "Token User Should Be Retrieved")
-        self.assertFalse(token_info['expired'], "Token Should Not Be Marked As Expired On Authentication")
-        self.assertFalse(SingleUseToken.objects.filter(pk=token_pk).exists(), "Token Should Be Deleted After Authentication")
 
     def test_authenticate_retrieve_token_invalid_pk(self):
         invalid_pk = 999999
-        voter = self.test_voter
-        validation_key = self.test_validation_key
-        json_data = {'test': 'test'}
+        message_addon = "Token Not Found"
 
+        token_pk = self._get_test_token_pk()
+        token_info = SingleUseTokenManager.authenticate_retrieve_token(invalid_pk, self.test_validation_key)
 
-        token_pk = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, json_data=json_data)['token_pk']
-        token_info = SingleUseTokenManager.authenticate_retrieve_token(invalid_pk, validation_key)
-
-        self.assertFalse(token_info['success'], "Token Retrieval Should Have Failed")
-        self.assertEqual(token_info['status'], "TOKEN NOT FOUND: SingleUseToken matching query does not exist.", "Token Retrieval Status Not Correct")
-        self.assertIsNone(token_info['expiration_datetime'], "Expiration Datetime Should Not Be Retrieved On Not Found")
-        self.assertIsNone(token_info['token_user'], "Token User Should Not Be Retrieved On Not Found")
-        self.assertIsNone(token_info['json_data'], "JSON Data Should Not Be Retrieved On Not Found")
-        self.assertFalse(token_info['expired'], "Token Should Not Be Marked As Expired On Not Found")
-        self.assertTrue(SingleUseToken.objects.filter(pk=token_pk).exists(), "Token Should Still Exist After Retrieval Failure")
+        self._assert_false(token_info, ['success', 'expired'], message_addon)
+        self._assert_is_none(token_info, ['expiration_datetime', 'token_user', 'json_data'], message_addon)
+        self._assert_equal(token_info, ['status'], ["TOKEN NOT FOUND: SingleUseToken matching query does not exist."], message_addon)
+        self._assert_true({'exists': SingleUseToken.objects.filter(pk=token_pk).exists()}, ['exists'], message_addon)
     
     def test_authenticate_retrieve_token_invalid_validation_key(self):
-        voter = self.test_voter
-        validation_key = self.test_validation_key
         invalid_validation_key = Fernet.generate_key()
-        json_data = {'test': 'test'}
+        message_addon = "Invalid Validation Key"
 
-        token_pk = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, json_data=json_data)['token_pk']
+        token_pk = self._get_test_token_pk()
         token_info = SingleUseTokenManager.authenticate_retrieve_token(token_pk, invalid_validation_key)
 
-        self.assertFalse(token_info['success'], "Token Authentication Should Have Failed")
-        self.assertEqual(token_info['status'], "VALIDATION DECRYPTION ERROR: Invalid Key", "Token Authentication Status Not Correct")
-        self.assertIsNone(token_info['expiration_datetime'], "Expiration Datetime Should Not Be Retrieved On Invalid Validation Key")
-        self.assertIsNone(token_info['token_user'], "Token User Should Not Be Retrieved On Invalid Validation Key")
-        self.assertIsNone(token_info['json_data'], "JSON Data Should Not Be Retrieved On Invalid Validation Key")
-        self.assertFalse(token_info['expired'], "Token Should Not Be Marked As Expired On Invalid Validation Key")
-        self.assertTrue(SingleUseToken.objects.filter(pk=token_pk).exists(), "Token Should Still Exist After Authentication Failure")
+        self._assert_false(token_info, ['success', 'expired'], message_addon)
+        self._assert_is_none(token_info, ['expiration_datetime', 'token_user', 'json_data'], message_addon)
+        self._assert_equal(token_info, ['status'], ["VALIDATION DECRYPTION ERROR: Invalid Key"], message_addon)
+        self._assert_true({'exists': SingleUseToken.objects.filter(pk=token_pk).exists()}, ['exists'], message_addon)
 
     def test_authenticate_retrieve_token_expired(self):
-        voter = self.test_voter
-        validation_key = self.test_validation_key
         expiration = 0
-        json_data = {'test': 'test'}
+        message_addon = "Expired Token"
 
-        token_pk = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, expiration_seconds=expiration, json_data=json_data)['token_pk']
+        token_pk = self._get_test_token_pk(expiration_seconds=expiration)
         time.sleep(1)
-        token_info = SingleUseTokenManager.authenticate_retrieve_token(token_pk, validation_key)
+        token_info = SingleUseTokenManager.authenticate_retrieve_token(token_pk, self.test_validation_key)
 
-        self.assertFalse(token_info['success'], "Token Authentication Should Have Failed")
-        self.assertEqual(token_info['status'], "TOKEN EXPIRED", "Token Authentication Status Not Correct")
-        self.assertIsNotNone(token_info['expiration_datetime'], "Expiration Datetime Should Be Retrieved On Expired Token")
-        self.assertIsNone(token_info['json_data'], "JSON Data Should Not Be Retrieved On Expired Token")
-        self.assertIsNone(token_info['token_user'], "Token User Should Not Be Retrieved On Expired Token")
-        self.assertTrue(token_info['expired'], "Token Should Be Marked As Expired")
-        self.assertFalse(SingleUseToken.objects.filter(pk=token_pk).exists(), "Token Should Not Exist After Expiration")
+        self._assert_false(token_info, ['success'], message_addon)
+        self._assert_false({'exists': SingleUseToken.objects.filter(pk=token_pk).exists()}, ['exists'], message_addon)
+        self._assert_is_none(token_info, ['token_user', 'json_data'], message_addon)
+        self._assert_equal(token_info, ['status'], ["TOKEN EXPIRED"], message_addon)
+        self._assert_is_not_none(token_info, ['expiration_datetime'], message_addon)
+        self._assert_true(token_info, ['expired'], message_addon)
 
     def test_authenticate_retrieve_token_with_json_data(self):
         voter = self.test_voter
-        validation_key = self.test_validation_key
         json_data = {'test': 'test'}
+        message_addon = "Authentication Success with JSON Data"
+        
+        token_pk = self._get_test_token_pk(voter=voter, json_data=json_data)
+        token_info = SingleUseTokenManager.authenticate_retrieve_token(token_pk, self.test_validation_key)
 
-        token_pk = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, json_data=json_data)['token_pk']
-        token_info = SingleUseTokenManager.authenticate_retrieve_token(token_pk, validation_key)
-
-        self.assertTrue(token_info['success'], "Token Authentication Should Have Succeeded")
-        self.assertEqual(token_info['status'], "TOKEN RETRIEVED AND AUTHENTICATED", "Token Authentication Status Not Correct")
-        self.assertIsNotNone(token_info['expiration_datetime'], "Expiration Datetime Should Be Retrieved On Valid Token")
-        self.assertEqual(token_info['json_data'], json_data, "JSON Data Should Be Retrieved On Valid Token With JSON Data")
-        self.assertEqual(token_info['token_user'], voter, "Token User Should Be Retrieved On Valid Token")
-        self.assertFalse(token_info['expired'], "Token Should Not Be Marked As Expired On Valid Token")
-        self.assertFalse(SingleUseToken.objects.filter(pk=token_pk).exists(), "Token Should Not Exist After Authentication")
+        self._assert_false(token_info, ['expired'], message_addon)
+        self._assert_false({'exists': SingleUseToken.objects.filter(pk=token_pk).exists()}, ['exists'], message_addon)
+        self._assert_equal(
+            token_info,
+            ['status', 'json_data', 'token_user'],
+            ["TOKEN RETRIEVED AND AUTHENTICATED", json_data, voter],
+            message_addon)
+        self._assert_is_not_none(token_info, ['expiration_datetime'], message_addon)
+        self._assert_true(token_info, ['success'], message_addon)
     
     def test_authenticate_retrieve_token_with_no_json_data(self):
         voter = self.test_voter
-        validation_key = self.test_validation_key
+        message_addon = "Authentication Success With No JSON Data"
 
-        token_pk = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key)['token_pk']
-        token_info = SingleUseTokenManager.authenticate_retrieve_token(token_pk, validation_key)
+        token_pk = self._get_test_token_pk(voter=voter)
+        token_info = SingleUseTokenManager.authenticate_retrieve_token(token_pk, self.test_validation_key)
 
-        self.assertTrue(token_info['success'], "Token Authentication Should Have Succeeded")
-        self.assertEqual(token_info['status'], "TOKEN RETRIEVED AND AUTHENTICATED", "Token Authentication Status Not Correct")
-        self.assertIsNotNone(token_info['expiration_datetime'], "Expiration Datetime Should Be Retrieved On Valid Token")
-        self.assertIsNone(token_info['json_data'], "No Data Should Be Retrieved On Valid Token With No Json Data")
-        self.assertEqual(token_info['token_user'], voter, "Token User Should Be Retrieved On Valid Token")
-        self.assertFalse(token_info['expired'], "Token Should Not Be Marked As Expired On Valid Token")
-        self.assertFalse(SingleUseToken.objects.filter(pk=token_pk).exists(), "Token Should Not Exist After Authentication")
+        self._assert_false(token_info, ['expired'], message_addon)
+        self._assert_false({'exists': SingleUseToken.objects.filter(pk=token_pk).exists()}, ['exists'], message_addon)
+        self._assert_equal(
+            token_info,
+            ['status', 'json_data', 'token_user'],
+            ["TOKEN RETRIEVED AND AUTHENTICATED", None, voter],
+            message_addon)
+        self._assert_is_not_none(token_info, ['expiration_datetime'], message_addon)
+        self._assert_true(token_info, ['success'], message_addon)

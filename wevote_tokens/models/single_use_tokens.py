@@ -24,7 +24,7 @@ class SingleUseToken(models.Model):
         settings.AUTH_USER_MODEL,
         related_name='single_use_tokens',  # Allows user.single_use_tokens.all()
         on_delete=models.CASCADE,
-        help_text='The user this token belongs to',
+        help_text='The user this token belongs to.',
     )
 
     # Retrieval Key Setting
@@ -45,13 +45,15 @@ class SingleUseToken(models.Model):
         null=True,
         blank=True,
         default=None,
-        help_text='JSON blob for storing additional token metadata',
+        help_text='Encrypted JSON blob for storing additional token data.',
     )
     
     # Timestamp when token was created
     _created_at = models.DateTimeField(
         verbose_name='token creation datetime',
         db_index=True,
+        help_text='Timestamp when token was created.',
+        default=timezone.now,
     )
     
     class Meta:
@@ -111,18 +113,26 @@ class SingleUseTokenManager(models.Manager):
         return "Single Use Token Manager"
 
     @staticmethod
-    def create_token(user, validation_key=None, expiration_seconds=None, json_data=None):
+    def generate_encryption_key():
+        ## Add cryptographically secure random URL safe base 64 encoded string generation
+        return Fernet.generate_key()
+
+    @staticmethod
+    def create_token(user, validation_key, expiration_seconds=None, json_data=None):
         token_info = {
             'success': False,
             'status': '',
             'token_pk': None,
-            'token_expired': False,
             'expiration_datetime': None,
             'token_user': None,
         }
 
         if isinstance(validation_key, (str)):
             validation_key = validation_key.encode('utf-8')
+        
+        if not isinstance(validation_key, (bytes)):
+            token_info['status'] = "VALIDATION KEY MUST BE A BYTES OR STRING."
+            return token_info
 
         new_token = SingleUseToken()
         try:
@@ -142,16 +152,10 @@ class SingleUseTokenManager(models.Manager):
         return token_info
 
     @staticmethod
-    def generate_encryption_key():
-        ## Add cryptographically secure random URL safe base 64 encoded string generation
-        return Fernet.generate_key()
-
-    @staticmethod
     def authenticate_retrieve_token(pk, validation_key):
         token_info = {
             'success': False,
             'status': '',
-            'token_expired': False,
             'expiration_datetime': None,
             'json_data': None,
             'token_user': None,
