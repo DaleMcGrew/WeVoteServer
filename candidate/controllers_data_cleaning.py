@@ -6,13 +6,16 @@ from datetime import datetime
 from django.db.models import Q
 from config.base import get_environment_variable
 from django.db.models.functions import Length
+from django.utils.timezone import now
 
+from import_export_batches.controllers_data_cleaning import full_deduplication_for_next_state
 from politician.models import PoliticianManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists
 from wevote_functions.functions_date import convert_we_vote_date_string_to_date_as_integer, \
     generate_localized_datetime_from_obj, get_current_year_as_integer
-from .models import CandidateCampaign, CandidateListManager
+from .controllers import find_duplicate_candidate, merge_if_duplicate_candidates
+from .models import CandidateCampaign, CandidateListManager, CandidateManager, CandidatesArePossibleDuplicates
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -579,6 +582,36 @@ def populate_contest_office_data(
     return results
 
 
+def batch_process_deduplication_scripts_candidate():
+    all_states_deduplication_complete = False
+    status = ':||: '
+    success = True
+
+    # ##################
+    #
+    results = full_deduplication_for_next_state(is_for_candidates=True)
+    if positive_value_exists(results['status']):
+        status += results['status'] + " :||: "
+        all_states_deduplication_complete = results['all_states_deduplication_complete']
+
+    # ##################
+    # Check to see if there are any states with that have new politicians that haven't been checked for duplicates
+    # if all_states_deduplication_complete:
+    #     results = find_states_that_need_new_deduplication()
+    #     if positive_value_exists(results['success']):
+    #         state_code_list = results['state_code_list']
+    #         if state_code_list and len(state_code_list) > 0:
+    #             pass
+    #     if positive_value_exists(results['status']):
+    #         status += results['status'] + " :||: "
+
+    results = {
+        'status': status,
+        'success': success,
+    }
+    return results
+
+
 def batch_process_maintenance_scripts_candidate():
     status = ' :||: '
     success = True
@@ -621,6 +654,217 @@ def batch_process_maintenance_scripts_candidate():
         'success': success,
     }
     return results
+
+
+def candidate_deduplication_for_one_state(candidate_year=0, state_code=''):
+    status = ''
+    success = True
+
+    if not positive_value_exists(state_code):
+        status += "STATE_CODE_IS_REQUIRED: "
+        success = False
+        return {
+            'status': status,
+            'success': success,
+        }
+
+    # Delete all existing duplicates
+    try:
+        from candidate.models import CandidatesArePossibleDuplicates
+        queryset = CandidatesArePossibleDuplicates.objects.filter(
+            state_code__iexact=state_code,
+        )
+        queryset.delete()
+    except Exception as e:
+        status += "ERROR_DELETING_POSSIBLE_DUPLICATES: {e} ".format(e=e)
+        success = False
+
+    if success:
+        merge_results = find_and_merge_duplicate_candidates(
+            candidate_year=candidate_year,
+            state_code=state_code)
+        status += merge_results['status']
+        if merge_results['candidates_merged_found']:
+            candidates_merged_list = merge_results['candidates_merged_list']
+            for candidate in candidates_merged_list:
+                status += f"[Candidate {candidate.candidate_name} merged.] "
+        if merge_results['duplicate_check_complete_candidate_we_vote_id_list']:
+            try:
+                we_vote_ids_to_update = merge_results['duplicate_check_complete_candidate_we_vote_id_list']
+                CandidateCampaign.objects.filter(we_vote_id__in=we_vote_ids_to_update)\
+                    .update(duplicate_check_last_completed=now())
+                status += f"DUPLICATE_CHECK_COMPLETE_FOR-{len(we_vote_ids_to_update)}-CANDIDATES "
+            except Exception as e:
+                status += f"COULD_NOT_UPDATE_DUPLICATE_CHECK_LAST_COMPLETED: {e} "
+
+    results = {
+        'status': status,
+        'success': success,
+    }
+    return results
+
+
+def find_and_merge_duplicate_candidates(
+        candidate_year=0,
+        google_civic_election_id=0,
+        state_code=''):
+    duplicate_check_complete_candidate_we_vote_id_list = []
+    candidates_merged_found = False
+    candidates_merged_list = []
+    status = ""
+    success = True
+    error_results = {
+        "duplicate_check_complete_candidate_we_vote_id_list": duplicate_check_complete_candidate_we_vote_id_list,
+        "candidates_merged_found": candidates_merged_found,
+        "candidates_merged_list": candidates_merged_list,
+        "status": status,
+        "success": False,
+    }
+
+    candidate_manager = CandidateManager()
+    candidate_list_manager = CandidateListManager()
+
+    retrieve_by_candidate_year = False
+    retrieve_by_election_id_list = False
+    google_civic_election_id_list = []
+    if positive_value_exists(candidate_year):
+        retrieve_by_candidate_year = True
+    elif positive_value_exists(google_civic_election_id):
+        google_civic_election_id_list = [google_civic_election_id]
+        retrieve_by_election_id_list = True
+    else:
+        retrieve_by_candidate_year = True
+        candidate_year = get_current_year_as_integer()
+
+    # ################################
+    # Assemble a list of candidates that we already think might be duplicates
+    try:
+        queryset = CandidatesArePossibleDuplicates.objects.using('readonly').all()
+        if positive_value_exists(state_code):
+            queryset = queryset.filter(state_code__iexact=state_code)
+        queryset = queryset.exclude(candidate1_we_vote_id=None)
+        queryset = queryset.exclude(candidate2_we_vote_id=None)
+        queryset_candidate1 = queryset.values_list('candidate1_we_vote_id', flat=True).distinct()
+        exclude_candidate1_we_vote_id_list = list(queryset_candidate1)
+        queryset_candidate2 = queryset.values_list('candidate2_we_vote_id', flat=True).distinct()
+        exclude_candidate2_we_vote_id_list = list(queryset_candidate2)
+        exclude_candidate_we_vote_id_list = \
+            list(set(exclude_candidate1_we_vote_id_list + exclude_candidate2_we_vote_id_list))
+    except Exception as e:
+        status += f"COULD_NOT_RETRIEVE_POSSIBLE_DUPLICATES: {str(e)} "
+        error_results['status'] = status
+        return error_results
+
+    # ################################
+    # Retrieve list of candidates to compare
+    try:
+        candidate_list = []
+        if retrieve_by_candidate_year:
+            results = candidate_list_manager.retrieve_all_candidates_for_one_year(
+                candidate_year=candidate_year,
+                limit_to_this_state_code=state_code,
+                return_list_of_objects=True,
+                read_only=True,
+            )
+            candidate_list = results['candidate_list_objects']
+        elif retrieve_by_election_id_list:
+            if positive_value_exists(state_code):
+                results = candidate_list_manager.retrieve_candidates_for_specific_elections(
+                    google_civic_election_id_list=google_civic_election_id_list,
+                    limit_to_this_state_code=state_code,
+                    return_list_of_objects=True)
+                candidate_list = results['candidate_list_objects']
+            else:
+                results = candidate_list_manager.retrieve_candidates_for_specific_elections(
+                    google_civic_election_id_list=google_civic_election_id_list,
+                    return_list_of_objects=True)
+                candidate_list = results['candidate_list_objects']
+    except Exception as e:
+        status += f"COULD_NOT_RETRIEVE_CANDIDATES: {str(e)} "
+        error_results['status'] = status
+        return error_results
+
+    # ################################
+    # Loop through all the candidates in this year or election (filtered by state)
+    try:
+        for we_vote_candidate in candidate_list:
+            if we_vote_candidate.we_vote_id in exclude_candidate_we_vote_id_list:
+                continue
+            # Start ignore list with entries already reviewed
+            ignore_candidate_id_list = exclude_candidate_we_vote_id_list
+            # Add current entry to ignore list
+            ignore_candidate_id_list.append(we_vote_candidate.we_vote_id)
+            # Now check for others we have already labeled as "not a duplicate"
+            not_a_duplicate_list = candidate_manager.fetch_candidates_are_not_duplicates_list_we_vote_ids(
+                we_vote_candidate.we_vote_id)
+            ignore_candidate_id_list += not_a_duplicate_list
+
+            results = find_duplicate_candidate(we_vote_candidate, ignore_candidate_id_list, read_only=True)
+
+            # If we find candidates to merge, store them for review
+            if results['candidate_merge_possibility_found']:
+                candidate_option1_for_template = we_vote_candidate
+                candidate_option2_for_template = results['candidate_merge_possibility']
+
+                # Can we automatically merge these candidates?
+                merge_results = merge_if_duplicate_candidates(
+                    candidate_option1_for_template,
+                    candidate_option2_for_template,
+                    results['candidate_merge_conflict_values'])
+
+                if merge_results['candidates_merged']:
+                    candidate = merge_results['candidate']
+                    if candidate.we_vote_id not in exclude_candidate_we_vote_id_list:
+                        exclude_candidate_we_vote_id_list.append(candidate.we_vote_id)
+                    if we_vote_candidate.we_vote_id not in exclude_candidate_we_vote_id_list:
+                        exclude_candidate_we_vote_id_list.append(we_vote_candidate.we_vote_id)
+                    CandidatesArePossibleDuplicates.objects.create(
+                        candidate1_we_vote_id=candidate.we_vote_id,
+                        candidate2_we_vote_id=None,
+                        state_code=candidate.state_code,
+                    )
+                    CandidatesArePossibleDuplicates.objects.create(
+                        candidate1_we_vote_id=we_vote_candidate.we_vote_id,
+                        candidate2_we_vote_id=None,
+                        state_code=we_vote_candidate.state_code,
+                    )
+                    candidates_merged_list.append(candidate)
+                    candidates_merged_found = True
+                else:
+                    # Add an entry showing that this is a possible match
+                    status += f"[Candidate {we_vote_candidate.candidate_name} has possible match.] "
+                    state_code_local = state_code
+                    if not positive_value_exists(state_code_local):
+                        if positive_value_exists(we_vote_candidate.state_code):
+                            state_code_local = we_vote_candidate.state_code
+                        else:
+                            state_code_local = candidate_option2_for_template.state_code
+                    CandidatesArePossibleDuplicates.objects.create(
+                        candidate1_we_vote_id=we_vote_candidate.we_vote_id,
+                        candidate2_we_vote_id=candidate_option2_for_template.we_vote_id,
+                        state_code=state_code_local,
+                    )
+                    if candidate_option2_for_template.we_vote_id not in exclude_candidate_we_vote_id_list:
+                        exclude_candidate_we_vote_id_list.append(candidate_option2_for_template.we_vote_id)
+            else:
+                # No matches found
+                CandidatesArePossibleDuplicates.objects.create(
+                    candidate1_we_vote_id=we_vote_candidate.we_vote_id,
+                    candidate2_we_vote_id=None,
+                    state_code=we_vote_candidate.state_code,
+                )
+                duplicate_check_complete_candidate_we_vote_id_list.append(we_vote_candidate.we_vote_id)
+    except Exception as e:
+        status += f"CRASHED_IN_CANDIDATE_LIST_LOOP: {str(e)} "
+        # Fall through to exit function
+
+    return {
+            "duplicate_check_complete_candidate_we_vote_id_list": duplicate_check_complete_candidate_we_vote_id_list,
+            "candidates_merged_found": candidates_merged_found,
+            "candidates_merged_list": candidates_merged_list,
+            "status": status,
+            "success": success,
+        }
 
 
 def seo_friendly_path_updates(

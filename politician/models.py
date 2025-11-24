@@ -135,6 +135,63 @@ POSITION_CHOICES = (
 )
 
 
+class DeduplicationNeededForStateToday(models.Model):
+    date_now_as_integer = models.PositiveIntegerField(db_index=True, null=True, unique=True)
+    ak_deduplication_needed = models.BooleanField(default=True)
+    al_deduplication_needed = models.BooleanField(default=True)
+    ar_deduplication_needed = models.BooleanField(default=True)
+    az_deduplication_needed = models.BooleanField(default=True)
+    ca_deduplication_needed = models.BooleanField(default=True)
+    co_deduplication_needed = models.BooleanField(default=True)
+    ct_deduplication_needed = models.BooleanField(default=True)
+    dc_deduplication_needed = models.BooleanField(default=True)
+    de_deduplication_needed = models.BooleanField(default=True)
+    fl_deduplication_needed = models.BooleanField(default=True)
+    ga_deduplication_needed = models.BooleanField(default=True)
+    hi_deduplication_needed = models.BooleanField(default=True)
+    ia_deduplication_needed = models.BooleanField(default=True)
+    id_deduplication_needed = models.BooleanField(default=True)
+    il_deduplication_needed = models.BooleanField(default=True)
+    in_deduplication_needed = models.BooleanField(default=True)
+    ks_deduplication_needed = models.BooleanField(default=True)
+    ky_deduplication_needed = models.BooleanField(default=True)
+    la_deduplication_needed = models.BooleanField(default=True)
+    ma_deduplication_needed = models.BooleanField(default=True)
+    md_deduplication_needed = models.BooleanField(default=True)
+    me_deduplication_needed = models.BooleanField(default=True)
+    mi_deduplication_needed = models.BooleanField(default=True)
+    mn_deduplication_needed = models.BooleanField(default=True)
+    mo_deduplication_needed = models.BooleanField(default=True)
+    ms_deduplication_needed = models.BooleanField(default=True)
+    mt_deduplication_needed = models.BooleanField(default=True)
+    na_deduplication_needed = models.BooleanField(default=True)  # For national
+    nc_deduplication_needed = models.BooleanField(default=True)
+    nd_deduplication_needed = models.BooleanField(default=True)
+    ne_deduplication_needed = models.BooleanField(default=True)
+    nh_deduplication_needed = models.BooleanField(default=True)
+    nj_deduplication_needed = models.BooleanField(default=True)
+    nm_deduplication_needed = models.BooleanField(default=True)
+    nv_deduplication_needed = models.BooleanField(default=True)
+    ny_deduplication_needed = models.BooleanField(default=True)
+    oh_deduplication_needed = models.BooleanField(default=True)
+    ok_deduplication_needed = models.BooleanField(default=True)
+    or_deduplication_needed = models.BooleanField(default=True)
+    pa_deduplication_needed = models.BooleanField(default=True)
+    pr_deduplication_needed = models.BooleanField(default=True)  # Puerto Rico
+    ri_deduplication_needed = models.BooleanField(default=True)
+    sc_deduplication_needed = models.BooleanField(default=True)
+    sd_deduplication_needed = models.BooleanField(default=True)
+    tn_deduplication_needed = models.BooleanField(default=True)
+    tx_deduplication_needed = models.BooleanField(default=True)
+    ut_deduplication_needed = models.BooleanField(default=True)
+    va_deduplication_needed = models.BooleanField(default=True)
+    vt_deduplication_needed = models.BooleanField(default=True)
+    wa_deduplication_needed = models.BooleanField(default=True)
+    wi_deduplication_needed = models.BooleanField(default=True)
+    wv_deduplication_needed = models.BooleanField(default=True)
+    wy_deduplication_needed = models.BooleanField(default=True)
+
+
 class Politician(models.Model):
     # We are relying on built-in Python id field
     # The we_vote_id identifier is unique across all We Vote sites, and allows us to share our data with other
@@ -151,6 +208,11 @@ class Politician(models.Model):
     # Official Statement from Candidate in Ballot Guide
     ballot_guide_official_statement = models.TextField(verbose_name="official candidate statement from ballot guide",
                                                        null=True, blank=True, default=None)
+    duplicate_check_last_completed = models.DateTimeField(null=True)
+    # See these related fields in CandidateCampaign table:
+    # updated_from_politician_completed_first = models.DateTimeField(null=True)
+    # updated_from_politician_completed_second = models.DateTimeField(null=True)
+    # updates_to_politician_completed = models.DateTimeField(null=True)
     # See this url for properties: https://docs.python.org/2/library/functions.html#property
     first_name = models.CharField(verbose_name="first name",
                                   max_length=255, default=None, null=True, blank=True)
