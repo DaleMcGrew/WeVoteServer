@@ -489,9 +489,6 @@ def process_next_general_maintenance():
     if fetch_batch_process_system_by_maintenance_scripts_type_on('campaignx'):
         new_type_list = [MAINTENANCE_SCRIPTS_CAMPAIGNX]
         kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
-    if fetch_batch_process_system_by_maintenance_scripts_type_on('candidate'):
-        new_type_list = [MAINTENANCE_SCRIPTS_CANDIDATE]
-        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
     if fetch_batch_process_system_by_maintenance_scripts_type_on('challenge'):
         new_type_list = [MAINTENANCE_SCRIPTS_CHALLENGE]
         kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
@@ -507,6 +504,10 @@ def process_next_general_maintenance():
     if fetch_batch_process_system_by_maintenance_scripts_type_on('politician'):
         new_type_list = [MAINTENANCE_SCRIPTS_POLITICIAN]
         kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
+    if fetch_batch_process_system_by_maintenance_scripts_type_on('candidate'):
+        # Process candidates after politicians
+        new_type_list = [MAINTENANCE_SCRIPTS_CANDIDATE]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
     if fetch_batch_process_system_by_maintenance_scripts_type_on('position'):
         new_type_list = [MAINTENANCE_SCRIPTS_POSITION]
         kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
@@ -517,11 +518,12 @@ def process_next_general_maintenance():
         new_type_list = [MAINTENANCE_SCRIPTS_VOTER]
         kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
 
+    if fetch_batch_process_system_by_deduplication_scripts_type_on('politician'):
+        # Kick off politician deduplication first
+        new_type_list = [DEDUPLICATION_SCRIPTS_POLITICIAN]
+        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
     if fetch_batch_process_system_by_deduplication_scripts_type_on('campaignx'):
         new_type_list = [DEDUPLICATION_SCRIPTS_CAMPAIGNX]
-        kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
-    if fetch_batch_process_system_by_deduplication_scripts_type_on('candidate'):
-        new_type_list = [DEDUPLICATION_SCRIPTS_CANDIDATE]
         kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
     if fetch_batch_process_system_by_deduplication_scripts_type_on('challenge'):
         new_type_list = [DEDUPLICATION_SCRIPTS_CHALLENGE]
@@ -529,8 +531,9 @@ def process_next_general_maintenance():
     if fetch_batch_process_system_by_deduplication_scripts_type_on('organization'):
         new_type_list = [DEDUPLICATION_SCRIPTS_ORGANIZATION]
         kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
-    if fetch_batch_process_system_by_deduplication_scripts_type_on('politician'):
-        new_type_list = [DEDUPLICATION_SCRIPTS_POLITICIAN]
+    if fetch_batch_process_system_by_deduplication_scripts_type_on('candidate'):
+        # Process candidates after politicians
+        new_type_list = [DEDUPLICATION_SCRIPTS_CANDIDATE]
         kind_of_processes_to_run = kind_of_processes_to_run + new_type_list
 
     if not fetch_batch_process_system_on():

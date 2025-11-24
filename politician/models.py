@@ -14,7 +14,6 @@ from candidate.models import PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKN
     PROFILE_IMAGE_TYPE_CURRENTLY_ACTIVE_CHOICES
 from organization.models import Organization
 from exception.models import handle_exception, handle_record_found_more_than_one_exception
-from tag.models import Tag
 from wevote_functions.functions import candidate_party_display, convert_to_int, convert_to_political_party_constant, \
     display_full_name_with_correct_capitalization, extract_first_name_from_full_name, \
     extract_middle_name_from_full_name, extract_last_name_from_full_name, \
@@ -295,7 +294,6 @@ class Politician(models.Model):
                                           max_length=200, null=True, unique=False)
     icpsr_id = models.CharField(verbose_name="icpsr unique identifier",
                                 max_length=200, null=True, unique=False)
-    tag_link = models.ManyToManyField(Tag, through='PoliticianTagLink')
     opposers_count = models.PositiveIntegerField(default=0)  # From linked_campaignx_we_vote_id CampaignX entry
     # The full name of the party the official belongs to.
     political_party = models.CharField(verbose_name="politician political party", max_length=255, null=True)
@@ -2927,33 +2925,3 @@ class PoliticianSEOFriendlyPath(models.Model):
     base_pathname_string = models.CharField(max_length=255, null=True)
     pathname_modifier = models.CharField(max_length=10, null=True)
     final_pathname_string = models.CharField(max_length=255, null=True, unique=True, db_index=True)
-
-
-class PoliticianTagLink(models.Model):
-    """
-    A confirmed (undisputed) link between tag & item of interest.
-    """
-    tag = models.ForeignKey(Tag, null=False, blank=False, verbose_name='tag unique identifier',
-                            on_delete=models.deletion.DO_NOTHING)
-    politician = models.ForeignKey(Politician, null=False, blank=False, verbose_name='politician unique identifier',
-                                   on_delete=models.deletion.DO_NOTHING)
-    # measure_id
-    # office_id
-    # issue_id
-
-
-class PoliticianTagLinkDisputed(models.Model):
-    """
-    This is a highly disputed link between tag & item of interest. Generated from 'tag_added', and tag results
-    are only shown to people within the cloud of the voter who posted
-
-    We split off how things are tagged to avoid conflict wars between liberals & conservatives
-    (Deal with some tags visible in some networks, and not in others - ex/ #ObamaSucks)
-    """
-    tag = models.ForeignKey(Tag, null=False, blank=False, verbose_name='tag unique identifier',
-                            on_delete=models.deletion.DO_NOTHING)
-    politician = models.ForeignKey(Politician, null=False, blank=False, verbose_name='politician unique identifier',
-                                   on_delete=models.deletion.DO_NOTHING)
-    # measure_id
-    # office_id
-    # issue_id
