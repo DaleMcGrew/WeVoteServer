@@ -9,7 +9,6 @@ from datetime import datetime
 from time import time
 from urllib.parse import urlencode
 
-import pytz
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
@@ -68,9 +67,9 @@ from wevote_settings.models import RemoteRequestHistory, \
     RETRIEVE_POSSIBLE_GOOGLE_LINKS, RETRIEVE_POSSIBLE_TWITTER_HANDLES
 from .controllers import add_twitter_handle_to_next_candidate_spot, analyze_candidate_info_link_found_on_google, \
     candidates_import_from_master_server, candidates_import_from_sample_file, \
-    candidate_politician_match, fetch_duplicate_candidate_count, figure_out_candidate_conflict_values, \
+    candidate_politician_match, figure_out_candidate_conflict_values, \
     find_duplicate_candidate, \
-    merge_if_duplicate_candidates, merge_these_two_candidates, fetch_ballotpedia_urls_to_retrieve_for_links_count, \
+    merge_these_two_candidates, fetch_ballotpedia_urls_to_retrieve_for_links_count, \
     fetch_ballotpedia_urls_to_retrieve_for_photos_count, \
     retrieve_candidate_photos, retrieve_next_or_most_recent_office_for_candidate, \
     save_google_search_link_to_candidate_table, save_image_to_candidate_table
@@ -4404,76 +4403,14 @@ def find_and_merge_duplicate_candidates_view(request):  # find_duplicate_candida
         return redirect_to_sign_in_page(request, authority_required)
 
     candidate_year = request.GET.get('candidate_year', 0)
-    find_number_of_duplicates = request.GET.get('find_number_of_duplicates', 0)
     google_civic_election_id = request.GET.get('google_civic_election_id', 0)
     google_civic_election_id = convert_to_int(google_civic_election_id)
     state_code = request.GET.get('state_code', "")
     status = ""
-    candidate_manager = CandidateManager()
-    candidate_list_manager = CandidateListManager()
+    success = True
 
-    retrieve_by_candidate_year = False
-    retrieve_by_election_id_list = False
-    google_civic_election_id_list = []
-    if positive_value_exists(candidate_year):
-        retrieve_by_candidate_year = True
-    elif positive_value_exists(google_civic_election_id):
-        google_civic_election_id_list = [google_civic_election_id]
-        retrieve_by_election_id_list = True
-    else:
-        retrieve_by_candidate_year = True
-        candidate_year = get_current_year_as_integer()
-
-    queryset = CandidatesArePossibleDuplicates.objects.using('readonly').all()
-    if positive_value_exists(state_code):
-        queryset = queryset.filter(state_code__iexact=state_code)
-    queryset = queryset.exclude(candidate1_we_vote_id=None)
-    queryset = queryset.exclude(candidate2_we_vote_id=None)
-    queryset_candidate1 = queryset.values_list('candidate1_we_vote_id', flat=True).distinct()
-    exclude_candidate1_we_vote_id_list = list(queryset_candidate1)
-    queryset_candidate2 = queryset.values_list('candidate2_we_vote_id', flat=True).distinct()
-    exclude_candidate2_we_vote_id_list = list(queryset_candidate2)
-    exclude_candidate_we_vote_id_list = \
-        list(set(exclude_candidate1_we_vote_id_list + exclude_candidate2_we_vote_id_list))
-
-    candidate_list = []
-    if retrieve_by_candidate_year:
-        results = candidate_list_manager.retrieve_all_candidates_for_one_year(
-            candidate_year=candidate_year,
-            limit_to_this_state_code=state_code,
-            return_list_of_objects=True,
-            read_only=True,
-        )
-        candidate_list = results['candidate_list_objects']
-    elif retrieve_by_election_id_list:
-        if positive_value_exists(state_code):
-            results = candidate_list_manager.retrieve_candidates_for_specific_elections(
-                google_civic_election_id_list=google_civic_election_id_list,
-                limit_to_this_state_code=state_code,
-                return_list_of_objects=True)
-            candidate_list = results['candidate_list_objects']
-        else:
-            results = candidate_list_manager.retrieve_candidates_for_specific_elections(
-                google_civic_election_id_list=google_civic_election_id_list,
-                return_list_of_objects=True)
-            candidate_list = results['candidate_list_objects']
-
-    # # Loop through to see how many have possible duplicates
-    # if positive_value_exists(find_number_of_duplicates):
-    #     duplicate_count = 0
-    #     ignore_candidate_id_list = []
-    #     for we_vote_candidate in candidate_list:
-    #         # Note that we don't reset the ignore_candidate_list, so we don't search for a duplicate both directions
-    #         ignore_candidate_id_list.append(we_vote_candidate.we_vote_id)
-    #         duplicate_count_temp = fetch_duplicate_candidate_count(we_vote_candidate, ignore_candidate_id_list)
-    #         duplicate_count += duplicate_count_temp
-    #
-    #     if positive_value_exists(duplicate_count):
-    #         messages.add_message(request, messages.INFO,
-    #                              "There are approximately {duplicate_count} "
-    #                              "possible duplicates."
-    #                              "".format(duplicate_count=duplicate_count))
-
+    # ################################
+    # When this search is run, give scoreboard credit to the volunteer who started this search
     try:
         # Give the volunteer who entered this credit
         volunteer_task_manager = VolunteerTaskManager()
@@ -4485,73 +4422,19 @@ def find_and_merge_duplicate_candidates_view(request):  # find_duplicate_candida
         status += 'FAILED_TO_CREATE_VOLUNTEER_TASK_COMPLETED: ' \
                   '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
 
-    # Loop through all the candidates in this year or election
-    for we_vote_candidate in candidate_list:
-        if we_vote_candidate.we_vote_id in exclude_candidate_we_vote_id_list:
-            continue
-        # Start ignore list with entries already reviewed
-        ignore_candidate_id_list = exclude_candidate_we_vote_id_list
-        # Add current entry to ignore list
-        ignore_candidate_id_list.append(we_vote_candidate.we_vote_id)
-        # Now check for others we have already labeled as "not a duplicate"
-        not_a_duplicate_list = candidate_manager.fetch_candidates_are_not_duplicates_list_we_vote_ids(
-            we_vote_candidate.we_vote_id)
-        ignore_candidate_id_list += not_a_duplicate_list
-
-        results = find_duplicate_candidate(we_vote_candidate, ignore_candidate_id_list, read_only=True)
-
-        # If we find candidates to merge, store them for review
-        if results['candidate_merge_possibility_found']:
-            candidate_option1_for_template = we_vote_candidate
-            candidate_option2_for_template = results['candidate_merge_possibility']
-
-            # Can we automatically merge these candidates?
-            merge_results = merge_if_duplicate_candidates(
-                candidate_option1_for_template,
-                candidate_option2_for_template,
-                results['candidate_merge_conflict_values'])
-
-            if merge_results['candidates_merged']:
-                candidate = merge_results['candidate']
-                if candidate.we_vote_id not in exclude_candidate_we_vote_id_list:
-                    exclude_candidate_we_vote_id_list.append(candidate.we_vote_id)
-                if we_vote_candidate.we_vote_id not in exclude_candidate_we_vote_id_list:
-                    exclude_candidate_we_vote_id_list.append(we_vote_candidate.we_vote_id)
-                CandidatesArePossibleDuplicates.objects.create(
-                    candidate1_we_vote_id=candidate.we_vote_id,
-                    candidate2_we_vote_id=None,
-                    state_code=candidate.state_code,
-                )
-                CandidatesArePossibleDuplicates.objects.create(
-                    candidate1_we_vote_id=we_vote_candidate.we_vote_id,
-                    candidate2_we_vote_id=None,
-                    state_code=we_vote_candidate.state_code,
-                )
-                messages.add_message(request, messages.INFO,
-                                     "Candidate {candidate_name} automatically merged."
-                                     "".format(candidate_name=candidate.candidate_name))
-            else:
-                # Add an entry showing that this is a possible match
-                state_code_local = state_code
-                if not positive_value_exists(state_code_local):
-                    if positive_value_exists(we_vote_candidate.state_code):
-                        state_code_local = we_vote_candidate.state_code
-                    else:
-                        state_code_local = candidate_option2_for_template.state_code
-                CandidatesArePossibleDuplicates.objects.create(
-                    candidate1_we_vote_id=we_vote_candidate.we_vote_id,
-                    candidate2_we_vote_id=candidate_option2_for_template.we_vote_id,
-                    state_code=state_code_local,
-                )
-                if candidate_option2_for_template.we_vote_id not in exclude_candidate_we_vote_id_list:
-                    exclude_candidate_we_vote_id_list.append(candidate_option2_for_template.we_vote_id)
-        else:
-            # No matches found
-            CandidatesArePossibleDuplicates.objects.create(
-                candidate1_we_vote_id=we_vote_candidate.we_vote_id,
-                candidate2_we_vote_id=None,
-                state_code=we_vote_candidate.state_code,
-            )
+    from candidate.controllers_data_cleaning import find_and_merge_duplicate_candidates
+    results = find_and_merge_duplicate_candidates(
+        candidate_year=candidate_year,
+        google_civic_election_id=google_civic_election_id,
+        state_code=state_code)
+    if results['candidates_merged_found']:
+        candidates_merged_list = results['candidates_merged_list']
+        for candidate in candidates_merged_list:
+            messages.add_message(request, messages.INFO,
+                                 "Candidate {candidate_name} automatically merged."
+                                 "".format(candidate_name=candidate.candidate_name))
+    else:
+        status += "No candidate found to merge."
 
     return HttpResponseRedirect(reverse('candidate:duplicates_list', args=()) +
                                 "?google_civic_election_id={google_civic_election_id}"

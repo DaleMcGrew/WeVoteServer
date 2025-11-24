@@ -2,14 +2,19 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
+from datetime import datetime, timedelta
 from django.db.models import Q
+from django.utils.timezone import now
+import pytz
 
 from config.base import get_environment_variable
+from import_export_batches.controllers_data_cleaning import full_deduplication_for_next_state
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
-from wevote_functions.functions_date import generate_localized_datetime_from_obj
-from .controllers import add_alternate_names_to_next_spot, generate_campaignx_for_politician
-from .models import Politician, PoliticianManager
+from wevote_functions.functions_date import convert_date_to_date_as_integer, generate_localized_datetime_from_obj
+from .controllers import add_alternate_names_to_next_spot, find_duplicate_politician, \
+    generate_campaignx_for_politician, merge_if_duplicate_politicians
+from .models import DeduplicationNeededForStateToday, Politician, PoliticianManager, PoliticiansArePossibleDuplicates
 from .controllers_generate_color import generate_background
 
 POLITICIANS_SYNC_URL = get_environment_variable("POLITICIANS_SYNC_URL")  # politiciansSyncOut
@@ -18,6 +23,36 @@ WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 WEB_APP_ROOT_URL = get_environment_variable("WEB_APP_ROOT_URL")
 
 logger = wevote_functions.admin.get_logger(__name__)
+
+
+def batch_process_deduplication_scripts_politician():
+    all_states_deduplication_complete = False
+    status = ':||: '
+    success = True
+
+    # ##################
+    #
+    results = full_deduplication_for_next_state()
+    if positive_value_exists(results['status']):
+        status += results['status'] + " :||: "
+        all_states_deduplication_complete = results['all_states_deduplication_complete']
+
+    # ##################
+    # Check to see if there are any states with that have new politicians that haven't been checked for duplicates
+    if all_states_deduplication_complete:
+        results = find_states_that_need_new_deduplication()
+        if positive_value_exists(results['success']):
+            state_code_list = results['state_code_list']
+            if state_code_list and len(state_code_list) > 0:
+                pass
+        if positive_value_exists(results['status']):
+            status += results['status'] + " :||: "
+
+    results = {
+        'status': status,
+        'success': success,
+    }
+    return results
 
 
 def batch_process_maintenance_scripts_politician():
@@ -189,6 +224,189 @@ def delete_linked_campaignx_we_vote_id_if_campaignx_not_found(
         'success': success,
     }
     return results
+
+
+def politician_deduplication_for_one_state(state_code=''):
+    status = ''
+    success = True
+
+    if not positive_value_exists(state_code):
+        status += "STATE_CODE_IS_REQUIRED: "
+        success = False
+        return {
+            'status': status,
+            'success': success,
+        }
+
+    # Delete all existing duplicates
+    try:
+        queryset = PoliticiansArePossibleDuplicates.objects.filter(
+            state_code__iexact=state_code,
+        )
+        queryset.delete()
+    except Exception as e:
+        status += "ERROR_DELETING_POSSIBLE_DUPLICATES: {e} ".format(e=e)
+        success = False
+
+    if success:
+        merge_results = find_and_merge_duplicate_politicians(state_code=state_code)
+        status += merge_results['status']
+        if merge_results['politicians_merged_found']:
+            politicians_merged_list = merge_results['politicians_merged_list']
+            for politician in politicians_merged_list:
+                status += f"[Politician {politician.politician_name} merged.] "
+        if merge_results['duplicate_check_complete_politician_we_vote_id_list']:
+            try:
+                we_vote_ids_to_update = merge_results['duplicate_check_complete_politician_we_vote_id_list']
+                Politician.objects.filter(we_vote_id__in=we_vote_ids_to_update)\
+                    .update(duplicate_check_last_completed=now())
+                status += f"DUPLICATE_CHECK_COMPLETE_FOR-{len(we_vote_ids_to_update)}-POLITICIANS "
+            except Exception as e:
+                status += f"COULD_NOT_UPDATE_DUPLICATE_CHECK_LAST_COMPLETED: {e} "
+
+    results = {
+        'status': status,
+        'success': success,
+    }
+    return results
+
+
+def find_and_merge_duplicate_politicians(state_code=''):
+    duplicate_check_complete_politician_we_vote_id_list = []
+    politician_manager = PoliticianManager()
+    politicians_merged_found = False
+    politicians_merged_list = []
+    status = ""
+    success = True
+    error_results = {
+        "duplicate_check_complete_politician_we_vote_id_list": [],
+        "politicians_merged_found": politicians_merged_found,
+        "politicians_merged_list": politicians_merged_list,
+        "status": status,
+        "success": False,
+    }
+    # ################################
+    # Assemble a list of politicians that we already think might be duplicates
+    try:
+        queryset = PoliticiansArePossibleDuplicates.objects.using('readonly').all()
+        if positive_value_exists(state_code):
+            queryset = queryset.filter(state_code__iexact=state_code)
+        queryset = queryset.exclude(politician1_we_vote_id=None)
+        queryset = queryset.exclude(politician2_we_vote_id=None)
+        queryset_politician1 = queryset.values_list('politician1_we_vote_id', flat=True).distinct()
+        exclude_politician1_we_vote_id_list = list(queryset_politician1)
+        queryset_politician2 = queryset.values_list('politician2_we_vote_id', flat=True).distinct()
+        exclude_politician2_we_vote_id_list = list(queryset_politician2)
+        exclude_politician_we_vote_id_list = \
+            list(set(exclude_politician1_we_vote_id_list + exclude_politician2_we_vote_id_list))
+    except Exception as e:
+        status += f"COULD_NOT_RETRIEVE_POSSIBLE_DUPLICATES: {str(e)} "
+        error_results['status'] = status
+        return error_results
+
+    # ################################
+    # Retrieve list of politicians to compare
+    try:
+        politician_query = Politician.objects.using('readonly').all()
+        politician_query = politician_query.exclude(we_vote_id__in=exclude_politician_we_vote_id_list)
+        if positive_value_exists(state_code):
+            politician_query = politician_query.filter(state_code__iexact=state_code)
+        politician_list = list(politician_query)
+    except Exception as e:
+        status += f"COULD_NOT_RETRIEVE_POLITICIANS: {str(e)} "
+        error_results['status'] = status
+        return error_results
+
+    # ################################
+    # Loop through all the politicians in this state
+    try:
+        for we_vote_politician in politician_list:
+            if we_vote_politician.we_vote_id in exclude_politician_we_vote_id_list:
+                continue
+            # Start ignore list with entries already reviewed
+            ignore_politician_id_list = exclude_politician_we_vote_id_list
+            # Add current entry to ignore list
+            ignore_politician_id_list.append(we_vote_politician.we_vote_id)
+            # Now check for others we have already labeled as "not a duplicate"
+            not_a_duplicate_list = politician_manager.fetch_politicians_are_not_duplicates_list_we_vote_ids(
+                we_vote_politician.we_vote_id)
+            ignore_politician_id_list += not_a_duplicate_list
+
+            stop_processing = ['wv87pol74053', 'wv87pol28538']
+            if we_vote_politician.we_vote_id in stop_processing:
+                status += f"STOP_PROCESSING_POLITICIAN: {we_vote_politician.we_vote_id} "
+            results = find_duplicate_politician(we_vote_politician, ignore_politician_id_list, read_only=True)
+
+            # If we find politicians to merge, store them for review
+            if results['politician_merge_possibility_found']:
+                politician_option1_for_template = we_vote_politician
+                politician_option2_for_template = results['politician_merge_possibility']
+
+                # Can we automatically merge these politicians?
+                merge_results = merge_if_duplicate_politicians(
+                    politician_option1_for_template,
+                    politician_option2_for_template,
+                    results['politician_merge_conflict_values'])
+
+                if merge_results['politicians_merged']:
+                    politician = merge_results['politician']
+                    if politician.we_vote_id not in exclude_politician_we_vote_id_list:
+                        exclude_politician_we_vote_id_list.append(politician.we_vote_id)
+                    if we_vote_politician.we_vote_id not in exclude_politician_we_vote_id_list:
+                        exclude_politician_we_vote_id_list.append(we_vote_politician.we_vote_id)
+                    PoliticiansArePossibleDuplicates.objects.create(
+                        politician1_we_vote_id=politician.we_vote_id,
+                        politician2_we_vote_id=None,
+                        state_code=state_code,
+                    )
+                    PoliticiansArePossibleDuplicates.objects.create(
+                        politician1_we_vote_id=we_vote_politician.we_vote_id,
+                        politician2_we_vote_id=None,
+                        state_code=state_code,
+                    )
+                    politicians_merged_list.append(politician)
+                    politicians_merged_found = True
+                else:
+                    # Add an entry showing that this is a possible match
+                    status += f"[Politician {we_vote_politician.politician_name} has possible match.] "
+                    PoliticiansArePossibleDuplicates.objects.create(
+                        politician1_we_vote_id=we_vote_politician.we_vote_id,
+                        politician2_we_vote_id=politician_option2_for_template.we_vote_id,
+                        state_code=state_code,
+                    )
+                    if politician_option2_for_template.we_vote_id not in exclude_politician_we_vote_id_list:
+                        exclude_politician_we_vote_id_list.append(politician_option2_for_template.we_vote_id)
+            else:
+                # No matches found
+                PoliticiansArePossibleDuplicates.objects.create(
+                    politician1_we_vote_id=we_vote_politician.we_vote_id,
+                    politician2_we_vote_id=None,
+                    state_code=state_code,
+                )
+                duplicate_check_complete_politician_we_vote_id_list.append(we_vote_politician.we_vote_id)
+    except Exception as e:
+        status += f"CRASHED_IN_POLITICIAN_LIST_LOOP: {str(e)} "
+        # Fall through to exit function
+
+    return {
+        "duplicate_check_complete_politician_we_vote_id_list": duplicate_check_complete_politician_we_vote_id_list,
+        "politicians_merged_found": politicians_merged_found,
+        "politicians_merged_list": politicians_merged_list,
+        "status": status,
+        "success": success,
+    }
+
+
+def find_states_that_need_new_deduplication():
+    state_code_list = []
+    status = ''
+    success = True
+
+    return {
+        "state_code_list": state_code_list,
+        "status": status,
+        "success": success,
+    }
 
 
 def generate_campaignx_for_every_politician(
