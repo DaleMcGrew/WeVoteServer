@@ -4299,6 +4299,18 @@ def candidate_merge_process_view(request):
     if positive_value_exists(skip):
         results = candidate_manager.update_or_create_candidates_are_not_duplicates(
             candidate1_we_vote_id, candidate2_we_vote_id)
+        if results['success']:
+            queryset = CandidatesArePossibleDuplicates.objects.filter(
+                candidate1_we_vote_id=candidate1_we_vote_id,
+                candidate2_we_vote_id=candidate2_we_vote_id,
+            )
+            queryset.delete()
+
+            we_vote_ids_to_update = [candidate1_we_vote_id, candidate2_we_vote_id]
+            CandidateCampaign.objects.filter(we_vote_id__in=we_vote_ids_to_update) \
+                .update(duplicate_check_last_completed=None)
+            status += f"DUPLICATE_CHECK_COMPLETE_SET_FOR-{len(we_vote_ids_to_update)}-CANDIDATES "
+
         if results['new_candidates_are_not_duplicates_created']:
             if positive_value_exists(voter_we_vote_id):
                 try:
@@ -4361,6 +4373,12 @@ def candidate_merge_process_view(request):
         candidate = merge_results['candidate']
         messages.add_message(request, messages.INFO, "Candidate '{candidate_name}' merged."
                                                      "".format(candidate_name=candidate.candidate_name))
+
+        # Now set the flag so this politician gets checked against other politicians for duplicates
+        CandidateCampaign.objects.filter(we_vote_id=candidate.we_vote_id) \
+            .update(duplicate_check_last_completed=None)
+        status += f"RESET_DUPLICATE_CHECK_FOR-{candidate.we_vote_id}-CANDIDATE "
+
         if positive_value_exists(voter_we_vote_id):
             try:
                 # Give the volunteer who entered this credit

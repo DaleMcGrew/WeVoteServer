@@ -211,8 +211,8 @@ class Politician(models.Model):
     # See these related fields in CandidateCampaign table:
     # updated_from_politician_completed_first = models.DateTimeField(null=True)
     # updated_from_politician_completed_second = models.DateTimeField(null=True)
-    # updates_to_politician_completed = models.DateTimeField(null=True)
-    # See this url for properties: https://docs.python.org/2/library/functions.html#property
+    # updates_to_politician_completed = models.DateTimeField(null=True)  # Research date_last_updated_from_candidate
+
     first_name = models.CharField(verbose_name="first name",
                                   max_length=255, default=None, null=True, blank=True)
     middle_name = models.CharField(verbose_name="middle name",
@@ -2318,7 +2318,7 @@ class PoliticianManager(models.Manager):
 
         # twitter handle does not exist, next look up against other data that might match
         if keep_looking_for_duplicates and positive_value_exists(politician_name):
-            # Search by Candidate name exact match
+            # Search by Politician name exact match
             try:
                 if positive_value_exists(read_only):
                     queryset = Politician.objects.using('readonly').all()
@@ -2566,6 +2566,21 @@ class PoliticianManager(models.Manager):
         politicians_are_not_duplicates_list1 = []
         politicians_are_not_duplicates_list2 = []
         status = ""
+        success = True
+        error_results = {
+            'success':                                          False,
+            'status':                                           status,
+            'politicians_are_not_duplicates_list_found':        False,
+            'politicians_are_not_duplicates_list':              [],
+            'politicians_are_not_duplicates_list_we_vote_ids':  [],
+        }
+
+        if not positive_value_exists(politician_we_vote_id):
+            status += "NOT_DUPLICATES_POLITICIAN_WE_VOTE_ID_NOT_PROVIDED "
+            error_results['status'] = status
+            error_results['success'] = False
+            return error_results
+
         try:
             if positive_value_exists(read_only):
                 politicians_are_not_duplicates_list_query = \
@@ -2577,15 +2592,15 @@ class PoliticianManager(models.Manager):
                     politician1_we_vote_id=politician_we_vote_id,
                 )
             politicians_are_not_duplicates_list1 = list(politicians_are_not_duplicates_list_query)
-            success = True
             status += "POLITICIANS_NOT_DUPLICATES_LIST_UPDATED_OR_CREATED1 "
         except PoliticiansAreNotDuplicates.DoesNotExist:
             # No data found. Try again below
-            success = True
             status += 'NO_POLITICIANS_NOT_DUPLICATES_LIST_RETRIEVED_DoesNotExist1 '
         except Exception as e:
-            success = False
             status += "POLITICIANS_NOT_DUPLICATES_LIST_NOT_UPDATED_OR_CREATED1: " + str(e) + ' '
+            error_results['status'] = status
+            error_results['success'] = False
+            return error_results
 
         if success:
             try:
@@ -2600,14 +2615,15 @@ class PoliticianManager(models.Manager):
                             politician2_we_vote_id=politician_we_vote_id,
                         )
                 politicians_are_not_duplicates_list2 = list(politicians_are_not_duplicates_list_query)
-                success = True
                 status += "POLITICIANS_NOT_DUPLICATES_LIST_UPDATED_OR_CREATED2 "
             except PoliticiansAreNotDuplicates.DoesNotExist:
-                success = True
                 status += 'NO_POLITICIANS_NOT_DUPLICATES_LIST_RETRIEVED2_DoesNotExist2 '
             except Exception as e:
                 success = False
                 status += "POLITICIANS_NOT_DUPLICATES_LIST_NOT_UPDATED_OR_CREATED2: " + str(e) + ' '
+                error_results['status'] = status
+                error_results['success'] = success
+                return error_results
 
         politicians_are_not_duplicates_list = \
             politicians_are_not_duplicates_list1 + politicians_are_not_duplicates_list2
@@ -2615,9 +2631,11 @@ class PoliticianManager(models.Manager):
         politicians_are_not_duplicates_list_we_vote_ids = []
         for one_entry in politicians_are_not_duplicates_list:
             if one_entry.politician1_we_vote_id != politician_we_vote_id:
-                politicians_are_not_duplicates_list_we_vote_ids.append(one_entry.politician1_we_vote_id)
-            elif one_entry.politician2_we_vote_id != politician_we_vote_id:
-                politicians_are_not_duplicates_list_we_vote_ids.append(one_entry.politician2_we_vote_id)
+                if one_entry.politician1_we_vote_id not in politicians_are_not_duplicates_list_we_vote_ids:
+                    politicians_are_not_duplicates_list_we_vote_ids.append(one_entry.politician1_we_vote_id)
+            if one_entry.politician2_we_vote_id != politician_we_vote_id:
+                if one_entry.politician2_we_vote_id not in politicians_are_not_duplicates_list_we_vote_ids:
+                    politicians_are_not_duplicates_list_we_vote_ids.append(one_entry.politician2_we_vote_id)
         results = {
             'success':                                          success,
             'status':                                           status,
