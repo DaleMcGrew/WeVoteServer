@@ -2,6 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 from datetime import datetime
+import pytz
 
 from django.db.models import Q
 from config.base import get_environment_variable
@@ -12,10 +13,12 @@ from import_export_batches.controllers_data_cleaning import full_deduplication_f
 from politician.models import PoliticianManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists
-from wevote_functions.functions_date import convert_we_vote_date_string_to_date_as_integer, \
+from wevote_functions.functions_date import convert_date_to_date_as_integer, \
+    convert_we_vote_date_string_to_date_as_integer, \
     generate_localized_datetime_from_obj, get_current_year_as_integer
 from .controllers import find_duplicate_candidate, merge_if_duplicate_candidates
-from .models import CandidateCampaign, CandidateListManager, CandidateManager, CandidatesArePossibleDuplicates
+from .models import CandidateCampaign, CandidateListManager, CandidateManager, CandidatesArePossibleDuplicates, \
+    DeduplicationNeededForStateToday
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -582,28 +585,50 @@ def populate_contest_office_data(
     return results
 
 
-def batch_process_deduplication_scripts_candidate():
+def batch_process_deduplication_scripts_candidate():  # DEDUPLICATION_SCRIPTS_CANDIDATE
     all_states_deduplication_complete = False
     status = ':||: '
     success = True
 
     # ##################
-    #
+    # Every day, we go through all states and run a duplication check so we end up with a list of Candidates
+    #  that might be duplicates. Every time this script runs, we check one more state.
     results = full_deduplication_for_next_state(is_for_candidates=True)
     if positive_value_exists(results['status']):
         status += results['status'] + " :||: "
         all_states_deduplication_complete = results['all_states_deduplication_complete']
 
     # ##################
-    # Check to see if there are any states with that have new politicians that haven't been checked for duplicates
-    # if all_states_deduplication_complete:
-    #     results = find_states_that_need_new_deduplication()
-    #     if positive_value_exists(results['success']):
-    #         state_code_list = results['state_code_list']
-    #         if state_code_list and len(state_code_list) > 0:
-    #             pass
-    #     if positive_value_exists(results['status']):
-    #         status += results['status'] + " :||: "
+    # After all states have been checked once per day for duplicates, we check to see if there have been any
+    #  manual deduplication in any states. If so, run the full_deduplication_for_next_state again for that state
+    #  the next time batch_process_deduplication_scripts_candidate is run.
+    if all_states_deduplication_complete:
+        results = find_states_that_need_new_candidate_deduplication()
+        if positive_value_exists(results['success']):
+            state_code_list = results['state_code_list']
+            if state_code_list and len(state_code_list) > 0:
+                # Update the DeduplicationNeededForStateToday entry for today with the
+                #  states that need to be deduplicated again.
+                try:
+                    pacific_tz = pytz.timezone('US/Pacific')
+                    date_now = now().astimezone(pacific_tz)
+                    date_now_as_integer = convert_date_to_date_as_integer(date_now)
+                    deduplication_needed_for_state_today, created = \
+                        DeduplicationNeededForStateToday.objects.get_or_create(
+                            date_now_as_integer=date_now_as_integer,
+                        )
+                    # Set the deduplication_needed flag to True for each state in the list
+                    for state_code in state_code_list:
+                        field_name = f"{state_code.lower()}_deduplication_needed"
+                        setattr(deduplication_needed_for_state_today, field_name, True)
+
+                    deduplication_needed_for_state_today.save()
+                    status += f"UPDATED_DeduplicationNeededForStateToday for states: {', '.join(state_code_list)} "
+                except Exception as e:
+                    status += "FAILED_TO_UPDATE_DeduplicationNeededForStateToday: {e} ".format(e=e)
+                    success = False
+        if positive_value_exists(results['status']):
+            status += results['status'] + " :||: "
 
     results = {
         'status': status,
@@ -674,7 +699,8 @@ def candidate_deduplication_for_one_state(candidate_year=0, state_code=''):
         queryset = CandidatesArePossibleDuplicates.objects.filter(
             state_code__iexact=state_code,
         )
-        queryset.delete()
+        number_deleted, unused = queryset.delete()
+        status += f"[Deleted {number_deleted:,} PoliticiansArePossibleDuplicates entries for state {state_code}] "
     except Exception as e:
         status += "ERROR_DELETING_POSSIBLE_DUPLICATES: {e} ".format(e=e)
         success = False
@@ -696,6 +722,15 @@ def candidate_deduplication_for_one_state(candidate_year=0, state_code=''):
                 status += f"DUPLICATE_CHECK_COMPLETE_FOR-{len(we_vote_ids_to_update)}-CANDIDATES "
             except Exception as e:
                 status += f"COULD_NOT_UPDATE_DUPLICATE_CHECK_LAST_COMPLETED: {e} "
+        if merge_results['reset_duplicate_check_last_completed_we_vote_id_list']:
+            try:
+                we_vote_ids_to_update = merge_results['reset_duplicate_check_last_completed_we_vote_id_list']
+                if len(we_vote_ids_to_update) > 0:
+                    CandidateCampaign.objects.filter(we_vote_id__in=we_vote_ids_to_update)\
+                        .update(duplicate_check_last_completed=None)
+                    status += f"RESET_DUPLICATE_CHECK_FOR-{len(we_vote_ids_to_update)}-CANDIDATES "
+            except Exception as e:
+                status += f"COULD_NOT_RESET_DUPLICATE_CHECK_LAST_COMPLETED: {e} "
 
     results = {
         'status': status,
@@ -711,12 +746,14 @@ def find_and_merge_duplicate_candidates(
     duplicate_check_complete_candidate_we_vote_id_list = []
     candidates_merged_found = False
     candidates_merged_list = []
+    reset_duplicate_check_last_completed_we_vote_id_list = []
     status = ""
     success = True
     error_results = {
         "duplicate_check_complete_candidate_we_vote_id_list": duplicate_check_complete_candidate_we_vote_id_list,
         "candidates_merged_found": candidates_merged_found,
         "candidates_merged_list": candidates_merged_list,
+        "reset_duplicate_check_last_completed_we_vote_id_list": reset_duplicate_check_last_completed_we_vote_id_list,
         "status": status,
         "success": False,
     }
@@ -791,13 +828,18 @@ def find_and_merge_duplicate_candidates(
             if we_vote_candidate.we_vote_id in exclude_candidate_we_vote_id_list:
                 continue
             # Start ignore list with entries already reviewed
-            ignore_candidate_id_list = exclude_candidate_we_vote_id_list
+            ignore_candidate_id_list = exclude_candidate_we_vote_id_list.copy()
             # Add current entry to ignore list
             ignore_candidate_id_list.append(we_vote_candidate.we_vote_id)
             # Now check for others we have already labeled as "not a duplicate"
-            not_a_duplicate_list = candidate_manager.fetch_candidates_are_not_duplicates_list_we_vote_ids(
-                we_vote_candidate.we_vote_id)
-            ignore_candidate_id_list += not_a_duplicate_list
+            duplicates_results = \
+                candidate_manager.retrieve_candidates_are_not_duplicates_list(we_vote_candidate.we_vote_id)
+            if duplicates_results['success']:
+                not_a_duplicate_list = duplicates_results['candidates_are_not_duplicates_list_we_vote_ids']
+                # Add current entry to ignore list
+                ignore_candidate_id_list += not_a_duplicate_list
+            else:
+                status += f"COULD_NOT_RETRIEVE_CANDIDATES_ARE_NOT_DUPLICATES: {duplicates_results['status']} "
 
             results = find_duplicate_candidate(we_vote_candidate, ignore_candidate_id_list, read_only=True)
 
@@ -830,9 +872,14 @@ def find_and_merge_duplicate_candidates(
                     )
                     candidates_merged_list.append(candidate)
                     candidates_merged_found = True
+                    if candidate.we_vote_id not in reset_duplicate_check_last_completed_we_vote_id_list:
+                        reset_duplicate_check_last_completed_we_vote_id_list.append(candidate.we_vote_id)
                 else:
                     # Add an entry showing that this is a possible match
-                    status += f"[Candidate {we_vote_candidate.candidate_name} has possible match.] "
+                    status += (
+                        f"[Candidate {we_vote_candidate.candidate_name} "
+                        f"({we_vote_candidate.we_vote_id}) has possible match.] "
+                    )
                     state_code_local = state_code
                     if not positive_value_exists(state_code_local):
                         if positive_value_exists(we_vote_candidate.state_code):
@@ -846,6 +893,12 @@ def find_and_merge_duplicate_candidates(
                     )
                     if candidate_option2_for_template.we_vote_id not in exclude_candidate_we_vote_id_list:
                         exclude_candidate_we_vote_id_list.append(candidate_option2_for_template.we_vote_id)
+                    if we_vote_candidate.we_vote_id not in reset_duplicate_check_last_completed_we_vote_id_list:
+                        reset_duplicate_check_last_completed_we_vote_id_list.append(we_vote_candidate.we_vote_id)
+                    if candidate_option2_for_template.we_vote_id not in \
+                            reset_duplicate_check_last_completed_we_vote_id_list:
+                        reset_duplicate_check_last_completed_we_vote_id_list.append(
+                            candidate_option2_for_template.we_vote_id)
             else:
                 # No matches found
                 CandidatesArePossibleDuplicates.objects.create(
@@ -859,12 +912,78 @@ def find_and_merge_duplicate_candidates(
         # Fall through to exit function
 
     return {
-            "duplicate_check_complete_candidate_we_vote_id_list": duplicate_check_complete_candidate_we_vote_id_list,
-            "candidates_merged_found": candidates_merged_found,
-            "candidates_merged_list": candidates_merged_list,
-            "status": status,
-            "success": success,
-        }
+        "duplicate_check_complete_candidate_we_vote_id_list": duplicate_check_complete_candidate_we_vote_id_list,
+        "candidates_merged_found": candidates_merged_found,
+        "candidates_merged_list": candidates_merged_list,
+        "reset_duplicate_check_last_completed_we_vote_id_list": reset_duplicate_check_last_completed_we_vote_id_list,
+        "status": status,
+        "success": success,
+    }
+
+
+def find_states_that_need_new_candidate_deduplication():
+    """
+    Check to see if there are any states with that have new candidates that haven't been checked for duplicates
+    """
+    state_codes_for_deduplication = [
+        "ak", "al", "ar", "az", "ca", "co", "ct", "dc", "de", "fl", "ga", "hi", "ia", "id", "il", "in", "ks",
+        "ky", "la", "ma", "md", "me", "mi", "mn", "mo", "ms", "mt", "na", "nc", "nd", "ne", "nh", "nj", "nm",
+        "nv", "ny", "oh", "ok", "or", "pa", "pr", "ri", "sc", "sd", "tn", "tx", "ut", "va", "vt", "wa", "wi",
+        "wv", "wy"
+    ]
+    state_code_list = []
+    status = ''
+    success = True
+
+    # Return all candidates from any state in state_codes_for_deduplication
+    #  that have a null duplicate_check_last_completed value
+    # We want to identify new candidates that haven't been deduplicated yet
+    current_year_as_integer = get_current_year_as_integer()
+    candidate_query = CandidateCampaign.objects.using('readonly').filter(
+        candidate_year=current_year_as_integer,
+        state_code__in=state_codes_for_deduplication,
+        duplicate_check_last_completed__isnull=True,
+    )
+    # Extract a list of candidate we_vote_id values from the candidate_query organized by state_code
+    candidate_list = list(candidate_query)
+    candidates_by_state_code = {}
+    for candidate in candidate_list:
+        if candidate.state_code not in candidates_by_state_code:
+            candidates_by_state_code[candidate.state_code] = []
+        candidates_by_state_code[candidate.state_code].append(candidate.we_vote_id)
+
+    # Now cycle through each state in state_codes_for_deduplication and make sure
+    # that none of the we_vote_id values in candidates_by_state_code appear in PoliticiansArePossibleDuplicates
+    for state_code in candidates_by_state_code:
+        candidate_we_vote_id_list = candidates_by_state_code[state_code]
+        candidate_we_vote_id_remaining_list = candidate_we_vote_id_list.copy()
+        candidate_duplicate_check_query = CandidatesArePossibleDuplicates.objects.using('readonly').filter(
+            (
+                Q(candidate1_we_vote_id__in=candidate_we_vote_id_list) &
+                Q(candidate2_we_vote_id__isnull=False)
+            ) | (
+                Q(candidate2_we_vote_id__in=candidate_we_vote_id_list) &
+                Q(candidate1_we_vote_id__isnull=False)
+            )
+        )
+        candidate_duplicate_check_list = list(candidate_duplicate_check_query)
+        # Cycle through candidate_duplicate_check_list and remove one-by-one the values in candidate_we_vote_id_list.
+        #  If there are values left, then we can run the deduplication process for the state again
+        for candidate_duplicate_check in candidate_duplicate_check_list:
+            if candidate_duplicate_check.candidate1_we_vote_id in candidate_we_vote_id_remaining_list:
+                candidate_we_vote_id_remaining_list.remove(candidate_duplicate_check.candidate1_we_vote_id)
+            if candidate_duplicate_check.candidate2_we_vote_id in candidate_we_vote_id_remaining_list:
+                candidate_we_vote_id_remaining_list.remove(candidate_duplicate_check.candidate2_we_vote_id)
+
+        if len(candidate_we_vote_id_remaining_list) > 0:
+            # We need to run the deduplication process for this state again
+            state_code_list.append(state_code)
+
+    return {
+        "state_code_list": state_code_list,
+        "status": status,
+        "success": success,
+    }
 
 
 def seo_friendly_path_updates(
