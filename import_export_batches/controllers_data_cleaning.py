@@ -61,9 +61,11 @@ def full_deduplication_for_next_state(is_for_candidates=False):
             from candidate.controllers_data_cleaning import candidate_deduplication_for_one_state
             state_results = candidate_deduplication_for_one_state(
                 candidate_year=current_year, state_code=next_state_code)
+            status += state_results['status']
         else:
             from politician.controllers_data_cleaning import politician_deduplication_for_one_state
             state_results = politician_deduplication_for_one_state(state_code=next_state_code)
+            status += state_results['status']
         if state_results['success']:
             try:
                 setattr(deduplication_needed, f"{next_state_code}_deduplication_needed", False)

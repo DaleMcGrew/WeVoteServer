@@ -942,6 +942,12 @@ def politician_merge_process_view(request):
             )
             queryset.delete()
             messages.add_message(request, messages.INFO, 'Prior politicians skipped, and not merged.')
+
+            we_vote_ids_to_update = [politician1_we_vote_id, politician2_we_vote_id]
+            Politician.objects.filter(we_vote_id__in=we_vote_ids_to_update) \
+                .update(duplicate_check_last_completed=None)
+            status += f"DUPLICATE_CHECK_COMPLETE_SET_FOR-{len(we_vote_ids_to_update)}-POLITICIANS "
+
             if positive_value_exists(voter_we_vote_id):
                 try:
                     # Give the volunteer who entered this credit
@@ -1017,6 +1023,12 @@ def politician_merge_process_view(request):
             politician2_we_vote_id=politician2_we_vote_id,
         )
         queryset.delete()
+
+        # Now set the flag so this politician gets checked against other politicians for duplicates
+        Politician.objects.filter(we_vote_id=politician.we_vote_id) \
+            .update(duplicate_check_last_completed=None)
+        status += f"RESET_DUPLICATE_CHECK_FOR-{politician.we_vote_id}-POLITICIAN "
+
         if positive_value_exists(voter_we_vote_id):
             try:
                 # Give the volunteer who entered this credit
@@ -1445,6 +1457,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
     facebook_url = request.GET.get('facebook_url', False)
     facebook_url2 = request.GET.get('facebook_url2', False)
     facebook_url3 = request.GET.get('facebook_url3', False)
+    find_candidates_to_link_to_this_politician_on = \
+        request.GET.get('find_candidates_to_link_to_this_politician_on', False)
     first_name = request.GET.get('first_name', False)
     google_civic_candidate_name = request.GET.get('google_civic_candidate_name', False)
     google_civic_candidate_name2 = request.GET.get('google_civic_candidate_name2', False)
@@ -1698,8 +1712,18 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         # Find Candidates to Link to this Politician
         # Finding Candidates that *might* be "children" of this politician
         t0 = time()
-        from politician.controllers import find_candidates_to_link_to_this_politician
-        related_candidate_list = find_candidates_to_link_to_this_politician(politician=politician_on_stage)
+        # find_candidates_to_link_to_this_politician_on = False  # Turned off for now because this is a slow operation
+        # TODO: Connect this to a variable on the Politician Edit page that turns this on.
+        find_candidates_to_link_none_found = False
+        related_candidate_list = []
+        if positive_value_exists(find_candidates_to_link_to_this_politician_on):
+            from politician.controllers import find_candidates_to_link_to_this_politician
+            related_candidate_list = find_candidates_to_link_to_this_politician(politician=politician_on_stage)
+            if len(related_candidate_list) == 0:
+                find_candidates_to_link_to_this_politician_on = False
+                find_candidates_to_link_none_found = True
+            else:
+                find_candidates_to_link_none_found = False
 
         # Find possible duplicate politicians
         duplicate_politician_list = []
@@ -1975,6 +1999,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             'facebook_url':                 facebook_url,
             'facebook_url2':                facebook_url2,
             'facebook_url3':                facebook_url3,
+            'find_candidates_to_link_none_found':    find_candidates_to_link_none_found,
+            'find_candidates_to_link_to_this_politician_on':    find_candidates_to_link_to_this_politician_on,
             'first_name_dict':
             {
                 'label':    'First Name',
@@ -2393,6 +2419,8 @@ def politician_edit_process_view(request):
     facebook_url = request.POST.get('facebook_url', False)
     facebook_url2 = request.POST.get('facebook_url2', False)
     facebook_url3 = request.POST.get('facebook_url3', False)
+    find_candidates_to_link_to_this_politician_on = \
+        request.POST.get('find_candidates_to_link_to_this_politician_on', False)
     google_civic_candidate_name = request.POST.get('google_civic_candidate_name', False)
     if positive_value_exists(google_civic_candidate_name):
         google_civic_candidate_name = google_civic_candidate_name.strip()
@@ -3502,15 +3530,19 @@ def politician_edit_process_view(request):
     # ##################################
     # Find Candidates to Link to this Politician
     # Finding Candidates that *might* be "children" of this politician
-    t0 = time()
-    from politician.controllers import find_candidates_to_link_to_this_politician
+    # find_candidates_to_link_to_this_politician_on = False  # Turned off for now because this is a slow operation
+    # TODO: Connect this to a variable on the Politician Edit page that turns this on.
+    related_candidate_list = []
+    if positive_value_exists(find_candidates_to_link_to_this_politician_on):
+        t0 = time()
+        from politician.controllers import find_candidates_to_link_to_this_politician
 
-    related_candidate_list = find_candidates_to_link_to_this_politician(politician=politician_on_stage)
+        related_candidate_list = find_candidates_to_link_to_this_politician(politician=politician_on_stage)
 
-    performance_list.append({
-        'enum_key': 'RET_CANDIDATES_TO_LINK',
-        'time_difference': round(time() - t0, 4),
-    })
+        performance_list.append({
+            'enum_key': 'RET_CANDIDATES_TO_LINK',
+            'time_difference': round(time() - t0, 4),
+        })
 
     # ##################################
     # Link Candidates to this Politician
@@ -3882,6 +3914,9 @@ def politician_edit_process_view(request):
     performance_process_dict_encoded = urlencode({
         'performance_process_dict': json.dumps(performance_dict)
     })
+
+    if find_candidates_to_link_to_this_politician_on:
+        url_variables += "&find_candidates_to_link_to_this_politician_on=true"
 
     if politician_id:
         return HttpResponseRedirect(reverse('politician:politician_edit', args=(politician_id,)) +
