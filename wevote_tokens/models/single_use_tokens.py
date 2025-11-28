@@ -20,11 +20,9 @@ class SingleUseToken(models.Model):
     - Created at Setting
     """
 
-    _user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name='single_use_tokens',  # Allows user.single_use_tokens.all()
-        on_delete=models.CASCADE,
-        help_text='The user this token belongs to.',
+    _user_id = models.BinaryField(
+        verbose_name='user we_vote_id',
+        help_text='The user this token is assigned to.',
     )
 
     # Retrieval Key Setting
@@ -65,12 +63,14 @@ class SingleUseToken(models.Model):
         return f"Single Use Token for {self._user} (expires: {self._expiration_datetime})"
 
     ## Only modify on creation.
-    def save(self, user, validation_key, expiration_seconds=None, json_data=None, *args, **kwargs):
+    def save(self, user_id, validation_key, expiration_seconds=None, json_data=None, *args, **kwargs):
 
         if self.pk is not None:  # object exists
             raise ValueError("Direct save is not allowed. Tokens are meant to be immutable after creation.")
 
         # Validate inputs
+        if not isinstance(user_id, (str, int)):
+            raise ValueError("User ID must be a string or integer.")
         if not isinstance(validation_key, (bytes)):
             raise ValueError("Validation key must be a bytes object.")
         if not isinstance(expiration_seconds, (int, float, type(None))):
@@ -81,6 +81,9 @@ class SingleUseToken(models.Model):
         cipher = Fernet(validation_key)
         time_now = timezone.now()
             
+        user_id = str(user_id)
+        user_id_encrypted = cipher.encrypt(user_id.encode('utf-8'))
+        
         #default to 5 minutes expiration time
         if expiration_seconds is None:
             expiration_seconds = 300
@@ -99,7 +102,7 @@ class SingleUseToken(models.Model):
         else:
             json_data_encrypted = None
         
-        self._user = user
+        self._user_id = user_id_encrypted
         self._created_at = time_now
         self._validation = cipher.encrypt(validation_key)
         self._expiration_datetime = time_now + timedelta(seconds=int(expiration_seconds))
@@ -118,7 +121,7 @@ class SingleUseTokenManager(models.Manager):
         return Fernet.generate_key()
 
     @staticmethod
-    def create_token(user, validation_key, expiration_seconds=None, json_data=None):
+    def create_token(user_id, validation_key, expiration_seconds=None, json_data=None):
         token_info = {
             'success': False,
             'status': '',
@@ -126,9 +129,6 @@ class SingleUseTokenManager(models.Manager):
             'expiration_datetime': None,
             'token_user': None,
         }
-
-        if isinstance(validation_key, (str)):
-            validation_key = validation_key.encode('utf-8')
         
         if not isinstance(validation_key, (bytes)):
             token_info['status'] = "VALIDATION KEY MUST BE A BYTES OR STRING."
@@ -136,7 +136,7 @@ class SingleUseTokenManager(models.Manager):
 
         new_token = SingleUseToken()
         try:
-            new_token.save(user, validation_key=validation_key,
+            new_token.save(user_id, validation_key=validation_key,
                 expiration_seconds=expiration_seconds,
                 json_data=json_data)
         except Exception as e:
@@ -147,7 +147,7 @@ class SingleUseTokenManager(models.Manager):
         token_info['status'] = 'TOKEN CREATED'
         token_info['token_pk'] = new_token.pk
         token_info['expiration_datetime'] = new_token._expiration_datetime
-        token_info['token_user'] = new_token._user
+        token_info['token_user'] = user_id
 
         return token_info
 
@@ -196,11 +196,13 @@ class SingleUseTokenManager(models.Manager):
         else:
             json_data = token_info['json_data'] = None
 
+        decrypted_user_id = cipher.decrypt(bytes(token._user_id)).decode('utf-8')
+
         token_info['success'] = True
         token_info['status'] = 'TOKEN RETRIEVED AND AUTHENTICATED'
         token_info['expiration_datetime'] = token._expiration_datetime
         token_info['json_data'] = json_data
-        token_info['token_user'] = token._user
+        token_info['token_user'] = decrypted_user_id
 
         # Enforce token single use.
         token.delete()
