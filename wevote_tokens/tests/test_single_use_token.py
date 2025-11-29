@@ -10,7 +10,8 @@ import time
 # Only used to test SingleUseToken model
 class TestSingleUseToken(TestCase):
     def setUp(self):
-        self.test_voter = VoterManager().create_voter(email='test@example.com', password='testpassword')['voter']
+        # self.test_voter = VoterManager().create_voter(email='test@example.com', password='testpassword')['voter'].id
+        self.test_voter = '1234567890' # Only need voter ID for testing
         self.test_validation_key = Fernet.generate_key()
         self.test_cipher = Fernet(self.test_validation_key)
     
@@ -21,12 +22,12 @@ class TestSingleUseToken(TestCase):
         json_data = {'test': 'test'}
 
         token = SingleUseToken()
-        token.save(user=voter, validation_key=validation_key, expiration_seconds=expiration, json_data=json_data)
+        token.save(voter, validation_key=validation_key, expiration_seconds=expiration, json_data=json_data)
 
         self.assertEqual(
-            token._user,
+            self.test_cipher.decrypt(bytes(token._user_id)).decode('utf-8'),
             voter,
-            "_user Not Set Correctly")
+            "_user_id Not Set Correctly")
         self.assertEqual(
             self.test_cipher.decrypt(token._validation),
             validation_key,
@@ -39,15 +40,27 @@ class TestSingleUseToken(TestCase):
             (timezone.now() + timedelta(seconds=expiration)) - token._expiration_datetime,
             timedelta(seconds=1),
             "_expiration_datetime Not Set Correctly")
-    
-    def test_single_use_token_creation_with_invalid_user(self):
-        invalid_user = 'invalid'
+
+    def test_single_use_token_creation_with_int_user_id(self):
+        int_user_id = 1234567890
+        validation_key = self.test_validation_key
+
+        token = SingleUseToken()
+        token.save(user_id=int_user_id, validation_key=validation_key)
+
+        self.assertEqual(
+            self.test_cipher.decrypt(bytes(token._user_id)).decode('utf-8'),
+            str(int_user_id),
+            "_user_id Not Set Correctly")
+
+    def test_single_use_token_creation_with_invalid_user_id(self):
+        invalid_user = []
         validation_key = self.test_validation_key
 
         token = SingleUseToken()
 
-        with self.assertRaisesMessage(ValueError, 'Cannot assign'):
-            token.save(user=invalid_user, validation_key=validation_key)
+        with self.assertRaisesMessage(ValueError, 'User ID must be a string or integer.'):
+            token.save(user_id=invalid_user, validation_key=validation_key)
 
     def test_single_use_token_creation_with_invalid_validation_key(self):
         voter = self.test_voter
@@ -56,7 +69,7 @@ class TestSingleUseToken(TestCase):
         token = SingleUseToken()
 
         with self.assertRaisesMessage(ValueError, "Validation key must be a bytes object."):
-            token.save(user=voter, validation_key=invalid_validation_key)
+            token.save(user_id=voter, validation_key=invalid_validation_key)
 
     def test_single_use_token_creation_with_invalid_json_data(self):
         voter = self.test_voter
@@ -65,7 +78,7 @@ class TestSingleUseToken(TestCase):
         token = SingleUseToken()
 
         with self.assertRaisesMessage(ValueError, "JSON data must be a dictionary or None."):
-            token.save(user=voter, validation_key=self.test_validation_key, json_data=invalid_json_data)
+            token.save(user_id=voter, validation_key=self.test_validation_key, json_data=invalid_json_data)
     
     def test_single_use_token_creation_with_large_json_data(self):
         voter = self.test_voter
@@ -75,7 +88,7 @@ class TestSingleUseToken(TestCase):
         token = SingleUseToken()
 
         with self.assertRaisesMessage(ValueError, f"Json Data must be <= 8kb, currently {large_json_data_size} bytes."):
-            token.save(user=voter, validation_key=self.test_validation_key, json_data=large_json_data)
+            token.save(user_id=voter, validation_key=self.test_validation_key, json_data=large_json_data)
     
     def test_single_use_token_creation_with_default_expiration(self):
         voter = self.test_voter
@@ -83,7 +96,7 @@ class TestSingleUseToken(TestCase):
         validation_key = self.test_validation_key
 
         token = SingleUseToken()
-        token.save(user=voter, validation_key=validation_key)
+        token.save(user_id=voter, validation_key=validation_key)
 
         self.assertLessEqual(
             (timezone.now() + timedelta(seconds=default_expiration)) - token._expiration_datetime,
@@ -98,7 +111,7 @@ class TestSingleUseToken(TestCase):
         token = SingleUseToken()
 
         with self.assertRaisesMessage(ValueError, "Expiration time must be an integer or float, in seconds."):
-            token.save(user=voter, validation_key=validation_key, expiration_seconds=invalid_expiration)
+            token.save(user_id=voter, validation_key=validation_key, expiration_seconds=invalid_expiration)
 
     def test_single_use_token_creation_with_negative_expiration(self):
         voter = self.test_voter
@@ -108,7 +121,7 @@ class TestSingleUseToken(TestCase):
         token = SingleUseToken()
 
         with self.assertRaisesMessage(ValueError, "Expiration Seconds must be a positive value."):
-            token.save(user=voter, validation_key=validation_key, expiration_seconds=negative_expiration)
+            token.save(user_id=voter, validation_key=validation_key, expiration_seconds=negative_expiration)
 
     def test_single_use_token_creation_with_large_expiration(self):
         voter = self.test_voter
@@ -118,13 +131,14 @@ class TestSingleUseToken(TestCase):
         token = SingleUseToken()
 
         with self.assertRaisesMessage(ValueError, "Expiration Seconds must be <= 1800."):
-            token.save(user=voter, validation_key=validation_key, expiration_seconds=large_expiration)
+            token.save(user_id=voter, validation_key=validation_key, expiration_seconds=large_expiration)
 
 
 class TestSingleUseTokenManager(TestCase):
 
     def setUp(self):
-        self.test_voter = VoterManager().create_voter(email='test@example.com', password='testpassword')['voter']
+        # self.test_voter = VoterManager().create_voter(email='test@example.com', password='testpassword')['voter'].id
+        self.test_voter = '1234567890' # Only need voter ID for testing
         self.test_validation_key = Fernet.generate_key()
 
     def _assert_equal(self, values_dict, keys_to_check, expected_value, reason):
@@ -153,7 +167,7 @@ class TestSingleUseTokenManager(TestCase):
         if validation_key is None:
             validation_key = self.test_validation_key
             
-        token_info = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, expiration_seconds=expiration_seconds, json_data=json_data)
+        token_info = SingleUseTokenManager.create_token(user_id=voter, validation_key=validation_key, expiration_seconds=expiration_seconds, json_data=json_data)
         return token_info['token_pk']
 
     def test_generate_encryption_key(self):
@@ -174,7 +188,7 @@ class TestSingleUseTokenManager(TestCase):
         expiration = 300
         message_addon = "Token Creation Success"
 
-        token_info = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, expiration_seconds=expiration)
+        token_info = SingleUseTokenManager.create_token(user_id=voter, validation_key=validation_key, expiration_seconds=expiration)
 
         self._assert_equal(token_info, ['status', 'token_user'], ["TOKEN CREATED", voter], message_addon)
         self._assert_is_not_none(token_info, ['token_pk'], message_addon)
@@ -188,7 +202,7 @@ class TestSingleUseTokenManager(TestCase):
         validation_key = self.test_validation_key
         message_addon = "Token Creation Failure"
 
-        token_info = SingleUseTokenManager.create_token(user=voter, validation_key=validation_key, expiration_seconds='invalid')
+        token_info = SingleUseTokenManager.create_token(user_id=voter, validation_key=validation_key, expiration_seconds='invalid')
         
         self._assert_false(token_info, ['success'], message_addon)
         self._assert_is_none(token_info, ['token_pk', 'expiration_datetime', 'token_user'], message_addon)
@@ -203,7 +217,7 @@ class TestSingleUseTokenManager(TestCase):
         invalid_validation_key = 99999999
         message_addon = "Invalid Validation Key"
         
-        token_info = SingleUseTokenManager.create_token(user=voter, validation_key=invalid_validation_key)
+        token_info = SingleUseTokenManager.create_token(user_id=voter, validation_key=invalid_validation_key)
 
         self._assert_false(token_info, ['success'], message_addon)
         self._assert_is_none(token_info, ['token_pk', 'expiration_datetime', 'token_user'], message_addon)
