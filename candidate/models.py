@@ -564,6 +564,7 @@ class CandidateListManager(models.Manager):
             candidate_year=0,
             index_start=0,
             candidates_limit=0,
+            has_been_deduplicated=False,
             is_missing_politician_we_vote_id=False,
             limit_to_this_state_code='',
             politician_we_vote_id_list=[],
@@ -576,6 +577,7 @@ class CandidateListManager(models.Manager):
         :param candidate_year:
         :param index_start:
         :param candidates_limit:
+        :param has_been_deduplicated:
         :param is_missing_politician_we_vote_id:
         :param limit_to_this_state_code:
         :param politician_we_vote_id_list:
@@ -594,7 +596,7 @@ class CandidateListManager(models.Manager):
         candidates_returned_count = 0
         candidates_total_count = 0
         status = ""
-        if positive_value_exists(search_string):
+        if search_string and positive_value_exists(search_string):
             try:
                 search_words = search_string.split()
             except Exception as e:
@@ -633,6 +635,8 @@ class CandidateListManager(models.Manager):
                 candidate_query = CandidateCampaign.objects.all()
             if positive_value_exists(candidate_year_integer):
                 candidate_query = candidate_query.filter(candidate_year=candidate_year_integer)
+            if positive_value_exists(has_been_deduplicated):
+                candidate_query = candidate_query.exclude(duplicate_check_last_completed=None)
             if positive_value_exists(is_missing_politician_we_vote_id):
                 candidate_query = candidate_query.filter(
                     Q(politician_we_vote_id__isnull=True) |

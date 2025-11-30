@@ -4123,6 +4123,12 @@ def candidate_politician_match_this_election_view(request):
 
 @login_required
 def candidate_politician_match_this_year_view(request):
+    num_candidates_reviewed = 0
+    num_that_already_have_politician_we_vote_id = 0
+    new_politician_created = 0
+    existing_politician_found = 0
+    multiple_politicians_found = 0
+    other_results = 0
     status = ""
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'verified_volunteer'}
@@ -4130,6 +4136,7 @@ def candidate_politician_match_this_year_view(request):
         return redirect_to_sign_in_page(request, authority_required)
 
     candidate_year = request.GET.get('candidate_year', 0)
+    candidate_year_integer = int(candidate_year)
     state_code = request.GET.get('state_code', '')
 
     # We only want to process if a year comes in
@@ -4148,63 +4155,52 @@ def candidate_politician_match_this_year_view(request):
         status += 'FAILED_TO_CREATE_VOLUNTEER_TASK_COMPLETED: ' \
                   '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
 
-    candidate_list_manager = CandidateListManager()
-    results = candidate_list_manager.retrieve_all_candidates_for_one_year(
-        candidate_year=candidate_year,
-        # candidates_limit=1000,
-        is_missing_politician_we_vote_id=True,
-        limit_to_this_state_code=state_code,
-        return_list_of_objects=True,
-    )
-    candidate_list = results['candidate_list_objects']
+    if not positive_value_exists(state_code):
+        candidate_query = CandidateCampaign.objects.using('readonly').all()
+        candidate_query = candidate_query.filter(candidate_year=candidate_year_integer)
+        candidate_query = candidate_query.exclude(duplicate_check_last_completed=None)
+        candidate_query = candidate_query.filter(
+            Q(politician_we_vote_id__isnull=True) |
+            Q(politician_we_vote_id='')
+        )
+        # Get distinct state codes
+        state_code_list = list(
+            candidate_query.values_list('state_code', flat=True).distinct()
+        )
+        if len(state_code_list) > 0:
+            state_code = state_code_list[0]
 
-    if len(candidate_list) == 0:
-        messages.add_message(request, messages.INFO, "No candidates found for year: {candidate_year}.".format(
-            candidate_year=candidate_year))
-        return HttpResponseRedirect(
-            reverse('candidate:candidate_list', args=()) + "?show_this_year_of_candidates={candidate_year}"
-                                                           "".format(
-                                                           candidate_year=candidate_year))
+    # Call controller of same name
+    if positive_value_exists(state_code):
+        from candidate.controllers_data_cleaning import candidate_politician_match_this_year
+        results = candidate_politician_match_this_year(candidate_year, state_code)
+        status += results['status']
 
-    num_candidates_reviewed = 0
-    num_that_already_have_politician_we_vote_id = 0
-    new_politician_created = 0
-    existing_politician_found = 0
-    multiple_politicians_found = 0
-    other_results = 0
+        num_candidates_reviewed = results['num_candidates_reviewed']
+        num_that_already_have_politician_we_vote_id = results['num_that_already_have_politician_we_vote_id']
+        new_politician_created = results['new_politician_created']
+        existing_politician_found = results['existing_politician_found']
+        multiple_politicians_found = results['multiple_politicians_found']
+        other_results = results['other_results']
+    else:
+        status += "NO_STATE_CODE_PROVIDED "
 
-    message = "About to loop through all of the candidates this year to make sure we have a politician record."
-    print_to_log(logger, exception_message_optional=message)
-
-    # Loop through all the candidates from this year
-    for we_vote_candidate in candidate_list:
-        num_candidates_reviewed += 1
-        if we_vote_candidate.politician_we_vote_id:
-            num_that_already_have_politician_we_vote_id += 1
-        match_results = candidate_politician_match(we_vote_candidate)
-        if match_results['politician_created']:
-            new_politician_created += 1
-        elif match_results['politician_found']:
-            existing_politician_found += 1
-        elif match_results['politician_list_found']:
-            multiple_politicians_found += 1
-        else:
-            other_results += 1
-
-    message = "Year: {candidate_year}, " \
+    message = "Year: {candidate_year}, State: {state_code}: " \
               "{num_candidates_reviewed} candidates reviewed, " \
               "{num_that_already_have_politician_we_vote_id} Candidates that already have Politician Ids, " \
               "{new_politician_created} politicians just created, " \
               "{existing_politician_found} politicians found that already exist, " \
               "{multiple_politicians_found} times we found multiple politicians and could not link, " \
-              "{other_results} other results". \
+              "{other_results} other results. Status: {status}". \
               format(candidate_year=candidate_year,
                      num_candidates_reviewed=num_candidates_reviewed,
                      num_that_already_have_politician_we_vote_id=num_that_already_have_politician_we_vote_id,
                      new_politician_created=new_politician_created,
                      existing_politician_found=existing_politician_found,
                      multiple_politicians_found=multiple_politicians_found,
-                     other_results=other_results)
+                     other_results=other_results,
+                     state_code=state_code,
+                     status=status)
 
     print_to_log(logger, exception_message_optional=message)
     messages.add_message(request, messages.INFO, message)
@@ -5576,6 +5572,7 @@ def update_candidates_from_politicians_view(request):  # This is related to goog
             show_this_year_of_candidates=show_this_year_of_candidates,
             state_code=state_code,
             google_civic_election_id=google_civic_election_id))
+
 
 @login_required
 def update_ocd_id_state_mismatch_view(request):
