@@ -4385,7 +4385,7 @@ def update_politicians_from_candidates_view(request):
             if one_candidate.politician_we_vote_id not in candidate_list_by_politician_we_vote_id:
                 candidate_list_by_politician_we_vote_id[one_candidate.politician_we_vote_id] = one_candidate
 
-    # Loop through all the politicians in this year, and update them with some politician data
+    # Loop through all the politicians in this year, and update them with some data from the new candidate entry
     politician_update_errors = 0
     politicians_updated = 0
     politicians_without_changes = 0
