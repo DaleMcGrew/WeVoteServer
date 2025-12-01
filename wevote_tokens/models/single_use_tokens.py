@@ -27,12 +27,14 @@ class SingleUseToken(models.Model):
     _user_id = models.BinaryField(
         verbose_name='user we_vote_id',
         help_text='The user this token is assigned to.',
+        null=True,
     )
 
     # Retrieval Key Setting
     _validation = models.BinaryField(
         verbose_name='Encoded Validation Data',
         help_text='Field used to test if the passed validation key is valid.',
+        null=True,
     )
 
     _scope = models.IntegerField(
@@ -46,6 +48,7 @@ class SingleUseToken(models.Model):
     _expiration_datetime = models.DateTimeField(
         verbose_name='token expiration datetime',
         help_text='When this token expires.',
+        null=True,
     )
     
     # JSON blob for storing additional metadata
@@ -63,6 +66,7 @@ class SingleUseToken(models.Model):
         db_index=True,
         help_text='Timestamp when token was created.',
         default=timezone.now,
+        null=True,
     )
     
     class Meta:
@@ -71,7 +75,7 @@ class SingleUseToken(models.Model):
         # db_table = 'authtoken_token' # Replacing DRF's default Token model
     
     def __str__(self):
-        return f"Single Use Token for {self._user} (expires: {self._expiration_datetime})"
+        return f"Single Use Token for {self._user_id} (expires: {self._expiration_datetime})"
 
     ## Only modify on creation.
     def save(self, user_id, validation_key, scope, expiration_seconds=None, json_data=None, *args, **kwargs):
@@ -106,9 +110,8 @@ class SingleUseToken(models.Model):
             expiration_seconds = 300
         elif expiration_seconds < 0:
             raise ValueError("Expiration Seconds must be a positive value.")
-        elif expiration_seconds > 1800: # 30 minutes
+        elif expiration_seconds > 1800:  # 30 minutes
             raise ValueError("Expiration Seconds must be <= 1800.")
-            
 
         if json_data is not None:
             json_data = json.dumps(json_data)
@@ -128,6 +131,7 @@ class SingleUseToken(models.Model):
         
         super().save(*args, **kwargs)
 
+
 class SingleUseTokenManager(models.Manager):
 
     def __str__(self):              # __unicode__ on Python 2
@@ -135,7 +139,7 @@ class SingleUseTokenManager(models.Manager):
 
     @staticmethod
     def generate_encryption_key():
-        ## Add cryptographically secure random URL safe base 64 encoded string generation
+        # Add cryptographically secure random URL safe base 64 encoded string generation
         return Fernet.generate_key()
 
     @staticmethod
