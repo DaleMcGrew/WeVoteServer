@@ -26,8 +26,8 @@ def backup_one_table_to_s3_view(request):  # backupOneTableToS3
     :return:
     """
     authorization = request.headers.get('Authorization')
-    token_key = request.headers.get('X-Token-Key')
-    new_token_key = request.headers.get('X-New-Key')
+    token_key = request.headers.get('X-Single-Use-Token-Key')
+    new_token_key = request.headers.get('X-Single-Use-Token-New-Key')
     table_name = request.GET.get('table_name', 'bad_table_param_error')
     voter_api_device_id = get_voter_api_device_id(request)
 

@@ -64,8 +64,8 @@ class TestBackupOneTableToS3Tokens(TestCase):
     def test_auth_token_and_new_key(self):
         request = self.request
         request.META['HTTP_AUTHORIZATION'] = f'Token {self.test_token_info["token_pk"]}'
-        request.META['HTTP_X_TOKEN_KEY'] = self.validation_key_str
-        request.META['HTTP_X_NEW_KEY'] = SingleUseTokenManager.generate_encryption_key().decode('utf-8')
+        request.META['HTTP_X_SINGLE_USE_TOKEN_KEY'] = self.validation_key_str
+        request.META['HTTP_X_SINGLE_USE_TOKEN_NEW_KEY'] = SingleUseTokenManager.generate_encryption_key().decode('utf-8')
         message_addon = "Valid Auth Token and New Key"
 
         response = backup_one_table_to_s3_view(request)
@@ -81,7 +81,7 @@ class TestBackupOneTableToS3Tokens(TestCase):
     def test_auth_token_and_no_new_key(self):
         request = self.request
         request.META['HTTP_AUTHORIZATION'] = f'Token {self.test_token_info["token_pk"]}'
-        request.META['HTTP_X_TOKEN_KEY'] = self.validation_key_str
+        request.META['HTTP_X_SINGLE_USE_TOKEN_KEY'] = self.validation_key_str
         message_addon = "Valid Auth Token and No New Key"
 
         response = backup_one_table_to_s3_view(request)
@@ -99,7 +99,7 @@ class TestBackupOneTableToS3Tokens(TestCase):
     def test_bad_token(self):
         request = self.request
         request.META['HTTP_AUTHORIZATION'] = f'Token {self.test_token_info["token_pk"] + 99999999999999999}'
-        request.META['HTTP_X_TOKEN_KEY'] = self.validation_key_str
+        request.META['HTTP_X_SINGLE_USE_TOKEN_KEY'] = self.validation_key_str
         message_addon = "Bad Token"
 
         response = backup_one_table_to_s3_view(request)
@@ -115,7 +115,7 @@ class TestBackupOneTableToS3Tokens(TestCase):
     def test_bad_token_key(self):
         request = self.request
         request.META['HTTP_AUTHORIZATION'] = f'Token {self.test_token_info["token_pk"]}'
-        request.META['HTTP_X_TOKEN_KEY'] = 'invalid_token_key'
+        request.META['HTTP_X_SINGLE_USE_TOKEN_KEY'] = 'invalid_token_key'
         message_addon = "Bad Token Key"
 
         response = backup_one_table_to_s3_view(request)
@@ -130,7 +130,7 @@ class TestBackupOneTableToS3Tokens(TestCase):
 
     def test_no_auth_token(self):
         request = self.request
-        request.META['HTTP_X_TOKEN_KEY'] = self.validation_key_str
+        request.META['HTTP_X_SINGLE_USE_TOKEN_KEY'] = self.validation_key_str
         message_addon = "No Auth Token"
         response = backup_one_table_to_s3_view(request)
         response_json = json.loads(response.content)
@@ -160,8 +160,8 @@ class TestBackupOneTableToS3Tokens(TestCase):
     def test_invalid_token_new_key(self):
         request = self.request
         request.META['HTTP_AUTHORIZATION'] = f'Token {self.test_token_info["token_pk"] + 99999999999999999}'
-        request.META['HTTP_X_TOKEN_KEY'] = self.validation_key_str
-        request.META['HTTP_X_NEW_KEY'] = SingleUseTokenManager.generate_encryption_key().decode('utf-8')
+        request.META['HTTP_X_SINGLE_USE_TOKEN_KEY'] = self.validation_key_str
+        request.META['HTTP_X_SINGLE_USE_TOKEN_NEW_KEY'] = SingleUseTokenManager.generate_encryption_key().decode('utf-8')
         message_addon = "Invalid Token New Key"
         response = backup_one_table_to_s3_view(request)
         response_json = json.loads(response.content)
