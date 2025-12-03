@@ -11,7 +11,7 @@ from retrieve_tables.controllers_master import fast_load_status_retrieve, get_to
     retrieve_sql_tables_as_csv, backup_one_table_to_s3_controller
 from retrieve_tables.controllers_master import fast_load_status_update
 from wevote_functions.functions import get_voter_api_device_id
-from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
+from wevote_tokens.models.single_use_tokens import SingleUseTokenManager, Scope
 from wevote_tokens.enums import TokenUsage
 
 logger = wevote_functions.admin.get_logger(__name__)
@@ -35,7 +35,7 @@ def backup_one_table_to_s3_view(request):  # backupOneTableToS3
         token = authorization.split(' ')[-1]
         token_key_bytes = token_key.encode()
 
-        token_info = SingleUseTokenManager.authenticate_retrieve_token(token, token_key_bytes)
+        token_info = SingleUseTokenManager.authenticate_retrieve_token(token, token_key_bytes, Scope.BACKUP_ONE_TABLE_TO_S3)
         if token_info['success']:
             token_info['expiration_datetime'] = token_info['expiration_datetime'].strftime('%Y-%m-%d %H:%M:%S')
         
@@ -65,6 +65,7 @@ def backup_one_table_to_s3_view(request):  # backupOneTableToS3
         new_token_info = SingleUseTokenManager.create_token(
             token_info['token_user'],
             new_token_key_bytes,
+            Scope.BACKUP_ONE_TABLE_TO_S3,
             expiration_seconds=1200,
             json_data={'usage': TokenUsage.FAST_LOAD.value}
             )
