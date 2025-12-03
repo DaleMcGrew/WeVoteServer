@@ -12,7 +12,7 @@ from retrieve_tables.controllers_master import fast_load_status_retrieve, get_to
 from retrieve_tables.controllers_master import fast_load_status_update
 from wevote_functions.functions import get_voter_api_device_id
 from wevote_tokens.models.single_use_tokens import SingleUseTokenManager, Scope
-from wevote_tokens.enums import TokenUsage
+from wevote_tokens.enums import TokenHeaders
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -26,8 +26,8 @@ def backup_one_table_to_s3_view(request):  # backupOneTableToS3
     :return:
     """
     authorization = request.headers.get('Authorization')
-    token_key = request.headers.get('X-Single-Use-Token-Key')
-    new_token_key = request.headers.get('X-Single-Use-Token-New-Key')
+    token_key = request.headers.get(TokenHeaders.SINGLE_USE_TOKEN_KEY.value)
+    new_token_key = request.headers.get(TokenHeaders.SINGLE_USE_TOKEN_NEW_KEY.value)
     table_name = request.GET.get('table_name', 'bad_table_param_error')
     voter_api_device_id = get_voter_api_device_id(request)
 
@@ -66,8 +66,7 @@ def backup_one_table_to_s3_view(request):  # backupOneTableToS3
             token_info['token_user'],
             new_token_key_bytes,
             Scope.BACKUP_ONE_TABLE_TO_S3,
-            expiration_seconds=1200,
-            json_data={'usage': TokenUsage.FAST_LOAD.value}
+            expiration_seconds=1200
             )
         new_token_info['expiration_datetime'] = new_token_info['expiration_datetime'].strftime('%Y-%m-%d %H:%M:%S')
         
