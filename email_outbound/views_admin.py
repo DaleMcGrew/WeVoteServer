@@ -135,7 +135,9 @@ def email_campaign_edit_view(request):
             email_campaign = EmailCampaign.objects.get(id=campaign_id)
             
             # Load recipients for this campaign
-            recipients = EmailCampaignRecipient.objects.filter(email_campaign_id=campaign_id)
+            recipients = EmailCampaignRecipient.objects.filter(email_campaign_id=campaign_id).only(
+                'id', 'voter_we_vote_id', 'recipient_name'
+            )
             campaign_recipients = []
             for recipient in recipients:
                 if recipient.voter_we_vote_id:
