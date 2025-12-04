@@ -28,6 +28,7 @@ class SingleUseToken(models.Model):
         verbose_name='user we_vote_id',
         help_text='The user this token is assigned to.',
         null=True,
+        default=None,
     )
 
     # Retrieval Key Setting
