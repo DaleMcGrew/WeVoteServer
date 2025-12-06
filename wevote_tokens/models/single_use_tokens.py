@@ -24,11 +24,14 @@ class SingleUseToken(models.Model):
     - Created at Setting
     """
 
-    # _user_id = models.BinaryField(
-    #     verbose_name='user we_vote_id',
-    #     help_text='The user this token is assigned to.',
-    #     null=True,
-    # )
+    _user_id = models.CharField(
+        db_index=True,
+        verbose_name='user we_vote_id',
+        help_text='The user this token is assigned to.',
+        max_length=255,
+        null=True,
+        default=None,
+    )
 
     # Retrieval Key Setting
     _validation = models.BinaryField(
@@ -75,8 +78,7 @@ class SingleUseToken(models.Model):
         # db_table = 'authtoken_token' # Replacing DRF's default Token model
     
     def __str__(self):
-        # return f"Single Use Token for {self._user_id} (expires: {self._expiration_datetime})"
-        return f"Single Use Token (expires: {self._expiration_datetime})"
+        return f"Single Use Token for {self._user_id} (expires: {self._expiration_datetime})"
 
     ## Only modify on creation.
     def save(self, user_id, validation_key, scope, expiration_seconds=None, json_data=None, *args, **kwargs):
@@ -98,7 +100,6 @@ class SingleUseToken(models.Model):
 
         cipher = Fernet(validation_key)
         user_id = str(user_id)
-        user_id_encrypted = cipher.encrypt(user_id.encode('utf-8'))
         time_now = timezone.now()
 
         try:
@@ -123,7 +124,7 @@ class SingleUseToken(models.Model):
         else:
             json_data_encrypted = None
         
-        # self._user_id = user_id_encrypted
+        self._user_id = user_id
         self._scope = scope
         self._created_at = time_now
         self._validation = cipher.encrypt(validation_key)
@@ -170,7 +171,7 @@ class SingleUseTokenManager(models.Manager):
         new_token = SingleUseToken()
         try:
             new_token.save(
-                # user_id=user_id,
+                user_id=user_id,
                 validation_key=validation_key, 
                 scope=scope,
                 expiration_seconds=expiration_seconds,
@@ -250,15 +251,13 @@ class SingleUseTokenManager(models.Manager):
         else:
             json_data = token_info['json_data'] = None
 
-        # decrypted_user_id = cipher.decrypt(bytes(token._user_id)).decode('utf-8')
-
         token_info['success'] = True
         token_info['status'] = 'TOKEN RETRIEVED AND AUTHENTICATED'
         token_info['scope'] = token._scope
         token_info['scope_display'] = token.get__scope_display()
         token_info['expiration_datetime'] = token._expiration_datetime
         token_info['json_data'] = json_data
-        # token_info['token_user'] = decrypted_user_id
+        token_info['token_user'] = token._user_id
 
         # Enforce token single use.
         token.delete()
