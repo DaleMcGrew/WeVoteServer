@@ -42,7 +42,7 @@ class TestSingleUseToken(TestCase):
         token = self._save_test_token(voter=voter, validation_key=validation_key, scope=scope, expiration_seconds=expiration_seconds, json_data=json_data)
 
         self.assertEqual(
-            self.test_cipher.decrypt(bytes(token._user_id)).decode('utf-8'),
+            token._user_id,
             voter,
             "_user_id Not Set Correctly")
         self.assertEqual(
@@ -80,7 +80,7 @@ class TestSingleUseToken(TestCase):
         token = self._save_test_token(voter=int_user_id)
 
         self.assertEqual(
-            self.test_cipher.decrypt(bytes(token._user_id)).decode('utf-8'),
+            token._user_id,
             str(int_user_id),
             "_user_id Not Set Correctly")
 
@@ -141,7 +141,6 @@ class TestSingleUseToken(TestCase):
 class TestSingleUseTokenManager(TestCase):
 
     def setUp(self):
-        # self.test_voter = VoterManager().create_voter(email='test@example.com', password='testpassword')['voter'].id
         self.test_voter = '1234567890' # Only need voter ID for testing
         self.test_validation_key = Fernet.generate_key()
         self.test_scope = Scope.BACKUP_ONE_TABLE_TO_S3
