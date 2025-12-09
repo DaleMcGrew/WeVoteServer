@@ -87,6 +87,7 @@ class EmailCampaign(models.Model):
     is_for_politician = models.BooleanField(default=False)
     is_for_staff = models.BooleanField(default=False)
     is_for_voter = models.BooleanField(default=False)
+    scheduled_send_time = models.DateTimeField(null=True, blank=True)
     voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
 
 

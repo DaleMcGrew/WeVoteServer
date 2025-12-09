@@ -58,8 +58,15 @@
     <div>
       <a href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}" class="btn btn-outline-secondary me-2">Cancel</a>
       <button type="submit" form="email-campaign-form" class="btn btn-primary me-2">Save</button>
-      <button type="button" id="send-campaign-btn" class="btn btn-success" disabled>Send</button>
     </div>
+  </div>
+  <div class="d-flex justify-content-end align-items-center mb-3">
+    <select id="send-time-select" class="form-select form-select-sm me-2" style="width: auto;">
+      <option value="now">Send Now</option>
+      <option value="scheduled">Send later</option>
+    </select>
+    <input type="datetime-local" id="scheduled-datetime" class="form-control form-control-sm me-2" style="width: auto; display: none !important;">
+    <button type="button" id="send-campaign-btn" class="btn btn-success" disabled>Send</button>
   </div>
 
   <form id="email-campaign-form" method="post" action="{% url 'email_outbound:email_campaign_edit_process' %}">
@@ -146,6 +153,8 @@
     <input type="hidden" name="state_code" value="{{ state_code }}">
     <input type="hidden" name="email_campaign_id" id="email_campaign_id" value="{% if email_campaign %}{{ email_campaign.id }}{% endif %}">
     <input type="hidden" name="selected_template_id" value="{{ selected_template_id }}">
+    <input type="hidden" name="send_time_option" id="send_time_option_input" value="{% if email_campaign.scheduled_send_time %}scheduled{% else %}now{% endif %}">
+    <input type="hidden" name="scheduled_send_time" id="scheduled_send_time_input" value="{% if email_campaign.scheduled_send_time %}{{ email_campaign.scheduled_send_time|date:'Y-m-d\TH:i' }}{% endif %}">
   </form>
 </div>
     </div><!-- end col-md-8 -->
@@ -439,11 +448,55 @@
         });
     }
     
-    // Handle Send button
+    // Handle schedule send dropdown
+    const sendTimeSelect = document.getElementById('send-time-select');
+    const scheduledDatetime = document.getElementById('scheduled-datetime');
+    const sendCampaignBtn = document.getElementById('send-campaign-btn');
+    const sendTimeOptionInput = document.getElementById('send_time_option_input');
+    const scheduledSendTimeInput = document.getElementById('scheduled_send_time_input');
+    
+    function updateScheduleDisplay() {
+      if (sendTimeSelect.value === 'scheduled') {
+        scheduledDatetime.style.display = 'inline-block';
+        scheduledDatetime.style.cssText = 'width: auto; display: inline-block !important;';
+        sendCampaignBtn.textContent = 'Schedule';
+      } else {
+        scheduledDatetime.style.display = 'none';
+        scheduledDatetime.style.cssText = 'width: auto; display: none !important;';
+        sendCampaignBtn.textContent = 'Send';
+      }
+      sendTimeOptionInput.value = sendTimeSelect.value;
+    }
+    
+    sendTimeSelect.addEventListener('change', updateScheduleDisplay);
+    
+    scheduledDatetime.addEventListener('change', function() {
+      scheduledSendTimeInput.value = this.value;
+    });
+    
+    // Restore saved schedule values if editing
+    {% if email_campaign.scheduled_send_time %}
+      sendTimeSelect.value = 'scheduled';
+      scheduledDatetime.value = '{{ email_campaign.scheduled_send_time|date:'Y-m-d\TH:i' }}';
+      updateScheduleDisplay();
+    {% endif %}
+    
+    // Handle Send/Schedule button
     document.getElementById('send-campaign-btn').addEventListener('click', function() {
-      if (confirm('Send this email campaign to ' + selectedRecipients.size + ' recipient(s)?')) {
-        alert('Send functionality will be implemented on the backend.');
-        // TODO: Implement actual send logic
+      const isScheduled = sendTimeSelect.value === 'scheduled';
+      const scheduledTime = scheduledDatetime.value;
+      
+      if (isScheduled && !scheduledTime) {
+        alert('Please select a date and time to schedule the campaign.');
+        return;
+      }
+      
+      const action = isScheduled ? 'schedule' : 'send';
+      const timeInfo = isScheduled ? ' for ' + new Date(scheduledTime).toLocaleString() : '';
+      
+      if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign to ' + selectedRecipients.size + ' recipient(s)' + timeInfo + '?')) {
+        alert(action.charAt(0).toUpperCase() + action.slice(1) + ' functionality will be implemented on the backend.');
+        // TODO: Implement actual send/schedule logic
       }
     });
     
