@@ -1,5 +1,5 @@
 # README for API Installation
-# NOTE FOR MACINTOSH USERS, use these [Simplified Instructions for Mac](docs/README_MAC_SIMPLIFIED_INSTALL.md) instead of this page
+# NOTE FOR MACINTOSH USERS, use these [Simplified Instructions for Mac](README_MAC_SIMPLIFIED_INSTALL.md) instead of this page
 # NOTE FOR LINUX OR WINDOWS USERS, we recommend you consult the Mac instructions if you run into issues with the instructions below.
 
 [Back to root README](../README.md)
