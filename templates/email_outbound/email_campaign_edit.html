@@ -211,7 +211,9 @@
 <script>
   // Store folder data from Django template
   const folderData = JSON.parse('{{ folder_list_json|escapejs }}');
-  const selectedRecipients = new Set();
+  const selectedRecipientDictList = []
+  // Each selectedRecipientDict uses this format:
+  // { recipientWeVoteId: <str>, recipientName: "<str>", recipientEmail: "<str>" }
   
   document.addEventListener('DOMContentLoaded', function() {
     const folderSelect = document.getElementById('folder_select');
@@ -275,11 +277,11 @@
         return;
       }
       
-      // Make AJAX call to search for voters
-      fetch(`/apis/v1/voterSearch/?search_term=${encodeURIComponent(query)}`)
+      // Make AJAX call to search for politicians
+      fetch(`/apis/v1/politiciansQuery/?search_text=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(data => {
-          displaySearchResults(data.voters || []);
+          displaySearchResults(data.politicians || []);
         })
         .catch(error => {
           console.error('Search error:', error);
@@ -288,32 +290,100 @@
     }
     
     function addRecipientByEmail(email) {
-      const emailId = 'email_' + email;
-      addRecipient(emailId, email);
+      addRecipient('', email, email);
       updateRecipientInput();
     }
-    
-    function displaySearchResults(voters) {
+
+    function assembleRecipientIdFromParts(weVoteId, recipientEmail) {
+      return `${weVoteId}-${recipientEmail}`;
+    }
+
+    function splitAssembledRecipientIdIntoParts(assembledRecipientId) {
+      const parts = assembledRecipientId.split('-');
+      return {
+        recipientWeVoteId: parts[0],
+        recipientEmail: parts[1]
+      };
+    }
+
+    function isRecipientSelected(recipientWeVoteId, recipientEmail) {
+      return selectedRecipientDictList.some(recipient => ((recipient.recipientWeVoteId === recipientWeVoteId) && (recipient.recipientEmail === recipientEmail)));
+    }
+
+    function displaySearchResults(politicians) {
       searchResultsList.innerHTML = '';
       
-      if (voters.length === 0) {
-        searchResultsList.innerHTML = '<p class="text-muted">No voters found</p>';
+      if (politicians.length === 0) {
+        searchResultsList.innerHTML = '<p class="text-muted">No politicians found</p>';
         searchResults.style.display = 'block';
         return;
       }
       
-      voters.forEach(voter => {
+      politicians.forEach(politician => {
+        let assembledRecipientId = '';
         const item = document.createElement('div');
+        let itemFound = false;
         item.className = 'search-result-item';
-        item.innerHTML = `
-          <input type="checkbox" id="voter_${voter.id}" value="${voter.id}" 
-                 ${selectedRecipients.has(voter.id) ? 'checked disabled' : ''}>
-          <label for="voter_${voter.id}" style="cursor: pointer;">
-            ${voter.first_name || ''} ${voter.last_name || ''} 
-            ${voter.email ? '(' + voter.email + ')' : ''}
-          </label>
-        `;
-        searchResultsList.appendChild(item);
+        item.innerHTML = '';
+        if (politician.politician_email) {
+          assembledRecipientId = assembleRecipientIdFromParts(politician.politician_we_vote_id, politician.politician_email);
+          item.innerHTML += `
+              <input
+                style="margin-right: 0; padding-right: 0;"
+                type="checkbox"
+                id="politician_${assembledRecipientId}"
+                value="${assembledRecipientId}"
+                ${isRecipientSelected(politician.politician_we_vote_id, politician.politician_email) ? 'checked disabled' : ''}
+              >
+              <label for="politician_${assembledRecipientId}" style="cursor: pointer; margin-left: 0;">
+                ${politician.politician_name || ''}
+                <span style="font-weight: normal; color: #6c757d;">
+                ${politician.state_code ? `(${politician.state_code.toUpperCase()})` : ''}
+                ${politician.politician_email ? '&lt;' + politician.politician_email + '&gt;' : ''}
+                </span>
+              </label>&nbsp;&nbsp;&nbsp;
+          `;
+          itemFound = true;
+        }
+        if (politician.politician_email2) {
+          assembledRecipientId = assembleRecipientIdFromParts(politician.politician_we_vote_id, politician.politician_email2);
+          item.innerHTML += `
+              <input
+                style="margin-right: 0; padding-right: 0;"
+                type="checkbox"
+                id="politician_${assembledRecipientId}"
+                value="${assembledRecipientId}"
+                ${isRecipientSelected(politician.politician_we_vote_id, politician.politician_email2) ? 'checked disabled' : ''}
+              >
+              <label for="politician_${assembledRecipientId}" style="cursor: pointer; margin-left: 0;">
+                <span style="font-weight: normal; color: #6c757d;">
+                ${politician.politician_email2 ? '' + politician.politician_email2 + '' : ''}
+                </span>
+              </label>&nbsp;&nbsp;&nbsp;
+          `;
+          itemFound = true;
+        }
+        if (politician.politician_email3) {
+          assembledRecipientId = assembleRecipientIdFromParts(politician.politician_we_vote_id, politician.politician_email3);
+          item.innerHTML += `
+              <input
+                style="margin-right: 0; padding-right: 0;"
+                type="checkbox"
+                id="politician_${assembledRecipientId}"
+                value="${assembledRecipientId}"
+                ${isRecipientSelected(politician.politician_we_vote_id, politician.politician_email3) ? 'checked disabled' : ''}
+              >
+              <label for="politician_${assembledRecipientId}" style="cursor: pointer; margin-left: 0;">
+                <span style="font-weight: normal; color: #6c757d;">
+                ${politician.politician_email3 ? '&lt;' + politician.politician_email3 + '&gt;' : ''}
+                </span>
+              </label>&nbsp;&nbsp;&nbsp;
+          `;
+          itemFound = true;
+        }
+        if (itemFound) {
+          searchResultsList.appendChild(item);
+        }
       });
       
       searchResults.style.display = 'block';
@@ -323,46 +393,80 @@
     addSelectedBtn.addEventListener('click', function() {
       const checkboxes = searchResultsList.querySelectorAll('input[type="checkbox"]:checked:not(:disabled)');
       checkboxes.forEach(checkbox => {
-        const voterId = parseInt(checkbox.value);
-        const label = checkbox.nextElementSibling.textContent.trim();
-        addRecipient(voterId, label);
+        const recipientAssembledId = checkbox.value;
+        // Break apart recipientAssembledId into component parts
+        // Ex/ politician_we_vote_id-politician_email
+        const recipientParts = splitAssembledRecipientIdIntoParts(recipientAssembledId);
+        const recipientName = checkbox.nextElementSibling.textContent.trim();
+        addRecipient(recipientParts.recipientWeVoteId, recipientName, recipientParts.recipientEmail);
       });
       updateRecipientInput();
     });
     
-    function addRecipient(id, name) {
-      if (selectedRecipients.has(id)) return;
-      
-      selectedRecipients.add(id);
+    function addRecipientFromAPI(campaignRecipient) {
+      // Convert campaignRecipient dictionary from email_campaign_edit_view into Django template friendly format
+      const emailAddress = campaignRecipient.email_address || '';
+      const recipientName = campaignRecipient.recipient_name || emailAddress;
+      let recipientWeVoteId = ''
+      if (campaignRecipient.candidate_we_vote_id) {
+        recipientWeVoteId = campaignRecipient.candidate_we_vote_id;
+      } else if (campaignRecipient.organization_we_vote_id) {
+        recipientWeVoteId = campaignRecipient.organization_we_vote_id;
+      } else if (campaignRecipient.politician_we_vote_id) {
+        recipientWeVoteId = campaignRecipient.politician_we_vote_id;
+      } else if (campaignRecipient.voter_we_vote_id) {
+        recipientWeVoteId = campaignRecipient.voter_we_vote_id;
+      }
+      addRecipient(recipientWeVoteId, recipientName, emailAddress);
+    }
+
+    function addRecipient(recipientWeVoteId, recipientName = '', recipientEmail = '') {
+      if (isRecipientSelected(recipientWeVoteId)) return;
+
+      selectedRecipientDictList.push({
+        recipientWeVoteId, recipientName, recipientEmail
+      });
       
       const chip = document.createElement('span');
       chip.className = 'recipient-chip';
-      chip.dataset.recipientId = id;
-      const safeId = String(id).replace(/[@.]/g, '_');
-      chip.innerHTML = `${name}<span class="remove-btn" onclick="removeRecipient('${safeId}')">&times;</span>`;
+      chip.dataset.assembledRecipientId = assembleRecipientIdFromParts(recipientWeVoteId, recipientEmail);
+      // const recipientEmailCleaned = String(recipientEmail).replace(/[@.]/g, '_');
+
+      // Decode HTML entities by creating a temporary element
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = recipientName;
+      const decodedName = tempDiv.textContent || tempDiv.innerText;
+
+      chip.innerHTML = `${decodedName}<span class="remove-btn" onclick="removeRecipient('${recipientWeVoteId}', '${recipientEmail}')">&times;</span>`;
       
       selectedRecipientsDiv.appendChild(chip);
       updateRecipientCount();
     }
     
-    window.removeRecipient = function(safeId) {
+    window.removeRecipient = function(recipientWeVoteId, recipientEmail) {
+      const indexToRemove = selectedRecipientDictList.findIndex(recipient => {
+        const recipientEmailCleaned = String(recipientEmail).toLowerCase();
+        const recipientEmailCleanedToTest = String(recipient.recipientEmail).toLowerCase();
+        if (recipientEmailCleanedToTest === recipientEmailCleaned) return true;
+        return recipient.recipientWeVoteId === recipientWeVoteId;
+      });
       // Find and remove the original ID from the set
-      for (let id of selectedRecipients) {
-        const testSafeId = String(id).replace(/[@.]/g, '_');
-        if (testSafeId === safeId) {
-          selectedRecipients.delete(id);
-          break;
-        }
+      if (indexToRemove !== -1) {
+        selectedRecipientDictList.splice(indexToRemove, 1);
       }
-      const chip = selectedRecipientsDiv.querySelector(`[data-recipient-id="${safeId.replace(/_/g, '.')}"]`);
+      const recipientEmailCleaned = String(recipientEmail).toLowerCase();
+      let assembledRecipientId = assembleRecipientIdFromParts(recipientWeVoteId, recipientEmailCleaned);
+      const chip = selectedRecipientsDiv.querySelector(`[data-recipient-id="${assembledRecipientId}"]`);
       if (!chip) {
-        // Try finding by safe ID
+        // Try finding by assembledRecipientId
         const chips = selectedRecipientsDiv.querySelectorAll('.recipient-chip');
-        chips.forEach(c => {
-          const cId = String(c.dataset.recipientId).replace(/[@.]/g, '_');
-          if (cId === safeId) c.remove();
+        chips.forEach(oneChip => {
+          console.log('chips loop: assembledRecipientId: ', assembledRecipientId, ', oneChip.dataset.assembledRecipientId:', oneChip.dataset.assembledRecipientId);
+          const assembledRecipientIdToTest = String(oneChip.dataset.assembledRecipientId);
+          if (assembledRecipientIdToTest === assembledRecipientId) oneChip.remove();
         });
       } else {
+        console.log('SINGLE chip: assembledRecipientId: ', assembledRecipientId, ', oneChip.dataset.assembledRecipientId:', oneChip.dataset.assembledRecipientId);
         chip.remove();
       }
       updateRecipientCount();
@@ -371,7 +475,7 @@
     
     clearAllBtn.addEventListener('click', function() {
       if (confirm('Remove all recipients?')) {
-        selectedRecipients.clear();
+        selectedRecipientDictList.length = 0;
         selectedRecipientsDiv.innerHTML = '';
         updateRecipientCount();
         updateRecipientInput();
@@ -379,18 +483,21 @@
     });
     
     function updateRecipientCount() {
-      document.getElementById('recipient_count').textContent = selectedRecipients.size;
+      document.getElementById('recipient_count').textContent = String(selectedRecipientDictList.length);
     }
     
     function updateRecipientInput() {
-      document.getElementById('recipient_ids_input').value = Array.from(selectedRecipients).join(',');
+      const assembledRecipientIds = selectedRecipientDictList.map(recipient =>
+        assembleRecipientIdFromParts(recipient.recipientWeVoteId, recipient.recipientEmail)
+      );
+      document.getElementById('recipient_ids_input').value = assembledRecipientIds.join(',');
       checkFormValidity();
     }
     
     function checkFormValidity() {
       const campaignTitle = document.getElementById('campaign_title').value.trim();
       const templateId = document.getElementById('template_select').value;
-      const hasRecipients = selectedRecipients.size > 0;
+      const hasRecipients = selectedRecipientDictList.length > 0;
       const sendBtn = document.getElementById('send-campaign-btn');
       
       if (campaignTitle && templateId && hasRecipients) {
@@ -454,7 +561,7 @@
     const sendCampaignBtn = document.getElementById('send-campaign-btn');
     const sendTimeOptionInput = document.getElementById('send_time_option_input');
     const scheduledSendTimeInput = document.getElementById('scheduled_send_time_input');
-    
+
     function updateScheduleDisplay() {
       if (sendTimeSelect.value === 'scheduled') {
         scheduledDatetime.style.display = 'inline-block';
@@ -467,34 +574,34 @@
       }
       sendTimeOptionInput.value = sendTimeSelect.value;
     }
-    
+
     sendTimeSelect.addEventListener('change', updateScheduleDisplay);
-    
+
     scheduledDatetime.addEventListener('change', function() {
       scheduledSendTimeInput.value = this.value;
     });
-    
+
     // Restore saved schedule values if editing
     {% if email_campaign.scheduled_send_time %}
       sendTimeSelect.value = 'scheduled';
       scheduledDatetime.value = '{{ email_campaign.scheduled_send_time|date:'Y-m-d\TH:i' }}';
       updateScheduleDisplay();
     {% endif %}
-    
+
     // Handle Send/Schedule button
     document.getElementById('send-campaign-btn').addEventListener('click', function() {
       const isScheduled = sendTimeSelect.value === 'scheduled';
       const scheduledTime = scheduledDatetime.value;
-      
+
       if (isScheduled && !scheduledTime) {
         alert('Please select a date and time to schedule the campaign.');
         return;
       }
-      
+
       const action = isScheduled ? 'schedule' : 'send';
       const timeInfo = isScheduled ? ' for ' + new Date(scheduledTime).toLocaleString() : '';
-      
-      if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign to ' + selectedRecipients.size + ' recipient(s)' + timeInfo + '?')) {
+
+      if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign to ' + String(selectedRecipientDictList.length) + ' recipient(s)' + timeInfo + '?')) {
         alert(action.charAt(0).toUpperCase() + action.slice(1) + ' functionality will be implemented on the backend.');
         // TODO: Implement actual send/schedule logic
       }
@@ -523,9 +630,11 @@
       
       // Load recipients if available
       const campaignRecipients = JSON.parse('{{ campaign_recipients|escapejs }}');
+      {#const campaignRecipients = {{ campaign_recipients|escapejs }};#}
+      console.log('Campaign recipients:', campaignRecipients);
       if (campaignRecipients && campaignRecipients.length > 0) {
         campaignRecipients.forEach(recipient => {
-          addRecipient(recipient.id, recipient.name);
+          addRecipientFromAPI(recipient);
         });
         updateRecipientInput();
       }
