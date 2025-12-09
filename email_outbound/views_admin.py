@@ -3,6 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 import json
+from datetime import datetime
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -56,6 +57,16 @@ def email_campaign_edit_process_view(request):
     email_campaign_id = request.POST.get('email_campaign_id', '')
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
     state_code = request.POST.get('state_code', '')
+    send_time_option = request.POST.get('send_time_option', 'now')
+    scheduled_send_time_str = request.POST.get('scheduled_send_time', '')
+    
+    # Parse scheduled send time
+    scheduled_send_time = None
+    if send_time_option == 'scheduled' and scheduled_send_time_str:
+        try:
+            scheduled_send_time = datetime.fromisoformat(scheduled_send_time_str)
+        except ValueError:
+            pass
     
     # Create or update campaign
     if email_campaign_id:
@@ -65,6 +76,7 @@ def email_campaign_edit_process_view(request):
             campaign.email_template_id = email_template_id
             campaign.email_subject_template_raw = email_subject
             campaign.email_body_template_raw = email_body
+            campaign.scheduled_send_time = scheduled_send_time
             campaign.save()
             
             # Clear existing recipients for this campaign
@@ -76,6 +88,7 @@ def email_campaign_edit_process_view(request):
                 email_template_id=email_template_id,
                 email_subject_template_raw=email_subject,
                 email_body_template_raw=email_body,
+                scheduled_send_time=scheduled_send_time,
             )
             messages.add_message(request, messages.SUCCESS, 'Email campaign created.')
     else:
@@ -84,6 +97,7 @@ def email_campaign_edit_process_view(request):
             email_template_id=email_template_id,
             email_subject_template_raw=email_subject,
             email_body_template_raw=email_body,
+            scheduled_send_time=scheduled_send_time,
         )
         messages.add_message(request, messages.SUCCESS, 'Email campaign created.')
     
