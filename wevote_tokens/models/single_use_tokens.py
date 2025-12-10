@@ -5,6 +5,7 @@ from datetime import timedelta
 from cryptography.fernet import Fernet, InvalidToken
 import json
 from wevote_functions.functions import positive_value_exists
+from wevote_tokens.enums import TokenInfo
 
 
 class Scope(models.IntegerChoices):
@@ -37,6 +38,7 @@ class SingleUseToken(models.Model):
     _validation = models.BinaryField(
         verbose_name='Encoded Validation Data',
         help_text='Field used to test if the passed validation key is valid.',
+        null=True
     )
 
     _scope = models.IntegerField(
@@ -145,12 +147,7 @@ class SingleUseTokenManager(models.Manager):
 
     @staticmethod
     def create_token(user_id, validation_key, scope, expiration_seconds=None, json_data=None):
-        token_info = {
-            'success': False,
-            'status': '',
-            'token_pk': None,
-            'expiration_datetime': None,
-        }
+        token_info = TokenInfo.TOKEN_CREATION.get_value()
         
         if not isinstance(scope, (int, str)):
             token_info['status'] = "SCOPE MUST BE AN INTEGER OR STRING INTEGER."
@@ -188,16 +185,7 @@ class SingleUseTokenManager(models.Manager):
 
     @staticmethod
     def authenticate_retrieve_token(pk, validation_key, scope):
-        token_info = {
-            'success': False,
-            'status': '',
-            'scope': None,
-            'scope_display': None,
-            'expiration_datetime': None,
-            'json_data': None,
-            'token_user': None,
-            'expired': False,
-        }
+        token_info = TokenInfo.TOKEN_AUTHENTICATION.get_value()
 
         if not isinstance(scope, (int, str)):
             token_info['status'] = "SCOPE MUST BE AN INTEGER OR STRING INTEGER."
@@ -256,7 +244,7 @@ class SingleUseTokenManager(models.Manager):
         token_info['scope_display'] = token.get__scope_display()
         token_info['expiration_datetime'] = token._expiration_datetime
         token_info['json_data'] = json_data
-        token_info['token_user'] = token._user_id
+        token_info['user_id'] = token._user_id
 
         # Enforce token single use.
         token.delete()

@@ -25,7 +25,7 @@ def backup_one_table_to_s3_view(request):  # backupOneTableToS3
     :param request:
     :return:
     """
-    authorization = request.headers.get('Authorization')
+    authorization = request.headers.get(TokenHeaders.AUTHORIZATION.value)
     token_key = request.headers.get(TokenHeaders.SINGLE_USE_TOKEN_KEY.value)
     new_token_key = request.headers.get(TokenHeaders.SINGLE_USE_TOKEN_NEW_KEY.value)
     table_name = request.GET.get('table_name', 'bad_table_param_error')
