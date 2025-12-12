@@ -2472,7 +2472,8 @@ class CampaignXManager(models.Manager):
                     campaignx.linked_politician_we_vote_id = update_values['linked_politician_we_vote_id']
                     campaignx_changed = True
                 if 'opposers_count' in update_values \
-                        and positive_value_exists(update_values['opposers_count']):
+                    and (positive_value_exists(update_values['opposers_count']) or \
+                         update_values['opposers_count'] == 0):
                     campaignx.opposers_count = update_values['opposers_count']
                     campaignx_changed = True
                 if 'politician_delete_list_serialized' in update_values \
@@ -2533,7 +2534,8 @@ class CampaignXManager(models.Manager):
                             update_values['politician_starter_list_serialized']
                         campaignx_changed = True
                 if 'supporters_count' in update_values \
-                        and positive_value_exists(update_values['supporters_count']):
+                        and (positive_value_exists(update_values['supporters_count']) or \
+                            update_values['supporters_count'] == 0):
                     campaignx.supporters_count = update_values['supporters_count']
                     campaignx_changed = True
                 if campaignx_changed:
