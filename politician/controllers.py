@@ -2334,6 +2334,8 @@ def politician_save_for_api(  # politicianSave
         ballot_guide_official_statement_changed='',
         campaign_website='',
         campaign_website_changed=False,
+        political_party='',
+        political_party_changed=False,
         politician_name='',
         politician_name_changed=False,
         politician_photo_from_file_reader='',
@@ -2409,6 +2411,8 @@ def politician_save_for_api(  # politicianSave
         if campaign_website_changed:
             # Note we are adding campaign_website to the the first politician_url spot below
             pass
+        if political_party_changed:
+            update_values['political_party'] = political_party
         if politician_name_changed:
             update_values['politician_name'] = politician_name
         if profile_image_type_currently_active_changed:
@@ -2425,6 +2429,7 @@ def politician_save_for_api(  # politicianSave
         # Make sure we have minimum required data
         update_values = {
             'ballot_guide_official_statement':      ballot_guide_official_statement,
+            'political_party':                      political_party,
             'politician_name':                      politician_name,
             'profile_image_type_currently_active':  profile_image_type_currently_active,
             'state_code':                           state_code,
