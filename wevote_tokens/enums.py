@@ -1,26 +1,27 @@
 from enum import Enum
 import copy
 
-_HEADER_PREFIX = "X-"
-_COOKIE_PREFIX = "__Secure-"
+class Prefixes(Enum):
+    HEADER_PREFIX = "X-"
+    COOKIE_PREFIX = "__Secure-"
 
 class TokenHeaders(Enum):
     AUTHORIZATION = "Authorization"
-    TOKEN_TYPE = _HEADER_PREFIX + "Token-Type"
-    CREATE_TOKEN = _HEADER_PREFIX + "X-Create-Token"
+    TOKEN_TYPE = Prefixes.HEADER_PREFIX.value + "Token-Type"
+    CREATE_TOKEN = Prefixes.HEADER_PREFIX.value + "Create-Token"
 
-    TOKEN_EXPIRATION = _HEADER_PREFIX + "Token-Expiration"
-    TOKEN_MESSAGE = _HEADER_PREFIX + "Token-Message"
+    TOKEN_EXPIRATION = Prefixes.HEADER_PREFIX.value + "Token-Expiration"
+    TOKEN_MESSAGE = Prefixes.HEADER_PREFIX.value + "Token-Message"
 
-    USER_ID = _HEADER_PREFIX + "User-Id"
-    TOKEN_ID = _HEADER_PREFIX + "Token-Id"
-    TOKEN_KEY = _HEADER_PREFIX + "Token-Key"
-    TOKEN_NEW_KEY = _HEADER_PREFIX + "Token-New-Key"
-    TOKEN_STATUS = _HEADER_PREFIX + "Token-Status"
+    USER_ID = Prefixes.HEADER_PREFIX.value + "User-Id"
+    TOKEN_ID = Prefixes.HEADER_PREFIX.value + "Token-Id"
+    TOKEN_KEY = Prefixes.HEADER_PREFIX.value + "Token-Key"
+    TOKEN_NEW_KEY = Prefixes.HEADER_PREFIX.value + "Token-New-Key"
+    TOKEN_STATUS = Prefixes.HEADER_PREFIX.value + "Token-Status"
 
 class TokenCookies(Enum):
-    SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_ID = _COOKIE_PREFIX + "Sync-Data-With-Master-Servers-Start-Token-Id"
-    SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_KEY = _COOKIE_PREFIX + "Sync-Data-With-Master-Servers-Start-Token-Key"
+    SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_ID = Prefixes.COOKIE_PREFIX.value + "Sync-Data-With-Master-Servers-Start-Token-Id"
+    SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_KEY = Prefixes.COOKIE_PREFIX.value + "Sync-Data-With-Master-Servers-Start-Token-Key"
 
 class TokenTypes(Enum):
     SINGLE_USE = "single_use"

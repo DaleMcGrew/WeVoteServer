@@ -146,6 +146,13 @@ class SingleUseTokenManager(models.Manager):
         return Fernet.generate_key()
 
     @staticmethod
+    def get_tokens_by_user_id(user_id, scope):
+        try:
+            return list(SingleUseToken.objects.filter(_user_id=user_id, _scope=scope).values('pk'))
+        except Exception as e:
+            return 'ERROR GETTING TOKENS BY USER ID'
+
+    @staticmethod
     def create_token(user_id, validation_key, scope, expiration_seconds=None, json_data=None):
         token_info = TokenInfo.TOKEN_CREATION.get_value()
         
