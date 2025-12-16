@@ -26,13 +26,12 @@ def backup_one_table_to_s3_view(request):  # backupOneTableToS3
     :param request:
     :return:
     """
-    breakpoint()
     table_name = request.GET.get('table_name', 'bad_table_param_error')
     voter_api_device_id = get_voter_api_device_id(request)
-    
+
     print("backup_one_table_to_s3 voter_api_device_id: ", voter_api_device_id)
     json_data = backup_one_table_to_s3_controller(voter_api_device_id, table_name)
-    
+
     return HttpResponse(json.dumps(json_data), content_type='application/json')
 
 
