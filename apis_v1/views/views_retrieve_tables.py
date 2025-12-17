@@ -4,6 +4,7 @@
 import json
 
 from django.http import HttpResponse
+from wevote_tokens.utils import TokensManager
 
 import wevote_functions.admin
 from config.base import get_environment_variable
@@ -11,12 +12,14 @@ from retrieve_tables.controllers_master import fast_load_status_retrieve, get_to
     retrieve_sql_tables_as_csv, backup_one_table_to_s3_controller
 from retrieve_tables.controllers_master import fast_load_status_update
 from wevote_functions.functions import get_voter_api_device_id
+from wevote_tokens.models.single_use_tokens import SingleUseTokenManager, Scope
+from wevote_tokens.enums import TokenTypes
 
 logger = wevote_functions.admin.get_logger(__name__)
 
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
-
+# @TokensManager(token_types=[TokenTypes.SINGLE_USE.value], scope=Scope.BACKUP_ONE_TABLE_TO_S3)
 def backup_one_table_to_s3_view(request):  # backupOneTableToS3
     """
     pg_dump one SQL tables on the master server to AWS s3, for use with December 2025 version of fast load
