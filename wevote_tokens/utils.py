@@ -15,14 +15,10 @@ class TokensManager():
         self.expiration_seconds = expiration_seconds
         self.json_data = json_data
 
-        self.token_response = TokenResponse.TOKEN_RESPONSE.get_value()
-        self.token_auth_info = TokenResponse.TOKEN_AUTHENTICATION.get_value()
-        self.token_creation_info = TokenResponse.TOKEN_CREATION.get_value()
-
     #have a function tthat seves as a wrapper for a view
     def __call__(self, view_func):
         def _wrapped_view(request, *args, **kwargs):
-            token_response = self.token_response
+            token_response = TokenResponse.TOKEN_RESPONSE.get_value()
             # First, get headers
             request_token_info = self.get_request_token_info(request)
 
@@ -128,7 +124,7 @@ class TokensManager():
 
 
     def token_creation(self, request_token_info):
-        token_creation_info = self.token_creation_info
+        token_creation_info = TokenResponse.TOKEN_CREATION.get_value()
 
         scope = self.scope
         expiration_seconds = self.expiration_seconds
@@ -162,7 +158,7 @@ class TokensManager():
 
     # Have a function that takes in the request to validate the token info
     def token_authentication(self, request_token_info):
-        token_auth_info = self.token_auth_info
+        token_auth_info = TokenResponse.TOKEN_AUTHENTICATION.get_value()
 
         scope = self.scope
 
