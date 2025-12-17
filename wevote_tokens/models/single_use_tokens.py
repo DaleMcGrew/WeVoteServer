@@ -187,6 +187,7 @@ class SingleUseTokenManager(models.Manager):
         token_info['status'] = 'TOKEN CREATED'
         token_info['token_pk'] = new_token.pk
         token_info['expiration_datetime'] = new_token._expiration_datetime
+        token_info['user_id'] = new_token._user_id
 
         return token_info
 

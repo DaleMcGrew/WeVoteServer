@@ -26,8 +26,17 @@ class TokensManager():
             # First, get headers
             request_token_info = self.get_request_token_info(request)
 
+            if request_token_info['error_message']:
+                token_response['token_authentication'] = {
+                    'success': False,
+                    'status': "",
+                    'error_message': request_token_info['error_message'],
+                    'token_info': None
+                }
+
             # Check token type
-            if not request_token_info['token_type'] or request_token_info['token_type'] not in self.token_types:
+            if not request_token_info['error_message'] and \
+                (not request_token_info['token_type'] or request_token_info['token_type'] not in self.token_types):
                 #TODO: return 401 unauthorized
                 token_response['token_authentication'] = {
                     'success': False,
@@ -52,7 +61,8 @@ class TokensManager():
         return _wrapped_view
 
     # something that takes in a request, and gets needed information from headers or cookies
-    def get_request_token_info(self, request):
+    @staticmethod
+    def get_request_token_info(request):
         user_id = request.headers.get(TokenHeaders.USER_ID.value)
         token_type = request.headers.get(TokenHeaders.TOKEN_TYPE.value)
         authorization = request.headers.get(TokenHeaders.AUTHORIZATION.value)
@@ -60,12 +70,23 @@ class TokensManager():
         token_key = request.headers.get(TokenHeaders.TOKEN_KEY.value)
         new_token_key = request.headers.get(TokenHeaders.TOKEN_NEW_KEY.value)
 
-        user_id = self.get_user_id(user_id)
-        token_type = self.get_token_type(token_type)
-        create_token = self.get_create_token(create_token)
-        authorization = self.get_bearer_token(authorization)
-        token_key = self.encode_token_key(token_key)
-        new_token_key = self.encode_token_key(new_token_key)
+        try:
+            user_id = TokensManager.get_user_id(user_id)
+            token_type = TokensManager.get_token_type(token_type)
+            create_token = TokensManager.get_create_token(create_token)
+            authorization = TokensManager.get_bearer_token(authorization)
+            token_key = TokensManager.encode_token_key(token_key)
+            new_token_key = TokensManager.encode_token_key(new_token_key)
+        except Exception as e:
+            return {
+                'user_id': None,
+                'token_type': None,
+                'authorization': None,
+                'create_token': None,
+                'token_key': None,
+                'new_token_key': None,
+                'error_message': f"Error getting request token info: {e}"
+            }
 
         return {
             'user_id': user_id,
@@ -74,6 +95,7 @@ class TokensManager():
             'create_token': create_token,
             'token_key': token_key,
             'new_token_key': new_token_key,
+            'error_message': None
         }
 
     @staticmethod
@@ -100,7 +122,10 @@ class TokensManager():
             TokenHeaders.TOKEN_NEW_KEY.value: new_token_key,
         }
 
+        headers = {key: value for key, value in headers.items() if value is not None}
+
         return headers
+
 
     def token_creation(self, request_token_info):
         token_creation_info = self.token_creation_info
@@ -188,10 +213,10 @@ class TokensManager():
         return token_auth_info
 
     # something that takes a response, and adds needed token information to headers
-    def add_response_token_info_headers(self, response, token_response):
-
+    @staticmethod
+    def add_response_token_info_headers(response, token_response, reject_keys=None):
         if isinstance(response, HttpResponse) and not isinstance(response, StreamingHttpResponse):
-            headers = self.convert_keys_to_header_keys(token_response, reject_keys={'token_info'})
+            headers = TokensManager.convert_keys_to_header_keys(token_response, reject_keys=reject_keys)
             for key, value in headers.items():
                 if value is not None:
                     response[key] = value
@@ -202,7 +227,8 @@ class TokensManager():
     # def add_response_token_info_cookies(self, response, token_info):
     #     pass
 
-    def get_user_id(self, user_id):
+    @staticmethod
+    def get_user_id(user_id):
         if isinstance(user_id, (str, int, float)):
             return str(user_id)
         elif user_id is None:
@@ -210,12 +236,14 @@ class TokensManager():
 
         raise ValueError("User ID Must Be a String, Integer, Float, or None")
 
-    def get_token_type(self, token_type):
+    @staticmethod
+    def get_token_type(token_type):
         if token_type:
             return token_type
         return None
 
-    def get_create_token(self, create_token):
+    @staticmethod
+    def get_create_token(create_token):
         if create_token:
             if isinstance(create_token, bool):
                 return create_token
@@ -227,7 +255,8 @@ class TokensManager():
                 raise ValueError("Create Token Must Be a Boolean, String, Integer, Float, or None")
         return False
 
-    def get_bearer_token(self, authorization):
+    @staticmethod
+    def get_bearer_token(authorization):
         if isinstance(authorization, str):
             authorization = authorization.split(' ')
             if len(authorization) == 2:
@@ -239,7 +268,8 @@ class TokensManager():
 
         raise ValueError("Authorization Must Be a String or None")
 
-    def encode_token_key(self, token_key):
+    @staticmethod
+    def encode_token_key(token_key):
         if isinstance(token_key, str):
             return token_key.encode()
         elif token_key is None:
@@ -247,7 +277,8 @@ class TokensManager():
         
         raise ValueError("Token Key Must Be a String or None")
 
-    def convert_keys_to_header_keys(self, dict_data, reject_keys=None):
+    @staticmethod
+    def convert_keys_to_header_keys(dict_data, reject_keys=None):
         if not isinstance(dict_data, dict):
             raise ValueError("dict_data Must Be a Dict")
 
@@ -283,6 +314,43 @@ class TokensManager():
 
         return result
 
+    @staticmethod
+    def convert_headers_to_dict(headers):
+        sep = '.'
+        prefix = Prefixes.HEADER_PREFIX.value
+            
 
-    
+        try:
+            headers = dict(headers)
+        except:
+            raise ValueError("headers must be a dict or convertable to a dict")
 
+        result = {}
+
+        for header_key, value in headers.items():
+            if header_key.startswith(prefix):
+                key_path = header_key[len(prefix):]
+            else:
+                key_path = header_key
+            
+            key_path = key_path.replace('-','_')
+            key_path = key_path.lower()
+
+            # Split into nesting levels
+            parts = key_path.split(sep)
+
+            current = result
+            for part in parts[:-1]:
+                # Create nested dicts as needed
+                current = current.setdefault(part, {})
+
+            # Assign leaf value
+            if value == 'True' or value == 'False':
+                value = value == 'True'
+            
+            if value != 'None':
+                current[parts[-1]] = value
+            else:
+                current[parts[-1]] = None
+
+        return result

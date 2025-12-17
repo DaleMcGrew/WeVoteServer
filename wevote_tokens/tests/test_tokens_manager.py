@@ -64,6 +64,7 @@ class TestTokensManager(TestCase):
             'create_token': True,
             'token_key': cls.validation_key,
             'new_token_key': cls.new_validation_key,
+            'error_message': None
         } 
 
         cls.response_token_info = {
@@ -77,7 +78,6 @@ class TestTokensManager(TestCase):
                     }
                 },
             'level_7': None,
-            'token_info': {'empty':True}
         }
     
     def setUp(self):
@@ -147,11 +147,11 @@ class TestTokensManager(TestCase):
         for key, value in headers.items():
             request.META['HTTP_'+key.upper()] = value
         
-        with patch.object(self.manager, "get_user_id", return_value=headers[TokenHeaders.USER_ID.value]) as get_user_id, \
-             patch.object(self.manager, "get_create_token", return_value=False) as get_create_token, \
-             patch.object(self.manager, "get_token_type", return_value=headers[TokenHeaders.TOKEN_TYPE.value]) as get_token_type, \
-             patch.object(self.manager, "get_bearer_token", return_value='key') as get_bearer_token, \
-             patch.object(self.manager, "encode_token_key", side_effect='new_key') as encode_token_key:
+        with patch.object(TokensManager, "get_user_id", return_value=headers[TokenHeaders.USER_ID.value]) as get_user_id, \
+            patch.object(TokensManager, "get_create_token", return_value=False) as get_create_token, \
+            patch.object(TokensManager, "get_token_type", return_value=headers[TokenHeaders.TOKEN_TYPE.value]) as get_token_type, \
+            patch.object(TokensManager, "get_bearer_token", return_value='key') as get_bearer_token, \
+            patch.object(TokensManager, "encode_token_key", return_value=b'new_key') as encode_token_key:
 
             response = self.manager.get_request_token_info(request)
 

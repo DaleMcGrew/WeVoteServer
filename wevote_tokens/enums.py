@@ -14,7 +14,6 @@ class TokenHeaders(Enum):
     TOKEN_MESSAGE = Prefixes.HEADER_PREFIX.value + "Token-Message"
 
     USER_ID = Prefixes.HEADER_PREFIX.value + "User-Id"
-    TOKEN_ID = Prefixes.HEADER_PREFIX.value + "Token-Id"
     TOKEN_KEY = Prefixes.HEADER_PREFIX.value + "Token-Key"
     TOKEN_NEW_KEY = Prefixes.HEADER_PREFIX.value + "Token-New-Key"
     TOKEN_STATUS = Prefixes.HEADER_PREFIX.value + "Token-Status"
@@ -22,6 +21,7 @@ class TokenHeaders(Enum):
 class TokenCookies(Enum):
     SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_ID = Prefixes.COOKIE_PREFIX.value + "Sync-Data-With-Master-Servers-Start-Token-Id"
     SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_KEY = Prefixes.COOKIE_PREFIX.value + "Sync-Data-With-Master-Servers-Start-Token-Key"
+    SYNC_DATA_WITH_MASTER_SERVERS_START_USER_ID = Prefixes.COOKIE_PREFIX.value + "Sync-Data-With-Master-Servers-Start-Wevote-Id"
 
 class TokenTypes(Enum):
     SINGLE_USE = "single_use"
@@ -55,6 +55,7 @@ class TokenInfo(Enum):
         'status': None,
         'token_pk': None,
         'expiration_datetime': None,
+        'user_id': None,
     }
 
     TOKEN_AUTHENTICATION = {
