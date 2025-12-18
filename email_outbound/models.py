@@ -78,15 +78,18 @@ class EmailCampaign(models.Model):
     """
     An email campaign that we assemble, and then send
     """
-    email_campaign_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
     deleted = models.BooleanField(default=False)
     email_body_template_raw = models.TextField(null=True, blank=True)  # We keep a copy for history
+    email_campaign_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
     email_subject_template_raw = models.CharField(max_length=255, null=True, blank=True, unique=False)
     email_template_id = models.PositiveIntegerField(default=0, null=False)
     emails_sent = models.BooleanField(default=False)
+    from_email = models.TextField(null=True, blank=True)
+    from_email_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
     is_for_politician = models.BooleanField(default=False)
     is_for_staff = models.BooleanField(default=False)
     is_for_voter = models.BooleanField(default=False)
+    reply_to_email = models.TextField(null=True, blank=True)
     scheduled_send_time = models.DateTimeField(null=True, blank=True)
     voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
 

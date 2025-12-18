@@ -82,6 +82,7 @@ def email_campaign_edit_process_view(request):
     email_campaign_id = request.POST.get('email_campaign_id', '')
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
     state_code = request.POST.get('state_code', '')
+    send_button_clicked = request.POST.get('send_button_clicked', '')
     send_time_option = request.POST.get('send_time_option', 'now')
     scheduled_send_time_str = request.POST.get('scheduled_send_time', '')
 
@@ -246,11 +247,22 @@ def email_campaign_edit_process_view(request):
                     except Exception as e:
                         status += f"Error saving recipient: {str(e)}. "
 
-    # Redirect back to edit page with the campaign ID
-    redirect_url = reverse('email_outbound:email_campaign_edit') + \
-        "?id=" + str(email_campaign_id) + \
-        "&google_civic_election_id=" + str(google_civic_election_id) + \
-        "&state_code=" + str(state_code)
+    if positive_value_exists(send_button_clicked):
+        # Send the email
+        from email_outbound.controllers_email_campaign import email_campaign_send
+        send_results = email_campaign_send(email_campaign_id=email_campaign_id)
+
+        messages.add_message(request, messages.SUCCESS, 'Email sent!')
+
+        redirect_url = reverse('email_outbound:email_campaign_edit') + \
+            "?google_civic_election_id=" + str(google_civic_election_id) + \
+            "&state_code=" + str(state_code)
+    else:
+        # Redirect back to edit page with the campaign ID
+        redirect_url = reverse('email_outbound:email_campaign_edit') + \
+            "?id=" + str(email_campaign_id) + \
+            "&google_civic_election_id=" + str(google_civic_election_id) + \
+            "&state_code=" + str(state_code)
     return HttpResponseRedirect(redirect_url)
 
 
