@@ -61,12 +61,12 @@
     </div>
   </div>
   <div class="d-flex justify-content-end align-items-center mb-3">
-    <select id="send-time-select" class="form-select form-select-sm me-2" style="width: auto;">
+    <select name="send-time" id="send-time-select" class="form-select form-select-sm me-2" style="width: auto;">
       <option value="now">Send Now</option>
       <option value="scheduled">Send later</option>
     </select>
-    <input type="datetime-local" id="scheduled-datetime" class="form-control form-control-sm me-2" style="width: auto; display: none !important;">
-    <button type="button" id="send-campaign-btn" class="btn btn-success" disabled>Send</button>
+    <input type="datetime-local" id="scheduled-datetime" class="form-control form-control-sm me-2" style="width: auto; display: none !important;">&nbsp;
+    <button type="submit" id="send-campaign-btn" class="btn btn-success">Send</button> <!-- Also submits email-campaign-form //-->
   </div>
 
   <form id="email-campaign-form" method="post" action="{% url 'email_outbound:email_campaign_edit_process' %}">
@@ -79,9 +79,35 @@
                id="campaign_title"
                name="campaign_title"
                class="form-control"
-               value="{% if email_campaign %}{{ email_campaign.email_campaign_name }}{% endif %}"
+               value="{% if email_campaign %}{{ email_campaign.email_campaign_name|default_if_none:"" }}{% endif %}"
                placeholder="Enter campaign name"
                required>
+    </div>
+
+    <!-- From Email and From Name (Side by Side) -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="from_email_id" class="form-label">From Email</label>
+                <input type="text"
+                       id="from_email_id"
+                       name="from_email"
+                       class="form-control"
+                       value="{% if email_campaign %}{{ email_campaign.from_email|default_if_none:"" }}{% endif %}"
+                       placeholder="Default is info@wevote.us">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="from_email_name_id" class="form-label">From Name</label>
+                <input type="text"
+                       id="from_email_name_id"
+                       name="from_email_name"
+                       class="form-control"
+                       value="{% if email_campaign %}{{ email_campaign.from_email_name|default_if_none:"" }}{% endif %}"
+                       placeholder="Default is We Vote">
+            </div>
+        </div>
     </div>
 
     <!-- Template Selection -->
@@ -136,7 +162,7 @@
              id="email_subject" 
              name="email_subject" 
              class="form-control" 
-             value="{% if email_campaign %}{{ email_campaign.email_subject_template_raw }}{% endif %}"
+             value="{% if email_campaign %}{{ email_campaign.email_subject_template_raw|default_if_none:"" }}{% endif %}"
              placeholder="Enter email subject"
              required>
     </div>
@@ -153,6 +179,7 @@
     <input type="hidden" name="state_code" value="{{ state_code }}">
     <input type="hidden" name="email_campaign_id" id="email_campaign_id" value="{% if email_campaign %}{{ email_campaign.id }}{% endif %}">
     <input type="hidden" name="selected_template_id" value="{{ selected_template_id }}">
+    <input type="hidden" name="send_button_clicked" id="send_button_clicked_id" value="0">
     <input type="hidden" name="send_time_option" id="send_time_option_input" value="{% if email_campaign.scheduled_send_time %}scheduled{% else %}now{% endif %}">
     <input type="hidden" name="scheduled_send_time" id="scheduled_send_time_input" value="{% if email_campaign.scheduled_send_time %}{{ email_campaign.scheduled_send_time|date:'Y-m-d\TH:i' }}{% endif %}">
   </form>
@@ -225,7 +252,8 @@
     const selectedRecipientsDiv = document.getElementById('selected_recipients');
     const addSelectedBtn = document.getElementById('add_selected_btn');
     const clearAllBtn = document.getElementById('clear_all_btn');
-    
+    const sendButtonClicked = document.getElementById('send_button_clicked_id');
+
     // Handle folder selection
     folderSelect.addEventListener('change', function() {
       const folderIndex = this.value;
@@ -496,11 +524,11 @@
     
     function checkFormValidity() {
       const campaignTitle = document.getElementById('campaign_title').value.trim();
-      const templateId = document.getElementById('template_select').value;
+      // const templateId = document.getElementById('template_select').value;
       const hasRecipients = selectedRecipientDictList.length > 0;
       const sendBtn = document.getElementById('send-campaign-btn');
       
-      if (campaignTitle && templateId && hasRecipients) {
+      if (campaignTitle && hasRecipients) {
         sendBtn.disabled = false;
       } else {
         sendBtn.disabled = true;
@@ -602,8 +630,11 @@
       const timeInfo = isScheduled ? ' for ' + new Date(scheduledTime).toLocaleString() : '';
 
       if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign to ' + String(selectedRecipientDictList.length) + ' recipient(s)' + timeInfo + '?')) {
-        alert(action.charAt(0).toUpperCase() + action.slice(1) + ' functionality will be implemented on the backend.');
-        // TODO: Implement actual send/schedule logic
+        // alert(action.charAt(0).toUpperCase() + action.slice(1) + ' functionality will be implemented on the backend.');
+        // We want to call the save API with a variable to proceed to sending after save
+        sendButtonClicked.value = 1;
+        // Submit the form email-campaign-form
+        document.getElementById('email-campaign-form').submit();
       }
     });
     

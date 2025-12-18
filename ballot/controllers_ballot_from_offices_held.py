@@ -73,13 +73,17 @@ def generate_ballot_data_from_offices_held(
             election_results = election_manager.retrieve_election(google_civic_election_id)
             if election_results['election_found']:
                 election = election_results['election']
-                # If the voter's address is in a state supported by this election, pass in the text_for_map_search
-                if election.state_code.lower() == "na" or election.state_code.lower() == "":
-                    # If a National election, then we want the address passed in
-                    text_for_map_search_for_google_civic_retrieve = text_for_map_search
-                elif election.state_code.lower() == state_code_from_text_for_map_search.lower():
-                    text_for_map_search_for_google_civic_retrieve = text_for_map_search
-                else:
+                try:
+                    # If the voter's address is in a state supported by this election, pass in the text_for_map_search
+                    if election.state_code.lower() == "na" or election.state_code.lower() == "":
+                        # If a National election, then we want the address passed in
+                        text_for_map_search_for_google_civic_retrieve = text_for_map_search
+                    elif election.state_code.lower() == state_code_from_text_for_map_search.lower():
+                        text_for_map_search_for_google_civic_retrieve = text_for_map_search
+                    else:
+                        text_for_map_search_for_google_civic_retrieve = ""
+                except Exception as e:
+                    status += "PROBLEM_WITH_VALIDITY_OF_ELECTION_STATE_CODE: " + str(e) + " "
                     text_for_map_search_for_google_civic_retrieve = ""
         else:
             # Voter address state_code not found, so we don't use the text_for_map_search value
