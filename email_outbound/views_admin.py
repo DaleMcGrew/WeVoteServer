@@ -4,6 +4,7 @@
 
 import json
 from datetime import datetime
+from django.utils import timezone
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -91,7 +92,8 @@ def email_campaign_edit_process_view(request):
     scheduled_send_time = None
     if send_time_option == 'scheduled' and scheduled_send_time_str:
         try:
-            scheduled_send_time = datetime.fromisoformat(scheduled_send_time_str)
+            naive_dt = datetime.fromisoformat(scheduled_send_time_str)
+            scheduled_send_time = timezone.make_aware(naive_dt, timezone.get_current_timezone())
         except ValueError:
             pass
 
