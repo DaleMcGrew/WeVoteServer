@@ -67,6 +67,7 @@
       <option value="tomorrow_16">Tomorrow at 4:00 PM</option>
       <option value="day2_9">Day after tomorrow</option>
       <option value="day3_9">Day after that</option>
+      <option value="saved" style="display: none;"></option>
       <option value="custom">Custom…</option>
     </select>
     <input type="datetime-local" id="scheduled-datetime" class="form-control form-control-sm me-2" style="width: auto; display: none !important;">&nbsp;
@@ -615,6 +616,15 @@
         return;
       }
 
+      if (value === 'saved') {
+        scheduledDatetime.style.display = 'none';
+        scheduledDatetime.style.cssText = 'width: auto; display: none !important;';
+        sendCampaignBtn.textContent = 'Schedule';
+        sendTimeOptionInput.value = 'scheduled';
+        scheduledSendTimeInput.value = scheduledDatetime.value;
+        return;
+      }
+
       const presetDate = computePresetTime(value);
       if (presetDate) {
         const formatted = toDatetimeLocal(presetDate);
@@ -722,10 +732,11 @@
         minute: '2-digit'
       });
       
-      // Update the Custom option to show the saved time
-      const customOption = sendTimeSelect.querySelector('option[value="custom"]');
-      customOption.textContent = formattedSavedTime;
-      sendTimeSelect.value = 'custom';
+      // Update the hidden "saved" option to show the saved time
+      const savedOption = sendTimeSelect.querySelector('option[value="saved"]');
+      savedOption.textContent = formattedSavedTime;
+      savedOption.style.display = '';
+      sendTimeSelect.value = 'saved';
       
       // Hide the datetime picker but keep values set
       scheduledDatetime.style.display = 'none';
