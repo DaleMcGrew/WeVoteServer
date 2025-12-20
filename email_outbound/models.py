@@ -199,49 +199,6 @@ class EmailOutboundDescription(models.Model):
     template_variables_in_json = models.TextField(null=True, blank=True)
     date_last_changed = models.DateTimeField(verbose_name='date last changed', null=True, auto_now=True)
 
-
-class EmailRecipientTemplateLink(models.Model):
-    """
-    How we link EmailRecipientTemplate to an EmailCampaign
-    That is, we describe who a bulk email message will be sent to in the EmailRecipientTemplate, and then attach
-    these rules to an EmailCampaign.
-    """
-    email_campaign_id = models.PositiveIntegerField(default=0, null=True)
-    recipient_template_id = models.PositiveIntegerField(default=0, null=True)
-
-
-class EmailRecipientTemplate(models.Model):
-    """
-    Django model representing a template for defining bulk email recipients.
-
-    This model stores templates with search criteria used to create lists of email recipients
-    for bulk messaging campaigns.
-    """
-    archived = models.BooleanField(default=False)
-    deleted = models.BooleanField(default=False)
-    has_email = models.BooleanField(default=None, null=True)
-    has_no_email = models.BooleanField(default=None, null=True)
-    has_no_sms = models.BooleanField(default=None, null=True)
-    has_sms = models.BooleanField(default=None, null=True)
-    include_candidates_from_prior_elections = models.BooleanField(default=None, null=True)
-    is_candidate = models.BooleanField(default=None, null=True)
-    is_organization = models.BooleanField(default=None, null=True)
-    is_politician = models.BooleanField(default=None, null=True)
-    is_voter = models.BooleanField(default=None, null=True)
-    # When we chain EmailRecipientTemplate, parent_template_operator is: 'AND', 'EXCLUDE' or 'OR'
-    parent_template_operator = models.CharField(db_index=True, max_length=16, null=True)
-    # We can chain multiple EmailRecipientTemplate together to create a more complex rule set
-    parent_recipient_template_id = models.PositiveIntegerField(default=0, null=True)
-    recipient_template_folder_id = models.PositiveIntegerField(default=0, null=True)
-    recipient_template_name = models.CharField(db_index=True, max_length=255, null=True)
-    search_google_civic_election_id = models.PositiveIntegerField(default=0, null=True)
-    search_term_candidate = models.CharField(max_length=255, null=True)
-    search_term_organization = models.CharField(max_length=255, null=True)
-    search_term_politician = models.CharField(max_length=255, null=True)
-    search_term_political_party = models.CharField(max_length=255, null=True)
-    search_term_state_code = models.CharField(max_length=255, null=True)
-
-
 class EmailScheduled(models.Model):
     """
     Used to tell the email server literally what to send. If an email bounces temporarily, we will
@@ -1460,6 +1417,48 @@ class EmailRecipientTemplateFolder(models.Model):
     archived = models.BooleanField(default=False)
     deleted = models.BooleanField(default=False)
 
+class EmailRecipientTemplateLink(models.Model):
+    """
+    How we link EmailRecipientTemplate to an EmailCampaign
+    That is, we describe who a bulk email message will be sent to in the EmailRecipientTemplate, and then attach
+    these rules to an EmailCampaign.
+    """
+    email_campaign_id = models.PositiveIntegerField(default=0, null=True)
+    recipient_template_id = models.PositiveIntegerField(default=0, null=True)
+
+
+class EmailRecipientTemplate(models.Model):
+    """
+    Django model representing a template for defining bulk email recipients.
+
+    This model stores templates with search criteria used to create lists of email recipients
+    for bulk messaging campaigns.
+    """
+    archived = models.BooleanField(default=False)
+    deleted = models.BooleanField(default=False)
+    has_email = models.BooleanField(default=None, null=True)
+    has_no_email = models.BooleanField(default=None, null=True)
+    has_no_sms = models.BooleanField(default=None, null=True)
+    has_sms = models.BooleanField(default=None, null=True)
+    include_candidates_from_prior_elections = models.BooleanField(default=None, null=True)
+    is_candidate = models.BooleanField(default=None, null=True)
+    is_organization = models.BooleanField(default=None, null=True)
+    is_politician = models.BooleanField(default=None, null=True)
+    is_voter = models.BooleanField(default=None, null=True)
+    # When we chain EmailRecipientTemplate, parent_template_operator is: 'AND', 'EXCLUDE' or 'OR'
+    parent_template_operator = models.CharField(db_index=True, max_length=16, null=True)
+    # We can chain multiple EmailRecipientTemplate together to create a more complex rule set
+    parent_recipient_template_id = models.PositiveIntegerField(default=0, null=True)
+    recipient_template_folder_id = models.PositiveIntegerField(default=0, null=True)
+    recipient_template_name = models.CharField(db_index=True, max_length=255, null=True)
+    search_google_civic_election_id = models.PositiveIntegerField(default=0, null=True)
+    search_term_candidate = models.CharField(max_length=255, null=True)
+    search_term_organization = models.CharField(max_length=255, null=True)
+    search_term_politician = models.CharField(max_length=255, null=True)
+    search_term_political_party = models.CharField(max_length=255, null=True)
+    search_term_state_code = models.CharField(max_length=255, null=True)
+
+
 
 def update_friend_invitation_email_link_with_new_email(deleted_email_we_vote_id, updated_email_we_vote_id):
     success = True
@@ -1482,7 +1481,6 @@ def update_friend_invitation_email_link_with_new_email(deleted_email_we_vote_id,
         'status':               status,
     }
     return results
-
 
 class SendGridApiCounter(models.Model):
     datetime_of_action = models.DateTimeField(verbose_name='date and time of action', null=False, auto_now=True)
