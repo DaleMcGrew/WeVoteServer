@@ -2465,7 +2465,23 @@ def batch_process_log_entry_list_view(request):
             elif kind_of_processes_to_show == "UPDATE_TWITTER_DATA":
                 batch_process_queryset = batch_process_queryset.filter(
                     kind_of_process__in=['UPDATE_TWITTER_DATA_FROM_TWITTER'])
-                
+            elif kind_of_processes_to_show == "DEDUPLICATION_SCRIPTS":
+                batch_process_queryset = batch_process_queryset.filter(
+                    kind_of_process__in=[
+                        'DEDUPLICATION_SCRIPTS_CAMPAIGNX', 'DEDUPLICATION_SCRIPTS_CANDIDATE',
+                        'DEDUPLICATION_SCRIPTS_CHALLENGE', 'DEDUPLICATION_SCRIPTS_ORGANIZATION',
+                        'DEDUPLICATION_SCRIPTS_POLITICIAN',
+                    ])
+            elif kind_of_processes_to_show == "MAINTENANCE_SCRIPTS":
+                batch_process_queryset = batch_process_queryset.filter(
+                    kind_of_process__in=[
+                        'MAINTENANCE_SCRIPTS_CAMPAIGNX', 'MAINTENANCE_SCRIPTS_CANDIDATE',
+                        'MAINTENANCE_SCRIPTS_CHALLENGE', 'MAINTENANCE_SCRIPTS_OFFICE',
+                        'MAINTENANCE_SCRIPTS_OFFICE_HELD', 'MAINTENANCE_SCRIPTS_ORGANIZATION',
+                        'MAINTENANCE_SCRIPTS_POLITICIAN', 'MAINTENANCE_SCRIPTS_POSITION',
+                        'MAINTENANCE_SCRIPTS_REPRESENTATIVE', 'MAINTENANCE_SCRIPTS_VOTER',
+                    ])
+
         if after_dt is not None:
             batch_process_queryset = batch_process_queryset.filter(date_added__gte=after_dt)
 

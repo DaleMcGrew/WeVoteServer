@@ -61,12 +61,17 @@
     </div>
   </div>
   <div class="d-flex justify-content-end align-items-center mb-3">
-    <select id="send-time-select" class="form-select form-select-sm me-2" style="width: auto;">
-      <option value="now">Send Now</option>
-      <option value="scheduled">Send later</option>
+    <select name="send-time" id="send-time-select" class="form-select form-select-sm me-2" style="width: auto;">
+      <option value="now">Now</option>
+      <option value="tomorrow_9">Tomorrow at 9:00 AM</option>
+      <option value="tomorrow_16">Tomorrow at 4:00 PM</option>
+      <option value="day2_9">Day after tomorrow</option>
+      <option value="day3_9">Day after that</option>
+      <option value="saved" style="display: none;"></option>
+      <option value="custom">Custom…</option>
     </select>
-    <input type="datetime-local" id="scheduled-datetime" class="form-control form-control-sm me-2" style="width: auto; display: none !important;">
-    <button type="button" id="send-campaign-btn" class="btn btn-success" disabled>Send</button>
+    <input type="datetime-local" id="scheduled-datetime" class="form-control form-control-sm me-2" style="width: auto; display: none !important;">&nbsp;
+    <button type="submit" id="send-campaign-btn" class="btn btn-success">Send</button> <!-- Also submits email-campaign-form //-->
   </div>
 
   <form id="email-campaign-form" method="post" action="{% url 'email_outbound:email_campaign_edit_process' %}">
@@ -79,9 +84,35 @@
                id="campaign_title"
                name="campaign_title"
                class="form-control"
-               value="{% if email_campaign %}{{ email_campaign.email_campaign_name }}{% endif %}"
+               value="{% if email_campaign %}{{ email_campaign.email_campaign_name|default_if_none:"" }}{% endif %}"
                placeholder="Enter campaign name"
                required>
+    </div>
+
+    <!-- From Email and From Name (Side by Side) -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="from_email_id" class="form-label">From Email</label>
+                <input type="text"
+                       id="from_email_id"
+                       name="from_email"
+                       class="form-control"
+                       value="{% if email_campaign %}{{ email_campaign.from_email|default_if_none:"" }}{% endif %}"
+                       placeholder="Default is info@wevote.us">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="from_email_name_id" class="form-label">From Name</label>
+                <input type="text"
+                       id="from_email_name_id"
+                       name="from_email_name"
+                       class="form-control"
+                       value="{% if email_campaign %}{{ email_campaign.from_email_name|default_if_none:"" }}{% endif %}"
+                       placeholder="Default is We Vote">
+            </div>
+        </div>
     </div>
 
     <!-- Template Selection -->
@@ -136,7 +167,7 @@
              id="email_subject" 
              name="email_subject" 
              class="form-control" 
-             value="{% if email_campaign %}{{ email_campaign.email_subject_template_raw }}{% endif %}"
+             value="{% if email_campaign %}{{ email_campaign.email_subject_template_raw|default_if_none:"" }}{% endif %}"
              placeholder="Enter email subject"
              required>
     </div>
@@ -153,6 +184,7 @@
     <input type="hidden" name="state_code" value="{{ state_code }}">
     <input type="hidden" name="email_campaign_id" id="email_campaign_id" value="{% if email_campaign %}{{ email_campaign.id }}{% endif %}">
     <input type="hidden" name="selected_template_id" value="{{ selected_template_id }}">
+    <input type="hidden" name="send_button_clicked" id="send_button_clicked_id" value="0">
     <input type="hidden" name="send_time_option" id="send_time_option_input" value="{% if email_campaign.scheduled_send_time %}scheduled{% else %}now{% endif %}">
     <input type="hidden" name="scheduled_send_time" id="scheduled_send_time_input" value="{% if email_campaign.scheduled_send_time %}{{ email_campaign.scheduled_send_time|date:'Y-m-d\TH:i' }}{% endif %}">
   </form>
@@ -225,7 +257,8 @@
     const selectedRecipientsDiv = document.getElementById('selected_recipients');
     const addSelectedBtn = document.getElementById('add_selected_btn');
     const clearAllBtn = document.getElementById('clear_all_btn');
-    
+    const sendButtonClicked = document.getElementById('send_button_clicked_id');
+
     // Handle folder selection
     folderSelect.addEventListener('change', function() {
       const folderIndex = this.value;
@@ -496,11 +529,11 @@
     
     function checkFormValidity() {
       const campaignTitle = document.getElementById('campaign_title').value.trim();
-      const templateId = document.getElementById('template_select').value;
+      // const templateId = document.getElementById('template_select').value;
       const hasRecipients = selectedRecipientDictList.length > 0;
       const sendBtn = document.getElementById('send-campaign-btn');
       
-      if (campaignTitle && templateId && hasRecipients) {
+      if (campaignTitle && hasRecipients) {
         sendBtn.disabled = false;
       } else {
         sendBtn.disabled = true;
@@ -563,17 +596,114 @@
     const scheduledSendTimeInput = document.getElementById('scheduled_send_time_input');
 
     function updateScheduleDisplay() {
-      if (sendTimeSelect.value === 'scheduled') {
-        scheduledDatetime.style.display = 'inline-block';
-        scheduledDatetime.style.cssText = 'width: auto; display: inline-block !important;';
-        sendCampaignBtn.textContent = 'Schedule';
-      } else {
+      scheduledDatetime.disabled = sendTimeSelect.value !== 'custom';
+      const value = sendTimeSelect.value;
+      if (value === 'now') {
         scheduledDatetime.style.display = 'none';
         scheduledDatetime.style.cssText = 'width: auto; display: none !important;';
         sendCampaignBtn.textContent = 'Send';
+        sendTimeOptionInput.value = 'now';
+        scheduledSendTimeInput.value = '';
+        return;
+      };
+      
+      if (value === 'custom') {
+        scheduledDatetime.style.display = 'inline-block';
+        scheduledDatetime.style.cssText = 'width: auto; display: inline-block !important;';
+        sendCampaignBtn.textContent = 'Schedule';
+        sendTimeOptionInput.value = 'scheduled';
+        scheduledSendTimeInput.value = scheduledDatetime.value;
+        return;
       }
-      sendTimeOptionInput.value = sendTimeSelect.value;
+
+      if (value === 'saved') {
+        scheduledDatetime.style.display = 'none';
+        scheduledDatetime.style.cssText = 'width: auto; display: none !important;';
+        sendCampaignBtn.textContent = 'Schedule';
+        sendTimeOptionInput.value = 'scheduled';
+        scheduledSendTimeInput.value = scheduledDatetime.value;
+        return;
+      }
+
+      const presetDate = computePresetTime(value);
+      if (presetDate) {
+        const formatted = toDatetimeLocal(presetDate);
+        scheduledDatetime.style.display = 'none';
+        scheduledDatetime.value = formatted;
+        scheduledSendTimeInput.value = formatted;
+        sendCampaignBtn.textContent = 'Schedule';
+        sendTimeOptionInput.value = 'scheduled';
+      }
     }
+
+    function toDatetimeLocal(date) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function computePresetTime(option) {
+      const now = new Date();
+      let d = new Date(now);
+
+      switch (option) {
+        case 'tomorrow_9':
+          d.setDate(d.getDate() + 1);
+          d.setHours(9, 0, 0, 0);
+          break;
+
+        case 'tomorrow_16':
+          d.setDate(d.getDate() + 1);
+          d.setHours(16, 0, 0, 0);
+          break;
+
+        case 'day2_9':
+          d.setDate(d.getDate() + 2);
+          d.setHours(9, 0, 0, 0);
+          break;
+
+        case 'day3_9':
+          d.setDate(d.getDate() + 3);
+          d.setHours(9, 0, 0, 0);
+          break;
+
+        default:
+          return null;
+      }
+
+      return d;
+    }
+
+    function formatWeekdayDate(daysFromNow) {
+      const d = new Date();
+      d.setDate(d.getDate() + daysFromNow);
+
+      return d.toLocaleDateString(undefined, {
+        weekday: 'long',
+        month: 'numeric',
+        day: 'numeric'
+      });
+    }
+
+    // Update dropdown labels with formatted dates
+    function updateRelativeDateLabels() {
+      const options = sendTimeSelect.options;
+      for (let opt of options) {
+        if (opt.value === 'tomorrow_9') {
+          opt.textContent = `${formatWeekdayDate(1)} at 9:00 AM`;
+        }
+        if (opt.value === 'tomorrow_16') {
+          opt.textContent = `${formatWeekdayDate(1)} at 4:00 PM`;
+        }
+        if (opt.value === 'day2_9') {
+          opt.textContent = `${formatWeekdayDate(2)} at 9:00 AM`;
+        }
+        if (opt.value === 'day3_9') {
+          opt.textContent = `${formatWeekdayDate(3)} at 9:00 AM`;
+        }
+      }
+    }
+    updateRelativeDateLabels();
+    updateScheduleDisplay();
 
     sendTimeSelect.addEventListener('change', updateScheduleDisplay);
 
@@ -581,16 +711,44 @@
       scheduledSendTimeInput.value = this.value;
     });
 
+    // Update hidden inputs before form submission
+    document.getElementById('email-campaign-form').addEventListener('submit', function() {
+      updateScheduleDisplay();
+    });
+
     // Restore saved schedule values if editing
     {% if email_campaign.scheduled_send_time %}
-      sendTimeSelect.value = 'scheduled';
-      scheduledDatetime.value = '{{ email_campaign.scheduled_send_time|date:'Y-m-d\TH:i' }}';
-      updateScheduleDisplay();
+      const savedTime = '{{ email_campaign.scheduled_send_time|date:'Y-m-d\TH:i' }}';
+      scheduledDatetime.value = savedTime;
+      
+      // Format the saved time for display
+      const savedDate = new Date(savedTime);
+      const formattedSavedTime = savedDate.toLocaleDateString(undefined, {
+        weekday: 'long',
+        month: 'numeric',
+        day: 'numeric'
+      }) + ' at ' + savedDate.toLocaleTimeString(undefined, {
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+      
+      // Update the hidden "saved" option to show the saved time
+      const savedOption = sendTimeSelect.querySelector('option[value="saved"]');
+      savedOption.textContent = formattedSavedTime;
+      savedOption.style.display = '';
+      sendTimeSelect.value = 'saved';
+      
+      // Hide the datetime picker but keep values set
+      scheduledDatetime.style.display = 'none';
+      scheduledDatetime.style.cssText = 'width: auto; display: none !important;';
+      sendCampaignBtn.textContent = 'Schedule';
+      sendTimeOptionInput.value = 'scheduled';
+      scheduledSendTimeInput.value = savedTime;
     {% endif %}
 
     // Handle Send/Schedule button
     document.getElementById('send-campaign-btn').addEventListener('click', function() {
-      const isScheduled = sendTimeSelect.value === 'scheduled';
+      const isScheduled = sendTimeSelect.value !== 'now';
       const scheduledTime = scheduledDatetime.value;
 
       if (isScheduled && !scheduledTime) {
@@ -602,8 +760,11 @@
       const timeInfo = isScheduled ? ' for ' + new Date(scheduledTime).toLocaleString() : '';
 
       if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign to ' + String(selectedRecipientDictList.length) + ' recipient(s)' + timeInfo + '?')) {
-        alert(action.charAt(0).toUpperCase() + action.slice(1) + ' functionality will be implemented on the backend.');
-        // TODO: Implement actual send/schedule logic
+        // alert(action.charAt(0).toUpperCase() + action.slice(1) + ' functionality will be implemented on the backend.');
+        // We want to call the save API with a variable to proceed to sending after save
+        sendButtonClicked.value = 1;
+        // Submit the form email-campaign-form
+        document.getElementById('email-campaign-form').submit();
       }
     });
     
