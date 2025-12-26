@@ -11,6 +11,8 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+from django.template.response import TemplateResponse
+import requests
 
 import wevote_functions
 from ballot.models import BallotReturned, VoterBallotSaved
@@ -1722,6 +1724,11 @@ def login_we_vote(request):
     :param request:
     :return:
     """
+    from wevote_tokens.enums import TokenResponse, TokenHeaders, TokenTypes
+    from wevote_tokens.utils import TokensManager
+    from wevote_tokens.models.single_use_tokens import Scope
+
+
     voter_api_device_id = get_voter_api_device_id(request)  # We look in the cookies for voter_api_device_id
     if hasattr(request, 'facebook'):
         facebook_object = request.facebook
@@ -1745,6 +1752,13 @@ def login_we_vote(request):
     error_message = ''
     username = ''
 
+    # TODO: Add logging and remove error handling
+    try:
+        token_response = TokenResponse.TOKEN_RESPONSE.get_value()
+        request_token_info = TokensManager.get_request_token_info(request)
+    except Exception as e:
+        pass
+    
     # Does Django think user is already signed in?
     if request.user.is_authenticated:
         # If so, make sure user and voter_on_stage are the same.
@@ -1795,6 +1809,17 @@ def login_we_vote(request):
                 voter_api_device_id = generate_voter_device_id()
                 results = voter_device_link_manager.save_new_voter_device_link(voter_api_device_id, user.id)
                 store_new_voter_api_device_id_in_cookie = results['voter_device_link_created']
+
+                # TODO: Add logging and remove error handling
+                try:
+                    # ONLY FOR FAST LOAD RIGHT NOW
+                    if request_token_info['create_token']:
+                        request_token_info['user_id'] = user.we_vote_id
+                        token_manager = TokensManager(token_types=[request_token_info['token_type']], scope=Scope.BACKUP_ONE_TABLE_TO_S3.value, expiration_seconds=300)
+                        token_response['token_creation'] = token_manager.token_creation(request_token_info) 
+                except Exception as e:
+                    pass
+
             else:
                 error_message = "Your account is not active, please contact the site admin."
 
@@ -1803,6 +1828,7 @@ def login_we_vote(request):
                 pass
         else:
             error_message = "Your username and/or password were incorrect."
+
     elif not positive_value_exists(voter_on_stage_id):
         # If here, delete the prior voter_api_device_id from database
         voter_device_link_manager.delete_voter_device_link(voter_api_device_id)
@@ -1820,6 +1846,15 @@ def login_we_vote(request):
 
     if positive_value_exists(error_message):
         messages.add_message(request, messages.ERROR, error_message)
+        # TODO: Add logging and remove error handling
+        try:
+            if request_token_info['create_token']:
+                token_response['token_creation'] = TokenResponse.TOKEN_CREATION.get_value()
+                token_response['token_creation']['success'] = False
+                token_response['token_creation']['status'] = 'FAIL'
+                token_response['token_creation']['error_message'] = error_message
+        except Exception as e:
+            pass
     if positive_value_exists(info_message):
         messages.add_message(request, messages.INFO, info_message)
 
@@ -1832,6 +1867,12 @@ def login_we_vote(request):
         'messages_on_stage':    messages_on_stage,
     }
     response = render(request, 'registration/login_we_vote.html', template_values)
+
+    # TODO: Add logging and remove error handling
+    try:
+        response = TokensManager.add_response_token_info_headers(response, token_response)
+    except Exception as e:
+        pass
 
     # If login with facebook then save facebook details in facebookAuthResponse and facebookLinkToVoter
     if facebook_data:
@@ -1969,10 +2010,16 @@ def statistics_summary_view(request):
     return response
 
 
-@login_required
 def sync_data_with_master_servers_view(request):
+    from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
+    from wevote_tokens.enums import TokenHeaders, TokenCookies, TokenTypes
+    from wevote_tokens.utils import TokensManager
+
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'admin'}
+    fast_load_start_token_id = request.COOKIES.get(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_ID.value, None)
+    fast_load_start_token_key = request.COOKIES.get(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_KEY.value, None)
+
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
 
@@ -1989,11 +2036,15 @@ def sync_data_with_master_servers_view(request):
     state_list = STATE_CODE_MAP
     sorted_state_list = sorted(state_list.items())
 
+    fast_load_start_token_valid = False
+    fast_load_start_token_valid = positive_value_exists(fast_load_start_token_id) and positive_value_exists(fast_load_start_token_key)
+
     template_values = {
         'election_list':                election_list,
         'google_civic_election_id':     google_civic_election_id,
         'state_list':                   sorted_state_list,
         'state_code':                   state_code,
+        'fast_load_start_token_valid':  fast_load_start_token_valid,
 
         'ballot_items_sync_url':        BALLOT_ITEMS_SYNC_URL,
         'ballot_returned_sync_url':     BALLOT_RETURNED_SYNC_URL,
@@ -2009,6 +2060,50 @@ def sync_data_with_master_servers_view(request):
         'positions_sync_url':           POSITIONS_SYNC_URL,
         'voter_guides_sync_url':        VOTER_GUIDES_SYNC_URL,
     }
-    response = render(request, 'admin_tools/sync_data_with_master_dashboard.html', template_values)
+    response = TemplateResponse(request, 'admin_tools/sync_data_with_master_dashboard.html', template_values)
+
+    if request.POST:
+        input_username = request.POST.get('username').strip()
+        password = request.POST.get('password')
+        validation_key_str = SingleUseTokenManager.generate_encryption_key().decode('utf-8')
+
+        host = 'http://localhost:8000'
+        # host = 'https://api.wevoteusa.org'
+        auth_url = f"{host}/login_we_vote/"
+
+        session = requests.Session()
+        _call_login_url = session.get(auth_url)
+        csrf_token = session.cookies.get('csrftoken')
+
+        auth_data = {
+            'username': input_username,  # Email address
+            'password': password,
+        }
+
+        request_token_headers = TokensManager.format_request_headers(
+            user_id=None,
+            token_type=TokenTypes.SINGLE_USE.value,
+            authorization=None,
+            create_token=True,
+            token_key=None,
+            new_token_key=validation_key_str,
+        )
+
+        headers = {
+            'X-CSRFToken': csrf_token,  # Django CSRF middleware expects this
+            'Referer': auth_url,  # Django CSRF middleware expects this
+            **request_token_headers,
+        }
+
+        auth_response = session.post(auth_url, data=auth_data, headers=headers)
+        token_creation_info = TokensManager.convert_headers_to_dict(auth_response.headers)['token_creation']
+
+        if token_creation_info['success']:
+            response.set_cookie(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_ID.value, token_creation_info['token_info']['token_pk'], max_age=60, httponly=True, secure=True, samesite='Lax')
+            response.set_cookie(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_KEY.value, validation_key_str, max_age=60, httponly=True, secure=True, samesite='Lax')
+            response.set_cookie(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_USER_ID.value, token_creation_info['token_info']['user_id'], max_age=60, httponly=True, secure=True, samesite='Lax')
+            template_values['fast_load_start_token_valid'] = True
+        else:
+            template_values['fast_load_start_token_error'] = token_creation_info['error_message']
 
     return response
