@@ -57,8 +57,7 @@ def retrieve_sql_files_from_master_server(request):
 
     # ONLY CHANGE host to 'wevotedeveloper.com' while debugging the fast load code, where Master and Client are the same
     # host = 'https://wevotedeveloper.com:8000'
-    # host = 'https://api.wevoteusa.org'
-    host = 'http://localhost:8000'
+    host = 'https://api.wevoteusa.org'
     voter_api_device_id = get_voter_api_device_id(request)
 
     try:
@@ -116,7 +115,8 @@ def retrieve_sql_files_from_master_server(request):
                         token_headers[TokenHeaders.TOKEN_NEW_KEY.value] = SingleUseTokenManager.generate_encryption_key()
                 else:
                     print(f"Token authentication failed: {token_authentication['error_message']}")
-            continue
+            else:
+                print(f"Token authentication not found in response headers.")
 
             structured_json = fetch_data_response.json()
             aws_s3_file_url = structured_json['aws_s3_file_url']
