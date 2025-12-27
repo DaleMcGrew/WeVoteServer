@@ -19,39 +19,45 @@ class TokensManager():
     def __call__(self, view_func):
         def _wrapped_view(request, *args, **kwargs):
             token_response = TokenResponse.TOKEN_RESPONSE.get_value()
-            # First, get headers
-            request_token_info = self.get_request_token_info(request)
+            try:
+                # First, get headers
+                request_token_info = self.get_request_token_info(request)
 
-            if request_token_info['error_message']:
-                token_response['token_authentication'] = {
-                    'success': False,
-                    'status': "",
-                    'error_message': request_token_info['error_message'],
-                    'token_info': None
-                }
+                if request_token_info['error_message']:
+                    token_response['token_authentication'] = {
+                        'success': False,
+                        'status': "",
+                        'error_message': request_token_info['error_message'],
+                        'token_info': None
+                    }
 
-            # Check token type
-            if not request_token_info['error_message'] and \
-                (not request_token_info['token_type'] or request_token_info['token_type'] not in self.token_types):
-                #TODO: return 401 unauthorized
-                token_response['token_authentication'] = {
-                    'success': False,
-                    'status': 'INVALID_TOKEN_TYPE',
-                    'error_message': "Invalid token type",
-                    'token_info': None
-                }
-            
-            if not token_response['token_authentication']:
-                # And authenticate it with id, key, and scope
-                token_response['token_authentication'] = self.token_authentication(request_token_info)
+                # Check token type
+                if not request_token_info['error_message'] and \
+                    (not request_token_info['token_type'] or request_token_info['token_type'] not in self.token_types):
+                    #TODO: return 401 unauthorized
+                    token_response['token_authentication'] = {
+                        'success': False,
+                        'status': 'INVALID_TOKEN_TYPE',
+                        'error_message': "Invalid token type",
+                        'token_info': None
+                    }
+                
+                if not token_response['token_authentication']:
+                    # And authenticate it with id, key, and scope
+                    token_response['token_authentication'] = self.token_authentication(request_token_info)
 
-                # if exists and is True, then create a new token
-                if request_token_info['create_token'] and token_response['token_authentication']['success']:
-                        token_response['token_creation'] = self.token_creation(request_token_info)
-            
+                    # if exists and is True, then create a new token
+                    if request_token_info['create_token'] and token_response['token_authentication']['success']:
+                            token_response['token_creation'] = self.token_creation(request_token_info)
+            except:
+                pass
+                
             response = view_func(request, *args, **kwargs)
             
-            self.add_response_token_info_headers(response, token_response)
+            try:
+                self.add_response_token_info_headers(response, token_response)
+            except Exception as e:
+                pass
 
             return response
         return _wrapped_view
@@ -223,6 +229,18 @@ class TokensManager():
     # def add_response_token_info_cookies(self, response, token_info):
     #     pass
 
+    #########################################################
+    # Error Handling
+    #########################################################
+    @staticmethod
+    def handle_error(error):
+        if isinstance(error, Exception):
+            return error.message
+        return str(error)
+
+    #########################################################
+    # Helper Functions
+    #########################################################
     @staticmethod
     def get_user_id(user_id):
         if isinstance(user_id, (str, int, float)):

@@ -417,6 +417,6 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name):
             results['aws_s3_file_url'] = aws_s3_file_url
 
         except Exception as e:
-            results.status = 'Error ' + str(e)
+            results['status'] = 'Error ' + str(e)
 
     return results

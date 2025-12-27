@@ -20,19 +20,32 @@
     The Python logging screen (and this page!) shows progress as the tables are loaded.
     <br><br>
 
-    <input type="hidden" id="started_fast_update"  value="false">
-    <input type="hidden" id="started_fast_init" value="true">
-    <input type="hidden" id="elapsed_seconds"  value="0">
-    <div style="display: flex; flex-direction: column; align-self: center; align-items: flex-start; padding-top: 30px; padding-bottom: 30px; width: 80%;">
-        <button id="fastLoadButton" type="submit" value="1" onClick="fastLoadClick()" style="width: 100%; align-self: center;">FAST LOAD ALL THE ELECTION DATA, TO YOUR LOCAL POSTGRES</button>
-        <progress id="progress" value="0" max="100" style="display: none"></progress>
-        <div id="table_count" style="padding-top: 10px"></div>
-        <div id="current_table"></div>
-        <div id="current_table_size"></div>
-        <div id="current_table_wordy"></div>
-        <div id="total_time"></div>
-        <div id="current_status"></div>
-    </div>
+    {% if not fast_load_start_token_valid %}
+        <div style="border: 2px solid black; display: flex; flex-direction: column; align-self: center; align-items: flex-start; padding-top: 30px; padding-left: 30px; padding-right: 30px; padding-bottom: 30px; width: 80%;">
+        <!-- <div style="display: flex; flex-direction: column; align-self: center;  justify-content: center; align-items: center; text-align: center; padding-top: 30px; padding-bottom: 30px; width: 80%;"> -->
+            <h2>Retrieve Fast Load Authentication</h2>
+            <p> If you do not sign in with WeVote credentials, you will not be authorized to sync data with the master servers.</p>
+            {% include "admin_tools/email_login_form.html" %}
+            {% if fast_load_start_token_error %}
+                <p style="color: red;">{{ fast_load_start_token_error }}</p>
+            {% endif %}
+        </div>
+    {% else %}
+        <input type="hidden" id="started_fast_update"  value="false">
+        <input type="hidden" id="started_fast_init" value="true">
+        <input type="hidden" id="elapsed_seconds"  value="0">
+        <div style="display: flex; flex-direction: column; align-self: center; align-items: flex-start; padding-top: 30px; padding-bottom: 30px; width: 80%;">
+            <button id="fastLoadButton" type="submit" value="1" onClick="fastLoadClick()" style="width: 100%; align-self: center;">FAST LOAD ALL THE ELECTION DATA, TO YOUR LOCAL POSTGRES</button>
+            <progress id="progress" value="0" max="100" style="display: none"></progress>
+            <h4 style="color: green;"> You are authenticated!</h4>
+            <div id="table_count" style="padding-top: 10px"></div>
+            <div id="current_table"></div>
+            <div id="current_table_size"></div>
+            <div id="current_table_wordy"></div>
+            <div id="total_time"></div>
+            <div id="current_status"></div>
+        </div>
+    {% endif %}
 </div>
 <br>
 
