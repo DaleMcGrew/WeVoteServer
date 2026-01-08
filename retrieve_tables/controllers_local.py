@@ -110,7 +110,7 @@ def retrieve_sql_files_from_master_server(request):
                     token_creation = response_headers['token_creation']
                     print(f"Token creation: {token_creation}")
                     if token_creation['success']:
-                        token_headers[TokenHeaders.AUTHORIZATION.value] = f'Bearer {token_creation['token_info']['token_pk']}'
+                        token_headers[TokenHeaders.AUTHORIZATION.value] = f"Bearer {token_creation['token_info']['token_pk']}"
                         token_headers[TokenHeaders.TOKEN_KEY.value] = token_headers[TokenHeaders.TOKEN_NEW_KEY.value]
                         token_headers[TokenHeaders.TOKEN_NEW_KEY.value] = SingleUseTokenManager.generate_encryption_key()
                 else:
