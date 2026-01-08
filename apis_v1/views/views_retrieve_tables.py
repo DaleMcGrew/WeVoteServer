@@ -19,11 +19,11 @@ logger = wevote_functions.admin.get_logger(__name__)
 
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
-# @TokensManager(
-#     token_types=[TokenTypes.SINGLE_USE.value],
-#     scope=Scope.BACKUP_ONE_TABLE_TO_S3.value,
-#     expiration_seconds=1200
-# )
+@TokensManager(
+    token_types=[TokenTypes.SINGLE_USE.value],
+    scope=Scope.BACKUP_ONE_TABLE_TO_S3.value,
+    expiration_seconds=1200
+)
 def backup_one_table_to_s3_view(request):  # backupOneTableToS3
     """
     pg_dump one SQL tables on the master server to AWS s3, for use with December 2025 version of fast load
