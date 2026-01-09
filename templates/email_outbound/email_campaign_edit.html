@@ -179,6 +179,22 @@
       <small class="text-muted">This will auto-populate when you select a template above. You can edit it before sending.</small>
     </div>
 
+    <!-- Customization tokens -->
+    <div class="mb-4">
+      <h5>Customization Tokens</h5>
+      <p class="text-muted">Click a token to copy it so you can paste it into the message above.</p>
+
+      <div class="token-grid">
+        {% for token in token_list %}
+          <button type="button" class="btn btn-outline-secondary btn-sm token-btn"
+                  data-token="{{ token }}"
+                  style="min-width: 240px; text-align: left;">
+            {{ token }}
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+
     <!-- Hidden Context Inputs -->
     <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
     <input type="hidden" name="state_code" value="{{ state_code }}">
@@ -439,7 +455,7 @@
     function addRecipientFromAPI(campaignRecipient) {
       // Convert campaignRecipient dictionary from email_campaign_edit_view into Django template friendly format
       const emailAddress = campaignRecipient.email_address || '';
-      const recipientName = campaignRecipient.recipient_name || emailAddress;
+      const recipientName = campaignRecipient.recipient_full_name || emailAddress;
       let recipientWeVoteId = ''
       if (campaignRecipient.candidate_we_vote_id) {
         recipientWeVoteId = campaignRecipient.candidate_we_vote_id;
@@ -874,5 +890,20 @@
       }
     });
   });
+</script>
+
+<!-- Customization tokens copy script -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.token-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const token = btn.dataset.token;
+      navigator.clipboard.writeText(token).then(() => {
+        btn.classList.add('copied');
+        setTimeout(() => btn.classList.remove('copied'), 800);
+      });
+    });
+  });
+});
 </script>
 {% endblock %}

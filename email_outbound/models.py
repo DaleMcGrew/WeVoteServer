@@ -73,6 +73,32 @@ EMAIL_HOST_PASSWORD = get_environment_variable("EMAIL_HOST_PASSWORD", no_excepti
 EMAIL_PORT = get_environment_variable("EMAIL_PORT", no_exception=True)
 EMAIL_USE_TLS = get_environment_variable("EMAIL_USE_TLS", no_exception=True)
 
+EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS = [
+    "[job_title]",
+    "[link_to_office]",
+    "[link_to_politician]",
+    "[my_first_name]",
+    "[my_last_name]",
+    "[my_full_name]",
+    "[official_email]",
+    "[personal_email]",
+    "[political_party]",
+    "[politician_photo]",
+    "[recipient_first_name]",
+    "[recipient_last_name]",
+    "[recipient_full_name]",
+    "[recipient_voter_email]",
+    "[seo_friendly_path]",
+    "[signature]",
+    "[state_code]",
+    "[supporters_count]",
+]
+CUSTOMIZATION_TOKEN_CONVERSION_FROM_JAZZ_HR = {
+    "[applicant_first_name]": "[recipient_first_name]",
+    "[applicant_last_name]": "[recipient_last_name]",
+    "[applicant_full_name]": "[recipient_full_name]",
+}
+
 
 class EmailCampaign(models.Model):
     """
@@ -90,6 +116,7 @@ class EmailCampaign(models.Model):
     is_for_staff = models.BooleanField(default=False)
     is_for_voter = models.BooleanField(default=False)
     reply_to_email = models.TextField(null=True, blank=True)
+    scheduled_by_voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
     scheduled_send_time = models.DateTimeField(null=True, blank=True)
     voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
 
@@ -116,13 +143,36 @@ class EmailCampaignRecipient(models.Model):
     """
     candidate_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
     email_address = models.TextField(null=True, blank=True)
+    # This is a copy of the body assembled at the time of sending - NOT a pre-assembled body
     email_body_assembled = models.TextField(null=True, blank=True)
     email_campaign_id = models.PositiveIntegerField(default=0, null=False)
     email_scheduled = models.BooleanField(default=False)
-    email_subject_assembled = models.CharField(max_length=255, null=True, blank=True, unique=False)
-    organization_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
-    politician_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
-    recipient_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
+    # This is a copy of the subject assembled at the time of sending - NOT a pre-assembled subject
+    email_subject_assembled = models.CharField(max_length=255, null=True, blank=True)
+    list_unsubscribe_mailto = models.TextField(null=True, blank=True)
+    list_unsubscribe_url = models.TextField(null=True, blank=True)
+    manually_added = models.BooleanField(default=False)
+    organization_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
+    political_party = models.CharField(max_length=255, null=True)
+    politician_first_name = models.CharField(max_length=255, null=True)
+    politician_full_name = models.CharField(max_length=255, null=True)
+    politician_last_name = models.CharField(max_length=255, null=True)
+    politician_seo_friendly_path = models.CharField(max_length=255, null=True)
+    politician_state_code = models.CharField(max_length=2, null=True)
+    politician_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
+    recipient_first_name = models.CharField(max_length=255, null=True)
+    recipient_full_name = models.CharField(max_length=255, null=True)
+    recipient_last_name = models.CharField(max_length=255, null=True)
+    recipient_email_subscription_secret_key = models.CharField(max_length=255, null=True)
+    recipient_email_we_vote_id = models.CharField(max_length=255, null=True)
+    recipient_voter_we_vote_id = models.CharField(max_length=255, null=True)
+    sender_email = models.CharField(max_length=255, null=True)
+    sender_email_we_vote_id = models.CharField(max_length=255, null=True)
+    sender_first_name = models.CharField(max_length=255, null=True)
+    sender_full_name = models.CharField(max_length=255, null=True)
+    sender_last_name = models.CharField(max_length=255, null=True)
+    sender_voter_we_vote_id = models.CharField(max_length=255, null=True)
+    supporters_count = models.PositiveIntegerField(default=0, null=False)
     voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
 
 
@@ -199,11 +249,15 @@ class EmailOutboundDescription(models.Model):
     template_variables_in_json = models.TextField(null=True, blank=True)
     date_last_changed = models.DateTimeField(verbose_name='date last changed', null=True, auto_now=True)
 
+
 class EmailScheduled(models.Model):
     """
     Used to tell the email server literally what to send. If an email bounces temporarily, we will
     want to trigger the EmailOutboundDescription to generate a new EmailScheduled entry.
     """
+    email_campaign_id = models.PositiveIntegerField(default=None, null=True)
+    email_campaign_recipient_id = models.PositiveIntegerField(default=None, null=True)
+    email_outbound_description_id = models.PositiveIntegerField(default=None, null=True)
     subject = models.CharField(verbose_name="email subject", max_length=255, null=True, blank=True, unique=False)
     message_text = models.TextField(null=True, blank=True)
     message_html = models.TextField(null=True, blank=True)
@@ -222,8 +276,6 @@ class EmailScheduled(models.Model):
     list_unsubscribe_mailto = models.TextField(null=True, blank=True)
     list_unsubscribe_url = models.TextField(null=True, blank=True)
     send_status = models.CharField(max_length=50, choices=SEND_STATUS_CHOICES, default=TO_BE_PROCESSED)
-    email_outbound_description_id = models.PositiveIntegerField(
-        verbose_name="the internal id of EmailOutboundDescription", default=0, null=False)
     date_last_changed = models.DateTimeField(verbose_name='date last changed', null=True, auto_now=True)
 
 
@@ -878,7 +930,7 @@ class EmailManager(models.Manager):
                     deleted=False
                 )
                 email_address_queryset = email_address_queryset.order_by('-id')  # Put most recent email at top of list
-                email_address_list = email_address_queryset
+                email_address_list = list(email_address_queryset)
             else:
                 email_address_list = []
             if len(email_address_list):
@@ -1017,6 +1069,50 @@ class EmailManager(models.Manager):
             success = False
             status += "ERROR_SCHEDULE_EMAIL_NOT_CREATED: " + str(e) + ' '
             print(status)
+
+        results = {
+            'success':                  success,
+            'status':                   status,
+            'email_scheduled_saved':    email_scheduled_saved,
+            'email_scheduled_id':       email_scheduled_id,
+            'email_scheduled':          email_scheduled,
+        }
+        return results
+
+    @staticmethod
+    def schedule_email_from_email_campaign_recipient(
+            email_campaign_recipient=None,
+            subject="",
+            message_text="",
+            message_html="",
+            send_status=TO_BE_PROCESSED):
+        status = ''
+        try:
+            email_scheduled = EmailScheduled.objects.create(
+                sender_voter_name=email_campaign_recipient.sender_full_name,
+                sender_voter_we_vote_id=email_campaign_recipient.sender_voter_we_vote_id,
+                sender_voter_email=email_campaign_recipient.sender_email,
+                recipient_voter_we_vote_id=email_campaign_recipient.recipient_voter_we_vote_id,
+                recipient_email_we_vote_id=email_campaign_recipient.recipient_email_we_vote_id,
+                recipient_voter_email=email_campaign_recipient.email_address,
+                message_html=message_html,
+                message_text=message_text,
+                email_campaign_recipient_id=email_campaign_recipient.id,
+                send_status=send_status,
+                subject=subject,
+                list_unsubscribe_mailto=email_campaign_recipient.list_unsubscribe_mailto,
+                list_unsubscribe_url=email_campaign_recipient.list_unsubscribe_url,
+            )
+            email_scheduled_saved = True
+            email_scheduled_id = email_scheduled.id
+            success = True
+            status += "SCHEDULE_EMAIL_CREATED "
+        except Exception as e:
+            email_scheduled_saved = False
+            email_scheduled = None
+            email_scheduled_id = 0
+            success = False
+            status += "ERROR_SCHEDULE_EMAIL_NOT_CREATED: " + str(e) + ' '
 
         results = {
             'success':                  success,

@@ -28,6 +28,7 @@ WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 BYPASS_EMAIL_FOR_AUTOMATION = get_environment_variable("BYPASS_EMAIL_FOR_AUTOMATION", no_exception=True)
 BYPASS_EMAIL_FOR_DELETE_AUTOMATION = get_environment_variable("BYPASS_EMAIL_FOR_DELETE_AUTOMATION", no_exception=True)
 
+
 def augment_email_address_list(email_address_list, voter):
     email_address_list_augmented = []
     primary_email_address = None
@@ -2118,7 +2119,7 @@ def voter_email_address_save_for_api(
         email_address_we_vote_id = email_address_we_vote_id if positive_value_exists(email_address_we_vote_id) \
             else incoming_email_we_vote_id
         status += "ABOUT_TO_SEND_SIGN_IN_CODE_EMAIL: " + str(email_address_we_vote_id) + " "
-        # We need to link a randomly generated 6 digit code to this voter_device_id
+        # We need to link a randomly generated 6-digit code to this voter_device_id
         results = voter_device_link_manager.retrieve_voter_secret_code_up_to_date(voter_device_id)
         secret_code = results['secret_code']
         secret_code_system_locked_for_this_voter_device_id = \
