@@ -10,6 +10,8 @@ from .models import CAMPAIGNX_FRIEND_HAS_SUPPORTED_TEMPLATE, CAMPAIGNX_NEWS_ITEM
     VERIFY_EMAIL_ADDRESS_TEMPLATE
 from django.template.loader import get_template
 from django.template import Context
+from html.parser import HTMLParser
+import re
 import json
 
 
@@ -136,3 +138,90 @@ def merge_message_content_with_template(kind_of_email_template, template_variabl
         'message_html': message_html,
     }
     return results
+
+
+class HTMLToPlainText(HTMLParser):
+    """Convert HTML to plain text, preserving structure and readability."""
+
+    def __init__(self):
+        super().__init__()
+        self.text_parts = []
+        self.current_line = []
+        self.in_script = False
+        self.in_style = False
+
+    def handle_starttag(self, tag, attrs):
+        # Add line breaks for block elements
+        if tag in ['p', 'div', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'tr']:
+            if self.current_line:
+                self.text_parts.append(''.join(self.current_line).strip())
+                self.current_line = []
+
+        # Add extra line break for headers
+        if tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+            self.text_parts.append('')
+
+        # Track script and style tags to ignore their content
+        if tag == 'script':
+            self.in_script = True
+        elif tag == 'style':
+            self.in_style = True
+
+    def handle_endtag(self, tag):
+        if tag in ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table']:
+            if self.current_line:
+                self.text_parts.append(''.join(self.current_line).strip())
+                self.current_line = []
+            self.text_parts.append('')  # Add blank line after these elements
+
+        if tag == 'script':
+            self.in_script = False
+        elif tag == 'style':
+            self.in_style = False
+
+    def handle_data(self, data):
+        # Ignore content in script and style tags
+        if self.in_script or self.in_style:
+            return
+
+        # Clean up whitespace but preserve single spaces
+        cleaned_data = ' '.join(data.split())
+        if cleaned_data:
+            self.current_line.append(cleaned_data)
+
+    def get_text(self):
+        # Add any remaining text
+        if self.current_line:
+            self.text_parts.append(''.join(self.current_line).strip())
+
+        # Join all parts and clean up excessive blank lines
+        text = '\n'.join(self.text_parts)
+        # Replace 3+ newlines with just 2 newlines
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        return text.strip()
+
+
+def convert_html_to_plain_text(html_content):
+    """
+    Convert HTML email content to plain text.
+
+    Args:
+        html_content: String containing HTML
+
+    Returns:
+        Plain text version of the HTML content
+    """
+    if not html_content:
+        return ''
+
+    try:
+        parser = HTMLToPlainText()
+        parser.feed(html_content)
+        plain_text = parser.get_text()
+        return plain_text
+    except Exception as e:
+        # Fallback: strip all HTML tags if parser fails
+        plain_text = re.sub(r'<[^>]+>', '', html_content)
+        # Clean up whitespace
+        plain_text = re.sub(r'\s+', ' ', plain_text)
+        return plain_text.strip()

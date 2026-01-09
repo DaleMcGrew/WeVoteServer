@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.messages import get_messages
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.http import HttpResponseRedirect
@@ -17,11 +18,12 @@ from django.urls import reverse
 
 from admin_tools.views import redirect_to_sign_in_page
 from email_outbound.models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
-    EmailRecipientTemplateFolder, EmailRecipientTemplate
+    EmailRecipientTemplateFolder, EmailRecipientTemplate, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
 from voter.models import voter_has_authority
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
 from wevote_functions.validate_email import validate_email
+from .controllers_email_campaign import augment_email_campaign_recipient
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -108,12 +110,12 @@ def email_campaign_edit_process_view(request):
             campaign.scheduled_send_time = scheduled_send_time
             campaign.save()
             
-            # Clear existing recipients for this campaign
-            # TODO: We want to update this to only delete entries that have been removed from the form
-            deleted_count, result_dict = EmailCampaignRecipient.objects.filter(email_campaign_id=campaign.id).delete()
+            # # Clear existing recipients for this campaign
+            # # TODO: We want to update this to only delete entries below that have been removed from the form
+            # deleted_count, result_dict = EmailCampaignRecipient.objects.filter(email_campaign_id=campaign.id).delete()
             message = 'Email campaign updated.'
-            if deleted_count > 0:
-                message += f' Deleted {deleted_count} existing recipients.'
+            # if deleted_count > 0:
+            #     message += f' Deleted {deleted_count} existing recipients.'
             messages.add_message(request, messages.SUCCESS, message)
         except EmailCampaign.DoesNotExist:
             campaign = EmailCampaign.objects.create(
@@ -144,6 +146,18 @@ def email_campaign_edit_process_view(request):
     if not positive_value_exists(email_campaign_id):
         messages.add_message(request, messages.ERROR, 'Email campaign not created or saved.')
 
+    # Find all existing manually entered recipients for this campaign so we can remove them if they don't come in
+    manually_entered_recipients = []
+    manually_entered_recipients_found = False
+    if positive_value_exists(email_campaign_id):
+        try:
+            queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=email_campaign_id)
+            queryset = queryset.filter(manual_entry=True)
+            manually_entered_recipients = list(queryset)
+            manually_entered_recipients_found = True
+        except Exception as e:
+            status += f'ERROR_RETRIEVING_MANUALLY_ENTERED_RECIPIENTS: {e} '
+
     # Save recipients
     if positive_value_exists(recipient_ids) and positive_value_exists(email_campaign_id):
         accepted_we_vote_id_types = ['pol', 'voter']
@@ -152,9 +166,11 @@ def email_campaign_edit_process_view(request):
             # Reset possible values
             email_address = ''
             incoming_we_vote_id = ''
-            politician_we_vote_id = ''
+            politician_we_vote_id = ''  # TODO if incoming_we_vote_id is pol, then assign to this
             recipient_dict = {}
-            voter_we_vote_id = ''
+            recipient_object = None
+            save_recipient = False
+            voter_we_vote_id = ''  # TODO if incoming_we_vote_id is voter, then assign to this
             recipient_id = recipient_id.strip()
             # recipient_id is structured like "WE_VOTE_ID-EMAIL_ADDRESS"
             # recipient_id = "wv01voter111-dalemcgrew@gmail.com"  # Test recipient_id
@@ -172,7 +188,8 @@ def email_campaign_edit_process_view(request):
 
                 save_recipient = False  # Reset to be safe
                 recipient_dict.update({
-                    'email_campaign_id': email_campaign_id,
+                    'email_campaign_id':    email_campaign_id,
+                    'manually_added':       True,
                 })
 
                 if positive_value_exists(part2):
@@ -211,6 +228,7 @@ def email_campaign_edit_process_view(request):
                     if not positive_value_exists(incoming_we_vote_id):
                         save_email = True
                     elif email_associated_with_we_vote_id(email_address, incoming_we_vote_id):
+                        # Currently this is always true. Do we want to do this check here, or during augmentation below?
                         save_email = True
 
                 if save_email:
@@ -219,44 +237,88 @@ def email_campaign_edit_process_view(request):
                     })
                     save_recipient = True
 
-                if save_recipient:
-                    try:
-                        # Check to see if an EmailCampaignRecipient value exists that matches the email_campaign_id and
-                        #  any of these other values with a "Q" query parameter:
-                        #  email_address, voter_we_vote_id, or politician_we_vote_id
-                        queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=email_campaign_id)
-                        queryset = queryset.filter(
-                            Q(email_address=email_address) |
-                            Q(voter_we_vote_id=incoming_we_vote_id) |
-                            Q(politician_we_vote_id=incoming_we_vote_id)
-                        )
-                        queryset = queryset.distinct()
-                        if queryset.count() > 0:
-                            # This recipient already exists for this campaign
-                            recipient_list = list(queryset)
-                            recipient_object = recipient_list[0]
-                            # Update existing recipient with new values from recipient_dict
-                            for field_key, field_value in recipient_dict.items():
-                                if field_key != 'email_campaign_id':  # Don't update the primary lookup field
-                                    if hasattr(recipient_object, field_key):
-                                        setattr(recipient_object, field_key, field_value)
-                            recipient_object.save()
-                            status += f"EmailCampaignRecipient updated. "
-                        else:
-                            # Create a new EmailCampaignRecipient object
-                            recipient_object = EmailCampaignRecipient(**recipient_dict)
-                            recipient_object.save()
-                            status += f"New EmailCampaignRecipient added. "
-                    except Exception as e:
-                        status += f"Error saving recipient: {str(e)}. "
+            save_recipient_object = False
+            if save_recipient:
+                try:
+                    # Check to see if an EmailCampaignRecipient value exists that matches the email_campaign_id and
+                    #  any of these other values with a "Q" query parameter:
+                    #  email_address, voter_we_vote_id, or politician_we_vote_id
+                    queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=email_campaign_id)
+                    queryset = queryset.filter(
+                        Q(email_address=email_address) |
+                        Q(voter_we_vote_id=incoming_we_vote_id) |
+                        Q(politician_we_vote_id=incoming_we_vote_id)
+                    )
+                    # queryset = queryset.distinct()  # Is this necessary?
+                    if queryset.count() > 0:
+                        # This recipient already exists for this campaign
+                        recipient_list = list(queryset)
+                        recipient_object = recipient_list[0]
+                        # Update existing recipient with new values from recipient_dict
+                        for field_key, field_value in recipient_dict.items():
+                            if field_key != 'email_campaign_id':  # Don't update the primary lookup field
+                                if hasattr(recipient_object, field_key):
+                                    setattr(recipient_object, field_key, field_value)
+                        save_recipient_object = True
+                        status += f"EmailCampaignRecipient updated. "
+                    else:
+                        # Create a new EmailCampaignRecipient object
+                        recipient_object = EmailCampaignRecipient(**recipient_dict)
+                        manually_entered_recipients_found = True
+                        save_recipient_object = True
+                        status += f"New EmailCampaignRecipient added. "
+                except Exception as e:
+                    status += f"Error saving recipient: {str(e)}. "
+
+            if save_recipient_object:
+                # ##################################
+                # Augment the recipient
+                # If there is an email_address, but no voter_we_vote_id or politician_we_vote_id,
+                #  try to find the voter or politician, in that order (voter first)
+                #  NOTE: giving voter record matching preference seems like the right direction, but we might find that
+                #  trying to match to politician before voter *might* make more sense.
+                # If there is a voter_we_vote_id or politician_we_vote_id, but no email_address, find the email_address
+                results = augment_email_campaign_recipient(recipient_object)
+                if results['success'] and results['save_changes']:
+                    recipient_object = results['email_campaign_recipient']
+                    status += "AUGMENTED_RECIPIENT_SUCCESS "
+
+                recipient_object.save()
+
+                # And now remove this object from manually_entered_recipients. Any manually_entered_recipients entries
+                #  that remain after this loop can be deleted from the database.
+                if manually_entered_recipients_found:
+                    # Loop through the manually_entered_recipients list and remove any EmailCampaignRecipient objects
+                    #  from the list that match the current recipient_object, whether it be by email address,
+                    #  voter_we_vote_id, or politician_we_vote_id.
+                    for recipient in manually_entered_recipients[:]:
+                        if recipient.email_address == recipient_object.email_address or \
+                                recipient.voter_we_vote_id == recipient_object.voter_we_vote_id or \
+                                recipient.politician_we_vote_id == recipient_object.politician_we_vote_id:
+                            manually_entered_recipients.remove(recipient)
+                            status += "REMOVED_RECIPIENT_FROM_LIST "
+
+        if manually_entered_recipients_found:
+            # Any recipients still in the manually_entered_recipients list should be deleted from the database
+            for recipient in manually_entered_recipients:
+                recipient.delete()
+                status += "REMOVED_RECIPIENT_FROM_DB "
 
     if positive_value_exists(send_button_clicked):
+        # Prepare the EmailCampaignRecipients from the EmailRecipientTemplate
+        from email_outbound.controllers_email_campaign import generate_email_campaign_recipients_from_recipient_template
+        # Here when we generate the campaign recipients from recipient_templates, and we populate them with rich data
+        generate_results = generate_email_campaign_recipients_from_recipient_template(
+            email_campaign_id=email_campaign_id)
+
         # Send the email
         from email_outbound.controllers_email_campaign import email_campaign_send
         send_results = email_campaign_send(email_campaign_id=email_campaign_id)
 
-        messages.add_message(request, messages.SUCCESS, 'Email sent!')
-
+        if send_results['success']:
+            messages.add_message(request, messages.SUCCESS, 'Email sent!')
+        else:
+            messages.add_message(request, messages.ERROR, 'Error sending email: ' + send_results['status'])
         redirect_url = reverse('email_outbound:email_campaign_edit') + \
             "?google_civic_election_id=" + str(google_civic_election_id) + \
             "&state_code=" + str(state_code)
@@ -301,8 +363,8 @@ def email_campaign_edit_view(request):
                     if positive_value_exists(recipient.organization_we_vote_id) else '',
                     'politician_we_vote_id': recipient.politician_we_vote_id
                     if positive_value_exists(recipient.politician_we_vote_id) else '',
-                    'recipient_name': recipient.recipient_name
-                    if positive_value_exists(recipient.recipient_name) else '',
+                    'recipient_full_name': recipient.recipient_full_name
+                    if positive_value_exists(recipient.recipient_full_name) else '',
                     'voter_we_vote_id': recipient.voter_we_vote_id
                     if positive_value_exists(recipient.voter_we_vote_id) else '',
                 }
@@ -363,6 +425,7 @@ def email_campaign_edit_view(request):
         'email_campaign': email_campaign,
         'saved_campaigns': saved_campaigns,
         'campaign_recipients': json.dumps(campaign_recipients),
+        'token_list': EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS,
     }
 
     return render(request, 'email_outbound/email_campaign_edit.html', template_values)
@@ -415,23 +478,19 @@ def email_template_edit_view(request):
         selected_folder_id = int(default_folder_id)
 
     # customization tokens
-    TOKEN_LIST = [
-        "[official email]",
-        "[person first name]",
-        "[person last name]",
-        "[person full name]",
-        "[personal email]",
-        ]
+
+    messages_on_stage = get_messages(request)
 
     template_values = {
         # 'election':               election,
         # 'election_list':          election_list,
         'email_template':           email_template,
         'folder_list':              EmailTemplateFolder.objects.filter(deleted=False).order_by('email_template_name'),
-        'selected_folder_id':       selected_folder_id,
         'google_civic_election_id': google_civic_election_id,
+        'messages_on_stage':        messages_on_stage,
+        'selected_folder_id':       selected_folder_id,
         'state_code':               state_code,
-        'token_list':               TOKEN_LIST,
+        'token_list':               EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS,
         # 'state_list':             sorted_state_list,
     }
     return render(request, 'email_outbound/email_template_edit.html', template_values)
