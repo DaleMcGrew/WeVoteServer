@@ -3,6 +3,7 @@ from wevote_tokens.enums import TokenTypes, TokenHeaders, TokenResponse, Prefixe
 from wevote_functions.functions import positive_value_exists
 from django.http import HttpResponse, StreamingHttpResponse
 import re
+import json
 
 class TokensManager():
 
@@ -182,6 +183,9 @@ class TokensManager():
         if token_type == TokenTypes.SINGLE_USE.value:
             # breakpoint()
             token_info = SingleUseTokenManager.authenticate_retrieve_token(token_id, token_key, scope)
+            if token_info['success']:
+                token_info['expiration_datetime'] = \
+                    token_info['expiration_datetime'].strftime('%Y-%m-%d %H:%M:%S')
 
             # This is for retries in case of faulty api connection
             # if the previous token key was used, its likely that
@@ -218,10 +222,11 @@ class TokensManager():
     @staticmethod
     def add_response_token_info_headers(response, token_response, reject_keys=None):
         if isinstance(response, HttpResponse) and not isinstance(response, StreamingHttpResponse):
-            headers = TokensManager.convert_keys_to_header_keys(token_response, reject_keys=reject_keys)
-            for key, value in headers.items():
-                if value is not None:
-                    response[key] = value
+            headers_mapping = TokenResponse.HEADERS_MAPPING.get_value()
+
+            for key, value in token_response.items():
+                if key in headers_mapping.keys() and value is not None:
+                    response[headers_mapping[key]] = json.dumps(value)
 
         return response
 
@@ -292,47 +297,8 @@ class TokensManager():
         raise ValueError("Token Key Must Be a String or None")
 
     @staticmethod
-    def convert_keys_to_header_keys(dict_data, reject_keys=None):
-        if not isinstance(dict_data, dict):
-            raise ValueError("dict_data Must Be a Dict")
-
-        if not isinstance(reject_keys, (set, type(None))):
-            raise ValueError("Reject Keys Must Be a Set or None")
-
-        if reject_keys is None:
-            reject_keys = set()
-
-        result = {}
-        sep = '.'
-        stack = [((), dict_data)]  # (key_path_tuple, current_dict)
-
-        while stack:
-            path, current = stack.pop()
-
-            for key, value in current.items():
-                if str(key).lower() in reject_keys or key in reject_keys:
-                    continue
-
-                key = str(key).lower()
-                key = [p for p in re.split(r'[^a-zA-Z0-9]', key) if p]
-                key = '-'.join(key_word.capitalize() for key_word in key)
-
-                new_path = path + (key,)
-
-                if isinstance(value, dict):
-                    # push deeper branch onto stack
-                    stack.append((new_path, value))
-                else:
-                    # leaf value -> flatten
-                    result[Prefixes.HEADER_PREFIX.value + sep.join(new_path)] = value
-
-        return result
-
-    @staticmethod
     def convert_headers_to_dict(headers):
-        sep = '.'
-        prefix = Prefixes.HEADER_PREFIX.value
-            
+        headers_mapping = TokenResponse.HEADERS_MAPPING.get_value()
 
         try:
             headers = dict(headers)
@@ -341,30 +307,8 @@ class TokensManager():
 
         result = {}
 
-        for header_key, value in headers.items():
-            if header_key.startswith(prefix):
-                key_path = header_key[len(prefix):]
-            else:
-                key_path = header_key
-            
-            key_path = key_path.replace('-','_')
-            key_path = key_path.lower()
-
-            # Split into nesting levels
-            parts = key_path.split(sep)
-
-            current = result
-            for part in parts[:-1]:
-                # Create nested dicts as needed
-                current = current.setdefault(part, {})
-
-            # Assign leaf value
-            if value == 'True' or value == 'False':
-                value = value == 'True'
-            
-            if value != 'None':
-                current[parts[-1]] = value
-            else:
-                current[parts[-1]] = None
+        for key, header_key in headers_mapping.items():
+            if header_key in headers:
+                result[key] = json.loads(headers[header_key])
 
         return result

@@ -12,6 +12,8 @@ class TokenHeaders(Enum):
 
     TOKEN_EXPIRATION = Prefixes.HEADER_PREFIX.value + "Token-Expiration"
     TOKEN_MESSAGE = Prefixes.HEADER_PREFIX.value + "Token-Message"
+    TOKEN_CREATION = Prefixes.HEADER_PREFIX.value + "Token-Creation"
+    TOKEN_AUTHENTICATION = Prefixes.HEADER_PREFIX.value + "Token-Authentication"
 
     USER_ID = Prefixes.HEADER_PREFIX.value + "User-Id"
     TOKEN_KEY = Prefixes.HEADER_PREFIX.value + "Token-Key"
@@ -27,6 +29,12 @@ class TokenTypes(Enum):
     SINGLE_USE = "single_use"
 
 class TokenResponse(Enum):
+    # MAKE SURE TO UPDATE THIS WHEN ADDING NEW HEADERS OR KEYS
+    HEADERS_MAPPING = {
+        'token_creation': TokenHeaders.TOKEN_CREATION.value,
+        'token_authentication': TokenHeaders.TOKEN_AUTHENTICATION.value,
+    }
+
     TOKEN_RESPONSE = {
         'token_creation': None,
         'token_authentication': None,

@@ -69,16 +69,10 @@ class TestTokensManager(TestCase):
         } 
 
         cls.response_token_info = {
-            'level_1': 1,
-            'level_2': {
-                'level_3': 3
-                },
-            'level_4': {
-                'level_5': {
-                    'level_6': 6
-                    }
-                },
-            'level_7': None,
+            **TokenResponse.HEADERS_MAPPING.get_value(),
+            **{
+                'misc_headers': 'misc_value',
+            }
         }
     
     def setUp(self):
@@ -212,6 +206,7 @@ class TestTokensManager(TestCase):
             self.assertEqual(response['status'], 'TOKEN CREATED', "Status Should Be 'TOKEN CREATED'")
             self.assertIsNone(response['error_message'], "Error Message Should Be None")
             self.assertEqual(response['token_info'], mock_return_value, "Token Info Should Be the Mock Return Value")
+            self.assertIsInstance(response['token_info']['expiration_datetime'], str, "Expiration Datetime Should Be a String")
 
     def test_token_creation_invalid_token_type(self):
         request_token_info = self.request_token_info
@@ -345,6 +340,7 @@ class TestTokensManager(TestCase):
             self.assertEqual(response['status'], 'TOKEN RETRIEVED AND AUTHENTICATED', "Status Should Be 'TOKEN RETRIEVED AND AUTHENTICATED'")
             self.assertIsNone(response['error_message'], "Error Message Should Be None")
             self.assertIsNotNone(response['token_info'], "Token Info Should return a value")
+            self.assertIsInstance(response['token_info']['expiration_datetime'], str, "Expiration Datetime Should Be a String")
 
     def test_token_authentication_first_token_not_found(self):
         request_token_info = self.request_token_info
@@ -374,16 +370,29 @@ class TestTokensManager(TestCase):
         test_response = self.response
         test_token_response = self.response_token_info
 
-        expected_response_headers = {**test_response.headers,
-            **{
-            'X-Level-1': '1',
-            'X-Level-2.Level-3': '3',
-            'X-Level-4.Level-5.Level-6': '6'
-            }}
+        expected_headers = {}
+        headers_mapping = TokenResponse.HEADERS_MAPPING.get_value()
+        for key, value in headers_mapping.items():
+            expected_headers[value] = json.dumps(value)
+
+        expected_response_headers = {
+            **test_response.headers,
+            **expected_headers
+        }
 
         response = self.manager.add_response_token_info_headers(test_response, test_token_response)
 
         self.assertEqual(response.headers, expected_response_headers, "Response Headers Should {expected_response_headers} but was {response.headers}")
+
+    def test_add_response_token_info_headers_returns_no_empty_headers(self):
+        test_response = self.response
+        test_token_response = self.response_token_info
+
+        for key, value in test_token_response.items():
+            test_token_response[key] = None
+
+        response = self.manager.add_response_token_info_headers(test_response, test_token_response)
+
 
     def test_add_response_token_info_headers_returns_no_streaming_headers(self):
         test_response = StreamingHttpResponse()
@@ -520,49 +529,3 @@ class TestTokensManagerHelperFunctions(TestCase):
         with self.assertRaisesMessage(ValueError, "Token Key Must Be a String or None"):
             self.manager.encode_token_key(non_string)
 
-    #########################################################
-    # test convert_keys_to_header_keys
-    #########################################################
-    def test_convert_keys_to_header_keys_returns_dict(self):
-        dict_data = {'key1': 'value1', 'key2': 'value2'}
-        
-        response = self.manager.convert_keys_to_header_keys(dict_data)
-        
-        self.assertIsInstance(response, dict, "Keys Should Be Converted to Header Keys")
-
-    def test_convert_keys_to_header_keys_returns_flattened_header_keys(self):
-        dict_data = {'key_1': 'value', 'key_2': {'key_3': 'value', 'key_4': {'key_5': 'value'}}}
-        expected_response = {'X-Key-1': 'value', 'X-Key-2.Key-3': 'value', 'X-Key-2.Key-4.Key-5': 'value'}
-        
-        response = self.manager.convert_keys_to_header_keys(dict_data)
-
-        self.assertEqual(response, expected_response, "Keys Should Be Flattened to Header Keys but response was {response}")
-
-    def test_convert_keys_to_header_keys_with_reject_keys(self):
-        dict_data = {'key_1': 'value', 'key_2': {'key_3': 'value', 'key_4': {'key_5': 'value'}}}
-        reject_keys = {'key_1', 'key_3'}
-        expected_response = {'X-Key-2.Key-4.Key-5': 'value'}
-        
-        response = self.manager.convert_keys_to_header_keys(dict_data, reject_keys=reject_keys)
-        
-        self.assertEqual(response, expected_response, "{reject_keys} should be rejected but response was {response}")
-    
-    def test_convert_keys_to_header_keys_returns_empty(self):
-        empty_dict_data = {}
-        
-        response = self.manager.convert_keys_to_header_keys(empty_dict_data)
-        
-        self.assertEqual(response, {}, "Keys Should Be an Empty Dict")
-    
-    def test_convert_keys_to_header_invalid_dict_data(self):
-        non_dict = 1234567890
-        
-        with self.assertRaisesMessage(ValueError, "dict_data Must Be a Dict"):
-            self.manager.convert_keys_to_header_keys(non_dict)
-    
-    def test_convert_keys_to_header_invalid_reject_keys(self):
-        non_set = []
-        dict_data = {'key1': 'value1', 'key2': 'value2'}
-        
-        with self.assertRaisesMessage(ValueError, "Reject Keys Must Be a Set or None"):
-            self.manager.convert_keys_to_header_keys(dict_data, reject_keys=non_set)
