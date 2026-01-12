@@ -88,7 +88,8 @@ from apis_v1.documentation_source import \
     voter_split_into_two_accounts_doc, \
     voter_stop_opposing_save_doc, \
     voter_stop_supporting_save_doc, voter_supporting_save_doc, voter_twitter_save_to_current_account_doc, \
-    voter_update_doc, voter_verify_secret_code_doc, email_ballot_data_doc, backup_one_table_to_s3_doc
+    voter_update_doc, voter_verify_secret_code_doc, email_ballot_data_doc, backup_one_table_to_s3_doc, \
+    voter_reviewed_app_doc
 from config.base import get_environment_variable
 from voter.models import voter_setup
 from wevote_functions.functions import get_voter_api_device_id, set_voter_api_device_id, positive_value_exists
@@ -1746,6 +1747,14 @@ def voter_plan_save_doc_view(request):
     template_values['voter_api_device_id'] = get_voter_api_device_id(request)
     return render(request, 'apis_v1/api_doc_page.html', template_values)
 
+def voter_reviewed_app_doc_view(request):
+    """
+    Show documentation about voterReviewedApp
+    """
+    url_root = WE_VOTE_SERVER_ROOT_URL
+    template_values = voter_reviewed_app_doc.voter_reviewed_app_template_values(url_root)
+    template_values['voter_api_device_id'] = get_voter_api_device_id(request)
+    return render(request, 'apis_v1/api_doc_page.html', template_values)
 
 def voter_contact_list_retrieve_doc_view(request):
     """

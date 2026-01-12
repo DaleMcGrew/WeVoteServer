@@ -3,8 +3,10 @@
 # -*- coding: UTF-8 -*-
 
 import json
+from datetime import datetime, timezone
 from time import time
-
+from sendgrid import sendgrid
+from sendgrid.helpers.mail import Mail, Email, To, Content
 from django.contrib import messages
 from django.core.exceptions import RequestDataTooBig
 from django.http import HttpResponse
@@ -54,7 +56,7 @@ from voter.models import BALLOT_ADDRESS, fetch_voter_we_vote_id_from_voter_devic
     PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKNOWN, \
     PROFILE_IMAGE_TYPE_UPLOADED, \
     VoterAddressManager, VoterDeviceLink, VoterDeviceLinkManager, VoterManager, Voter, \
-    voter_has_authority
+    voter_has_authority, APP_REVIEW_NEGATIVE
 from voter_guide.controllers import voter_follow_all_organizations_followed_by_organization_for_api
 from wevote_functions.functions import convert_to_int, get_maximum_number_to_retrieve_from_request, \
     get_voter_device_id, is_voter_device_id_valid, positive_value_exists
@@ -3420,6 +3422,82 @@ def voter_update_view(request):  # voterUpdate
     response = HttpResponse(json.dumps(json_data), content_type='application/json')
     return response
 
+def voter_has_reviewed_an_app(request):    # voterReviewedApp
+    """
+    Make a record of a voter reviewing an app, and create a ZenDesk record if a negative review was bypassed
+    :param request:
+    :return:
+    """
+    voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
+    voter_manager = VoterManager()
+    voter_results = voter_manager.retrieve_voter_from_voter_device_id(voter_device_id)
+    voter = voter_results['voter']
+    we_vote_id = voter.we_vote_id
+    email = voter.email
+
+    app_review_body = request.GET.get('app_review_body_negative_bypass', '')
+    app_review_state = request.GET.get('app_review_state', '').upper()
+    app_review_version  = request.GET.get('app_review_version', '')
+    app_review_platform = request.GET.get('app_review_platform', '')
+    app_review_date = str(datetime.now(timezone.utc))             # SQL datetime now, timezone aware
+
+    json_data = {
+        'success': True,
+        'status': '',
+        'voter_device_id': voter_device_id,
+        'we_vote_id': we_vote_id,
+        'app_review_state': app_review_state,
+        'app_review_date': app_review_date,
+        'app_review_version': app_review_version,
+        'app_review_platform': app_review_platform,
+        'email_api_status_code': 'none',
+    }
+
+    if( not positive_value_exists(voter_device_id) or
+          not positive_value_exists(we_vote_id) or
+          not positive_value_exists(app_review_state) or
+          not positive_value_exists(app_review_version) or
+          not positive_value_exists(app_review_platform) ):
+        json_data.success = False
+        json_data.status = 'EMAIL_WAS_NOT_SENT_AND_THE_VOTER_WAS_NOT_UPDATED'
+    else:
+        response_status_code = ''
+        if app_review_state.upper() == APP_REVIEW_NEGATIVE:
+            json_data["we_vote_id"] = we_vote_id
+            json_data["email"] = email
+            json_data['first_name'] = voter.first_name
+            vln = voter.last_name
+            json_data['last_name'] = vln
+            id_string = f"[voter: {we_vote_id}, email: {email}, first: {voter.first_name}, last: {voter.last_name}, platform: {voter.app_review_platform}, version:  {voter.app_review_version}]"
+
+            sg = sendgrid.SendGridAPIClient(api_key=get_environment_variable("SENDGRID_API_KEY"))
+            # We do not want impersonal automatic replies from ZenDesk for negative comments
+            # And we don't want a zendesk record if not negative
+            from_email = Email('donotreply@wevote.us')
+            to_email = To('support@wevote.us')
+            subject = "Negative App Review bypassed in Cordova"
+            content = Content("text/plain",
+                          id_string + '\n\n' + app_review_body)
+            mail = Mail(from_email, to_email, subject, content)
+
+            # Get a JSON-ready representation of the Mail object
+            mail_json = mail.get()
+
+            # Send an HTTP POST request to /mail/send
+            response = sg.client.mail.send.post(request_body=mail_json)
+            response_status_code = response.status_code
+
+        voter.app_review_state = app_review_state.upper()
+        voter.app_review_date = app_review_date
+        voter.app_review_version = app_review_version
+        voter.app_review_platform = app_review_platform
+        voter.save()
+
+        json_data["status"] = 'VOTER_UPDATED_AND_EMAIL_SENT'
+        json_data["email_api_status_code"] = response_status_code
+
+    response = HttpResponse(json.dumps(json_data), content_type='application/json')
+    return response
 
 def voter_notification_settings_update_view(request):  # voterNotificationSettingsUpdate
     """
