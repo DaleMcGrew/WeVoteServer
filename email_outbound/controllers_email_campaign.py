@@ -21,12 +21,24 @@ logger = wevote_functions.admin.get_logger(__name__)
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
 
-def augment_email_campaign_recipient(email_campaign_recipient, politicians_dict={}, voters_dict={}):
+def augment_email_campaign_recipient(
+        email_campaign_recipient,
+        campaignx_list_dict={},
+        politicians_dict={},
+        sender_object={},
+        voters_dict={}):
     # NOTE: We may want to bulk retrieve email addresses, voter_we_vote_ids, or politician_we_vote_ids outside
     #  of this function to reduce calls to the database
     save_changes = False
     status = ''
     success = True
+
+    if hasattr(sender_object, 'first_name'):
+        email_campaign_recipient.sender_voter_we_vote_id = sender_object.we_vote_id
+        email_campaign_recipient.sender_first_name = sender_object.first_name
+        email_campaign_recipient.sender_full_name = sender_object.get_full_name()
+        email_campaign_recipient.sender_last_name = sender_object.last_name
+        save_changes = True
 
     # Is this email claimed by an existing voter?
     recipient_email_address = ''
@@ -40,11 +52,29 @@ def augment_email_campaign_recipient(email_campaign_recipient, politicians_dict=
             temp_voter_we_vote_id, recipient_email_address, read_only=True)
         if find_verified_email_results['email_address_object_found']:
             verified_email_address_object = find_verified_email_results['email_address_object']
-            verified_email_address_we_vote_id = verified_email_address_object.we_vote_id
+            email_campaign_recipient.recipient_email_we_vote_id = verified_email_address_object.we_vote_id
+            email_campaign_recipient.recipient_voter_we_vote_id = verified_email_address_object.voter_we_vote_id
             # The only person who will see this is someone who has access to this verified_email_address
-            recipient_email_subscription_secret_key = verified_email_address_object.subscription_secret_key
-            # if verified_email_address_object.voter_we_vote_id != voter_we_vote_id:
-            #     email_address_already_owned_by_other_voter = True
+            email_campaign_recipient.recipient_email_subscription_secret_key = \
+                verified_email_address_object.subscription_secret_key
+
+    # Retrieve the recipient_voter
+    if positive_value_exists(email_campaign_recipient.recipient_voter_we_vote_id):
+        recipient_voter = voters_dict.get(email_campaign_recipient.recipient_voter_we_vote_id, {})
+        if not hasattr(recipient_voter, 'first_name'):
+            try:
+                voter_manager = VoterManager()
+                results = voter_manager.retrieve_voter_by_we_vote_id(email_campaign_recipient.recipient_voter_we_vote_id)
+                if results['voter_found']:
+                    recipient_voter = results['voter']
+                    voters_dict[email_campaign_recipient.recipient_voter_we_vote_id] = recipient_voter
+            except Exception as e:
+                status += "VOTER_RETRIEVE_FAILED: " + str(e) + " "
+        if hasattr(recipient_voter, 'first_name'):
+            email_campaign_recipient.recipient_first_name = recipient_voter.first_name
+            email_campaign_recipient.recipient_full_name = recipient_voter.get_full_name()
+            email_campaign_recipient.recipient_last_name = recipient_voter.last_name
+            save_changes = True
 
     # Populate politician values from database so we can use in merge_email_campaign_recipient_with_template
     if positive_value_exists(email_campaign_recipient.politician_we_vote_id):
@@ -64,31 +94,39 @@ def augment_email_campaign_recipient(email_campaign_recipient, politicians_dict=
             email_campaign_recipient.politician_seo_friendly_path = politician.seo_friendly_path
             email_campaign_recipient.politician_state_code = politician.state_code
             email_campaign_recipient.supporters_count = politician.supporters_count
-        # recipient_email_subscription_secret_key
+            save_changes = True
+
+        # Find Campaign Linked to this Politician so we can get the passkey
+        try:
+            from campaign.models import CampaignX
+            # Cannot be read only because we may need to update passkey below
+            queryset = CampaignX.objects.all()
+            queryset = queryset.filter(linked_politician_we_vote_id=email_campaign_recipient.politician_we_vote_id)
+            linked_campaignx_list = list(queryset)
+            if len(linked_campaignx_list) > 0:
+                linked_campaignx = linked_campaignx_list[0]
+                if linked_campaignx and positive_value_exists(linked_campaignx.passkey_for_creating_campaign_owner):
+                    email_campaign_recipient.politician_passkey = linked_campaignx.passkey_for_creating_campaign_owner
+                    save_changes = True
+        except Exception as e:
+            status += "CAMPAIGNX_RETRIEVE_FAILED: " + str(e) + " "
 
     return {
+        'campaignx_list_dict':      campaignx_list_dict,
         'email_campaign_recipient': email_campaign_recipient,
         'politicians_dict':         politicians_dict,
         'save_changes':             save_changes,
         'status':                   status,
         'success':                  success,
+        'voters_dict':              voters_dict,
     }
 
 
 def email_campaign_send(
-        email_campaign_id='',
-        scheduled_by_voter_we_vote_id=''):
+        email_campaign={},
+        email_campaign_id=''):
     status = ""
     success = True
-
-    # Get the voter who is triggering the sending of the email campaign
-    if positive_value_exists(scheduled_by_voter_we_vote_id):
-        voter_manager = VoterManager()
-        sender_voter_results = voter_manager.retrieve_voter_by_we_vote_id(scheduled_by_voter_we_vote_id)
-        if sender_voter_results['voter_found']:
-            sender_voter = sender_voter_results['voter']
-        else:
-            status += "SCHEDULED_BY_VOTER_NOT_FOUND "
 
     if not positive_value_exists(email_campaign_id):
         status += "EMAIL_CAMPAIGN_ID_REQUIRED "
@@ -97,20 +135,21 @@ def email_campaign_send(
             'success':  False,
         }
 
-    try:
-        email_campaign = EmailCampaign.objects.get(id=email_campaign_id)
-    except EmailCampaign.DoesNotExist:
-        status += "SEND_EMAIL_CAMPAIGN_NOT_FOUND "
-        return {
-            'status':   status,
-            'success':  False,
-        }
-    except Exception as e:
-        status += f'PROBLEM_RETRIEVING_EMAIL_CAMPAIGN: {e}'
-        return {
-            'status':   status,
-            'success':  False,
-        }
+    if not hasattr(email_campaign, 'email_body_template_raw'):
+        try:
+            email_campaign = EmailCampaign.objects.get(id=email_campaign_id)
+        except EmailCampaign.DoesNotExist:
+            status += "SEND_EMAIL_CAMPAIGN_NOT_FOUND "
+            return {
+                'status':   status,
+                'success':  False,
+            }
+        except Exception as e:
+            status += f'PROBLEM_RETRIEVING_EMAIL_CAMPAIGN: {e}'
+            return {
+                'status':   status,
+                'success':  False,
+            }
 
     # Get the email_body_template_raw for this campaign - the EmailTemplate was the starting point,
     #  buy may have been edited
@@ -411,17 +450,30 @@ def merge_email_campaign_recipient_with_template(
     # We want to replace all instances of these variables in the template with the recipient's specific information
     # Get values from email_campaign_recipient object, pulled from the database in augment_email_campaign_recipient
     if email_campaign_recipient:
+        # These are all related to EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
         # Add link to subscription key
 
         token_replacements['[my_first_name]'] = getattr(email_campaign_recipient, 'sender_first_name', '')
-
         token_replacements['[my_full_name]'] = getattr(email_campaign_recipient, 'sender_full_name', '')
-
         token_replacements['[my_last_name]'] = getattr(email_campaign_recipient, 'sender_last_name', '')
+
+        #
+        open_tracking_pixel_html = ''  # WV-2447 "Open Tracking for Email Campaign System" should go here
+        email_footer_html = \
+            "<br />This email uses tracking to understand whether messages are opened " \
+            "so we can improve our communications. Learn more: [Privacy Policy]." \
+            "{open_tracking_pixel_html}<br />".format(
+                open_tracking_pixel_html=open_tracking_pixel_html,
+            )
+        token_replacements['[email_footer]'] = email_footer_html
 
         political_party = getattr(email_campaign_recipient, 'political_party', '')
         token_replacements = \
             replace_token_with_unknown_if_no_value('political_party', political_party, token_replacements)
+
+        politician_passkey = getattr(email_campaign_recipient, 'politician_passkey', '')
+        token_replacements = \
+            replace_token_with_unknown_if_no_value('politician_passkey', politician_passkey, token_replacements)
 
         token_replacements['[seo_friendly_path]'] = \
             getattr(email_campaign_recipient, 'politician_seo_friendly_path', '')

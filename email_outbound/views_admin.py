@@ -99,46 +99,48 @@ def email_campaign_edit_process_view(request):
         except ValueError:
             pass
 
-    # Create or update campaign
+    # Create or update email_campaign
+    email_campaign = {}
     if email_campaign_id:
         try:
-            campaign = EmailCampaign.objects.get(id=email_campaign_id)
-            campaign.email_campaign_name = campaign_title
-            campaign.email_template_id = email_template_id
-            campaign.email_subject_template_raw = email_subject
-            campaign.email_body_template_raw = email_body
-            campaign.scheduled_send_time = scheduled_send_time
-            campaign.save()
+            email_campaign = EmailCampaign.objects.get(id=email_campaign_id)
+            email_campaign.email_campaign_name = campaign_title
+            email_campaign.email_template_id = email_template_id
+            email_campaign.email_subject_template_raw = email_subject
+            email_campaign.email_body_template_raw = email_body
+            email_campaign.scheduled_send_time = scheduled_send_time
+            email_campaign.save()
             
-            # # Clear existing recipients for this campaign
+            # # Clear existing recipients for this email_campaign
             # # TODO: We want to update this to only delete entries below that have been removed from the form
-            # deleted_count, result_dict = EmailCampaignRecipient.objects.filter(email_campaign_id=campaign.id).delete()
+            # deleted_count, result_dict = EmailCampaignRecipient.objects.filter(
+            # email_campaign_id=email_campaign.id).delete()
             message = 'Email campaign updated.'
             # if deleted_count > 0:
             #     message += f' Deleted {deleted_count} existing recipients.'
             messages.add_message(request, messages.SUCCESS, message)
         except EmailCampaign.DoesNotExist:
-            campaign = EmailCampaign.objects.create(
+            email_campaign = EmailCampaign.objects.create(
                 email_campaign_name=campaign_title,
                 email_template_id=email_template_id,
                 email_subject_template_raw=email_subject,
                 email_body_template_raw=email_body,
                 scheduled_send_time=scheduled_send_time,
             )
-            email_campaign_id = campaign.id
+            email_campaign_id = email_campaign.id
             messages.add_message(request, messages.SUCCESS, 'Email campaign created.')
         except Exception as e:
             messages.add_message(request, messages.ERROR, f'Could not update email campaign. {e}')
     else:
         try:
-            campaign = EmailCampaign.objects.create(
+            email_campaign = EmailCampaign.objects.create(
                 email_campaign_name=campaign_title,
                 email_template_id=email_template_id,
                 email_subject_template_raw=email_subject,
                 email_body_template_raw=email_body,
                 scheduled_send_time=scheduled_send_time,
             )
-            email_campaign_id = campaign.id
+            email_campaign_id = email_campaign.id
             messages.add_message(request, messages.SUCCESS, 'Email campaign created.')
         except Exception as e:
             messages.add_message(request, messages.ERROR, f'Could not create email campaign. {e}')
@@ -146,17 +148,40 @@ def email_campaign_edit_process_view(request):
     if not positive_value_exists(email_campaign_id):
         messages.add_message(request, messages.ERROR, 'Email campaign not created or saved.')
 
-    # Find all existing manually entered recipients for this campaign so we can remove them if they don't come in
-    manually_entered_recipients = []
-    manually_entered_recipients_found = False
+    # Find all existing manually entered recipients for this email_campaign so we can remove them if they don't come in
+    manually_added_recipients = []
+    manually_added_recipients_found = False
     if positive_value_exists(email_campaign_id):
         try:
             queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=email_campaign_id)
-            queryset = queryset.filter(manual_entry=True)
-            manually_entered_recipients = list(queryset)
-            manually_entered_recipients_found = True
+            queryset = queryset.filter(manually_added=True)
+            manually_added_recipients = list(queryset)
+            manually_added_recipients_found = True
         except Exception as e:
-            status += f'ERROR_RETRIEVING_MANUALLY_ENTERED_RECIPIENTS: {e} '
+            status += f'ERROR_RETRIEVING_MANUALLY_ADDED_RECIPIENTS: {e} '
+
+    # Retrieve the sender's voter_object if we are sending the email
+    sender_object = {}
+    if positive_value_exists(send_button_clicked):
+        from voter.models import VoterManager
+        from wevote_functions.functions import get_voter_api_device_id
+
+        voter_api_device_id = get_voter_api_device_id(request)
+        voter_manager = VoterManager()
+        voter_results = voter_manager.retrieve_voter_from_voter_device_id(voter_api_device_id, read_only=False)
+
+        if voter_results['voter_found']:
+            sender_object = voter_results['voter']
+            status += "SENDER_VOTER_FOUND "
+        else:
+            status += "SENDER_VOTER_NOT_FOUND "
+            messages.add_message(request, messages.ERROR, 'Could not identify sender voter.')
+
+    # TODO: Consider collecting some ids in a pre-processing loop?
+
+    campaignx_list_dict = {}
+    politicians_dict = {}
+    voters_dict = {}
 
     # Save recipients
     if positive_value_exists(recipient_ids) and positive_value_exists(email_campaign_id):
@@ -264,7 +289,7 @@ def email_campaign_edit_process_view(request):
                     else:
                         # Create a new EmailCampaignRecipient object
                         recipient_object = EmailCampaignRecipient(**recipient_dict)
-                        manually_entered_recipients_found = True
+                        manually_added_recipients_found = True
                         save_recipient_object = True
                         status += f"New EmailCampaignRecipient added. "
                 except Exception as e:
@@ -278,29 +303,37 @@ def email_campaign_edit_process_view(request):
                 #  NOTE: giving voter record matching preference seems like the right direction, but we might find that
                 #  trying to match to politician before voter *might* make more sense.
                 # If there is a voter_we_vote_id or politician_we_vote_id, but no email_address, find the email_address
-                results = augment_email_campaign_recipient(recipient_object)
+                results = augment_email_campaign_recipient(
+                    recipient_object,
+                    campaignx_list_dict=campaignx_list_dict,
+                    politicians_dict=politicians_dict,
+                    sender_object=sender_object,
+                    voters_dict=voters_dict)
                 if results['success'] and results['save_changes']:
                     recipient_object = results['email_campaign_recipient']
                     status += "AUGMENTED_RECIPIENT_SUCCESS "
+                    campaignx_list_dict = results['campaignx_list_dict']
+                    politicians_dict = results['politicians_dict']
+                    voters_dict = results['voters_dict']
 
-                recipient_object.save()
+                    recipient_object.save()
 
-                # And now remove this object from manually_entered_recipients. Any manually_entered_recipients entries
+                # And now remove this object from manually_added_recipients. Any manually_added_recipients entries
                 #  that remain after this loop can be deleted from the database.
-                if manually_entered_recipients_found:
-                    # Loop through the manually_entered_recipients list and remove any EmailCampaignRecipient objects
+                if manually_added_recipients_found:
+                    # Loop through the manually_added_recipients list and remove any EmailCampaignRecipient objects
                     #  from the list that match the current recipient_object, whether it be by email address,
                     #  voter_we_vote_id, or politician_we_vote_id.
-                    for recipient in manually_entered_recipients[:]:
+                    for recipient in manually_added_recipients[:]:
                         if recipient.email_address == recipient_object.email_address or \
                                 recipient.voter_we_vote_id == recipient_object.voter_we_vote_id or \
                                 recipient.politician_we_vote_id == recipient_object.politician_we_vote_id:
-                            manually_entered_recipients.remove(recipient)
+                            manually_added_recipients.remove(recipient)
                             status += "REMOVED_RECIPIENT_FROM_LIST "
 
-        if manually_entered_recipients_found:
-            # Any recipients still in the manually_entered_recipients list should be deleted from the database
-            for recipient in manually_entered_recipients:
+        if manually_added_recipients_found:
+            # Any recipients still in the manually_added_recipients list should be deleted from the database
+            for recipient in manually_added_recipients:
                 recipient.delete()
                 status += "REMOVED_RECIPIENT_FROM_DB "
 
@@ -313,7 +346,7 @@ def email_campaign_edit_process_view(request):
 
         # Send the email
         from email_outbound.controllers_email_campaign import email_campaign_send
-        send_results = email_campaign_send(email_campaign_id=email_campaign_id)
+        send_results = email_campaign_send(email_campaign=email_campaign, email_campaign_id=email_campaign_id)
 
         if send_results['success']:
             messages.add_message(request, messages.SUCCESS, 'Email sent!')
