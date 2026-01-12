@@ -118,7 +118,7 @@ def do_webapp_autocomplete_proxy(request):
             "latitude": lat,
             "longitude": lon,
           },
-          "radius": 50000.0
+          "radius": 5000.0
         }
       },
     }
