@@ -81,8 +81,10 @@ EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS = [
     "[my_last_name]",
     "[my_full_name]",
     "[official_email]",
+    "[email_footer]",
     "[personal_email]",
     "[political_party]",
+    "[politician_passkey]",
     "[politician_photo]",
     "[recipient_first_name]",
     "[recipient_last_name]",
@@ -157,6 +159,7 @@ class EmailCampaignRecipient(models.Model):
     politician_first_name = models.CharField(max_length=255, null=True)
     politician_full_name = models.CharField(max_length=255, null=True)
     politician_last_name = models.CharField(max_length=255, null=True)
+    politician_passkey = models.CharField(max_length=25, null=True)
     politician_seo_friendly_path = models.CharField(max_length=255, null=True)
     politician_state_code = models.CharField(max_length=2, null=True)
     politician_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
