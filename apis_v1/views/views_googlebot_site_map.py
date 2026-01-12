@@ -93,7 +93,6 @@ def do_webapp_autocomplete_proxy(request):
 
     remote = request.META.get('REMOTE_ADDR')
     ip = remote if remote != '127.0.0.1' else '157.131.115.215'
-    print('ip', ip)
 
     if not positive_value_exists(lat) or not positive_value_exists(lon):
         try:
@@ -119,7 +118,7 @@ def do_webapp_autocomplete_proxy(request):
             "latitude": lat,
             "longitude": lon,
           },
-          "radius": 500.0
+          "radius": 50000.0
         }
       },
     }
