@@ -3468,7 +3468,8 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
             json_data['first_name'] = voter.first_name
             vln = voter.last_name
             json_data['last_name'] = vln
-            id_string = f"[voter: {we_vote_id}, email: {email}, first: {voter.first_name}, last: {voter.last_name}, platform: {voter.app_review_platform}, version:  {voter.app_review_version}]"
+            id_string = (f"[voter: {we_vote_id}, email: {email}, first: {voter.first_name}, last: {voter.last_name}, "
+            f"platform: {voter.app_review_platform}, version:  {voter.app_review_version}]")
 
             sg = sendgrid.SendGridAPIClient(api_key=get_environment_variable("SENDGRID_API_KEY"))
             # We do not want impersonal automatic replies from ZenDesk for negative comments
