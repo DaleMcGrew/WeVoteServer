@@ -101,6 +101,15 @@ PROFILE_IMAGE_TYPE_CURRENTLY_ACTIVE_CHOICES = (
     (PROFILE_IMAGE_TYPE_UPLOADED, 'Uploaded'),
 )
 
+APP_REVIEW_NONE = 'NONE'
+APP_REVIEW_POSITIVE = 'POSITIVE'
+APP_REVIEW_NEGATIVE ='NEGATIVE'
+APP_REVIEW_STATE_CHOICES = (
+    (APP_REVIEW_NONE, 'None'),
+    (APP_REVIEW_POSITIVE, 'Positive'),
+    (APP_REVIEW_NEGATIVE, 'Negative'),
+)
+
 IMPORT_CONTACT_GOOGLE_PEOPLE = 'GOOGLE_PEOPLE_API'
 IMPORT_CONTACT_SOURCE_CHOICES = (
     (IMPORT_CONTACT_GOOGLE_PEOPLE, 'Google People API'),
@@ -3313,6 +3322,13 @@ class Voter(AbstractBaseUser):
     # current_google_civic_election_id = models.PositiveIntegerField(
     #     verbose_name="google civic election id", null=True, unique=False)
     voter_issues_lookup_updated = models.BooleanField(default=False)
+
+    # For Cordova reviews, one platform can be used (iOS or Android). (If they use both, they will have to leave our app to
+    # review on the other platform's store ... App Store or Play Store)
+    app_review_state = models.CharField(max_length=11, choices=APP_REVIEW_STATE_CHOICES, default=APP_REVIEW_NONE)
+    app_review_date = models.DateTimeField(verbose_name="app review (or negative bypass) date", null=True, blank=True)
+    app_review_version = models.CharField(verbose_name="version of reviewed app", max_length=64, null=True, blank=True)
+    app_review_platform = models.CharField(verbose_name="platform of reviewed app", max_length=16, null=True, blank=True)
 
     objects = VoterManager()
 
