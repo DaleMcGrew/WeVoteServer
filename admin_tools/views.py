@@ -2017,8 +2017,8 @@ def sync_data_with_master_servers_view(request):
 
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'admin'}
-    # fast_load_start_token_id = request.COOKIES.get(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_ID.value, None)
-    # fast_load_start_token_key = request.COOKIES.get(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_KEY.value, None)
+    fast_load_start_token_id = request.COOKIES.get(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_ID.value, None)
+    fast_load_start_token_key = request.COOKIES.get(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_KEY.value, None)
 
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
@@ -2036,9 +2036,7 @@ def sync_data_with_master_servers_view(request):
     state_list = STATE_CODE_MAP
     sorted_state_list = sorted(state_list.items())
 
-    # fast_load_start_token_valid = False
-    # fast_load_start_token_valid = positive_value_exists(fast_load_start_token_id) and positive_value_exists(fast_load_start_token_key)
-    fast_load_start_token_valid = True
+    fast_load_start_token_valid = positive_value_exists(fast_load_start_token_id) and positive_value_exists(fast_load_start_token_key)
 
     template_values = {
         'election_list':                election_list,
@@ -2063,47 +2061,47 @@ def sync_data_with_master_servers_view(request):
     }
     response = TemplateResponse(request, 'admin_tools/sync_data_with_master_dashboard.html', template_values)
 
-    # if request.POST:
-    #     input_username = request.POST.get('username').strip()
-    #     password = request.POST.get('password')
-    #     validation_key_str = SingleUseTokenManager.generate_encryption_key().decode('utf-8')
+    if request.POST:
+        input_username = request.POST.get('username').strip()
+        password = request.POST.get('password')
+        validation_key_str = SingleUseTokenManager.generate_encryption_key().decode('utf-8')
 
-    #     host = 'https://api.wevoteusa.org'
-    #     auth_url = f"{host}/login_we_vote/"
+        host = 'https://api.wevoteusa.org'
+        auth_url = f"{host}/login_we_vote/"
 
-    #     session = requests.Session()
-    #     _call_login_url = session.get(auth_url)
-    #     csrf_token = session.cookies.get('csrftoken')
+        session = requests.Session()
+        _call_login_url = session.get(auth_url)
+        csrf_token = session.cookies.get('csrftoken')
 
-    #     auth_data = {
-    #         'username': input_username,  # Email address
-    #         'password': password,
-    #     }
+        auth_data = {
+            'username': input_username,  # Email address
+            'password': password,
+        }
 
-    #     request_token_headers = TokensManager.format_request_headers(
-    #         user_id=None,
-    #         token_type=TokenTypes.SINGLE_USE.value,
-    #         authorization=None,
-    #         create_token=True,
-    #         token_key=None,
-    #         new_token_key=validation_key_str,
-    #     )
+        request_token_headers = TokensManager.format_request_headers(
+            user_id=None,
+            token_type=TokenTypes.SINGLE_USE.value,
+            authorization=None,
+            create_token=True,
+            token_key=None,
+            new_token_key=validation_key_str,
+        )
 
-    #     headers = {
-    #         'X-CSRFToken': csrf_token,  # Django CSRF middleware expects this
-    #         'Referer': auth_url,  # Django CSRF middleware expects this
-    #         **request_token_headers,
-    #     }
+        headers = {
+            'X-CSRFToken': csrf_token,  # Django CSRF middleware expects this
+            'Referer': auth_url,  # Django CSRF middleware expects this
+            **request_token_headers,
+        }
 
-    #     auth_response = session.post(auth_url, data=auth_data, headers=headers)
-    #     token_creation_info = TokensManager.convert_headers_to_dict(auth_response.headers)['token_creation']
+        auth_response = session.post(auth_url, data=auth_data, headers=headers)
+        token_creation_info = TokensManager.convert_headers_to_dict(auth_response.headers)['token_creation']
 
-    #     if token_creation_info['success']:
-    #         response.set_cookie(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_ID.value, token_creation_info['token_info']['token_pk'], max_age=60, httponly=True, secure=True, samesite='Lax')
-    #         response.set_cookie(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_KEY.value, validation_key_str, max_age=60, httponly=True, secure=True, samesite='Lax')
-    #         response.set_cookie(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_USER_ID.value, token_creation_info['token_info']['user_id'], max_age=60, httponly=True, secure=True, samesite='Lax')
-    #         template_values['fast_load_start_token_valid'] = True
-    #     else:
-    #         template_values['fast_load_start_token_error'] = token_creation_info['error_message']
+        if token_creation_info['success']:
+            response.set_cookie(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_ID.value, token_creation_info['token_info']['token_pk'], max_age=60, httponly=True, secure=True, samesite='Lax')
+            response.set_cookie(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_TOKEN_KEY.value, validation_key_str, max_age=60, httponly=True, secure=True, samesite='Lax')
+            response.set_cookie(TokenCookies.SYNC_DATA_WITH_MASTER_SERVERS_START_USER_ID.value, token_creation_info['token_info']['user_id'], max_age=60, httponly=True, secure=True, samesite='Lax')
+            template_values['fast_load_start_token_valid'] = True
+        else:
+            template_values['fast_load_start_token_error'] = token_creation_info['error_message']
 
     return response
