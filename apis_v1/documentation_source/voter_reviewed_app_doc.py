@@ -16,7 +16,8 @@ def voter_reviewed_app_template_values(url_root):
         {
             'name':         'app_review_state',
             'value':        'string',  #    ('Positive', 'Negative', None)
-            'description':  'The desired state of the app review, one of {"POSITIVE", "NEGATIVE", "NONE"}',
+            'description':  'The new state of the app review stored in voter_voter, one of {"POSITIVE", '
+                            '"NEGATIVE", "NONE"}',
         },
         {
             'name':         'app_review_version',
@@ -31,7 +32,16 @@ def voter_reviewed_app_template_values(url_root):
         {
             'name':         'app_review_body_negative_bypass',
             'value':        'string',  #
-            'description':  'When a Negative review is bypassed, this is the message body that is sent to Zendesk',
+            'description':  'Only when a Negative review is bypassed, this is the message body that is sent to Zendesk.'
+                            ' This is not saved in the database.',
+        },
+        {
+            'name':         'app_review_email',
+            'value':        'string',  #
+            'description':  'When a Negative review is bypassed and this email is supplied, use it for a "from" for '
+                            'the email to Zendesk that creates a ticket. If no email is provided, the voter does '
+                            'not want a reply from WeVote, and we supply donotreply@wevote.us as a "from". '
+                            'This is not saved in the database.',
         },
     ]
 
@@ -48,10 +58,11 @@ def voter_reviewed_app_template_values(url_root):
                    '  "status": string,\n' \
                    '  "we_vote_id": string,\n' \
                    '  "app_review_state": string,\n' \
+                   '  "app_review_date": string,\n' \
                    '  "app_review_version": string,\n' \
                    '  "app_review_platform": string,\n' \
                    '  "email_api_status_code": string,\n' \
-                   '  "email": string,\n' \
+                   '  "app_review_email": string,\n' \
                    '  "first_name": string,\n' \
                    '  "last_name": string,\n' \
                    '}]'
@@ -63,18 +74,27 @@ def voter_reviewed_app_template_values(url_root):
         'url_root': url_root,
         'api_introduction':
             "This API is called from Cordova apps when they are prompted to review the app.<br><br>"
-            "For negative reviews that are screened out by the <b>\"Enjoying WeVote?\"</b> screening question "
-            "(appRatePromptTitle), we do not automatically send the voter an email, but do create a ZenDesk ticket "
-            "with a <b>\"donotreply@wevote.us\"</b> return address so that the voter will not receive an impersonal "
-            "email. <br><br>" 
-            "For (hopefully) positive reviews that fall through to the App Store/Play Store process, we won't know if "
-            "they loved us or hated us, but we will send them a thank you email from ZenDesk. <br><br>"
+            
+            "For negative reviews where the voter chooses to supply an email and which are screened out by the "
+            "<b>\"Enjoying WeVote?\"</b> screening question (appRatePromptTitle), we send that email on to Zendesk "
+            "which creates a ticket and generates an automatic email reply to the voter. If the voter does not "
+            "supply an email, we use <b>\"donotreply@wevote.us\"</b> as the return address so the voter doesn't "
+            "receive an email, and in that case we put the <span style='font-family: monospace; font-weight: 500;'>"
+            "\"we_vote_id\"</span> in the ticket body which will allow us to to filter out repetitive complainers and "
+            "spammers).<br><br>"
+            
+            "For the (hopefully) positive reviews that fall through to the App Store/Play Store process, we won't know "
+            "if they loved us or hated us, but we log the date of their review so we don't ask them for reviews too "
+            "often, and display a thank you modal (if the platform allows for that). <br><br>"
+            
             "In either case we update the voter's record (voter_voter) with the four "
             "<span style='font-family: monospace; font-weight: 500;'>\"app_review_...\"</span> fields (one of them "
             "being an automatic <span style='font-family: monospace; font-weight: 500;'>\"app_review_date\"</span>.) "
             "<br><br>"
+            
             "This will allow us to build automation in the future so that could start asking for reviews again after a "
             "certain number of months, or after a major UI change.<br><br>",
+
         'try_now_link': 'apis_v1:voterReviewedApp',
         'try_now_link_variables_dict': try_now_link_variables_dict,
         'required_query_parameter_list': required_query_parameter_list,
