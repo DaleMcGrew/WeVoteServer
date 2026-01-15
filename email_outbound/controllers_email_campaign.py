@@ -96,6 +96,10 @@ def augment_email_campaign_recipient(
             email_campaign_recipient.supporters_count = politician.supporters_count
             save_changes = True
 
+        # Find the upcoming linked candidate and office that this politician is running for office next
+        # We need candidate_we_vote_id office_we_vote_id in order to calculate:
+        # "[office_url]",
+
         # Find Campaign Linked to this Politician so we can get the passkey
         try:
             from campaign.models import CampaignX
@@ -451,11 +455,6 @@ def merge_email_campaign_recipient_with_template(
     # Get values from email_campaign_recipient object, pulled from the database in augment_email_campaign_recipient
     if email_campaign_recipient:
         # These are all related to EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
-        # Add link to subscription key
-
-        token_replacements['[my_first_name]'] = getattr(email_campaign_recipient, 'sender_first_name', '')
-        token_replacements['[my_full_name]'] = getattr(email_campaign_recipient, 'sender_full_name', '')
-        token_replacements['[my_last_name]'] = getattr(email_campaign_recipient, 'sender_last_name', '')
 
         #
         open_tracking_pixel_html = ''  # WV-2447 "Open Tracking for Email Campaign System" should go here
@@ -466,6 +465,17 @@ def merge_email_campaign_recipient_with_template(
                 open_tracking_pixel_html=open_tracking_pixel_html,
             )
         token_replacements['[email_footer]'] = email_footer_html
+
+        # Add link to subscription key
+
+        token_replacements['[my_first_name]'] = getattr(email_campaign_recipient, 'sender_first_name', '')
+        token_replacements['[my_full_name]'] = getattr(email_campaign_recipient, 'sender_full_name', '')
+        token_replacements['[my_last_name]'] = getattr(email_campaign_recipient, 'sender_last_name', '')
+
+        # Find the upcoming linked candidate and office that this politician is running for office next
+        # We need candidate_we_vote_id office_we_vote_id in order to calculate:
+        # "[office_url]",
+        # "[office_url_with_intro]",  # Add ?office_intro=1 to the office_page URL
 
         political_party = getattr(email_campaign_recipient, 'political_party', '')
         token_replacements = \

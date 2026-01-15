@@ -74,23 +74,27 @@ EMAIL_PORT = get_environment_variable("EMAIL_PORT", no_exception=True)
 EMAIL_USE_TLS = get_environment_variable("EMAIL_USE_TLS", no_exception=True)
 
 EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS = [
+    "[email_footer]",
     "[job_title]",
     "[link_to_office]",
     "[link_to_politician]",
     "[my_first_name]",
     "[my_last_name]",
     "[my_full_name]",
+    "[office_url]",
+    "[office_url_with_intro]",
     "[official_email]",
-    "[email_footer]",
     "[personal_email]",
     "[political_party]",
     "[politician_passkey]",
     "[politician_photo]",
+    "[politician_url]",
+    "[politician_url_with_edit_banner]",
     "[recipient_first_name]",
     "[recipient_last_name]",
     "[recipient_full_name]",
     "[recipient_voter_email]",
-    "[seo_friendly_path]",
+    # "[seo_friendly_path]",
     "[signature]",
     "[state_code]",
     "[supporters_count]",
@@ -154,6 +158,8 @@ class EmailCampaignRecipient(models.Model):
     list_unsubscribe_mailto = models.TextField(null=True, blank=True)
     list_unsubscribe_url = models.TextField(null=True, blank=True)
     manually_added = models.BooleanField(default=False)
+    office_url = models.TextField(null=True, blank=True)
+    office_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
     organization_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
     political_party = models.CharField(max_length=255, null=True)
     politician_first_name = models.CharField(max_length=255, null=True)
