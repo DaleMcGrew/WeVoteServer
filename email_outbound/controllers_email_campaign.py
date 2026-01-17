@@ -175,7 +175,7 @@ def email_campaign_send(
         }
 
     # Get all specific recipients for this email campaign.
-    # Note that we add recipients formulaically in generate_email_campaign_recipients_from_recipient_template
+    # Note that we add recipients formulaically in generate_email_campaign_recipients_from_audience_builder
     try:
         queryset = EmailCampaignRecipient.objects.filter(
             email_campaign_id=email_campaign_id)
@@ -268,7 +268,7 @@ def email_campaign_send(
     return results
 
 
-def generate_email_campaign_recipients_from_recipient_template(email_campaign_id=''):
+def generate_email_campaign_recipients_from_audience_builder(email_campaign_id=''):
     status = ""
     success = True
 
@@ -304,7 +304,7 @@ def generate_email_campaign_recipients_from_recipient_template(email_campaign_id
         queryset = EmailCampaignRecipient.objects.filter(
             email_campaign_id=email_campaign_id)
         # It turns out we don't want to exclude the EmailCampaignRecipient objects that have already been scheduled yet,
-        #  so we can know to not add them from the EmailRecipientTemplate searches.
+        #  so we can know to not add them from the EmailAudienceBuilder searches.
         # # Filter out recipient entries that have already been sent
         # queryset = queryset.exclude(email_campaign_recipient_id__in=already_scheduled_recipient_ids)
         email_campaign_recipient_list = list(queryset)

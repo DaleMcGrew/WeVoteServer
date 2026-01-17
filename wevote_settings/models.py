@@ -487,6 +487,10 @@ def fetch_next_we_vote_id_contest_office_integer():
     return fetch_next_we_vote_id_integer('we_vote_id_last_contest_office_integer')
 
 
+def fetch_next_we_vote_id_office_explanation_integer():
+    return fetch_next_we_vote_id_integer('we_vote_id_last_office_explanation_integer')
+
+
 def fetch_next_we_vote_id_office_held_integer():
     return fetch_next_we_vote_id_integer('we_vote_id_last_office_held_integer')
 
