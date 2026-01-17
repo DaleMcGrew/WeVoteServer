@@ -74,23 +74,27 @@ EMAIL_PORT = get_environment_variable("EMAIL_PORT", no_exception=True)
 EMAIL_USE_TLS = get_environment_variable("EMAIL_USE_TLS", no_exception=True)
 
 EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS = [
+    "[email_footer]",
     "[job_title]",
     "[link_to_office]",
     "[link_to_politician]",
     "[my_first_name]",
     "[my_last_name]",
     "[my_full_name]",
+    "[office_url]",
+    "[office_url_with_intro]",
     "[official_email]",
-    "[email_footer]",
     "[personal_email]",
     "[political_party]",
     "[politician_passkey]",
     "[politician_photo]",
+    "[politician_url]",
+    "[politician_url_with_edit_banner]",
     "[recipient_first_name]",
     "[recipient_last_name]",
     "[recipient_full_name]",
     "[recipient_voter_email]",
-    "[seo_friendly_path]",
+    # "[seo_friendly_path]",
     "[signature]",
     "[state_code]",
     "[supporters_count]",
@@ -154,6 +158,8 @@ class EmailCampaignRecipient(models.Model):
     list_unsubscribe_mailto = models.TextField(null=True, blank=True)
     list_unsubscribe_url = models.TextField(null=True, blank=True)
     manually_added = models.BooleanField(default=False)
+    office_url = models.TextField(null=True, blank=True)
+    office_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
     organization_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
     political_party = models.CharField(max_length=255, null=True)
     politician_first_name = models.CharField(max_length=255, null=True)
@@ -1508,25 +1514,26 @@ class EmailTemplateFolder(models.Model):
     deleted = models.BooleanField(default=False)
 
 
-class EmailRecipientTemplateFolder(models.Model):
+class EmailAudienceBuilderFolder(models.Model):
     """
-    A folder where we organize RecipientTemplates.
+    A folder where we organize AudienceBuilders.
     """
-    recipient_template_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
+    audience_builder_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
     archived = models.BooleanField(default=False)
     deleted = models.BooleanField(default=False)
 
-class EmailRecipientTemplateLink(models.Model):
+
+class EmailAudienceBuilderLink(models.Model):
     """
-    How we link EmailRecipientTemplate to an EmailCampaign
-    That is, we describe who a bulk email message will be sent to in the EmailRecipientTemplate, and then attach
+    How we link EmailAudienceBuilder to an EmailCampaign
+    That is, we describe who a bulk email message will be sent to in the EmailAudienceBuilder, and then attach
     these rules to an EmailCampaign.
     """
     email_campaign_id = models.PositiveIntegerField(default=0, null=True)
-    recipient_template_id = models.PositiveIntegerField(default=0, null=True)
+    audience_builder_id = models.PositiveIntegerField(default=0, null=True)
 
 
-class EmailRecipientTemplate(models.Model):
+class EmailAudienceBuilder(models.Model):
     """
     Django model representing a template for defining bulk email recipients.
 
@@ -1544,12 +1551,12 @@ class EmailRecipientTemplate(models.Model):
     is_organization = models.BooleanField(default=None, null=True)
     is_politician = models.BooleanField(default=None, null=True)
     is_voter = models.BooleanField(default=None, null=True)
-    # When we chain EmailRecipientTemplate, parent_template_operator is: 'AND', 'EXCLUDE' or 'OR'
+    # When we chain EmailAudienceBuilder, parent_template_operator is: 'AND', 'EXCLUDE' or 'OR'
     parent_template_operator = models.CharField(db_index=True, max_length=16, null=True)
-    # We can chain multiple EmailRecipientTemplate together to create a more complex rule set
-    parent_recipient_template_id = models.PositiveIntegerField(default=0, null=True)
-    recipient_template_folder_id = models.PositiveIntegerField(default=0, null=True)
-    recipient_template_name = models.CharField(db_index=True, max_length=255, null=True)
+    # We can chain multiple EmailAudienceBuilder together to create a more complex rule set
+    parent_audience_builder_id = models.PositiveIntegerField(default=0, null=True)
+    audience_builder_folder_id = models.PositiveIntegerField(default=0, null=True)
+    audience_builder_name = models.CharField(db_index=True, max_length=255, null=True)
     search_google_civic_election_id = models.PositiveIntegerField(default=0, null=True)
     search_term_candidate = models.CharField(max_length=255, null=True)
     search_term_organization = models.CharField(max_length=255, null=True)
