@@ -3439,8 +3439,8 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
     app_review_version  = request.POST.get('app_review_version', '')
     app_review_platform = request.POST.get('app_review_platform', '')
     app_review_body = request.POST.get('app_review_body_negative_bypass', '')  # Not stored in SQL
-    app_review_email = request.POST.get('app_review_email', '')                 # Not stored in SQL
-    app_review_date = str(datetime.now(timezone.utc))                         # SQL datetime now, timezone aware
+    app_review_email = request.POST.get('app_review_email', '')                # Not stored in SQL
+    app_review_date = str(datetime.now(timezone.utc))                          # SQL datetime now, timezone aware
 
     json_data = {
         'success': True,

@@ -92,7 +92,7 @@ def voter_reviewed_app_template_values(url_root):
             "<br><br>"
             
             "This will allow us to build automation in the future, so that could start asking for reviews again after a "
-            "certain number of months, or after a major UI change.<br><br>",
+            "certain number of months, or after a major UI change. <br><br>",
 
         'try_now_link': 'apis_v1:voterReviewedApp',
         'try_now_link_variables_dict': try_now_link_variables_dict,
