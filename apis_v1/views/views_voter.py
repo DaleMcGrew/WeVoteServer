@@ -3435,12 +3435,12 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
     voter = voter_results['voter']
     we_vote_id = voter.we_vote_id
 
-    app_review_state = request.GET.get('app_review_state', '').upper()
-    app_review_version  = request.GET.get('app_review_version', '')
-    app_review_platform = request.GET.get('app_review_platform', '')
-    app_review_body = request.GET.get('app_review_body_negative_bypass', '')  # Not stored in SQL
-    app_review_email = request.GET.get('app_review_email', '')                 # Not stored in SQL
-    app_review_date = str(datetime.now(timezone.utc))                         # SQL datetime now, timezone aware
+    app_review_state = request.POST.get('app_review_state', '').upper()
+    app_review_version  = request.POST.get('app_review_version', '')
+    app_review_platform = request.POST.get('app_review_platform', '')
+    app_review_body = request.POST.get('app_review_body_negative_bypass', '')  # Not stored in SQL
+    app_review_email = request.POST.get('app_review_email', '')                # Not stored in SQL
+    app_review_date = str(datetime.now(timezone.utc))                          # SQL datetime now, timezone aware
 
     json_data = {
         'success': True,
@@ -3452,6 +3452,7 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
         'app_review_version': app_review_version,
         'app_review_platform': app_review_platform,
         'email_api_status_code': 'none',
+        'negative_bypass_review_length': len(app_review_body)
     }
 
     if( not positive_value_exists(voter_device_id) or

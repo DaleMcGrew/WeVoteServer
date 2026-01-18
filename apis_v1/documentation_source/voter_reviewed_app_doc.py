@@ -70,7 +70,7 @@ def voter_reviewed_app_template_values(url_root):
     template_values = {
         'api_name': 'voterReviewedApp',
         'api_slug': 'voterReviewedApp',
-        'get_or_post': 'GET',
+        'get_or_post': 'POST',
         'url_root': url_root,
         'api_introduction':
             "This API is called from Cordova apps when they are prompted to review the app.<br><br>"
@@ -87,13 +87,12 @@ def voter_reviewed_app_template_values(url_root):
             "if they loved us or hated us, but we log the date of their review so we don't ask them for reviews too "
             "often, and display a thank you modal (if the platform allows for that). <br><br>"
             
-            "In either case we update the voter's record (voter_voter) with the four "
-            "<span style='font-family: monospace; font-weight: 500;'>\"app_review_...\"</span> fields (one of them "
-            "being an automatic <span style='font-family: monospace; font-weight: 500;'>\"app_review_date\"</span>.) "
+            "In either case we update the voter's record (voter_voter) with the four fields: "
+            "<span style='font-family: monospace; font-weight: 500;'>app_review_state, app_review_version, app_review_platform, & app_review_date</span>."
             "<br><br>"
             
-            "This will allow us to build automation in the future so that could start asking for reviews again after a "
-            "certain number of months, or after a major UI change.<br><br>",
+            "This will allow us to build automation in the future, so that could start asking for reviews again after a "
+            "certain number of months, or after a major UI change. <br><br>",
 
         'try_now_link': 'apis_v1:voterReviewedApp',
         'try_now_link_variables_dict': try_now_link_variables_dict,
