@@ -3423,6 +3423,7 @@ def voter_update_view(request):  # voterUpdate
     return response
 
 
+@csrf_exempt
 def voter_has_reviewed_an_app(request):    # voterReviewedApp
     """
     Make a record of a voter reviewing an app, and create a ZenDesk record if a negative review was bypassed
