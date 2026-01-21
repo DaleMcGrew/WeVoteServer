@@ -1,0 +1,93 @@
+{# templates/office/office_explanations_list.html #}
+{% extends "template_base.html" %}
+
+{% block title %}Office Explanations{% endblock %}
+
+{%  block content %}
+{% include "admin_tools/loading_banner.html" %}
+
+<h1>Office Explanations</h1>
+
+{% if election_list %}
+    <form name="office_explanation_choose_election" method="get" action="{% url 'office:office_explanations_list' %}">
+    {% csrf_token %}
+    <select id="google_civic_election_id" name="google_civic_election_id">
+        <option value="0" {% if 0 == google_civic_election_id %} selected="selected"{% endif %}>
+            -- Filter by Election --</option>
+    {% for one_election in election_list %}
+        <option value="{{ one_election.google_civic_election_id }}"
+                {% if one_election.google_civic_election_id|slugify == google_civic_election_id|slugify %} selected="selected"{% endif %}>
+            {% if one_election.state_code %}{{ one_election.state_code }} {% endif %}
+            {{ one_election.election_day_text }}: {{ one_election.election_name }} - {{ one_election.google_civic_election_id }}</option>
+    {% endfor %}
+    </select>
+    <input type="submit" value="Filter" />
+    </form>
+{% endif %}{# End of if election_list #}
+
+    {#Default to showing only upcoming elections #}
+    <label for="show_all_elections_id">
+      <input type="checkbox" name="show_all_elections" id="show_all_elections_id" value="1"
+             {% if show_all_elections %}checked{% endif %} /> Include Past Elections
+    </label>
+    &nbsp;&nbsp;&nbsp;&nbsp;
+{% if state_code != "" %}
+    <a href="#" onclick="showAllStates(); return false;">
+        show all states</a>
+{% endif %}
+{% if state_list %}
+    <form name="office_explanation_choose_state" method="get" action="{% url 'office:office_explanations_list' %}">
+    {% csrf_token %}
+    <select id="state_code_id" name="state_code">
+        <option value="">
+            -- Filter by State Served --</option>
+    {% for key, state in state_list %}
+        <option value="{{ key }}"
+                {% if key|lower == state_code|lower %} selected="selected"{% endif %}>
+            {{ state }}</option>
+    {% endfor %}
+    </select>
+    <input type="submit" value="Filter" />
+    </form>
+{% endif %}{# End of if state_list #}
+
+<form name="office_explanation_search_form" method="get" action="{% url 'office:office_explanations_list' %}">
+    {% csrf_token %}
+    <input type="text" name="office_explanation_search" value="{{ office_explanation_search }}" placeholder="Search for office explanations" />
+    <input type="submit" value="Search" />
+</form>
+
+{% if office_list %}
+    <table class="table table-sm table-hover">
+        <thead>
+            <tr>
+                <th>Office Name</th>
+                <th>State</th>
+                <th>Election</th>
+                <th>Explanation</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for office in office_list %}
+            <tr>
+                <td>{{ office.office_name }}</td>
+                <td>{{ office.state_code }}</td>
+                <td>{{ office.election_name }}</td>
+                <td>{{ office.office_held_description|truncatewords:20 }}</td>
+                <td>
+                    <a href="{% url 'office:office_explanation_edit' office.id %}">Edit</a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>(no office explanations found)</p>
+{% endif %}
+
+<p><a href="{% url 'office:office_explanation_new' %}">
+    Add New Office Explanation
+</p>
+
+{% endblock content %}

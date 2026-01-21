@@ -30,4 +30,8 @@ urlpatterns = [
     re_path(r'^(?P<office_id>[0-9]+)/summary/$', views_admin.office_summary_view, name='office_summary'),
     re_path(r'^(?P<contest_office_we_vote_id>wv[\w]{2}off[\w]+)/summary/$',
         views_admin.office_summary_view, name='office_summary_we_vote_id'),
+    re_path(r'^office_explanations_list/$',
+        views_admin.office_explanations_list_view, name='office_explanations_list'),
+    re_path(r'^office_explanation_new/$',
+            views_admin.office_explanation_new, name='office_explanation_new'),
 ]

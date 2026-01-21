@@ -2302,3 +2302,20 @@ def office_merge_process_view(request):
                                     "&state_code=" + str(state_code))
 
     return HttpResponseRedirect(reverse('office:office_summary', args=(contest_office1_on_stage.id,)))
+
+
+def office_explanations_list_view(request):
+
+    try:
+        office_list = ContestOffice.objects.order_by('office_name')  # Cannot be readonly
+    except ContestOffice.DoesNotExist:
+        office_list = []
+
+    return render(request, 'office/office_explanations_list.html', {
+        'office_list': office_list,
+    })
+
+
+@login_required
+def office_explanation_new(request):
+    return render(request, 'office/office_explanation_new.html', {})
