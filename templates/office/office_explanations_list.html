@@ -63,7 +63,7 @@
             <tr>
                 <th>Office Name</th>
                 <th>State</th>
-                <th>Election</th>
+                <th>Election Date</th>
                 <th>Explanation</th>
                 <th>Actions</th>
             </tr>
@@ -73,7 +73,7 @@
             <tr>
                 <td>{{ office.office_name }}</td>
                 <td>{{ office.state_code }}</td>
-                <td>{{ office.election_name }}</td>
+                <td>{{ office.election_date_as_integer }}</td>
                 <td>{{ office.office_held_description|truncatewords:20 }}</td>
                 <td>
                     <a href="{% url 'office:office_explanation_edit' office.id %}">Edit</a>
@@ -89,5 +89,17 @@
 <p><a href="{% url 'office:office_explanation_new' %}">
     Add New Office Explanation
 </p>
+
+<script>
+    function displayLoadingBanner() {
+        $('#FilterPopupMessage').show();
+    }
+
+    function clearSearch() {
+        displayLoadingBanner();
+        $('#office_id').val('');
+        $('form[name="office_explanation_search_form"]').submit();
+    }
+</script>
 
 {% endblock content %}
