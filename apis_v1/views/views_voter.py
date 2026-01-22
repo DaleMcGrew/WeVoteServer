@@ -3422,6 +3422,8 @@ def voter_update_view(request):  # voterUpdate
     response = HttpResponse(json.dumps(json_data), content_type='application/json')
     return response
 
+
+@csrf_exempt
 def voter_has_reviewed_an_app(request):    # voterReviewedApp
     """
     Make a record of a voter reviewing an app, and create a ZenDesk record if a negative review was bypassed
@@ -3433,13 +3435,13 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
     voter_results = voter_manager.retrieve_voter_from_voter_device_id(voter_device_id)
     voter = voter_results['voter']
     we_vote_id = voter.we_vote_id
-    email = voter.email
 
-    app_review_body = request.GET.get('app_review_body_negative_bypass', '')
-    app_review_state = request.GET.get('app_review_state', '').upper()
-    app_review_version  = request.GET.get('app_review_version', '')
-    app_review_platform = request.GET.get('app_review_platform', '')
-    app_review_date = str(datetime.now(timezone.utc))             # SQL datetime now, timezone aware
+    app_review_state = request.POST.get('app_review_state', '').upper()
+    app_review_version  = request.POST.get('app_review_version', '')
+    app_review_platform = request.POST.get('app_review_platform', '')
+    app_review_body = request.POST.get('app_review_body_negative_bypass', '')  # Not stored in SQL
+    app_review_email = request.POST.get('app_review_email', '')                # Not stored in SQL
+    app_review_date = str(datetime.now(timezone.utc))                          # SQL datetime now, timezone aware
 
     json_data = {
         'success': True,
@@ -3451,6 +3453,7 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
         'app_review_version': app_review_version,
         'app_review_platform': app_review_platform,
         'email_api_status_code': 'none',
+        'negative_bypass_review_length': len(app_review_body)
     }
 
     if( not positive_value_exists(voter_device_id) or
@@ -3462,23 +3465,29 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
         json_data.status = 'EMAIL_WAS_NOT_SENT_AND_THE_VOTER_WAS_NOT_UPDATED'
     else:
         response_status_code = ''
+        json_data["we_vote_id"] = we_vote_id
+        json_data['first_name'] = voter.first_name
+        json_data['last_name'] = voter.last_name
+        id_string = ''
+
         if app_review_state.upper() == APP_REVIEW_NEGATIVE:
-            json_data["we_vote_id"] = we_vote_id
-            json_data["email"] = email
-            json_data['first_name'] = voter.first_name
-            vln = voter.last_name
-            json_data['last_name'] = vln
-            id_string = (f"[voter: {we_vote_id}, email: {email}, first: {voter.first_name}, last: {voter.last_name}, "
-            f"platform: {voter.app_review_platform}, version:  {voter.app_review_version}]")
+            if positive_value_exists(app_review_email):
+                json_data['email'] = app_review_email
+            else:
+                json_data['email'] = 'donotreply@wevote.us'
+                id_string = (
+                    f"[voter: {we_vote_id}, email: {voter.email}, first: {voter.first_name}, last: {voter.last_name}, "
+                    f"platform: {voter.app_review_platform}, version:  {voter.app_review_version}]")
+
+            content_string = id_string + '\n\n' + app_review_body if len(id_string) else app_review_body
 
             sg = sendgrid.SendGridAPIClient(api_key=get_environment_variable("SENDGRID_API_KEY"))
             # We do not want impersonal automatic replies from ZenDesk for negative comments
             # And we don't want a zendesk record if not negative
-            from_email = Email('donotreply@wevote.us')
+            from_email = Email(json_data['email'])
             to_email = To('support@wevote.us')
             subject = "Negative App Review bypassed in Cordova"
-            content = Content("text/plain",
-                          id_string + '\n\n' + app_review_body)
+            content = Content("text/plain", content_string)
             mail = Mail(from_email, to_email, subject, content)
 
             # Get a JSON-ready representation of the Mail object
@@ -3489,9 +3498,9 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
             response_status_code = response.status_code
 
         voter.app_review_state = app_review_state.upper()
-        voter.app_review_date = app_review_date
         voter.app_review_version = app_review_version
         voter.app_review_platform = app_review_platform
+        voter.app_review_date = app_review_date
         voter.save()
 
         json_data["status"] = 'VOTER_UPDATED_AND_EMAIL_SENT'
@@ -3499,6 +3508,7 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
 
     response = HttpResponse(json.dumps(json_data), content_type='application/json')
     return response
+
 
 def voter_notification_settings_update_view(request):  # voterNotificationSettingsUpdate
     """

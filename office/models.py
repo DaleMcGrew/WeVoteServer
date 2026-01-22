@@ -5,7 +5,8 @@
 from django.db import models
 from django.db.models import Q
 from exception.models import handle_exception, handle_record_found_more_than_one_exception
-from wevote_settings.models import fetch_next_we_vote_id_contest_office_integer, fetch_site_unique_id_prefix
+from wevote_settings.models import fetch_next_we_vote_id_contest_office_integer, \
+    fetch_next_we_vote_id_office_explanation_integer, fetch_site_unique_id_prefix
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, extract_state_from_ocd_division_id, \
     generate_office_equivalent_district_phrase_pairs, positive_value_exists, \
@@ -203,6 +204,7 @@ class ContestOffice(models.Model):
     number_elected = models.CharField(verbose_name="google civic number of candidates who will be elected",
                                       max_length=255, null=True, blank=True)
 
+    office_explanation_we_vote_id = models.CharField(max_length=255, null=True, unique=False)
     office_facebook_url = models.TextField(blank=True, null=True)
     facebook_url_is_broken = models.BooleanField(default=False)
     office_twitter_handle = models.CharField(max_length=255, null=True, unique=False)
@@ -1992,3 +1994,49 @@ def remove_office_district_false_positives(contest_office_name='', contest_offic
                 contest_office_list_filtered.append(possible_match)
 
     return contest_office_list_filtered
+
+
+class OfficeExplanation(models.Model):
+    # The we_vote_id identifier is unique across all We Vote sites, and allows us to share our data with other
+    # organizations
+    # It starts with "wv" then we add on a database specific identifier like "3v" (WeVoteSetting.site_unique_id_prefix)
+    # then the string "offexp", and then a sequential integer like "123".
+    # We keep the last value in WeVoteSetting.we_vote_id_last_office_explanation_integer
+    DoesNotExist = None
+    MultipleObjectsReturned = None
+    objects = None
+
+    date_last_updated = models.DateTimeField(null=True, auto_now=True)
+    office_explanation = models.TextField(null=True)
+    office_explanation_name = models.CharField(max_length=255, null=False)
+    state_code = models.CharField(max_length=2, null=True)
+    video_url_horizontal = models.TextField(null=True)
+    video_url_square = models.TextField(null=True)
+    video_url_vertical = models.TextField(null=True)
+    we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=['we_vote_id'],
+                name='office_explanation_index'),
+        ]
+
+    # We override the save function, so we can auto-generate we_vote_id
+    def save(self, *args, **kwargs):
+        # Even if this data came from another source we still need a unique we_vote_id
+        if self.we_vote_id:
+            self.we_vote_id = self.we_vote_id.strip().lower()
+        if self.we_vote_id == "" or self.we_vote_id is None:  # If there isn't a value...
+            # ...generate a new id
+            site_unique_id_prefix = fetch_site_unique_id_prefix()
+            next_local_integer = fetch_next_we_vote_id_office_explanation_integer()
+            # "wv" = We Vote
+            # site_unique_id_prefix = a generated (or assigned) unique id for one server running We Vote
+            # "off" = tells us this is a unique id for a ContestOffice
+            # next_integer = a unique, sequential integer for this server - not necessarily tied to database id
+            self.we_vote_id = "wv{site_unique_id_prefix}offexp{next_integer}".format(
+                site_unique_id_prefix=site_unique_id_prefix,
+                next_integer=next_local_integer,
+            )
+        super(OfficeExplanation, self).save(*args, **kwargs)

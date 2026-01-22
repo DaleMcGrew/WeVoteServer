@@ -16,8 +16,8 @@ urlpatterns = [
     re_path(r'^email_template_list/$', views_admin.email_template_list_view, name='email_template_list'),
     re_path(r'^email_template_list_process/$', views_admin.email_template_list_process_view,
             name='email_template_list_process'),
-    re_path(r'^recipient_template_list/$', views_admin.recipient_template_list_view, name='recipient_template_list'),
-    re_path(r'^recipient_template_list_process/$', views_admin.recipient_template_list_process_view,
-            name='recipient_template_list_process'),
+    re_path(r'^audience_builder_list/$', views_admin.audience_builder_list_view, name='audience_builder_list'),
+    re_path(r'^audience_builder_list_process/$', views_admin.audience_builder_list_process_view,
+            name='audience_builder_list_process'),
     re_path(r'^template_content/$', views_admin.email_template_content_view, name='email_template_content'),
 ]

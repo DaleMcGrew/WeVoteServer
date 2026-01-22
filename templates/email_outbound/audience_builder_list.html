@@ -1,6 +1,6 @@
 {% extends "template_base.html" %}
 
-{% block title %}Recipient Templates{% endblock %}
+{% block title %}Audience Builder Templates{% endblock %}
 
 {% block content %}
 {% load template_filters %}
@@ -47,7 +47,7 @@
 </a>
 
 <div class="wv-row" style="margin-top:10px;">
-  <h1 style="margin:0;">Recipient Templates</h1>
+  <h1 style="margin:0;">Audience Builder Templates</h1>
   <div class="wv-spacer"></div>
 
   {# Create Template (unfiled by default) #}
@@ -56,7 +56,7 @@
     <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
     <input type="hidden" name="state_code" value="{{ state_code }}">
     <input type="hidden" name="action" value="create_template">
-    <button class="btn btn-primary" type="submit">Create recipient template</button>
+    <button class="btn btn-primary" type="submit">Create audience builder</button>
   </form>
 
   {# Create Folder button => modal #}
@@ -73,7 +73,7 @@
                 <svg class="chevron" width="25" height="25" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M7 10l5 5 5-5"></path>
                 </svg>
-                <strong>{{ f.recipient_template_name }}</strong>
+                <strong>{{ f.audience_builder_name }}</strong>
             </div>
             <div class="wv-actions">
               {% if list %}
@@ -92,13 +92,13 @@
                     <input type="hidden" name="state_code" value="{{ state_code }}">
                     <input type="hidden" name="action" value="create_template">
                     <input type="hidden" name="folder_id" value="{{ f.id }}">
-                    <button class="wv-menu-btn" type="submit">Create recipient template</button>
+                    <button class="wv-menu-btn" type="submit">Create audience builder</button>
                   </form>
 
                   {# Other folder options#}
-                  <button class="wv-menu-btn js-open-rename" data-folder-id="{{ f.id }}" data-folder-name="{{ f.recipient_template_name }}">Rename folder</button>
-                  <button class="wv-menu-btn js-open-archive-folder" data-folder-id="{{ f.id }}" data-folder-name="{{ f.recipient_template_name }}">Archive folder</button>
-                  <button class="wv-menu-btn js-open-delete-folder" data-folder-id="{{ f.id }}" data-folder-name="{{ f.recipient_template_name }}">Delete folder</button>
+                  <button class="wv-menu-btn js-open-rename" data-folder-id="{{ f.id }}" data-folder-name="{{ f.audience_builder_name }}">Rename folder</button>
+                  <button class="wv-menu-btn js-open-archive-folder" data-folder-id="{{ f.id }}" data-folder-name="{{ f.audience_builder_name }}">Archive folder</button>
+                  <button class="wv-menu-btn js-open-delete-folder" data-folder-id="{{ f.id }}" data-folder-name="{{ f.audience_builder_name }}">Delete folder</button>
                 </div>
               </div>
             </div>
@@ -109,19 +109,19 @@
                 {% for t in list %}
                   <div class="wv-item" id="template_row_{{ t.id }}">
                     <div>
-                      <strong>{{ t.recipient_template_name }}</strong>
+                      <strong>{{ t.audience_builder_name }}</strong>
                       {% if t.subject %}<span class="wv-muted">— {{ t.subject }}</span>{% endif %}
                     </div>
                     <div class="wv-actions">
-                      <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&recipient_template_id={{ t.id }}">Edit</a>
+                      <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&audience_builder_id={{ t.id }}">Edit</a>
 
                       {# Other template Options#}
                       <div class="wv-dropdown">
                         <button type="button" class="wv-kebab js-dd">•••</button>
                         <div class="wv-dropdown-menu">
                           <button class="wv-menu-btn js-open-move" data-template-id="{{ t.id }}" data-current-folder-id="{{ f.id|default_if_none:'null' }}">Change folder</button>
-                          <button class="wv-menu-btn js-open-archive-template" data-template-id="{{ t.id }}" data-template-name="{{ t.recipient_template_name }}">Archive</button>
-                          <button class="wv-menu-btn js-open-delete-template" data-template-id="{{ t.id }}" data-template-name="{{ t.recipient_template_name }}">Delete</button>
+                          <button class="wv-menu-btn js-open-archive-template" data-template-id="{{ t.id }}" data-template-name="{{ t.audience_builder_name }}">Archive</button>
+                          <button class="wv-menu-btn js-open-delete-template" data-template-id="{{ t.id }}" data-template-name="{{ t.audience_builder_name }}">Delete</button>
                         </div>
                       </div>
                     </div>
@@ -158,7 +158,7 @@
           <input type="hidden" name="state_code" value="{{ state_code }}">
           <input type="hidden" name="action" value="create_template">
           <input type="hidden" name="folder_id" value="null">
-          <button class="btn btn-secondary" type="submit">Create recipient template</button>
+          <button class="btn btn-secondary" type="submit">Create audience builder</button>
         </form>
       </div>
     </summary>
@@ -168,18 +168,18 @@
         {% for t in unfiled_templates %}
           <div class="wv-item" id="template_row_unfiled_{{ t.id }}">
             <div>
-              <strong>{{ t.recipient_template_name }}</strong>
+              <strong>{{ t.audience_builder_name }}</strong>
               {% if t.subject %}<span class="wv-muted">— {{ t.subject }}</span>{% endif %}
             </div>
             <div class="wv-actions">
-              <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&recipient_template_id={{ t.id }}">Edit</a>
+              <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&audience_builder_id={{ t.id }}">Edit</a>
 
               <div class="wv-dropdown">
                 <button type="button" class="wv-kebab js-dd">•••</button>
                 <div class="wv-dropdown-menu">
                   <button class="wv-menu-btn js-open-move" data-template-id="{{ t.id }}" data-current-folder-id="null">Change folder</button>
-                  <button class="wv-menu-btn js-open-archive-template" data-template-id="{{ t.id }}" data-template-name="{{ t.recipient_template_name }}">Archive</button>
-                  <button class="wv-menu-btn js-open-delete-template" data-template-id="{{ t.id }}" data-template-name="{{ t.recipient_template_name }}">Delete</button>
+                  <button class="wv-menu-btn js-open-archive-template" data-template-id="{{ t.id }}" data-template-name="{{ t.audience_builder_name }}">Archive</button>
+                  <button class="wv-menu-btn js-open-delete-template" data-template-id="{{ t.id }}" data-template-name="{{ t.audience_builder_name }}">Delete</button>
                 </div>
               </div>
             </div>
@@ -214,7 +214,7 @@
                     <svg class="chevron" width="25" height="25" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M7 10l5 5 5-5"></path>
                     </svg>
-                    <strong>{{ f.recipient_template_name }}</strong>
+                    <strong>{{ f.audience_builder_name }}</strong>
                     <span class="wv-tag" title="Archived folder">Archived</span>
                 </div>
                 <div class="wv-actions">
@@ -226,7 +226,7 @@
                   <div class="wv-dropdown">
                     <button type="button" class="wv-kebab js-dd">•••</button>
                     <div class="wv-dropdown-menu">
-                      <button class="wv-menu-btn js-open-unarchive-folder" data-folder-id="{{ f.id }}" data-folder-name="{{ f.recipient_template_name }}">Unarchive folder</button>
+                      <button class="wv-menu-btn js-open-unarchive-folder" data-folder-id="{{ f.id }}" data-folder-name="{{ f.audience_builder_name }}">Unarchive folder</button>
                     </div>
                   </div>
                 </div>
@@ -239,17 +239,17 @@
                     {% for t in list %}
                       <div class="wv-item">
                         <div>
-                          <strong>{{ t.recipient_template_name }}</strong>
+                          <strong>{{ t.audience_builder_name }}</strong>
                           {% if t.subject %}<span class="wv-muted">— {{ t.subject }}</span>{% endif %}
                         </div>
                         <div class="wv-actions">
-                          <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&recipient_template_id={{ t.id }}">Edit</a>
+                          <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&audience_builder_id={{ t.id }}">Edit</a>
                           <div class="wv-dropdown">
                             <button type="button" class="wv-kebab js-dd">•••</button>
                             <div class="wv-dropdown-menu">
                               <button class="wv-menu-btn js-open-move" data-template-id="{{ t.id }}" data-current-folder-id="{{ f.id }}">Change folder</button>
-                              <button class="wv-menu-btn js-open-archive-template" data-template-id="{{ t.id }}" data-template-name="{{ t.recipient_template_name }}">Archive</button>
-                              <button class="wv-menu-btn js-open-delete-template" data-template-id="{{ t.id }}" data-template-name="{{ t.recipient_template_name }}">Delete</button>
+                              <button class="wv-menu-btn js-open-archive-template" data-template-id="{{ t.id }}" data-template-name="{{ t.audience_builder_name }}">Archive</button>
+                              <button class="wv-menu-btn js-open-delete-template" data-template-id="{{ t.id }}" data-template-name="{{ t.audience_builder_name }}">Delete</button>
                             </div>
                           </div>
                         </div>
@@ -294,9 +294,9 @@
         {% for t in archived_templates %}
           <div class="wv-item">
             <div>
-              <strong>{{ t.recipient_template_name }}</strong>
-              {% if t.recipient_template_folder_id %}
-                  {% with folder_name=all_folders_by_id|get_value_from_dict:t.recipient_template_folder_id %}
+              <strong>{{ t.audience_builder_name }}</strong>
+              {% if t.audience_builder_folder_id %}
+                  {% with folder_name=all_folders_by_id|get_value_from_dict:t.audience_builder_folder_id %}
                     <span class="wv-tag" title="Original folder">From: {{ folder_name }}</span>
                   {% endwith %}
               {% else %}
@@ -308,8 +308,8 @@
               <div class="wv-dropdown">
                 <button type="button" class="wv-kebab js-dd">•••</button>
                 <div class="wv-dropdown-menu">
-                  <button class="wv-menu-btn js-open-unarchive-template" data-template-id="{{ t.id }}" data-template-name="{{ t.recipient_template_name }}">Unarchive</button>
-                  <button class="wv-menu-btn js-open-delete-template" data-template-id="{{ t.id }}" data-template-name="{{ t.recipient_template_name }}">Delete</button>
+                  <button class="wv-menu-btn js-open-unarchive-template" data-template-id="{{ t.id }}" data-template-name="{{ t.audience_builder_name }}">Unarchive</button>
+                  <button class="wv-menu-btn js-open-delete-template" data-template-id="{{ t.id }}" data-template-name="{{ t.audience_builder_name }}">Delete</button>
                 </div>
               </div>
             </div>
@@ -328,7 +328,7 @@
 <div id="createFolderModal" class="wv-modal-backdrop" aria-hidden="true">
   <div class="wv-modal" role="dialog" aria-modal="true" aria-labelledby="createFolderTitle">
     <div class="wv-modal-header">
-      <h3 class="wv-modal-title" id="createFolderTitle">Create Recipient Template Folder</h3>
+      <h3 class="wv-modal-title" id="createFolderTitle">Create Folder</h3>
       <button type="button" class="btn" id="closeCreateFolder">✕</button>
     </div>
     <form method="post" action="{{ process_url }}">
@@ -336,8 +336,8 @@
       <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
       <input type="hidden" name="state_code" value="{{ state_code }}">
       <input type="hidden" name="action" value="create_folder">
-      <label for="recipient_template_name" style="display:block; font-weight:500; margin-bottom:6px;">Folder name</label>
-      <input class="wv-input" id="recipient_template_name" name="recipient_template_name" maxlength="255" required />
+      <label for="audience_builder_name" style="display:block; font-weight:500; margin-bottom:6px;">Folder name</label>
+      <input class="wv-input" id="audience_builder_name" name="audience_builder_name" maxlength="255" required />
       <div class="wv-actions-right">
         <button type="button" class="btn" id="cancelCreate">Cancel</button>
         <button type="submit" class="btn btn-primary">Create</button>
@@ -360,7 +360,7 @@
       <input type="hidden" name="action" value="rename_folder">
       <input type="hidden" name="folder_id" id="rf_folder_id">
       <label for="rf_name" style="display:block; font-weight:500; margin-bottom:6px;">New folder name</label>
-      <input class="wv-input" id="rf_name" name="edit_recipient_template_name" maxlength="255" required />
+      <input class="wv-input" id="rf_name" name="edit_audience_builder_name" maxlength="255" required />
       <div class="wv-actions-right">
         <button type="button" class="btn" id="cancelRenameFolder">Cancel</button>
         <button type="submit" class="btn btn-primary">Save</button>
@@ -451,10 +451,10 @@
       <select id="new_folder_id" name="new_folder_id" class="wv-select" required>
         <option value="null">Unfiled</option>
         {% for f in folders_active %}
-          <option value="{{ f.id }}">{{ f.recipient_template_name }}</option>
+          <option value="{{ f.id }}">{{ f.audience_builder_name }}</option>
         {% endfor %}
         {% for f in folders_archived %}
-          <option value="{{ f.id }}">{{ f.recipient_template_name }} (Archived)</option>
+          <option value="{{ f.id }}">{{ f.audience_builder_name }} (Archived)</option>
         {% endfor %}
       </select>
       <div class="wv-actions-right">

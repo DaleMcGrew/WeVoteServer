@@ -186,6 +186,7 @@ class OfficeHeld(models.Model):
     ocd_division_id = models.CharField(verbose_name="ocd division id", max_length=255, null=True, blank=True)
     ocd_id_state_mismatch_checked = models.BooleanField(default=False, null=False)
     ocd_id_state_mismatch_found = models.BooleanField(default=False, null=False)
+    office_explanation_we_vote_id = models.CharField(max_length=255, null=True, unique=False)
     office_held_description = models.TextField(verbose_name="office_held description", null=True, blank=True)
     office_held_description_es = models.TextField(
         verbose_name="office_held description in Spanish", null=True, blank=True)
