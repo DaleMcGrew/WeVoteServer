@@ -99,7 +99,6 @@ ALLOWED_HOSTS = [
     'api.wevoteusa.org',
     'localhost',
     'wevotedeveloper.com',
-    'app://localhost',
     '127.0.0.1'
 ]
 
