@@ -97,8 +97,8 @@ SECRET_KEY = get_environment_variable("SECRET_KEY")
 # Comment out when running Heroku
 ALLOWED_HOSTS = [
     'api.wevoteusa.org',
-    'localhost',
     'wevotedeveloper.com',
+    'localhost',
     '127.0.0.1'
 ]
 
