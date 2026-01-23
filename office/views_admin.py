@@ -5,7 +5,8 @@
 from .controllers import add_contest_office_name_to_next_spot, fetch_duplicate_office_count, \
     find_duplicate_contest_office, figure_out_office_conflict_values, merge_if_duplicate_offices, \
     offices_import_from_master_server
-from .models import ContestOffice, ContestOfficeListManager, ContestOfficeManager, CONTEST_OFFICE_UNIQUE_IDENTIFIERS
+from .models import ContestOffice, ContestOfficeListManager, ContestOfficeManager, CONTEST_OFFICE_UNIQUE_IDENTIFIERS,\
+    OfficeExplanation
 from admin_tools.views import redirect_to_sign_in_page
 from ballot.controllers import move_ballot_items_to_another_office
 from bookmark.models import BookmarkItemList
@@ -2305,227 +2306,136 @@ def office_merge_process_view(request):
 
 
 def office_explanations_list_view(request):
-    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+
     authority_required = {'partner_organization', 'political_data_viewer', 'verified_volunteer'}
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
 
-    status = ""
-
-    fix_office_district_ids = positive_value_exists(request.GET.get('fix_office_district_ids', False))
-    google_civic_election_id = convert_to_int(request.GET.get('google_civic_election_id', 0))
-    office_search = request.GET.get('office_search', '')
-    show_all_elections = positive_value_exists(request.GET.get('show_all_elections', False))
     state_code = request.GET.get('state_code', '')
+    show_all_states = request.GET.get('show_all_states', False)
+    if positive_value_exists(show_all_states):
+        state_code = ''
+    office_search = request.GET.get('office_search', '')
 
-    office_list_found = False
-    office_list = []
-    updated_office_list = []
-    office_list_count = 0
-
-    election_manager = ElectionManager()
-    if positive_value_exists(show_all_elections):
-        results = election_manager.retrieve_elections()
-        election_list = results['election_list']
-    else:
-        results = election_manager.retrieve_upcoming_elections()
-        election_list = results['election_list']
-
-    # ################################################
-    # Maintenance script section START
-    # ################################################
-
-    add_election_date_as_integer_to_all_offices_on = False
-    number_to_update = 1000
-    if add_election_date_as_integer_to_all_offices_on:
-        from office.controllers_data_cleaning import add_election_date_as_integer_to_all_offices
-        google_civic_election_id_list = None
-        if positive_value_exists(google_civic_election_id):
-            google_civic_election_id_list = [google_civic_election_id]
-        results = add_election_date_as_integer_to_all_offices(
-            google_civic_election_id_list=google_civic_election_id_list,
-            number_to_update=number_to_update,
-            state_code=state_code,
-        )
-        if positive_value_exists(results['status']):
-            messages.add_message(request, messages.INFO, results['status'])
-
-    repair_parallel_fields_with_years_on = False
-    office_repair_success = True
-    office_repair_list = []
-    if repair_parallel_fields_with_years_on:
-        # TODO: When we want to turn this repair script back on, add code to retrieve offices to be repaired.
-        if len(office_repair_list) > 0:
-            from politician.controllers import update_parallel_fields_with_years_in_related_objects
-            for office_on_stage in office_repair_list:
-                if office_repair_success and not office_on_stage.is_battleground_race_spread_to_all_objects:
-                    election_day_text = office_on_stage.get_election_day_text()
-                    year = 0
-                    years_false_list = []
-                    years_true_list = []
-                    if positive_value_exists(election_day_text):
-                        date_as_integer = convert_we_vote_date_string_to_date_as_integer(election_day_text)
-                        year = date_as_integer // 10000
-                    if positive_value_exists(year):
-                        if positive_value_exists(office_on_stage.is_battleground_race):
-                            years_true_list = [year]
-                        else:
-                            # For this update script we only want to propagate True values (i.e. years_true_list)
-                            # years_false_list = [year]
-                            pass
-                    years_list = list(set(years_false_list + years_true_list))
-                    if len(years_list) > 0:
-                        results = update_parallel_fields_with_years_in_related_objects(
-                            field_key_root='is_battleground_race_',
-                            master_we_vote_id_updated=office_on_stage.we_vote_id,
-                            years_false_list=years_false_list,
-                            years_true_list=years_true_list,
-                        )
-                        office_repair_success = results['success']
-                        if office_repair_success:
-                            office_on_stage.is_battleground_race_spread_to_all_objects = True
-                            office_on_stage.save()
-                        else:
-                            status += results['status']
-                            messages.add_message(request, messages.ERROR, status)
-    # ################################################
-    # Maintenance script section END
-    # ################################################
 
     try:
-        office_queryset = ContestOffice.objects.using('readonly').all()
-        if positive_value_exists(google_civic_election_id):
-            office_queryset = office_queryset.filter(google_civic_election_id=google_civic_election_id)
-        elif positive_value_exists(show_all_elections):
-            # Return offices from all elections
-            pass
-        else:
-            # Limit this search to upcoming_elections only
-            google_civic_election_id_list = []
-            for one_election in election_list:
-                google_civic_election_id_list.append(one_election.google_civic_election_id)
-            office_queryset = office_queryset.filter(google_civic_election_id__in=google_civic_election_id_list)
-        from django.db.models.functions import Length
+        office_explanations = OfficeExplanation.objects.order_by('we_vote_id')
         if positive_value_exists(state_code):
-            office_queryset = office_queryset.filter(state_code__iexact=state_code)
-        office_queryset = office_queryset.order_by("office_name")
-
+            office_explanations = office_explanations.filter(state_code__iexact=state_code)
         if positive_value_exists(office_search):
-            search_words = office_search.split()
-            for one_word in search_words:
-                filters = []  # Reset for each search word
-                new_filter = Q(ballotpedia_office_id__iexact=one_word)
-                filters.append(new_filter)
+            office_explanations = office_explanations.filter(
+                Q(office_name__icontains=office_search) |
+                Q(we_vote_id__icontains=office_search) |
+                Q(office_explanation__icontains=office_search)
+            )
+        office_explanation_list = office_explanations
+    except OfficeExplanation.DoesNotExist:
+        office_explanation_list = []
 
-                new_filter = Q(ballotpedia_race_id__iexact=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(ocd_division_id__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(office_name__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(vote_usa_office_id__icontains=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(we_vote_id=one_word)
-                filters.append(new_filter)
-
-                new_filter = Q(wikipedia_id__icontains=one_word)
-                filters.append(new_filter)
-
-                # Add the first query
-                if len(filters):
-                    final_filters = filters.pop()
-
-                    # ...and "OR" the remaining items in the list
-                    for item in filters:
-                        final_filters |= item
-
-                    office_queryset = office_queryset.filter(final_filters)
-
-        office_list_count = office_queryset.count()
-
-        office_queryset = office_queryset[:200]
-        office_list = list(office_queryset)
-
-        if len(office_list):
-            office_list_found = True
-            status += 'OFFICES_RETRIEVED '
-            success = True
-        else:
-            status += 'NO_OFFICES_RETRIEVED '
-            success = True
-    except ContestOffice.DoesNotExist:
-        # No offices found. Not a problem.
-        status += 'NO_OFFICES_FOUND_DoesNotExist '
-        office_list = []
-        success = True
-    except Exception as e:
-        status += 'FAILED retrieve_all_offices_for_upcoming_election ' \
-                 '{error} [type: {error_type}]'.format(error=e, error_type=type(e)) + " "
-        success = False
-
-    # Make sure we always include the current election in the election_list, even if it is older
-    if positive_value_exists(google_civic_election_id):
-        this_election_found = False
-        for one_election in election_list:
-            if convert_to_int(one_election.google_civic_election_id) == convert_to_int(google_civic_election_id):
-                this_election_found = True
-                break
-        if not this_election_found:
-            results = election_manager.retrieve_election(google_civic_election_id)
-            if results['election_found']:
-                election = results['election']
-                election_list.append(election)
-
-    state_list = STATE_CODE_MAP
-    state_list_modified = {}
-    office_list_manager = ContestOfficeListManager()
-    for one_state_code, one_state_name in state_list.items():
-        office_count = office_list_manager.fetch_office_count(google_civic_election_id, one_state_code)
-        state_name_modified = one_state_name
-        if positive_value_exists(office_count):
-            state_name_modified += " - " + str(office_count)
-            state_list_modified[one_state_code] = state_name_modified
-        elif str(one_state_code.lower()) == str(state_code.lower()):
-            state_name_modified += " - 0"
-            state_list_modified[one_state_code] = state_name_modified
-        else:
-            # Do not include state in drop-down if there aren't any offices in that state
-            pass
-    sorted_state_list = sorted(state_list_modified.items())
-
-    office_list_count_str = f'{office_list_count:,}'
-
-    status_print_list = ""
-    status_print_list += "office_list_count: " + office_list_count_str + " "
-
-    messages.add_message(request, messages.INFO, status_print_list)
-
-    messages_on_stage = get_messages(request)
+    state_codes = {}
+    for office_explanation in office_explanation_list:
+        if positive_value_exists(office_explanation.state_code):
+            state_codes[office_explanation.state_code] = True
+    state_list = list(state_codes.keys())
+    state_list.sort()
 
     template_values = {
-        'election_list':                election_list,
-        'google_civic_election_id':     google_civic_election_id,
-        # 'has_ctcl_data':                has_ctcl_data,
-        # 'has_vote_usa_data':            has_vote_usa_data,
-        'messages_on_stage':            messages_on_stage,
-        'office_list':                  updated_office_list,
-        'office_search':                office_search,
-        # 'race_office_level':            race_office_level,
-        'show_all_elections':           show_all_elections,
-        # 'show_battleground':            show_battleground,
-        # 'show_statistics':              show_statistics,
-        # 'show_marquee_or_battleground': show_marquee_or_battleground,
-        'state_code':                   state_code,
-        'state_list':                   sorted_state_list,
+        'office_explanation_list': office_explanation_list,
+        'state_list':         state_list,
+        'state_code':         state_code,
     }
 
     return render(request, 'office/office_explanations_list.html', template_values)
 
 
 @login_required
-def office_explanation_new(request):
-    return render(request, 'office/office_explanation_new.html', {})
+def office_explanation_process_view(request):
+
+    authority_required = {'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+    
+    office_explanation_name = request.POST.get('office_explanation_name', '')
+    office_explanation = request.POST.get('office_explanation', '')
+    office_video_url_horizontal = request.POST.get('office_video_url_horizontal', '')
+    office_video_url_square = request.POST.get('office_video_url_square', '')
+    office_video_url_vertical = request.POST.get('office_video_url_vertical', '')
+    we_vote_id = request.POST.get('we_vote_id', '')
+
+    office_explanation_found = False
+    office_on_stage = OfficeExplanation()
+    error = False
+    try:
+        if positive_value_exists(we_vote_id):
+            office_query = OfficeExplanation.objects.filter(we_vote_id=we_vote_id)
+            if len(office_query):
+                office_on_stage = office_query[0]
+                office_explanation_found = True
+    except Exception as e:
+        messages.add_message(request, messages.ERROR, 'There was an error trying to find this office explanation')
+        error = True
+
+    state_code = request.POST.get('state_code', '')
+
+    if not error:
+        try:
+            if not office_explanation_found:
+                # Create new office explanation
+                office_on_stage = OfficeExplanation(
+                    office_explanation_name=office_explanation_name,
+                    office_explanation=office_explanation,
+                    video_url_horizontal=office_video_url_horizontal,
+                    video_url_square=office_video_url_square,
+                    video_url_vertical=office_video_url_vertical,
+                    state_code=state_code,
+                    we_vote_id=we_vote_id,
+                )
+                messages.add_message(request, messages.INFO, 'Office explanation created.')
+            else:
+                messages.add_message(request, messages.ERROR, 'Office explanation with this We Vote ID already exists.')
+        except Exception as e:
+            messages.add_message(request, messages.ERROR, 'Could not save office explanation -- exception: ' + str(e))
+
+    return HttpResponseRedirect(reverse('office:office_explanations_list', args=()) + '?state_code=' + str(state_code))
+
+
+@login_required
+def office_explanation_edit_view():
+    
+    authority_required = {'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    office_explanation = None
+
+    we_vote_id = request.GET.get('we_vote_id', '')
+
+    if positive_value_exists(we_vote_id):
+        try:
+            office_explanation = OfficeExplanation.objects.get(we_vote_id=we_vote_id)  # Cannot be readonly
+        except OfficeExplanation.DoesNotExist:
+            pass
+
+    template_values = {
+        'office_explanation': office_explanation,
+        'title':              'Edit Office Explanation',
+    }
+
+    return render(request, 'office/office_explanation_edit.html', template_values)
+
+
+@login_required
+def office_explanation_new_view(request):
+
+    authority_required = {'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    state_code = request.GET.get('state_code', '')
+
+    template_values = {
+        'state_code': state_code,
+        'title':      'New Office Explanation',
+    }
+
+    return render(request, 'office/office_explanation_edit.html', template_values)

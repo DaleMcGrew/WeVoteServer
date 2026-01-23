@@ -8,29 +8,6 @@
 
 <h1>Office Explanations</h1>
 
-{% if election_list %}
-    <form name="office_explanation_choose_election" method="get" action="{% url 'office:office_explanations_list' %}">
-    {% csrf_token %}
-    <select id="google_civic_election_id" name="google_civic_election_id">
-        <option value="0" {% if 0 == google_civic_election_id %} selected="selected"{% endif %}>
-            -- Filter by Election --</option>
-    {% for one_election in election_list %}
-        <option value="{{ one_election.google_civic_election_id }}"
-                {% if one_election.google_civic_election_id|slugify == google_civic_election_id|slugify %} selected="selected"{% endif %}>
-            {% if one_election.state_code %}{{ one_election.state_code }} {% endif %}
-            {{ one_election.election_day_text }}: {{ one_election.election_name }} - {{ one_election.google_civic_election_id }}</option>
-    {% endfor %}
-    </select>
-    <input type="submit" value="Filter" />
-    </form>
-{% endif %}{# End of if election_list #}
-
-    {#Default to showing only upcoming elections #}
-    <label for="show_all_elections_id">
-      <input type="checkbox" name="show_all_elections" id="show_all_elections_id" value="1"
-             {% if show_all_elections %}checked{% endif %} /> Include Past Elections
-    </label>
-    &nbsp;&nbsp;&nbsp;&nbsp;
 {% if state_code != "" %}
     <a href="#" onclick="showAllStates(); return false;">
         show all states</a>
@@ -61,20 +38,26 @@
     <table class="table table-sm table-hover">
         <thead>
             <tr>
-                <th>Office Name</th>
+
+                <th>Office Explanation Name</th>
                 <th>State</th>
-                <th>Election Date</th>
-                <th>Explanation</th>
-                <th>Actions</th>
+                <th>Office Explanation</th>
+                <th>Horizontal Video URL</th>
+                <th>Square Video URL</th>
+                <th>Vertical Video URL</th>
+                <th>We Vote ID</th>
+
             </tr>
         </thead>
         <tbody>
         {% for office in office_list %}
             <tr>
-                <td>{{ office.office_name }}</td>
+                <td>{{ office.office_explanation_name }}</td>
                 <td>{{ office.state_code }}</td>
-                <td>{{ office.election_date_as_integer }}</td>
-                <td>{{ office.office_held_description|truncatewords:20 }}</td>
+                <td>{{ office.office_explanation|default:"(no explanation)" }}</td>
+                <td>{{ office.video_url_horizontal|default:"(no url)" }}</td>
+                <td>{{ office.video_url_square|default:"(no url)" }}</td>
+                <td>{{ office.video_url_vertical|default:"(no url)" }}</td>
                 <td>
                     <a href="{% url 'office:office_explanation_edit' office.id %}">Edit</a>
                 </td>

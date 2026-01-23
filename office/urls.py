@@ -33,5 +33,9 @@ urlpatterns = [
     re_path(r'^office_explanations_list/$',
         views_admin.office_explanations_list_view, name='office_explanations_list'),
     re_path(r'^office_explanation_new/$',
-            views_admin.office_explanation_new, name='office_explanation_new'),
+            views_admin.office_explanation_new_view, name='office_explanation_new'),
+    re_path(r'^office_explanation_edit_process/$',
+            views_admin.office_explanation_process_view, name='office_explanation_edit_process'),
+    re_path(r'^office_explanation_edit/(?P<office_explanation_id>[0-9]+)/$',
+            views_admin.office_explanation_edit_view, name='office_explanation_edit'),
 ]
