@@ -360,7 +360,7 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 4096
 
 CORS_ORIGIN_WHITELIST = (
     'https://api.wevoteusa.org',
-    'http://localhost:8000', 'https://localhost:8000', 'app://localhost'
+    'http://localhost:8000', 'https://localhost:8000', 'app://localhost',
     'http://wevotedeveloper.com', 'https://wevotedeveloper.com',
 )
 # CORS_ALLOW_HEADERS = (
