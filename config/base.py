@@ -97,8 +97,8 @@ SECRET_KEY = get_environment_variable("SECRET_KEY")
 # Comment out when running Heroku
 ALLOWED_HOSTS = [
     'api.wevoteusa.org',
-    'localhost',
     'wevotedeveloper.com',
+    'localhost',
     '127.0.0.1'
 ]
 
@@ -352,7 +352,7 @@ CORS_ALLOW_CREDENTIALS = True
 # CORS_REPLACE_HTTPS_REFERER = True
 CSRF_TRUSTED_ORIGINS = [
     'https://api.wevoteusa.org',
-    'http://localhost:8000', 'https://localhost:8000',
+    'http://localhost:8000', 'https://localhost:8000', 'app://localhost',
     'http://wevotedeveloper.com', 'https://wevotedeveloper.com',
 ]
 DATA_UPLOAD_MAX_MEMORY_SIZE = 22000000  # MAX_IMAGE_SIZE (room for 21MB file), but this does not seem to have any effect
@@ -360,7 +360,7 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 4096
 
 CORS_ORIGIN_WHITELIST = (
     'https://api.wevoteusa.org',
-    'http://localhost:8000', 'https://localhost:8000',
+    'http://localhost:8000', 'https://localhost:8000', 'app://localhost',
     'http://wevotedeveloper.com', 'https://wevotedeveloper.com',
 )
 # CORS_ALLOW_HEADERS = (
