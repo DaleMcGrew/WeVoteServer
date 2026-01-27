@@ -22,6 +22,7 @@
                id="we_vote_id_id"
                class="form-control"
                value="{% if office_explanation %}{{ office_explanation.we_vote_id|default_if_none:"" }}{% else %}{{ we_vote_id|default_if_none:"" }}{% endif %}" />
+               {% if office_explanation %}{{ office_explanation.we_vote_id }}{% else %}{{ we_vote_id }}{% endif %}
     </div>
 </div>
 
@@ -33,7 +34,7 @@
                id="office_explanation_name_id"
                class="form-control"
                value="{% if office_explanation %}{{ office_explanation.office_explanation_name|default_if_none:"" }}{% else %}{{ office_explanation_name|default_if_none:"" }}{% endif %}" />
-        {% if office_explanation %}{{ office_explanation.we_vote_id }}{% else %}{{ we_vote_id }}{% endif %}
+               {% if office_explanation %}{{ office_explanation.office_explanation_name }}{% else %}{{ '' }}{% endif %}
     </div>
 </div>
 
@@ -55,6 +56,7 @@
                id="state_code_id"
                class="form-control"
                value="{% if office_explanation %}{{ office_explanation.state_code|default_if_none:"" }}{% else %}{{ state_code|default_if_none:"" }}{% endif %}" />
+               {% if office_explanation %}{{ office_explanation.state_code }}{% else %}{{ '' }}{% endif %}
     </div>
 </div>
 
@@ -110,7 +112,7 @@
 </form>
 
 {% if office_explanation %}
-<form action="{% url "office_explanation:office_explanation_delete_process" %}" method="post" class="form-horizontal">
+<form action="{% url "office:office_explanation_delete_process" office_explanation.we_vote_id %}" method="post" class="form-horizontal">
 {% csrf_token %}
   <input type="hidden" name="office_explanation_id" value="{{ office_explanation.id|default_if_none:0|default:0 }}">
   <input type="hidden" name="state_code" value="{{ office_explanation.state_code|default_if_none:''|default:'' }}">
@@ -137,10 +139,10 @@
         </tr>
     {% for one in office_explanation_list %}
         <tr>
-            <td><a href="{% url 'office_explanation:office_explanation_summary' one.id %}">{{ one.office_explanation_name }}</a></td>
+            <td><a href="{% url 'office:office_explanation_summary' one.we_vote_id %}">{{ one.office_explanation_name }}</a></td>
             <td>{{ one.state_code }}</td>
             <td>{{ one.we_vote_id }}</td>
-            <td><a href="{% url 'office_explanation:office_explanation_edit' one.id %}" style="font-size: .65em">edit</a></td>
+            <td><a href="{% url 'office:office_explanation_edit_process' one.we_vote_id %}" style="font-size: .65em">edit</a></td>
         </tr>
     {% endfor %}
     </table>

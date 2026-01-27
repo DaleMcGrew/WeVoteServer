@@ -2324,25 +2324,28 @@ def office_explanations_list_view(request):
             office_explanations = office_explanations.filter(state_code__iexact=state_code)
         if positive_value_exists(office_search):
             office_explanations = office_explanations.filter(
-                Q(office_name__icontains=office_search) |
+                Q(office_explanation_name__icontains=office_search) |
                 Q(we_vote_id__icontains=office_search) |
                 Q(office_explanation__icontains=office_search)
             )
-        office_explanation_list = office_explanations
+        office_explanation_list = list(office_explanations)
     except OfficeExplanation.DoesNotExist:
         office_explanation_list = []
 
-    state_codes = {}
-    for office_explanation in office_explanation_list:
-        if positive_value_exists(office_explanation.state_code):
-            state_codes[office_explanation.state_code] = True
-    state_list = list(state_codes.keys())
-    state_list.sort()
+    state_codes = STATE_CODE_MAP
+    state_codes_modified = {}
+    for one_office_explanation in office_explanation_list:
+        if one_office_explanation.state_code not in state_codes_modified:
+            state_name = state_codes.get(one_office_explanation.state_code, one_office_explanation.state_code)
+            state_codes_modified[one_office_explanation.state_code] = state_name
+        
+    state_list = sorted(state_codes_modified.items())
 
     template_values = {
-        'office_explanation_list': office_explanation_list,
+        'office_list': office_explanation_list,
         'state_list':         state_list,
         'state_code':         state_code,
+        'office_search':      office_search,
     }
 
     return render(request, 'office/office_explanations_list.html', template_values)
@@ -2390,6 +2393,7 @@ def office_explanation_process_view(request):
                     state_code=state_code,
                     we_vote_id=we_vote_id,
                 )
+                office_on_stage.save()
                 messages.add_message(request, messages.INFO, 'Office explanation created.')
             else:
                 messages.add_message(request, messages.ERROR, 'Office explanation with this We Vote ID already exists.')
@@ -2400,7 +2404,34 @@ def office_explanation_process_view(request):
 
 
 @login_required
-def office_explanation_edit_view():
+def office_explanation_delete_process_view(request, office_explanation_id):
+
+    confirm_delete = convert_to_int(request.POST.get('confirm_delete', False))
+    if not positive_value_exists(confirm_delete):
+        messages.add_message(request, messages.ERROR, 'Delete not confirmed.')
+        return HttpResponseRedirect(reverse('office:office_explanations_list', args=()))
+    
+    authority_required = {'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    we_vote_id = office_explanation_id
+
+    try:
+        if positive_value_exists(we_vote_id):
+            office_explanation = OfficeExplanation.objects.get(we_vote_id=we_vote_id)  # Cannot be readonly
+            office_explanation.delete()
+            messages.add_message(request, messages.INFO, 'Office explanation deleted.')
+    except OfficeExplanation.DoesNotExist:
+        messages.add_message(request, messages.ERROR, 'Office explanation not found.')
+    except Exception as e:
+        messages.add_message(request, messages.ERROR, 'Could not delete office explanation -- exception: ' + str(e))
+
+    return HttpResponseRedirect(reverse('office:office_explanations_list', args=()))
+
+
+@login_required
+def office_explanation_edit_view(request, office_explanation_id):
     
     authority_required = {'verified_volunteer'}
     if not voter_has_authority(request, authority_required):
@@ -2408,7 +2439,7 @@ def office_explanation_edit_view():
 
     office_explanation = None
 
-    we_vote_id = request.GET.get('we_vote_id', '')
+    we_vote_id = office_explanation_id
 
     if positive_value_exists(we_vote_id):
         try:
@@ -2439,3 +2470,24 @@ def office_explanation_new_view(request):
     }
 
     return render(request, 'office/office_explanation_edit.html', template_values)
+
+
+def office_explanation_summary_view(request, office_explanation_id):
+
+    authority_required = {'partner_organization', 'political_data_viewer', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    office_explanation = None
+
+    try:
+        office_explanation = OfficeExplanation.objects.get(we_vote_id=office_explanation_id)
+    except OfficeExplanation.DoesNotExist:
+        pass
+
+    template_values = {
+        'office_explanation': office_explanation,
+        'title':              'Office Explanation Summary',
+    }
+
+    return render(request, 'office/office_explanation_summary.html', template_values)

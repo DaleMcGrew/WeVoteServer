@@ -28,9 +28,16 @@
     </form>
 {% endif %}{# End of if state_list #}
 
+{% if office_search %}
+    <a href="#" onclick="clearSearch(); return false;">clear search</a>&nbsp;
+
+    <!-- <a href="{% url 'measure:measure_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+         clear search</a>&nbsp; -->
+{% endif %}
+
 <form name="office_explanation_search_form" method="get" action="{% url 'office:office_explanations_list' %}">
     {% csrf_token %}
-    <input type="text" name="office_explanation_search" value="{{ office_explanation_search }}" placeholder="Search for office explanations" />
+    <input type="text" name="office_search" id="office_search_id" value="{{ office_search }}" placeholder="Search for office explanations" />
     <input type="submit" value="Search" />
 </form>
 
@@ -38,7 +45,7 @@
     <table class="table table-sm table-hover">
         <thead>
             <tr>
-
+                <th>&nbsp;</th>
                 <th>Office Explanation Name</th>
                 <th>State</th>
                 <th>Office Explanation</th>
@@ -52,14 +59,15 @@
         <tbody>
         {% for office in office_list %}
             <tr>
-                <td>{{ office.office_explanation_name }}</td>
+                <td>{{ forloop.counter }}</td>
+                <td><a href="{% url 'office:office_explanation_summary' office.we_vote_id %}">{{ office.office_explanation_name }}</a></td>
                 <td>{{ office.state_code }}</td>
                 <td>{{ office.office_explanation|default:"(no explanation)" }}</td>
                 <td>{{ office.video_url_horizontal|default:"(no url)" }}</td>
                 <td>{{ office.video_url_square|default:"(no url)" }}</td>
                 <td>{{ office.video_url_vertical|default:"(no url)" }}</td>
                 <td>
-                    <a href="{% url 'office:office_explanation_edit' office.id %}">Edit</a>
+                    <a href="{% url 'office:office_explanation_edit' office.we_vote_id %}">edit</a>
                 </td>
             </tr>
         {% endfor %}
@@ -78,9 +86,15 @@
         $('#FilterPopupMessage').show();
     }
 
+    function showAllStates() {
+        displayLoadingBanner();
+        $('#state_code_id').val('');
+        $('form[name="office_explanation_search_form"]').submit();
+    }
+
     function clearSearch() {
         displayLoadingBanner();
-        $('#office_id').val('');
+        $('#office_search_id').val('');
         $('form[name="office_explanation_search_form"]').submit();
     }
 </script>
