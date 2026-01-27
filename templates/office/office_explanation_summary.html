@@ -1,0 +1,54 @@
+{# templates/office/office_explanation_summary.html #}
+{% extends "template_base.html" %}
+
+{% block title %}{% if office_explanation %}{{ office_explanation.office_explanation_name }} Summary{% else %}No Office Explanation Found{% endif %}{% endblock %}
+
+{%  block content %}
+
+<a href="{% url 'office:office_explanations_list' %}?">< Back to Office Explanations</a>
+
+{% if office_explanation %}
+
+    <h1>{{ office_explanation.office_explanation_name }}</h1>
+    <div>
+        <strong>State Code:</strong>
+        {% if office_explanation.state_code %}
+        {{ office_explanation.state_code }}
+        {% endif %}
+    </div>
+    <p>{{ office_explanation.office_explanation|default_if_none:"" }}</p>
+    <div>
+        <strong>Horizontal Video URL:</strong>
+        {% if office_explanation.horizontal_video_url %}
+        {{ office_explanation.horizontal_video_url }}
+        {% endif %}
+    </div>
+    <div>
+        <strong>Square Video URL:</strong>
+        {% if office_explanation.square_video_url %}
+        {{ office_explanation.square_video_url }}
+        {% endif %}
+    </div>
+    <div>
+        <strong>Vertical Video URL:</strong>
+        {% if office_explanation.vertical_video_url %}
+        {{ office_explanation.vertical_video_url }}
+        {% endif %}
+    </div>
+    <div>
+        <strong>We Vote ID:</strong>
+        {% if office_explanation.we_vote_id %}
+        {{ office_explanation.we_vote_id }}
+        {% endif %}
+    </div>
+
+    <p>
+        <a href="{% url 'office:office_explanation_edit' office_explanation.we_vote_id %}">edit</a>
+    </p>
+
+{% else %}
+    <h1>No Office Explanation Found</h1>
+    <p>The requested office explanation was not found.</p>
+{% endif %}
+
+{% endblock content %}
