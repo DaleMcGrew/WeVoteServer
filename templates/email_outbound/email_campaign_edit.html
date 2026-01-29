@@ -120,23 +120,7 @@
         </div>
     </div>
 
-    <!-- Template Selection -->
-    <div class="mb-3">
-      <label for="folder_select" class="form-label">Template Folder</label>
-      <select id="folder_select" class="form-select mb-2">
-        <option value="">-- Select a folder --</option>
-        {% for folder in folder_list %}
-          <option value="{{ forloop.counter0 }}">
-            {% if folder.folder_name == "Unfiled" %}📋{% else %}📁{% endif %} {{ folder.folder_name }}
-          </option>
-        {% endfor %}
-      </select>
-      
-      <label for="template_select" class="form-label">Email Template <span class="text-danger">*</span></label>
-      <select id="template_select" name="email_template_id" class="form-select" required disabled>
-        <option value="">-- Select a folder first --</option>
-      </select>
-    </div>
+    {% include "email_outbound/selection_tree.html" with selection_type="Email Template" selection_tree_data=folder_tree %}
 
     <!-- Recipients Section -->
     <div class="mb-3">
@@ -263,16 +247,15 @@
     color: #007bff;
   }
 </style>
+
 <script>
   // Store folder data from Django template
-  const folderData = JSON.parse('{{ folder_list_json|escapejs }}');
+  // const folderData = JSON.parse('{{ folder_list_json|escapejs }}');
   const selectedRecipientDictList = []
   // Each selectedRecipientDict uses this format:
   // { recipientWeVoteId: <str>, recipientName: "<str>", recipientEmail: "<str>" }
   
   document.addEventListener('DOMContentLoaded', function() {
-    const folderSelect = document.getElementById('folder_select');
-    const templateSelect = document.getElementById('template_select');
     const searchBtn = document.getElementById('search_btn');
     const recipientSearch = document.getElementById('recipient_search');
     const searchResults = document.getElementById('search_results');
@@ -282,30 +265,6 @@
     const clearAllBtn = document.getElementById('clear_all_btn');
     const sendButtonClicked = document.getElementById('send_button_clicked_id');
 
-    // Handle folder selection
-    folderSelect.addEventListener('change', function() {
-      const folderIndex = this.value;
-      templateSelect.innerHTML = '<option value="">-- Select a template --</option>';
-      
-      if (folderIndex !== '') {
-        const folder = folderData[folderIndex];
-        if (folder.templates && folder.templates.length > 0) {
-          folder.templates.forEach(template => {
-            const option = document.createElement('option');
-            option.value = template.id;
-            option.textContent = template.email_template_name;
-            templateSelect.appendChild(option);
-          });
-          templateSelect.disabled = false;
-        } else {
-          templateSelect.innerHTML = '<option value="">-- No templates in this folder --</option>';
-          templateSelect.disabled = true;
-        }
-      } else {
-        templateSelect.disabled = true;
-      }
-    });
-    
     // Handle recipient search
     searchBtn.addEventListener('click', performSearch);
     recipientSearch.addEventListener('keypress', function(e) {
@@ -565,14 +524,14 @@
     
     // Monitor form changes
     document.getElementById('campaign_title').addEventListener('input', checkFormValidity);
-    templateSelect.addEventListener('change', function() {
-      checkFormValidity();
-      loadTemplateContent();
-    });
     
+    document.addEventListener('treeSelectionChanged', function(event) {
+          checkFormValidity();
+          loadTemplateContent(event.detail.node.li_attr.value);
+        });
+
     // Load template content when template is selected
-    function loadTemplateContent() {
-      const templateId = templateSelect.value;
+    function loadTemplateContent(templateId) {
       if (!templateId) return;
       
       console.log('Loading template content for ID:', templateId);
@@ -601,7 +560,12 @@
           
           if (data.message) {
             // Set textarea value directly
-            document.getElementById('email_body').value = data.message;
+            // document.getElementById('email_body').value = data.message;
+            if (tinymce.get('email_body')) {
+              tinymce.get('email_body').setContent(data.message);
+            } else {
+              document.getElementById('email_body').value = data.message;
+            }
             console.log('Content set successfully');
           }
         })
@@ -795,22 +759,6 @@
     {% if email_campaign %}
       // Populate campaign title
       document.getElementById('campaign_title').value = '{{ email_campaign.email_campaign_name|escapejs }}';
-      
-      // Set template if available
-      {% if email_campaign.email_template_id %}
-        // Find the folder containing this template
-        let templateId = {{ email_campaign.email_template_id }};
-        folderData.forEach((folder, index) => {
-          if (folder.templates.some(t => t.id === templateId)) {
-            folderSelect.value = index;
-            folderSelect.dispatchEvent(new Event('change'));
-            setTimeout(() => {
-              templateSelect.value = templateId;
-              checkFormValidity();
-            }, 100);
-          }
-        });
-      {% endif %}
       
       // Load recipients if available
       const campaignRecipients = JSON.parse('{{ campaign_recipients|escapejs }}');

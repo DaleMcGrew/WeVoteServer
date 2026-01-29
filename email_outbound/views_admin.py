@@ -15,7 +15,7 @@ from django.http import HttpResponse, JsonResponse
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
-
+from django.conf import settings
 from admin_tools.views import redirect_to_sign_in_page
 from email_outbound.models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
     EmailAudienceBuilderFolder, EmailAudienceBuilder, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
@@ -416,7 +416,7 @@ def email_campaign_edit_view(request):
     valid_folder_ids = list(folder_queryset.values_list('id', flat=True))
 
     # Step 2: Build a list of folders, each with its templates
-    folder_list = []
+    folder_tree = []
     for folder in folder_queryset:
         templates_in_folder = EmailTemplate.objects.filter(
             email_template_folder_id=folder.id,
@@ -424,10 +424,16 @@ def email_campaign_edit_view(request):
             archived=False
         ).order_by('email_template_name')
 
-        folder_list.append({
-            'id': folder.id,
-            'folder_name': folder.email_template_name,  # For template display
-            'templates': list(templates_in_folder.values('id', 'email_template_name')),
+        folder_tree.append({
+            'node_value': folder.id,
+            'node_name': folder.email_template_name,  # For template display
+            'children': [
+                {
+                    'node_value': template.id,
+                    'node_name': template.email_template_name,
+                }
+                for template in templates_in_folder
+            ],
         })
 
     # Step 2b: Get templates without a folder (unfiled)
@@ -442,17 +448,24 @@ def email_campaign_edit_view(request):
     ).order_by('email_template_name')
 
     # Always add unfiled section at the end (even if empty, so users know it exists)
-    folder_list.append({
-        'id': None,
-        'folder_name': 'Unfiled',
-        'templates': list(unfiled_templates.values('id', 'email_template_name')),
-    })
+    folder_tree.append(
+        {
+            'id': None,
+            'folder_name': 'Unfiled',
+            'children': [
+                {
+                    'node_value': template.id,
+                    'node_name': template.email_template_name,
+                }
+                for template in unfiled_templates
+            ],
+        }
+    )
 
     # Step 3: Pass data to template
     import json
     template_values = {
-        'folder_list': folder_list,
-        'folder_list_json': json.dumps(folder_list),
+        'folder_tree': folder_tree,
         'google_civic_election_id': google_civic_election_id,
         'state_code': state_code,
         'email_campaign': email_campaign,
