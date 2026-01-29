@@ -5,7 +5,8 @@
 from .controllers import add_contest_office_name_to_next_spot, fetch_duplicate_office_count, \
     find_duplicate_contest_office, figure_out_office_conflict_values, merge_if_duplicate_offices, \
     offices_import_from_master_server
-from .models import ContestOffice, ContestOfficeListManager, ContestOfficeManager, CONTEST_OFFICE_UNIQUE_IDENTIFIERS
+from .models import ContestOffice, ContestOfficeListManager, ContestOfficeManager, CONTEST_OFFICE_UNIQUE_IDENTIFIERS,\
+    OfficeExplanation
 from admin_tools.views import redirect_to_sign_in_page
 from ballot.controllers import move_ballot_items_to_another_office
 from bookmark.models import BookmarkItemList
@@ -2302,3 +2303,191 @@ def office_merge_process_view(request):
                                     "&state_code=" + str(state_code))
 
     return HttpResponseRedirect(reverse('office:office_summary', args=(contest_office1_on_stage.id,)))
+
+
+def office_explanations_list_view(request):
+
+    authority_required = {'partner_organization', 'political_data_viewer', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    state_code = request.GET.get('state_code', '')
+    show_all_states = request.GET.get('show_all_states', False)
+    if positive_value_exists(show_all_states):
+        state_code = ''
+    office_search = request.GET.get('office_search', '')
+
+
+    try:
+        office_explanations = OfficeExplanation.objects.order_by('we_vote_id')
+        if positive_value_exists(state_code):
+            office_explanations = office_explanations.filter(state_code__iexact=state_code)
+        if positive_value_exists(office_search):
+            office_explanations = office_explanations.filter(
+                Q(office_explanation_name__icontains=office_search) |
+                Q(we_vote_id__icontains=office_search) |
+                Q(office_explanation__icontains=office_search)
+            )
+        office_explanation_list = list(office_explanations)
+    except OfficeExplanation.DoesNotExist:
+        office_explanation_list = []
+
+    state_codes = STATE_CODE_MAP
+    state_codes_modified = {}
+    for one_office_explanation in office_explanation_list:
+        if one_office_explanation.state_code not in state_codes_modified:
+            state_name = state_codes.get(one_office_explanation.state_code, one_office_explanation.state_code)
+            state_codes_modified[one_office_explanation.state_code] = state_name
+        
+    state_list = sorted(state_codes_modified.items())
+
+    template_values = {
+        'office_list': office_explanation_list,
+        'state_list':         state_list,
+        'state_code':         state_code,
+        'office_search':      office_search,
+    }
+
+    return render(request, 'office/office_explanations_list.html', template_values)
+
+
+@login_required
+def office_explanation_process_view(request):
+
+    authority_required = {'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+    
+    office_explanation_name = request.POST.get('office_explanation_name', '')
+    office_explanation = request.POST.get('office_explanation', '')
+    office_video_url_horizontal = request.POST.get('office_video_url_horizontal', '')
+    office_video_url_square = request.POST.get('office_video_url_square', '')
+    office_video_url_vertical = request.POST.get('office_video_url_vertical', '')
+    we_vote_id = request.POST.get('we_vote_id', '')
+
+    office_explanation_found = False
+    office_on_stage = OfficeExplanation()
+    error = False
+    try:
+        if positive_value_exists(we_vote_id):
+            office_query = OfficeExplanation.objects.filter(we_vote_id=we_vote_id)
+            if len(office_query):
+                office_on_stage = office_query[0]
+                office_explanation_found = True
+    except Exception as e:
+        messages.add_message(request, messages.ERROR, 'There was an error trying to find this office explanation')
+        error = True
+
+    state_code = request.POST.get('state_code', '')
+
+    if not error:
+        try:
+            if not office_explanation_found:
+                # Create new office explanation
+                office_on_stage = OfficeExplanation(
+                    office_explanation_name=office_explanation_name,
+                    office_explanation=office_explanation,
+                    video_url_horizontal=office_video_url_horizontal,
+                    video_url_square=office_video_url_square,
+                    video_url_vertical=office_video_url_vertical,
+                    state_code=state_code,
+                    we_vote_id=we_vote_id,
+                )
+                office_on_stage.save()
+                messages.add_message(request, messages.INFO, 'Office explanation created.')
+            else:
+                messages.add_message(request, messages.ERROR, 'Office explanation with this We Vote ID already exists.')
+        except Exception as e:
+            messages.add_message(request, messages.ERROR, 'Could not save office explanation -- exception: ' + str(e))
+
+    return HttpResponseRedirect(reverse('office:office_explanations_list', args=()) + '?state_code=' + str(state_code))
+
+
+@login_required
+def office_explanation_delete_process_view(request, office_explanation_id):
+
+    confirm_delete = convert_to_int(request.POST.get('confirm_delete', False))
+    if not positive_value_exists(confirm_delete):
+        messages.add_message(request, messages.ERROR, 'Delete not confirmed.')
+        return HttpResponseRedirect(reverse('office:office_explanations_list', args=()))
+    
+    authority_required = {'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    we_vote_id = office_explanation_id
+
+    try:
+        if positive_value_exists(we_vote_id):
+            office_explanation = OfficeExplanation.objects.get(we_vote_id=we_vote_id)  # Cannot be readonly
+            office_explanation.delete()
+            messages.add_message(request, messages.INFO, 'Office explanation deleted.')
+    except OfficeExplanation.DoesNotExist:
+        messages.add_message(request, messages.ERROR, 'Office explanation not found.')
+    except Exception as e:
+        messages.add_message(request, messages.ERROR, 'Could not delete office explanation -- exception: ' + str(e))
+
+    return HttpResponseRedirect(reverse('office:office_explanations_list', args=()))
+
+
+@login_required
+def office_explanation_edit_view(request, office_explanation_id):
+    
+    authority_required = {'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    office_explanation = None
+
+    we_vote_id = office_explanation_id
+
+    if positive_value_exists(we_vote_id):
+        try:
+            office_explanation = OfficeExplanation.objects.get(we_vote_id=we_vote_id)  # Cannot be readonly
+        except OfficeExplanation.DoesNotExist:
+            pass
+
+    template_values = {
+        'office_explanation': office_explanation,
+        'title':              'Edit Office Explanation',
+    }
+
+    return render(request, 'office/office_explanation_edit.html', template_values)
+
+
+@login_required
+def office_explanation_new_view(request):
+
+    authority_required = {'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    state_code = request.GET.get('state_code', '')
+
+    template_values = {
+        'state_code': state_code,
+        'title':      'New Office Explanation',
+    }
+
+    return render(request, 'office/office_explanation_edit.html', template_values)
+
+
+def office_explanation_summary_view(request, office_explanation_id):
+
+    authority_required = {'partner_organization', 'political_data_viewer', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    office_explanation = None
+
+    try:
+        office_explanation = OfficeExplanation.objects.get(we_vote_id=office_explanation_id)
+    except OfficeExplanation.DoesNotExist:
+        pass
+
+    template_values = {
+        'office_explanation': office_explanation,
+        'title':              'Office Explanation Summary',
+    }
+
+    return render(request, 'office/office_explanation_summary.html', template_values)
