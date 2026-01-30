@@ -1,28 +1,13 @@
+{# templates/components/selection_tree/selection_tree.html #}
 
 {% block content %}
-<!-- 
-List :: Dict 
-[
-  {
-    "node_name": "Folder 1",
-    "node_value": 1,
-    "children": 
-    [
-      {
-        "node_name": "Template 1",
-        "node_value": 1,
-      },
-    ]
-  },
-]
--->
 
 <link rel="stylesheet" href="dist/themes/default/style.min.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
 
 <div class="mb-3">
 
-  <label for="jstree_container" class="form-label">{{ selection_type }} <span class="text-danger">*</span></label>
+  <label for="jstree_container" class="form-label">{{ selection_type }}</label>
   <button class="btn btn-outline-secondary btn-sm" type="button" data-toggle="collapse" data-target="#jstreeCollapse" aria-expanded="false" aria-controls="jstreeCollapse">
     <span>📁 Select {{ selection_type }}</span>
     <span class="ml-2">▼</span>
@@ -49,16 +34,16 @@ List :: Dict
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
 <script>
     function sendTreeSelection(treeSelectionData) {
-    const event = new CustomEvent("treeSelectionChanged", {
-      detail: treeSelectionData
-    });
+      const event = new CustomEvent("treeSelectionChanged", {
+        detail: treeSelectionData
+      });
 
-    document.dispatchEvent(event);
-  }
-
-  $(function () { $('#jstree_container').jstree(); });
+      document.dispatchEvent(event);
+    }
 
   // jstree requires jsquery
+  $(function () { $('#jstree_container').jstree(); });
+
   $('#jstree_container').on("select_node.jstree", function (e, data) {
     if (data.node.children.length > 0) {
       data.instance.toggle_node(data.node);

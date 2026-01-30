@@ -96,7 +96,7 @@
 
     <!-- From Email and From Name (Side by Side) -->
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="mb-3">
                 <label for="from_email_id" class="form-label">From Email</label>
                 <input type="text"
@@ -107,7 +107,7 @@
                        placeholder="Default is info@wevote.us">
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="mb-3">
                 <label for="from_email_name_id" class="form-label">From Name</label>
                 <input type="text"
@@ -118,9 +118,13 @@
                        placeholder="Default is We Vote">
             </div>
         </div>
+
+        <div class="col-md-4">
+        {% include "components/selection_tree/selection_tree.html" with selection_type="Email Template" selection_tree_data=folder_tree %}
+        </div>
     </div>
 
-    {% include "email_outbound/selection_tree.html" with selection_type="Email Template" selection_tree_data=folder_tree %}
+    
 
     <!-- Recipients Section -->
     <div class="mb-3">
@@ -525,12 +529,12 @@
     // Monitor form changes
     document.getElementById('campaign_title').addEventListener('input', checkFormValidity);
     
+    // Load template content when template is selected
     document.addEventListener('treeSelectionChanged', function(event) {
           checkFormValidity();
           loadTemplateContent(event.detail.node.li_attr.value);
         });
 
-    // Load template content when template is selected
     function loadTemplateContent(templateId) {
       if (!templateId) return;
       
