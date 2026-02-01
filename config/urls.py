@@ -42,6 +42,7 @@ urlpatterns = [
     re_path(r'^bookmark/', include(('bookmark.urls', 'bookmark'), namespace="bookmark")),
     re_path(r'^c/', include(('candidate.urls', 'candidate'), namespace="candidate")),
     re_path(r'^campaign/', include(('campaign.urls', 'campaign'), namespace="campaign")),
+    re_path(r'^cloudwatch_logging/', include(('cloudwatch_logging.urls', 'cloudwatch_logging'), namespace="cloudwatch_logging")),
     re_path(r'^challenge/', include(('challenge.urls', 'challenge'), namespace="challenge")),
     re_path(r'^e/', include(('election.urls', 'election'), namespace="election")),
     re_path(r'^email/', include(('email_outbound.urls', 'email_outbound'), namespace="email_outbound")),
