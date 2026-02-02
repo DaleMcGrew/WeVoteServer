@@ -52,7 +52,8 @@
                 <th>Horizontal Video URL</th>
                 <th>Square Video URL</th>
                 <th>Vertical Video URL</th>
-                <th>We Vote ID</th>
+                <th>ID</th>
+                <th>Edit</th>
 
             </tr>
         </thead>
@@ -62,10 +63,13 @@
                 <td>{{ forloop.counter }}</td>
                 <td><a href="{% url 'office:office_explanation_summary' office.we_vote_id %}">{{ office.office_explanation_name }}</a></td>
                 <td>{{ office.state_code }}</td>
-                <td>{{ office.office_explanation|default:"(no explanation)" }}</td>
+                <td>
+                    {{ office.office_explanation|default:"(no explanation)"|truncatechars:120 }}
+                </td>
                 <td>{{ office.video_url_horizontal|default:"(no url)" }}</td>
                 <td>{{ office.video_url_square|default:"(no url)" }}</td>
                 <td>{{ office.video_url_vertical|default:"(no url)" }}</td>
+                <td>{{ office.we_vote_id }}</td>
                 <td>
                     <a href="{% url 'office:office_explanation_edit' office.we_vote_id %}">edit</a>
                 </td>
