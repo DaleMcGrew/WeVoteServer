@@ -11,20 +11,7 @@
 <form action="{% url 'office:office_explanation_edit_process' %}" method="post" class="form-horizontal">
 {% csrf_token %}
 
-<input type="hidden" name="office_explanation_id"
-       value="{% if office_explanation %}{{ office_explanation.id }}{% else %}0{% endif %}">
-
-<div class="form-group">
-    <label for="we_vote_id_id" class="col-sm-3 control-label">We Vote ID</label>
-    <div class="col-sm-8">
-        <input type="text"
-               name="we_vote_id"
-               id="we_vote_id_id"
-               class="form-control"
-               value="{% if office_explanation %}{{ office_explanation.we_vote_id|default_if_none:"" }}{% else %}{{ we_vote_id|default_if_none:"" }}{% endif %}" />
-               {% if office_explanation %}{{ office_explanation.we_vote_id }}{% else %}{{ we_vote_id }}{% endif %}
-    </div>
-</div>
+<input type="hidden" name="we_vote_id" value="{% if office_explanation %}{{ office_explanation.we_vote_id }}{% else %}{{ we_vote_id|default_if_none:"" }}{% endif %}">
 
 <div class="form-group">
     <label for="office_explanation_name_id" class="col-sm-3 control-label">Office Explanation Name</label>
@@ -49,15 +36,20 @@
 </div>
 
 <div class="form-group">
-    <label for="state_code_id" class="col-sm-3 control-label">State Code</label>
-    <div class="col-sm-8">
-        <input type="text"
-               name="state_code"
-               id="state_code_id"
-               class="form-control"
-               value="{% if office_explanation %}{{ office_explanation.state_code|default_if_none:"" }}{% else %}{{ state_code|default_if_none:"" }}{% endif %}" />
-               {% if office_explanation %}{{ office_explanation.state_code }}{% else %}{{ '' }}{% endif %}
-    </div>
+  <label for="state_code_id" class="col-sm-3 control-label">State Code</label>
+  <div class="col-sm-8">
+    <select name="state_code" id="state_code_id" class="form-control">
+      <option value="">-- Select a state --</option>
+      {% for code in state_codes %}
+          <option value="{{ code }}" {% if office_explanation.state_code == code %}selected{% endif %}>
+            {{ code }}
+          </option>
+      {% endfor %}
+    </select>
+
+    {# optional: show current value text #}
+    {% if office_explanation %}{{ office_explanation.state_code }}{% else %}{{ state_code|default_if_none:"" }}{% endif %}
+  </div>
 </div>
 
 <div class="form-group">
@@ -148,6 +140,151 @@
     </table>
     <br /><br />
 {% endif %}
+
+{# --- Video Preview (defaults to horizontal) --- #}
+<div class="form-group">
+  <label class="col-sm-3 control-label">Video Preview</label>
+  <div class="col-sm-8">
+    <div style="border:1px solid #ddd; padding:10px; border-radius:4px;">
+      <div style="margin-bottom:8px; font-size:.9em;">
+        Previewing:
+        <button type="button" class="btn btn-default btn-xs" id="preview_horizontal_btn">Horizontal</button>
+        <button type="button" class="btn btn-default btn-xs" id="preview_square_btn">Square</button>
+        <button type="button" class="btn btn-default btn-xs" id="preview_vertical_btn">Vertical</button>
+      </div>
+
+      <div id="video_preview_wrapper" style="width:100%; max-width:720px;">
+        <div id="video_preview_aspect" style="position:relative; width:100%; padding-top:56.25%;">
+          <iframe
+            id="video_preview_iframe"
+            src=""
+            referrerpolicy="origin-when-cross-origin"
+            style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        </div>
+
+        <div id="video_preview_empty" style="display:none; padding:10px; color:#666; font-size:.9em;">
+          Enter a video URL above to see a preview.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+
+    // Get video URL input elements
+    const horizontalInput = document.getElementById('video_url_horizontal_id');
+    const squareInput     = document.getElementById('video_url_square_id');
+    const verticalInput   = document.getElementById('video_url_vertical_id');
+
+    // Preview elements
+    const iframe   = document.getElementById('video_preview_iframe');
+    const emptyMsg = document.getElementById('video_preview_empty');
+    const aspectBox = document.getElementById('video_preview_aspect');
+
+    // Buttons
+    const btnH = document.getElementById('preview_horizontal_btn');
+    const btnS = document.getElementById('preview_square_btn');
+    const btnV = document.getElementById('preview_vertical_btn');
+
+    // Keep track of selected source (default horizontal)
+    let active = 'horizontal';
+
+    function setActiveButton() {
+      // Simple visual cue without needing extra CSS
+      [btnH, btnS, btnV].forEach(b => b.classList.remove('btn-primary'));
+      [btnH, btnS, btnV].forEach(b => b.classList.add('btn-default'));
+
+      if (active === 'horizontal') btnH.classList.add('btn-primary');
+      if (active === 'square')     btnS.classList.add('btn-primary');
+      if (active === 'vertical')   btnV.classList.add('btn-primary');
+    }
+
+    function setAspectRatio(mode) {
+      // horizontal 16:9, square 1:1, vertical 9:16
+      let paddingTop = '56.25%'; // 16:9
+      if (mode === 'square') paddingTop = '100%';
+      if (mode === 'vertical') paddingTop = '177.78%'; // 16/9 * 100
+      aspectBox.style.paddingTop = paddingTop;
+    }
+
+    function normalizeEmbedUrl(url) {
+      if (!url) return '';
+
+      // YouTube patterns
+      // - https://www.youtube.com/watch?v=ID
+      // - https://youtu.be/ID
+      // - https://www.youtube.com/embed/ID
+      const ytMatch =
+        url.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/) ||
+        url.match(/youtube\.com\/watch\?v=([A-Za-z0-9_-]{6,})/) ||
+        url.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/);
+
+      if (ytMatch && ytMatch[1]) {
+        return 'https://www.youtube.com/embed/' + ytMatch[1];
+      }
+
+      // Vimeo patterns
+      // - https://vimeo.com/123456789
+      // - https://player.vimeo.com/video/123456789
+      const vimeoMatch =
+        url.match(/vimeo\.com\/(\d+)/) ||
+        url.match(/player\.vimeo\.com\/video\/(\d+)/);
+
+      if (vimeoMatch && vimeoMatch[1]) {
+        return 'https://player.vimeo.com/video/' + vimeoMatch[1];
+      }
+
+      // If it's already an embed URL or some other provider, try it as-is
+      return url;
+    }
+
+    function getActiveUrl() {
+      if (active === 'horizontal') return horizontalInput?.value || '';
+      if (active === 'square')     return squareInput?.value || '';
+      if (active === 'vertical')   return verticalInput?.value || '';
+      return '';
+    }
+
+    function renderPreview() {
+      const rawUrl = (getActiveUrl() || '').trim();
+      const embedUrl = normalizeEmbedUrl(rawUrl);
+
+      setActiveButton();
+      setAspectRatio(active);
+
+      if (!embedUrl) {
+        iframe.src = '';
+        aspectBox.style.display = 'none';
+        emptyMsg.style.display = 'block';
+        return;
+      }
+
+      emptyMsg.style.display = 'none';
+      aspectBox.style.display = 'block';
+      iframe.src = embedUrl;
+    }
+
+    // Button handlers
+    btnH.addEventListener('click', function() { active = 'horizontal'; renderPreview(); });
+    btnS.addEventListener('click', function() { active = 'square'; renderPreview(); });
+    btnV.addEventListener('click', function() { active = 'vertical'; renderPreview(); });
+
+    // Live update when URLs change
+    [horizontalInput, squareInput, verticalInput].forEach(function(input) {
+      if (!input) return;
+      input.addEventListener('input', renderPreview);
+      input.addEventListener('change', renderPreview);
+    });
+
+    // Initial render: default to horizontal
+    renderPreview();
+  })();
+</script>
 
 
 <style>
