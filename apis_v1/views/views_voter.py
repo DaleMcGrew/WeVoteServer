@@ -3471,13 +3471,13 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
         id_string = ''
 
         if app_review_state.upper() == APP_REVIEW_NEGATIVE:
+            id_string = (
+                f"[voter: {we_vote_id}, email: {voter.email}, first: {voter.first_name}, last: {voter.last_name}, "
+                f"platform: {voter.app_review_platform}, version:  {voter.app_review_version}]")
             if positive_value_exists(app_review_email):
                 json_data['email'] = app_review_email
             else:
                 json_data['email'] = 'donotreply@wevote.us'
-                id_string = (
-                    f"[voter: {we_vote_id}, email: {voter.email}, first: {voter.first_name}, last: {voter.last_name}, "
-                    f"platform: {voter.app_review_platform}, version:  {voter.app_review_version}]")
 
             content_string = id_string + '\n\n' + app_review_body if len(id_string) else app_review_body
 
