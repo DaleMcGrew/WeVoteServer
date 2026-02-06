@@ -3436,7 +3436,7 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
     voter = voter_results['voter']
     we_vote_id = voter.we_vote_id
 
-    app_review_state = request.POST.get('app_review_state', '').upper()
+    app_review_state = request.POST.get('app_review_state', 'NONE').upper()
     app_review_version  = request.POST.get('app_review_version', '')
     app_review_platform = request.POST.get('app_review_platform', '')
     app_review_body = request.POST.get('app_review_body_negative_bypass', '')  # Not stored in SQL
@@ -3461,8 +3461,8 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
           not positive_value_exists(app_review_state) or
           not positive_value_exists(app_review_version) or
           not positive_value_exists(app_review_platform) ):
-        json_data.success = False
-        json_data.status = 'EMAIL_WAS_NOT_SENT_AND_THE_VOTER_WAS_NOT_UPDATED'
+        json_data["status"] = 'EMAIL_WAS_NOT_SENT_AND_THE_VOTER_WAS_NOT_UPDATED'
+        json_data["success"] = False
     else:
         response_status_code = ''
         json_data["we_vote_id"] = we_vote_id
@@ -3472,8 +3472,9 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
 
         if app_review_state.upper() == APP_REVIEW_NEGATIVE:
             id_string = (
-                f"[voter: {we_vote_id}, email: {voter.email}, first: {voter.first_name}, last: {voter.last_name}, "
-                f"platform: {voter.app_review_platform}, version:  {voter.app_review_version}]")
+                f"[voter: {we_vote_id}, email: {voter.email or ''}, first: {voter.first_name or ''}, last: {voter.last_name or ''}, "
+                f"platform: {voter.app_review_platform or ''}, version: {voter.app_review_version or ''}]")
+            print(id_string)
             if positive_value_exists(app_review_email):
                 json_data['email'] = app_review_email
             else:
