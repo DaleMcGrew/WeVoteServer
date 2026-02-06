@@ -4,6 +4,7 @@ from wevote_functions.functions import positive_value_exists
 from django.http import HttpResponse, StreamingHttpResponse
 import re
 import json
+import logging
 
 class TokensManager():
 
@@ -20,6 +21,7 @@ class TokensManager():
     def __call__(self, view_func):
         def _wrapped_view(request, *args, **kwargs):
             token_response = TokenResponse.TOKEN_RESPONSE.get_value()
+            process_success = False
             try:
                 # First, get headers
                 request_token_info = self.get_request_token_info(request)
@@ -32,6 +34,8 @@ class TokensManager():
                         'token_info': None
                     }
 
+                    TokensManager.test_log_to_cloudwatch('get_request_token_info', request_token_info, process_success, token_response)
+
                 # Check token type
                 if not request_token_info['error_message'] and \
                     (not request_token_info['token_type'] or request_token_info['token_type'] not in self.token_types):
@@ -42,23 +46,34 @@ class TokensManager():
                         'error_message': "Invalid token type",
                         'token_info': None
                     }
+
+                    TokensManager.test_log_to_cloudwatch('veryify_token_type', request_token_info, process_success, token_response)
                 
                 if not token_response['token_authentication']:
                     # And authenticate it with id, key, and scope
                     token_response['token_authentication'] = self.token_authentication(request_token_info)
 
+                    process_success = token_response['token_authentication']['success']
+                    
                     # if exists and is True, then create a new token
                     if request_token_info['create_token'] and token_response['token_authentication']['success']:
                             token_response['token_creation'] = self.token_creation(request_token_info)
-            except:
-                pass
+
+                            process_success = token_response['token_creation']['success']
+
+                TokensManager.test_log_to_cloudwatch('token_authenticated_and_created', request_token_info, process_success, token_response)
+                
+            except Exception as e:
+                token_response['exception_error_message'] = e.message
+                TokensManager.test_log_to_cloudwatch('error_on_token_authentication_and_creation', request_token_info, False, token_response)
                 
             response = view_func(request, *args, **kwargs)
             
             try:
                 self.add_response_token_info_headers(response, token_response)
             except Exception as e:
-                pass
+                token_response['exception_error_message'] = e.message
+                TokensManager.test_log_to_cloudwatch('error_on_adding_response_token_info_headers', request_token_info, False, token_response)
 
             return response
         return _wrapped_view
@@ -312,3 +327,24 @@ class TokensManager():
                 result[key] = json.loads(headers[header_key])
 
         return result
+
+    @staticmethod
+    def test_log_to_cloudwatch(final_step, request_token_info, success, return_info):
+
+        #TODO: Add more ensurance that sensitive info can't be logged
+
+        user_passed_info = {
+            'user_id': request_token_info['user_id'],
+            'token_type': request_token_info['token_type'],
+            'authorization': request_token_info['authorization'],
+            'create_token': request_token_info['create_token'],
+        }
+        result = {
+            'final_step': final_step,
+            'user_passed_info': user_passed_info,
+            'success': success,
+            'return_info': return_info,
+        }
+        
+        #TODO: change level to info when possible. Add security tagging.
+        logging.warning("[TOKEN_MANAGER_TEST_WARNING]: " + json.dumps(result))
