@@ -52,15 +52,15 @@ def cloudwatch_log_form_view(request):
                 "user_context": form.cleaned_data["user_context"],
             }
             if result["level"] == "INFO":
-                logging.info("[TEST_WARNING]: " + json.dumps(result))
+                logging.info("[TEST_INFO]: " + json.dumps(result))
             elif result["level"] == "WARN":
-                logging.warning("[TEST_WARNING]: " + json.dumps(result))
+                logging.warning("[TEST_WARN]: " + json.dumps(result))
             elif result["level"] == "DEBUG":
-                logging.debug("[TEST_WARNING]: " + json.dumps(result))
+                logging.debug("[TEST_DEBUG]: " + json.dumps(result))
             elif result["level"] == "ERROR":
-                logging.error("[TEST_WARNING]: " + json.dumps(result))
+                logging.error("[TEST_ERROR]: " + json.dumps(result))
             elif result["level"] == "CRITICAL":
-                logging.critical("[TEST_WARNING]: " + json.dumps(result))
+                logging.critical("[TEST_CRITICAL]: " + json.dumps(result))
             result["success"] = True
         else:
             result = {"success": False, "error": "Form invalid", "details": form.errors}
