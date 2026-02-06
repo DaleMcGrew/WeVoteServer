@@ -3474,7 +3474,7 @@ def voter_has_reviewed_an_app(request):    # voterReviewedApp
             id_string = (
                 f"[voter: {we_vote_id}, email: {voter.email or ''}, first: {voter.first_name or ''}, last: {voter.last_name or ''}, "
                 f"platform: {voter.app_review_platform or ''}, version: {voter.app_review_version or ''}]")
-            print(id_string)
+            # print(id_string)
             if positive_value_exists(app_review_email):
                 json_data['email'] = app_review_email
             else:
