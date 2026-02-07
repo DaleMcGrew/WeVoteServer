@@ -331,6 +331,10 @@ def schedule_email_campaign_recipient(
     status = ""
     template_variables_in_json = {}
 
+    # Generate an open tracking code for the recipient
+    if email_campaign_recipient:
+        EmailCampaignRecipient.generate_open_tracking_code(email_campaign_recipient)
+
     email_template_results = merge_email_campaign_recipient_with_template(
         email_body_raw=email_body_raw,
         email_campaign_recipient=email_campaign_recipient,
@@ -457,13 +461,22 @@ def merge_email_campaign_recipient_with_template(
         # These are all related to EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
 
         #
-        open_tracking_pixel_html = ''  # WV-2447 "Open Tracking for Email Campaign System" should go here
-        email_footer_html = \
-            "<br />This email uses tracking to understand whether messages are opened " \
-            "so we can improve our communications. Learn more: [Privacy Policy]." \
-            "{open_tracking_pixel_html}<br />".format(
-                open_tracking_pixel_html=open_tracking_pixel_html,
-            )
+        open_tracking_code = getattr(email_campaign_recipient, "open_tracking_code", "") or ""
+        open_tracking_pixel_html = ""
+        # Tracking pixel and footer text only generated if open tracking code is present
+        if open_tracking_code:
+            open_tracking_pixel_html = (
+                f'<img src="{WE_VOTE_SERVER_ROOT_URL}/apis/v1/opened/'
+                f'{open_tracking_code}/" width="1" height="1" alt="" />'
+            )  # WV-2447 "Open Tracking for Email Campaign System" should go here
+            email_footer_html = \
+                "<br />This email uses tracking to understand whether messages are opened " \
+                "so we can improve our communications. Learn more: <a href='https://wevote.us/privacy'>Privacy Policy</a>." \
+                "{open_tracking_pixel_html}<br />".format(
+                    open_tracking_pixel_html=open_tracking_pixel_html,
+                )
+        else:
+            email_footer_html = ""
         token_replacements['[email_footer]'] = email_footer_html
 
         # Add link to subscription key
