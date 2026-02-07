@@ -161,7 +161,7 @@ class EmailCampaignRecipient(models.Model):
     manually_added = models.BooleanField(default=False)
     office_url = models.TextField(null=True, blank=True)
     office_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
-    open_tracking_code = models.CharField(max_length=64, default=None, null=True,  unique=True, db_index=True)
+    open_tracking_code = models.CharField(max_length=255, default=None, null=True,  unique=True, db_index=True)
     open_tracking_count = models.PositiveIntegerField(default=0, null=False)
     open_tracking_first_open = models.DateTimeField(null=True)
     open_tracking_last_open = models.DateTimeField(null=True)
