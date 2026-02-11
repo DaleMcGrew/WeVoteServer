@@ -37,6 +37,7 @@ from position.views_admin import positions_sync_out_view
 from representative.views_admin import representatives_sync_out_view
 from stripe_ip_history.views_admin import stripe_ip_history_clear_for_one_ip
 from voter_guide.views_admin import voter_guides_sync_out_view
+from email_outbound import views as email_outbound_views
 
 urlpatterns = [
                   # Actual API Calls
@@ -225,6 +226,8 @@ urlpatterns = [
                           offices_held_for_location_sync_out_view, name='officesHeldForLocationSyncOutView'),
                   re_path(r'^officeRetrieve/', views_misc.office_retrieve_view, name='officeRetrieveView'),
                   re_path(r'^officesSyncOut/', offices_sync_out_view, name='officesSyncOutView'),
+                  re_path(r'^opened/(?P<open_tracking_code>[-\w]+)/',
+                          email_outbound_views.opened_tracking_pixel_view, name='opened_tracking_pixel'),
                   re_path(r'^organizationAnalyticsByVoter/',
                           views_organization.organization_analytics_by_voter_view,
                           name='organizationAnalyticsByVoterView'),

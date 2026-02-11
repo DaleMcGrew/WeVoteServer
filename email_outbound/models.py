@@ -4,7 +4,7 @@
 
 from datetime import date, timedelta
 from django.apps import apps
-from django.db import models
+from django.db import IntegrityError, models
 from django.core.mail import EmailMultiAlternatives, get_connection
 from config.base import get_environment_variable
 from wevote_functions.functions import convert_to_int, extract_email_addresses_from_string, generate_random_string, \
@@ -63,6 +63,7 @@ SEND_STATUS_CHOICES = (
 )
 
 EMAIL_SECRET_KEY_LENGTH = 12
+OPEN_TRACKING_CODE_LENGTH = 16
 SUBSCRIPTION_SECRET_KEY_LENGTH = 48
 
 SENDGRID_API_KEY = get_environment_variable("SENDGRID_API_KEY", no_exception=True)
@@ -160,7 +161,7 @@ class EmailCampaignRecipient(models.Model):
     manually_added = models.BooleanField(default=False)
     office_url = models.TextField(null=True, blank=True)
     office_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
-    open_tracking_code = models.CharField(max_length=255, default=None, null=True, db_index=True)
+    open_tracking_code = models.CharField(max_length=255, default=None, null=True,  unique=True, db_index=True)
     open_tracking_count = models.PositiveIntegerField(default=0, null=False)
     open_tracking_first_open = models.DateTimeField(null=True)
     open_tracking_last_open = models.DateTimeField(null=True)
@@ -187,6 +188,25 @@ class EmailCampaignRecipient(models.Model):
     sender_voter_we_vote_id = models.CharField(max_length=255, null=True)
     supporters_count = models.PositiveIntegerField(default=0, null=False)
     voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
+
+    # Generate an open tracking code for the recipient
+    @staticmethod
+    def generate_open_tracking_code(email_campaign_recipient):
+        # If the recipient does not exist, or does not have an open tracking code, return an empty string
+        if not email_campaign_recipient or not hasattr(email_campaign_recipient, "open_tracking_code"):
+            return ""
+        if positive_value_exists(email_campaign_recipient.open_tracking_code):
+            return email_campaign_recipient.open_tracking_code
+        # Try 5 times to generate a unique open tracking code
+        for _ in range(5):
+            email_campaign_recipient.open_tracking_code = generate_random_string(OPEN_TRACKING_CODE_LENGTH)
+            try:
+                email_campaign_recipient.save(update_fields=["open_tracking_code"])
+                return email_campaign_recipient.open_tracking_code
+            except IntegrityError:
+                pass
+        # If we fail to generate a unique open tracking code, return an empty string
+        return ""
 
 
 class EmailAddress(models.Model):
