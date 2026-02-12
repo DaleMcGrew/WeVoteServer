@@ -17,13 +17,15 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.conf import settings
 from admin_tools.views import redirect_to_sign_in_page
-from email_outbound.models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
-    EmailAudienceBuilderFolder, EmailAudienceBuilder, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
 from voter.models import voter_has_authority
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
 from wevote_functions.validate_email import validate_email
-from .controllers_email_campaign import augment_email_campaign_recipient
+
+from .controllers_email_campaign import audience_builder_data_retrieve, augment_email_campaign_recipient, \
+    render_audience_builder_html, render_audience_filter_html
+from .models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
+    AudienceBuilderFolder, AudienceBuilder, AudienceFilter, AudienceFilterChain, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -338,7 +340,7 @@ def email_campaign_edit_process_view(request):
                 status += "REMOVED_RECIPIENT_FROM_DB "
 
     if positive_value_exists(send_button_clicked):
-        # Prepare the EmailCampaignRecipients from the EmailAudienceBuilder
+        # Prepare the EmailCampaignRecipients from the AudienceBuilder
         from email_outbound.controllers_email_campaign import generate_email_campaign_recipients_from_audience_builder
         # Here when we generate the campaign recipients from audience_builders, and we populate them with rich data
         generate_results = generate_email_campaign_recipients_from_audience_builder(
@@ -818,6 +820,158 @@ def email_template_list_view(request):
 
 
 @login_required
+def audience_builder_edit_view(request):
+    """
+
+    """
+    audience_builder = {}
+    audience_builder_html = ''
+    audience_filter_list = []
+    audience_filter_chain_dict = {}
+    audience_filter_dict = {}
+    status = ""
+    success = True
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    audience_builder_id = request.GET.get('audience_builder_id', request.POST.get('audience_builder_id', None))
+    google_civic_election_id = request.GET.get('google_civic_election_id',
+                                               request.POST.get('google_civic_election_id', 0))
+    state_code = request.GET.get('state_code', request.POST.get('state_code', ''))
+
+    results = audience_builder_data_retrieve(audience_builder_id)
+    status += results['status']
+    if results['success']:
+        audience_builder = results['audience_builder']
+        audience_filter_chain_dict = results['audience_filter_chain_dict']
+        audience_filter_dict = results['audience_filter_dict']
+        audience_filter_list = results['audience_filter_list']
+    else:
+        messages.add_message(request, messages.ERROR, status)
+        success = False
+
+    if success:
+        results = render_audience_builder_html(
+            audience_builder=audience_builder,
+            audience_filter_chain_dict=audience_filter_chain_dict,
+            audience_filter_dict=audience_filter_dict,
+            request=request,
+        )
+        status += results['status']
+        if results['success']:
+            audience_builder_html = results['audience_builder_html']
+        else:
+            messages.add_message(request, messages.ERROR, status)
+        # audience_filter = {}
+        # audience_filter1_html = render_audience_filter_html(audience_builder, audience_filter, request=request)
+
+    context = {
+        'audience_builder': audience_builder,
+        'audience_builder_html':    audience_builder_html,
+        # 'audience_filter1_html': audience_filter1_html,
+        'google_civic_election_id': google_civic_election_id,
+        'process_url': reverse('email_outbound:audience_builder_edit_process'),
+        'state_code': state_code,
+        'status': status,
+        'template_edit_url': reverse('email_outbound:audience_builder_list'),
+    }
+    return render(request, "email_outbound/audience_builder_edit.html", context)
+
+
+@login_required
+def audience_builder_edit_process_view(request):
+    """
+    Process the audience builder form
+    :param request:
+    :return:
+    """
+    status = ''
+    success = True
+
+    if request.method != "POST":
+        return HttpResponseRedirect(reverse('email_outbound:audience_builder_list'))
+
+    audience_builder_id = request.POST.get('audience_builder_id', None)
+    audience_builder_name = request.POST.get('audience_builder_name', False)
+    google_civic_election_id = request.POST.get('google_civic_election_id', 0)
+    state_code = request.POST.get('state_code', '')
+
+    action = request.POST.get("action", "").strip()
+
+    try:
+        if action == "delete":
+            audience_builder = AudienceBuilder.objects.get(id=audience_builder_id, deleted=False)
+            audience_builder.deleted = True
+            audience_builder.save()
+            messages.success(request, "Audience Builder deleted.")
+        else:
+            try:
+                if positive_value_exists(audience_builder_id):
+                    audience_builder = AudienceBuilder.objects.get(id=audience_builder_id)
+                    if audience_builder_name is not False:
+                        audience_builder.audience_builder_name = audience_builder_name
+                    audience_builder.save()
+                else:
+                    audience_builder, created = AudienceBuilder.objects.update_or_create(
+                        audience_builder_name=audience_builder_name)
+                    audience_builder_id = audience_builder.id
+
+                    if created:
+                        messages.success(request, f"New template created: “{audience_builder_name}”")
+                #
+                # return HttpResponseRedirect(reverse('email_outbound:audience_builder_list'))
+            except Exception as e:
+                messages.error(request, f"Error creating new template: {str(e)}")
+                success = False
+
+    except AudienceBuilder.DoesNotExist:
+        messages.error(request, "Audience Builder not found.")
+    except Exception as e:
+        messages.error(request, f"Error: {e}")
+
+    audience_filter_chain_dict = {}
+    audience_filter_dict = {}
+    if success and positive_value_exists(audience_builder_id):
+        # Make sure we have at least one AudienceFilterChain and AudienceFilter for this AudienceBuilder
+        results = audience_builder_data_retrieve(audience_builder_id)
+        status += results['status']
+        if results['success']:
+            audience_builder = results['audience_builder']
+            audience_filter_chain_dict = results['audience_filter_chain_dict']
+            audience_filter_dict = results['audience_filter_dict']
+            audience_filter_list = results['audience_filter_list']
+        else:
+            messages.add_message(request, messages.ERROR, status)
+            success = False
+
+    if success and positive_value_exists(audience_builder_id):
+        # If audience_filter_chain_dict is empty, create a default AudienceFilterChain
+        if not audience_filter_chain_dict:
+            audience_filter_chain, created = AudienceFilterChain.objects.update_or_create(
+                audience_builder_id=audience_builder_id)
+            if created:
+                audience_filter_chain_dict = {audience_filter_chain.id: audience_filter_chain}
+                audience_builder.audience_filter_chain1_id = audience_filter_chain.id
+                audience_builder.save()
+
+        # If audience_filter_dict is empty, create a default AudienceFilter
+        if not audience_filter_dict:
+            audience_filter, created = AudienceFilter.objects.update_or_create(
+                audience_builder_id=audience_builder_id)
+            if created:
+                audience_filter_dict = {audience_filter.id: audience_filter}
+                audience_filter_chain.filter1_id = audience_filter.id
+                audience_filter_chain.save()
+
+    return HttpResponseRedirect(reverse('email_outbound:audience_builder_edit') +
+                                "?audience_builder_id=" + str(audience_builder_id) +
+                                "&google_civic_election_id=" + str(google_civic_election_id) +
+                                "&state_code=" + str(state_code))
+
+
+@login_required
 def audience_builder_list_process_view(request):
     """
     Process the audience builder list form (archive/delete operations)
@@ -843,7 +997,7 @@ def audience_builder_list_process_view(request):
             if not name:
                 messages.error(request, "Folder name is required.")
                 return back()
-            exists = EmailAudienceBuilderFolder.objects.filter(
+            exists = AudienceBuilderFolder.objects.filter(
                 deleted=False,
                 audience_builder_name__iexact=name
             ).exists()
@@ -851,14 +1005,14 @@ def audience_builder_list_process_view(request):
                 err = f'A folder named "{name}" already exists.'
                 messages.error(request, err)
                 return back()
-            EmailAudienceBuilderFolder.objects.create(audience_builder_name=name)
+            AudienceBuilderFolder.objects.create(audience_builder_name=name)
             messages.success(request, f"Folder “{name}” created.")
             return back()
 
         if action == "rename_folder":
             folder_id = request.POST.get("folder_id")
             new_name = (request.POST.get("edit_audience_builder_name") or "").strip()
-            folder = EmailAudienceBuilderFolder.objects.get(id=folder_id, deleted=False)
+            folder = AudienceBuilderFolder.objects.get(id=folder_id, deleted=False)
             old = folder.audience_builder_name
             folder.audience_builder_name = new_name
             folder.save(update_fields=["audience_builder_name"])
@@ -867,9 +1021,9 @@ def audience_builder_list_process_view(request):
 
         if action == "delete_folder":
             folder_id = request.POST.get("folder_id")
-            folder = EmailAudienceBuilderFolder.objects.get(id=folder_id, deleted=False)
+            folder = AudienceBuilderFolder.objects.get(id=folder_id, deleted=False)
             # Move templates to Unfiled (NULL)
-            EmailAudienceBuilder.objects.filter(audience_builder_folder_id=folder.id).update(audience_builder_folder_id=None)
+            AudienceBuilder.objects.filter(audience_builder_folder_id=folder.id).update(audience_builder_folder_id=None)
             folder.deleted = True
             folder.archived = False
             folder.save(update_fields=["deleted", "archived"])
@@ -878,7 +1032,7 @@ def audience_builder_list_process_view(request):
 
         if action == "archive_folder":
             folder_id = request.POST.get("folder_id")
-            folder = EmailAudienceBuilderFolder.objects.get(id=folder_id, deleted=False)
+            folder = AudienceBuilderFolder.objects.get(id=folder_id, deleted=False)
             folder.archived = True
             folder.save(update_fields=["archived"])
             messages.success(request, f"Folder “{folder.audience_builder_name}” archived.")
@@ -886,7 +1040,7 @@ def audience_builder_list_process_view(request):
 
         if action == "unarchive_folder":
             folder_id = request.POST.get("folder_id")
-            folder = EmailAudienceBuilderFolder.objects.get(id=folder_id, deleted=False)
+            folder = AudienceBuilderFolder.objects.get(id=folder_id, deleted=False)
             folder.archived = False
             folder.save(update_fields=["archived"])
             messages.success(request, f"Folder “{folder.audience_builder_name}” unarchived.")
@@ -902,16 +1056,28 @@ def audience_builder_list_process_view(request):
             qs = f"?google_civic_election_id={google_civic_election_id}&state_code={state_code}"
             if folder_id and folder_id != "null":
                 qs += f"&default_audience_builder_folder_id={folder_id}"
+
+            audience_builder_name = f"Audience Builder {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            try:
+                new_audience_builder, created = AudienceBuilder.objects.update_or_create(
+                    audience_builder_name=audience_builder_name)
+            except Exception as e:
+                messages.error(request, f"Error creating new template: {str(e)}")
+                return back()
+
+            if created:
+                messages.success(request, f"New template created: “{audience_builder_name}”")
+
             return HttpResponseRedirect(edit_url + qs)
 
         if action == "change_template_folder":
             template_id = request.POST.get("template_id")
             new_folder_id = request.POST.get("new_folder_id")  # can be "null"
-            tmpl = EmailAudienceBuilder.objects.get(id=template_id, deleted=False)
+            tmpl = AudienceBuilder.objects.get(id=template_id, deleted=False)
             if new_folder_id == "null" or new_folder_id == "":
                 tmpl.audience_builder_folder_id = None
             else:
-                folder = EmailAudienceBuilderFolder.objects.get(id=new_folder_id, deleted=False)
+                folder = AudienceBuilderFolder.objects.get(id=new_folder_id, deleted=False)
                 tmpl.audience_builder_folder_id = folder.id
             tmpl.save(update_fields=["audience_builder_folder_id"])
             messages.success(request, "Template moved.")
@@ -919,7 +1085,7 @@ def audience_builder_list_process_view(request):
 
         if action == "archive_template":
             template_id = request.POST.get("template_id")
-            tmpl = EmailAudienceBuilder.objects.get(id=template_id, deleted=False)
+            tmpl = AudienceBuilder.objects.get(id=template_id, deleted=False)
             tmpl.archived = True
             tmpl.save(update_fields=["archived"])
             messages.success(request, f"Template “{tmpl.audience_builder_name}” archived.")
@@ -927,7 +1093,7 @@ def audience_builder_list_process_view(request):
 
         if action == "unarchive_template":
             template_id = request.POST.get("template_id")
-            tmpl = EmailAudienceBuilder.objects.get(id=template_id, deleted=False)
+            tmpl = AudienceBuilder.objects.get(id=template_id, deleted=False)
             tmpl.archived = False
             tmpl.save(update_fields=["archived"])
             messages.success(request, f"Template “{tmpl.audience_builder_name}” unarchived.")
@@ -935,7 +1101,7 @@ def audience_builder_list_process_view(request):
 
         if action == "delete_template":
             template_id = request.POST.get("template_id")
-            tmpl = EmailAudienceBuilder.objects.get(id=template_id, deleted=False)
+            tmpl = AudienceBuilder.objects.get(id=template_id, deleted=False)
             tmpl.deleted = True
             tmpl.audience_builder_folder_id = None
             tmpl.save(update_fields=["deleted", "audience_builder_folder_id"])
@@ -945,15 +1111,16 @@ def audience_builder_list_process_view(request):
         messages.error(request, "Unknown action.")
         return back()
 
-    except EmailAudienceBuilderFolder.DoesNotExist:
+    except AudienceBuilderFolder.DoesNotExist:
         messages.error(request, "Folder not found.")
         return back()
-    except EmailAudienceBuilder.DoesNotExist:
+    except AudienceBuilder.DoesNotExist:
         messages.error(request, "Template not found.")
         return back()
     except Exception as e:
         messages.error(request, f"Error: {e}")
         return back()
+
 
 @login_required
 def audience_builder_list_view(request):
@@ -967,12 +1134,12 @@ def audience_builder_list_view(request):
     state_code = request.GET.get('state_code', request.POST.get('state_code', ''))
 
     # Folders
-    folder_qs = EmailAudienceBuilderFolder.objects.filter(deleted=False)
+    folder_qs = AudienceBuilderFolder.objects.filter(deleted=False)
     folders_active = folder_qs.filter(archived=False).order_by('audience_builder_name')
     folders_archived = folder_qs.filter(archived=True).order_by('audience_builder_name')
 
     # Templates
-    template_qs = EmailAudienceBuilder.objects.filter(deleted=False)
+    template_qs = AudienceBuilder.objects.filter(deleted=False)
     templates_active = template_qs.filter(archived=False).order_by('audience_builder_name')
     templates_archived = template_qs.filter(archived=True).order_by('audience_builder_name')
 
@@ -1003,9 +1170,7 @@ def audience_builder_list_view(request):
 
         # URLs
         "process_url": reverse('email_outbound:audience_builder_list_process'),
-        "template_edit_url": reverse('email_outbound:audience_builder_list'),
-        # use template_edit_url variable with relevant link
-        # if new view is used for audience builder edit and not modal
+        "audience_builder_edit_url": reverse('email_outbound:audience_builder_edit'),
     }
     # messages.add_message(request, messages.INFO, '')
     return render(request, "email_outbound/audience_builder_list.html", context)

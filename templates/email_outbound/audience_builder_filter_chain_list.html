@@ -1,0 +1,23 @@
+{# templates/email_outbound/audience_builder_filter_chain_list.html #}
+  
+{% load template_filters %}
+
+{% for filter_id_string in filter_id_string_list %}
+    {{ audience_filter_html_dict|get_value_from_dict:filter_id_string|safe }}
+    <br />
+    <br />
+    
+{% if filter_operand_to_follow_dict|get_value_from_dict:filter_id_string %}
+    {{ filter_operand_to_follow_dict|get_value_from_dict:filter_id_string|safe }}
+    <br />
+    <br />
+    <br />
+{% else %}
+    ** ADD new audience_filter_chain here **
+    <br />
+{% endif %}
+--- END OF audience_builder_filter_chain_list row ---
+{% endfor %}
+<br />
+--- END OF audience_builder_filter_chain_list.html ---
+<br />

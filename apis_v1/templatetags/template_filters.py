@@ -35,7 +35,7 @@ def get_date_from_date_as_integer(value):
 
 @register.filter(name="get_value_from_dict")
 def get_value_from_dict(dictionary, key):
-    return dictionary.get(key)
+    return dictionary.get(key, '')
 
 
 @register.filter(name="get_list_from_dict")
