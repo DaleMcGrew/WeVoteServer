@@ -1,0 +1,23 @@
+{# templates/email_outbound/audience_filter_body.html #}
+  
+    <div class="mb-3">
+        <select id="filter-select" class="form-select" style="color: #6c757d;">
+            <option value="" selected>Select a filter</option>
+            <optgroup label="🗳️ Election">
+                <option value="audience_type">Audience type</option>
+                <option value="election_type">Election type</option>
+                <option value="election">Election</option>
+                <option value="party">Party</option>
+                <option value="state_code">State</option>
+            </optgroup>
+            <optgroup label="🎯 Engagement">
+                <option value="has_been_contacted">Has been contacted</option>
+                <option value="has_opened_email">Has opened email</option>
+                <option value="has_signed_in">Has signed in</option>
+            </optgroup>
+            <optgroup label="🏠 Communication">
+                <option value="email_address">Email address</option>
+                <option value="phone_number">Phone number</option>
+            </optgroup>
+        </select>
+    </div>

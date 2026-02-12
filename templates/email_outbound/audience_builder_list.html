@@ -113,7 +113,11 @@
                       {% if t.subject %}<span class="wv-muted">— {{ t.subject }}</span>{% endif %}
                     </div>
                     <div class="wv-actions">
-                      <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&audience_builder_id={{ t.id }}">Edit</a>
+                      <a class="btn btn-secondary"
+                         href="{{ audience_builder_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&audience_builder_id={{ t.id }}"
+                      >
+                          Edit
+                      </a>
 
                       {# Other template Options#}
                       <div class="wv-dropdown">
@@ -172,7 +176,7 @@
               {% if t.subject %}<span class="wv-muted">— {{ t.subject }}</span>{% endif %}
             </div>
             <div class="wv-actions">
-              <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&audience_builder_id={{ t.id }}">Edit</a>
+              <a class="btn btn-secondary" href="{{ audience_builder_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&audience_builder_id={{ t.id }}">Edit</a>
 
               <div class="wv-dropdown">
                 <button type="button" class="wv-kebab js-dd">•••</button>
@@ -243,7 +247,7 @@
                           {% if t.subject %}<span class="wv-muted">— {{ t.subject }}</span>{% endif %}
                         </div>
                         <div class="wv-actions">
-                          <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&audience_builder_id={{ t.id }}">Edit</a>
+                          <a class="btn btn-secondary" href="{{ audience_builder_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&audience_builder_id={{ t.id }}">Edit</a>
                           <div class="wv-dropdown">
                             <button type="button" class="wv-kebab js-dd">•••</button>
                             <div class="wv-dropdown-menu">

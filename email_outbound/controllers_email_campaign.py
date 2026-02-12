@@ -5,7 +5,12 @@
 from config.base import get_environment_variable
 import json
 
+from django.template.loader import render_to_string
+
+
 from email_outbound.functions import convert_html_to_plain_text
+from email_outbound.models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
+    AudienceBuilderFolder, AudienceBuilder, AudienceFilter, AudienceFilterChain, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
 from organization.controllers import transform_web_app_url
 from politician.models import Politician
 from voter.models import VoterManager
@@ -19,6 +24,62 @@ from .models import CUSTOMIZATION_TOKEN_CONVERSION_FROM_JAZZ_HR, \
 logger = wevote_functions.admin.get_logger(__name__)
 
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
+
+
+def audience_builder_data_retrieve(audience_builder_id):
+    audience_builder = {}
+    audience_filter_chain_dict = {}
+    audience_filter_dict = {}
+    audience_filter_list = []
+    status = ''
+    success = True
+
+    if not positive_value_exists(audience_builder_id):
+        status += "AUDIENCE_BUILDER_ID_REQUIRED "
+        success = False
+        return {
+            'audience_builder': audience_builder,
+            'audience_filter_chain_dict': audience_filter_chain_dict,
+            'audience_filter_dict': audience_filter_dict,
+            'audience_filter_list': audience_filter_list,
+            'status': status,
+            'success': success,
+        }
+
+    try:
+        audience_builder = AudienceBuilder.objects.get(id=audience_builder_id)
+    except Exception as e:
+        status += f"ERROR_RETRIEVING_AUDIENCE_BUILDER: {e} "
+        success = False
+
+    if success:
+        try:
+            queryset = AudienceFilter.objects.filter(audience_builder_id=audience_builder_id)
+            audience_filter_list = list(queryset)
+            for audience_filter in audience_filter_list:
+                audience_filter_dict[audience_filter.id] = audience_filter
+        except Exception as e:
+            status += f"ERROR_RETRIEVING_AUDIENCE_FILTER: {e} "
+            success = False
+
+    if success:
+        try:
+            queryset = AudienceFilterChain.objects.filter(audience_builder_id=audience_builder_id)
+            audience_filter_chain_list = list(queryset)
+            for audience_filter_chain in audience_filter_chain_list:
+                audience_filter_chain_dict[audience_filter_chain.id] = audience_filter_chain
+        except Exception as e:
+            status += f"ERROR_RETRIEVING_AUDIENCE_FILTER_CHAIN: {e} "
+            success = False
+
+    return {
+        'audience_builder':             audience_builder,
+        'audience_filter_chain_dict':   audience_filter_chain_dict,
+        'audience_filter_dict':         audience_filter_dict,
+        'audience_filter_list':         audience_filter_list,
+        'status':                       status,
+        'success':                      success,
+    }
 
 
 def augment_email_campaign_recipient(
@@ -304,7 +365,7 @@ def generate_email_campaign_recipients_from_audience_builder(email_campaign_id='
         queryset = EmailCampaignRecipient.objects.filter(
             email_campaign_id=email_campaign_id)
         # It turns out we don't want to exclude the EmailCampaignRecipient objects that have already been scheduled yet,
-        #  so we can know to not add them from the EmailAudienceBuilder searches.
+        #  so we can know to not add them from the AudienceBuilder searches.
         # # Filter out recipient entries that have already been sent
         # queryset = queryset.exclude(email_campaign_recipient_id__in=already_scheduled_recipient_ids)
         email_campaign_recipient_list = list(queryset)
@@ -377,26 +438,6 @@ def schedule_email_campaign_recipient(
         'recipient_bulk_update_list': recipient_bulk_update_list,
     }
     return results
-
-
-def replace_token_with_space(token_key_without_square_brackets, value, token_replacements):
-    token_key_with_square_brackets = f'[{token_key_without_square_brackets}]'
-    if positive_value_exists(value):
-        token_replacements[token_key_with_square_brackets] = value
-    else:
-        token_key_with_square_brackets_and_space = f' [{token_key_without_square_brackets}]'
-        token_replacements[token_key_with_square_brackets_and_space] = ''  # Replace the space before also if empty
-        token_replacements[token_key_with_square_brackets] = ''
-    return token_replacements
-
-
-def replace_token_with_unknown_if_no_value(token_key_without_square_brackets, value, token_replacements):
-    token_key_with_square_brackets = f'[{token_key_without_square_brackets}]'
-    if positive_value_exists(value):
-        token_replacements[token_key_with_square_brackets] = value
-    else:
-        token_replacements[token_key_with_square_brackets] = '<ital>Unknown</ital>'
-    return token_replacements
 
 
 def merge_email_campaign_recipient_with_template(
@@ -553,3 +594,144 @@ def merge_email_campaign_recipient_with_template(
         'message_html': message_html,
     }
     return results
+
+
+def render_audience_builder_html(
+        audience_builder={},
+        audience_filter_chain_dict={},
+        audience_filter_dict={},
+        request=None):
+    audience_builder_html = ''
+    audience_filter_html_dict = {}
+    filter_id_string_list = []
+    filter_operand_to_follow_dict = {}
+    status = ''
+    success = True
+
+    for filter_number in range(1, 10):
+        chain_id_attribute = f'audience_filter_chain{filter_number}_id'
+        chain_id = getattr(audience_builder, chain_id_attribute, None)
+
+        if positive_value_exists(chain_id):
+            if chain_id in audience_filter_chain_dict:
+                audience_filter_chain = audience_filter_chain_dict[chain_id]
+                filter_results = render_audience_filter_chain_html(
+                    audience_builder=audience_builder,
+                    audience_filter_chain=audience_filter_chain,
+                    audience_filter_dict=audience_filter_dict,
+                    request=request)
+                if filter_results['success']:
+                    filter_id_string = f'filter{filter_number}'
+                    audience_filter_html_dict[filter_id_string] = filter_results['audience_filter_chain_html']
+                    filter_id_string_list.append(filter_id_string)
+                    filter_number_next = filter_number + 1
+                    if filter_number_next < 10:
+                        filter_label = f'filter{filter_number}_to_filter{filter_number_next}_operator'
+                        operand = getattr(audience_filter_chain, filter_label, '')
+                        filter_operand_to_follow_dict[filter_id_string] = operand
+                    context = {
+                        'audience_filter_html_dict':        audience_filter_html_dict,
+                        'filter_id_string_list':            filter_id_string_list,
+                        'filter_operand_to_follow_dict':    filter_operand_to_follow_dict,
+                    }
+                    audience_builder_filter_chain_list_html = render_to_string(
+                        "email_outbound/audience_builder_filter_chain_list.html",
+                        context, request=request)
+                    audience_builder_html += audience_builder_filter_chain_list_html
+                else:
+                    status += "RENDER_NOT_SUCCESSFUL: " + filter_results['status'] + " "
+            else:
+                status += f"AUDIENCE_FILTER_CHAIN_NOT_FOUND_IN_DICT: {chain_id} "
+    return {
+        'audience_builder_html': audience_builder_html,
+        'status': status,
+        'success': success,
+    }
+
+
+def render_audience_filter_chain_html(
+        audience_builder={},
+        audience_filter_chain={},
+        audience_filter_dict={},
+        request=None):
+    audience_builder_html = ''
+    audience_filter_html_dict = {}
+    status = ''
+    success = True
+
+    # Cycle through all the audience_filters in this chain
+    # Loop through filter1_id to filter9_id
+    filter_operand_to_follow_dict = {}
+    filter_id_string_list = []
+    for filter_number in range(1, 10):
+        filter_id_attr = f'filter{filter_number}_id'
+        filter_id = getattr(audience_filter_chain, filter_id_attr, None)
+
+        if positive_value_exists(filter_id):
+            if filter_id in audience_filter_dict:
+                audience_filter = audience_filter_dict[filter_id]
+                filter_results = render_audience_filter_html(audience_filter, request=request)
+                if filter_results['success']:
+                    filter_id_string = f'filter{filter_number}'
+                    audience_filter_html_dict[filter_id_string] = filter_results['audience_filter_html']
+                    filter_id_string_list.append(filter_id_string)
+                    filter_number_next = filter_number + 1
+                    if filter_number_next < 10:
+                        filter_label = f'filter{filter_number}_to_filter{filter_number_next}_operator'
+                        operand = getattr(audience_filter_chain, filter_label, '')
+                        filter_operand_to_follow_dict[filter_id_string] = operand
+                else:
+                    status += "RENDER_NOT_SUCCESSFUL: " + filter_results['status'] + " "
+                    success = False
+            else:
+                status += f"AUDIENCE_FILTER_NOT_FOUND: {filter_id} "
+    context = {
+        'audience_filter_html_dict':        audience_filter_html_dict,
+        'filter_id_string_list':            filter_id_string_list,
+        'filter_operand_to_follow_dict':    filter_operand_to_follow_dict,
+    }
+    audience_filter_chain_html = render_to_string("email_outbound/audience_filter_chain.html",
+                                                  context, request=request)
+
+    return {
+        'audience_filter_chain_html': audience_filter_chain_html,
+        'status': status,
+        'success': success,
+    }
+
+
+def render_audience_filter_html(audience_filter, request=None):
+    status = ''
+    success = True
+    # Now build out audience filters
+    context = {
+        'filter_type': 'state_code',
+    }
+    audience_filter_html = render_to_string("email_outbound/audience_filter_body.html", context, request=request)
+    results = {
+        'audience_filter_html': audience_filter_html,
+        'audience_filter_id': audience_filter.id,
+        'status': status,
+        'success': success,
+    }
+    return results
+
+
+def replace_token_with_space(token_key_without_square_brackets, value, token_replacements):
+    token_key_with_square_brackets = f'[{token_key_without_square_brackets}]'
+    if positive_value_exists(value):
+        token_replacements[token_key_with_square_brackets] = value
+    else:
+        token_key_with_square_brackets_and_space = f' [{token_key_without_square_brackets}]'
+        token_replacements[token_key_with_square_brackets_and_space] = ''  # Replace the space before also if empty
+        token_replacements[token_key_with_square_brackets] = ''
+    return token_replacements
+
+
+def replace_token_with_unknown_if_no_value(token_key_without_square_brackets, value, token_replacements):
+    token_key_with_square_brackets = f'[{token_key_without_square_brackets}]'
+    if positive_value_exists(value):
+        token_replacements[token_key_with_square_brackets] = value
+    else:
+        token_replacements[token_key_with_square_brackets] = '<ital>Unknown</ital>'
+    return token_replacements
