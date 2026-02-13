@@ -603,12 +603,12 @@ def render_audience_builder_html(
         request=None):
     audience_builder_html = ''
     audience_filter_html_dict = {}
-    filter_id_string_list = []
     filter_operand_to_follow_dict = {}
     status = ''
     success = True
 
     for filter_number in range(1, 10):
+        audience_filter_id_string_list = []
         chain_id_attribute = f'audience_filter_chain{filter_number}_id'
         chain_id = getattr(audience_builder, chain_id_attribute, None)
 
@@ -621,17 +621,18 @@ def render_audience_builder_html(
                     audience_filter_dict=audience_filter_dict,
                     request=request)
                 if filter_results['success']:
-                    filter_id_string = f'filter{filter_number}'
-                    audience_filter_html_dict[filter_id_string] = filter_results['audience_filter_chain_html']
-                    filter_id_string_list.append(filter_id_string)
+                    audience_filter_id_string = f'filter{filter_number}'
+                    audience_filter_html_dict[audience_filter_id_string] = filter_results['audience_filter_chain_html']
+                    audience_filter_id_string_list.append(audience_filter_id_string)
                     filter_number_next = filter_number + 1
                     if filter_number_next < 10:
                         filter_label = f'filter{filter_number}_to_filter{filter_number_next}_operator'
                         operand = getattr(audience_filter_chain, filter_label, '')
-                        filter_operand_to_follow_dict[filter_id_string] = operand
+                        filter_operand_to_follow_dict[audience_filter_id_string] = operand
                     context = {
+                        'audience_builder_id':              audience_builder.id,
                         'audience_filter_html_dict':        audience_filter_html_dict,
-                        'filter_id_string_list':            filter_id_string_list,
+                        'audience_filter_id_string_list':   audience_filter_id_string_list,
                         'filter_operand_to_follow_dict':    filter_operand_to_follow_dict,
                     }
                     audience_builder_filter_chain_list_html = render_to_string(

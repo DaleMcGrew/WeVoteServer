@@ -3,9 +3,11 @@
 {% load template_filters %}
 
 {% for filter_id_string in filter_id_string_list %}
+    <div style="border: 2px solid #d4e4f7; border-radius: 4px; padding: 10px; margin-bottom: 10px;">
+
     {{ audience_filter_html_dict|get_value_from_dict:filter_id_string|safe }}
-    <br />
-    <br />
+    
+    </div>
     
 {% if filter_operand_to_follow_dict|get_value_from_dict:filter_id_string %}
     {{ filter_operand_to_follow_dict|get_value_from_dict:filter_id_string|safe }}
@@ -13,11 +15,15 @@
     <br />
     <br />
 {% else %}
-    ** ADD new audience_filter here **
-    <br />
+    <button type="submit"
+            class="btn btn-default btn-sm"
+            style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; background-color: #fff; color: #333;"
+            name="add_audience_filter_after_{{ filter_id_string }}"
+            value="1"
+    >
+        <span style="font-weight: bold; margin-right: 4px;">+</span> Add "and"
+    </button>
 {% endif %}
---- END OF audience_filter_chain row ---
-<br />
+<!-- END OF audience_filter_chain row -->
 {% endfor %}
---- END OF audience_filter_chain.html ---
-<br />
+<!-- END OF audience_filter_chain.html -->
