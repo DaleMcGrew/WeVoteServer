@@ -222,10 +222,10 @@ class TokensManager():
                             token_info = temp_token_check_info
                             break
 
-            TokensManager.test_log_to_cloudwatch('token_authentication', request_token_info, token_auth_info['success'], token_auth_info)
-
         else:
             token_auth_info['error_message'] = f"Invalid token type: {token_type}"
+
+        TokensManager.test_log_to_cloudwatch('token_authentication', request_token_info, token_auth_info['success'], token_auth_info)
 
         if token_info is not None:
             if token_info['success']:
