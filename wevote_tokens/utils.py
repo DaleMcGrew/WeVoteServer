@@ -175,7 +175,9 @@ class TokensManager():
                 token_creation_info['error_message'] = token_info['status']
             else:
                 token_creation_info['error_message'] = "Unknown error"
-        
+
+        TokensManager.test_log_to_cloudwatch('token_creation', request_token_info, token_creation_info['success'], token_creation_info)
+
         return token_creation_info
 
     # Have a function that takes in the request to validate the token info
@@ -216,6 +218,8 @@ class TokensManager():
                         if temp_token_check_info['success']:
                             token_info = temp_token_check_info
                             break
+
+        TokensManager.test_log_to_cloudwatch('token_authentication', request_token_info, token_auth_info['success'], token_auth_info)
 
         else:
             token_auth_info['error_message'] = f"Invalid token type: {token_type}"
@@ -339,6 +343,7 @@ class TokensManager():
             'authorization': request_token_info['authorization'],
             'create_token': request_token_info['create_token'],
         }
+        
         result = {
             'final_step': final_step,
             'user_passed_info': user_passed_info,
