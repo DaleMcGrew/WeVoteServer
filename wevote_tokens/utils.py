@@ -6,6 +6,7 @@ import re
 import json
 import logging
 
+
 class TokensManager():
 
     def __init__(self, token_types, scope, expiration_seconds=None, json_data=None):
@@ -17,7 +18,7 @@ class TokensManager():
         self.expiration_seconds = expiration_seconds
         self.json_data = json_data
 
-    #have a function tthat seves as a wrapper for a view
+    # have a function that serves as a wrapper for a view
     def __call__(self, view_func):
         def _wrapped_view(request, *args, **kwargs):
             token_response = TokenResponse.TOKEN_RESPONSE.get_value()
@@ -34,12 +35,14 @@ class TokensManager():
                         'token_info': None
                     }
 
-                    TokensManager.test_log_to_cloudwatch('get_request_token_info', request_token_info, process_success, token_response)
+                    TokensManager.test_log_to_cloudwatch('get_request_token_info',
+                                                         request_token_info, process_success, token_response)
 
                 # Check token type
                 if not request_token_info['error_message'] and \
-                    (not request_token_info['token_type'] or request_token_info['token_type'] not in self.token_types):
-                    #TODO: return 401 unauthorized
+                        (not request_token_info['token_type'] or
+                         request_token_info['token_type'] not in self.token_types):
+                    # TODO: return 401 unauthorized
                     token_response['token_authentication'] = {
                         'success': False,
                         'status': 'INVALID_TOKEN_TYPE',
@@ -47,7 +50,8 @@ class TokensManager():
                         'token_info': None
                     }
 
-                    TokensManager.test_log_to_cloudwatch('veryify_token_type', request_token_info, process_success, token_response)
+                    TokensManager.test_log_to_cloudwatch('verify_token_type',
+                                                         request_token_info, process_success, token_response)
                 
                 if not token_response['token_authentication']:
                     # And authenticate it with id, key, and scope
@@ -57,14 +61,14 @@ class TokensManager():
                     
                     # if exists and is True, then create a new token
                     if request_token_info['create_token'] and token_response['token_authentication']['success']:
-                            token_response['token_creation'] = self.token_creation(request_token_info)
+                        token_response['token_creation'] = self.token_creation(request_token_info)
 
-                            process_success = token_response['token_creation']['success']
+                        process_success = token_response['token_creation']['success']
 
                 TokensManager.test_log_to_cloudwatch('token_authenticated_and_created', request_token_info, process_success, token_response)
                 
             except Exception as e:
-                token_response['exception_error_message'] = e.message
+                token_response['exception_error_message'] = str(e)
                 TokensManager.test_log_to_cloudwatch('error_on_token_authentication_and_creation', request_token_info, False, token_response)
                 
             response = view_func(request, *args, **kwargs)
@@ -144,7 +148,6 @@ class TokensManager():
 
         return headers
 
-
     def token_creation(self, request_token_info):
         token_creation_info = TokenResponse.TOKEN_CREATION.get_value()
 
@@ -219,7 +222,7 @@ class TokensManager():
                             token_info = temp_token_check_info
                             break
 
-        TokensManager.test_log_to_cloudwatch('token_authentication', request_token_info, token_auth_info['success'], token_auth_info)
+            TokensManager.test_log_to_cloudwatch('token_authentication', request_token_info, token_auth_info['success'], token_auth_info)
 
         else:
             token_auth_info['error_message'] = f"Invalid token type: {token_type}"
@@ -335,7 +338,7 @@ class TokensManager():
     @staticmethod
     def test_log_to_cloudwatch(final_step, request_token_info, success, return_info):
 
-        #TODO: Add more ensurance that sensitive info can't be logged
+        # TODO: Add more insurance that sensitive info can't be logged
 
         user_passed_info = {
             'user_id': request_token_info['user_id'],
@@ -351,5 +354,5 @@ class TokensManager():
             'return_info': return_info,
         }
         
-        #TODO: change level to info when possible. Add security tagging.
+        # TODO: change level to info when possible. Add security tagging.
         logging.warning("[TOKEN_MANAGER_TEST_WARNING]: " + json.dumps(result))

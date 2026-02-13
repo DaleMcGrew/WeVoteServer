@@ -849,6 +849,7 @@ def audience_builder_edit_view(request):
         audience_filter_dict = results['audience_filter_dict']
         audience_filter_list = results['audience_filter_list']
     else:
+        audience_builder_id = None
         messages.add_message(request, messages.ERROR, status)
         success = False
 
@@ -864,13 +865,11 @@ def audience_builder_edit_view(request):
             audience_builder_html = results['audience_builder_html']
         else:
             messages.add_message(request, messages.ERROR, status)
-        # audience_filter = {}
-        # audience_filter1_html = render_audience_filter_html(audience_builder, audience_filter, request=request)
 
     context = {
         'audience_builder': audience_builder,
+        'audience_builder_id': audience_builder_id,
         'audience_builder_html':    audience_builder_html,
-        # 'audience_filter1_html': audience_filter1_html,
         'google_civic_election_id': google_civic_election_id,
         'process_url': reverse('email_outbound:audience_builder_edit_process'),
         'state_code': state_code,
@@ -890,15 +889,15 @@ def audience_builder_edit_process_view(request):
     status = ''
     success = True
 
-    if request.method != "POST":
-        return HttpResponseRedirect(reverse('email_outbound:audience_builder_list'))
+    audience_builder = None
+    audience_builder_id = request.POST.get('audience_builder_id', request.GET.get('audience_builder_id', None))
+    audience_builder_name = request.POST.get('audience_builder_name', request.GET.get('audience_builder_name', False))
+    audience_filter_chain = None
+    google_civic_election_id = \
+        request.POST.get('google_civic_election_id', request.GET.get('google_civic_election_id', 0))
+    state_code = request.POST.get('state_code', request.GET.get('state_code', ''))
 
-    audience_builder_id = request.POST.get('audience_builder_id', None)
-    audience_builder_name = request.POST.get('audience_builder_name', False)
-    google_civic_election_id = request.POST.get('google_civic_election_id', 0)
-    state_code = request.POST.get('state_code', '')
-
-    action = request.POST.get("action", "").strip()
+    action = request.POST.get("action", request.GET.get("action", "")).strip()
 
     try:
         if action == "delete":
@@ -914,12 +913,11 @@ def audience_builder_edit_process_view(request):
                         audience_builder.audience_builder_name = audience_builder_name
                     audience_builder.save()
                 else:
-                    audience_builder, created = AudienceBuilder.objects.update_or_create(
+                    audience_builder = AudienceBuilder.objects.create(
                         audience_builder_name=audience_builder_name)
                     audience_builder_id = audience_builder.id
 
-                    if created:
-                        messages.success(request, f"New template created: “{audience_builder_name}”")
+                    messages.success(request, f"New template created: “{audience_builder_name}”")
                 #
                 # return HttpResponseRedirect(reverse('email_outbound:audience_builder_list'))
             except Exception as e:
@@ -946,7 +944,7 @@ def audience_builder_edit_process_view(request):
             messages.add_message(request, messages.ERROR, status)
             success = False
 
-    if success and positive_value_exists(audience_builder_id):
+    if success and hasattr(audience_builder, 'audience_filter_chain1_id'):
         # If audience_filter_chain_dict is empty, create a default AudienceFilterChain
         if not audience_filter_chain_dict:
             audience_filter_chain, created = AudienceFilterChain.objects.update_or_create(
@@ -957,13 +955,49 @@ def audience_builder_edit_process_view(request):
                 audience_builder.save()
 
         # If audience_filter_dict is empty, create a default AudienceFilter
-        if not audience_filter_dict:
+        if not audience_filter_dict and hasattr(audience_filter_chain, 'audience_filter_chain2_id'):
             audience_filter, created = AudienceFilter.objects.update_or_create(
                 audience_builder_id=audience_builder_id)
             if created:
                 audience_filter_dict = {audience_filter.id: audience_filter}
                 audience_filter_chain.filter1_id = audience_filter.id
                 audience_filter_chain.save()
+
+    # Some form of loop here
+    # add_audience_filter_after_
+    # add_audience_filter_chain_after_
+
+    # If the "Add new" buttons were pressed under AudienceFilterChain, create new AudienceFilterChain
+    for filter_number in range(1, 10):
+        next_filter_chain_found = False
+        if filter_number < 9:
+            ok_to_create_next_chain = True
+        else:
+            ok_to_create_next_chain = False
+        next_filter_number = filter_number + 1
+        next_chain_id_attribute = f'audience_filter_chain{next_filter_number}_id'
+        next_chain_id = getattr(audience_builder, next_chain_id_attribute, None)
+
+        if positive_value_exists(next_chain_id):
+            if next_chain_id in audience_filter_chain_dict:
+                next_filter_chain_found = True
+        if ok_to_create_next_chain and not next_filter_chain_found:
+            add_audience_filter_chain_attribute = f'add_audience_filter_chain_after_filter{filter_number}'
+            add_audience_filter_chain = \
+                request.POST.get(add_audience_filter_chain_attribute,
+                                 request.GET.get(add_audience_filter_chain_attribute, False))
+            if positive_value_exists(add_audience_filter_chain):
+                audience_filter_chain = AudienceFilterChain.objects.create(
+                    audience_builder_id=audience_builder_id)
+                audience_filter_chain_dict[audience_filter_chain.id] = audience_filter_chain
+                next_filter_number = filter_number + 1
+                chain_id_attribute = f'audience_filter_chain{next_filter_number}_id'
+                setattr(audience_builder, chain_id_attribute, audience_filter_chain.id)
+                audience_builder.save()
+
+    # If the "Add new" buttons were pressed under AudienceFilter, create new AudienceFilter
+    for filter_number in range(1, 10):
+        pass
 
     return HttpResponseRedirect(reverse('email_outbound:audience_builder_edit') +
                                 "?audience_builder_id=" + str(audience_builder_id) +
@@ -982,6 +1016,7 @@ def audience_builder_list_process_view(request):
     if request.method != "POST":
         return HttpResponseRedirect(reverse('email_outbound:audience_builder_list'))
 
+    audience_builder_id = None
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
     state_code = request.POST.get('state_code', '')
 
@@ -1046,11 +1081,11 @@ def audience_builder_list_process_view(request):
             messages.success(request, f"Folder “{folder.audience_builder_name}” unarchived.")
             return back()
 
-        if action == "create_template":
+        if action == "create_audience_builder":
             # Optionally pick a default folder for the new template (can be blank/unfiled)
             folder_id = request.POST.get("folder_id")
             # Redirect to template edit page (creation flow)
-            edit_url = reverse("email_outbound:audience_builder_list")
+            edit_url = reverse("email_outbound:audience_builder_edit_process")
             # if modal is used for audience builder edit then ignore this link
             # else link to appropriate view
             qs = f"?google_civic_election_id={google_civic_election_id}&state_code={state_code}"
@@ -1061,12 +1096,15 @@ def audience_builder_list_process_view(request):
             try:
                 new_audience_builder, created = AudienceBuilder.objects.update_or_create(
                     audience_builder_name=audience_builder_name)
+                audience_builder_id = new_audience_builder.id
             except Exception as e:
                 messages.error(request, f"Error creating new template: {str(e)}")
                 return back()
 
             if created:
                 messages.success(request, f"New template created: “{audience_builder_name}”")
+                if positive_value_exists(audience_builder_id):
+                    qs += f"&audience_builder_id={audience_builder_id}"
 
             return HttpResponseRedirect(edit_url + qs)
 

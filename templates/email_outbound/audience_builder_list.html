@@ -55,7 +55,7 @@
     {% csrf_token %}
     <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
     <input type="hidden" name="state_code" value="{{ state_code }}">
-    <input type="hidden" name="action" value="create_template">
+    <input type="hidden" name="action" value="create_audience_builder">
     <button class="btn btn-primary" type="submit">Create audience builder</button>
   </form>
 
@@ -90,7 +90,7 @@
                     {% csrf_token %}
                     <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
                     <input type="hidden" name="state_code" value="{{ state_code }}">
-                    <input type="hidden" name="action" value="create_template">
+                    <input type="hidden" name="action" value="create_audience_builder">
                     <input type="hidden" name="folder_id" value="{{ f.id }}">
                     <button class="wv-menu-btn" type="submit">Create audience builder</button>
                   </form>
@@ -160,7 +160,7 @@
           {% csrf_token %}
           <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
           <input type="hidden" name="state_code" value="{{ state_code }}">
-          <input type="hidden" name="action" value="create_template">
+          <input type="hidden" name="action" value="create_audience_builder">
           <input type="hidden" name="folder_id" value="null">
           <button class="btn btn-secondary" type="submit">Create audience builder</button>
         </form>
