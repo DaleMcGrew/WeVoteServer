@@ -3,8 +3,8 @@
 # -*- coding: UTF-8 -*-
 
 from config.base import get_environment_variable
-import json
 
+from django.db.models import Q
 from django.template.loader import render_to_string
 
 
@@ -125,7 +125,8 @@ def augment_email_campaign_recipient(
         if not hasattr(recipient_voter, 'first_name'):
             try:
                 voter_manager = VoterManager()
-                results = voter_manager.retrieve_voter_by_we_vote_id(email_campaign_recipient.recipient_voter_we_vote_id)
+                results = voter_manager.retrieve_voter_by_we_vote_id(
+                    email_campaign_recipient.recipient_voter_we_vote_id)
                 if results['voter_found']:
                     recipient_voter = results['voter']
                     voters_dict[email_campaign_recipient.recipient_voter_we_vote_id] = recipient_voter
@@ -184,6 +185,200 @@ def augment_email_campaign_recipient(
         'status':                   status,
         'success':                  success,
         'voters_dict':              voters_dict,
+    }
+
+
+def delete_audience_filter(audience_filter_id_to_delete=None):
+    chain_list = []
+    status = ''
+    success = True
+
+    if not positive_value_exists(audience_filter_id_to_delete):
+        success = False
+        status += "DELETE_AUDIENCE_FILTER_MISSING_REQUIRED_VARIABLES "
+        return {
+            'chain_list': chain_list,
+            'status': status,
+            'success': success,
+        }
+
+    # Retrieve any AudienceFilterChain entries from the database that contain the
+    # AudienceFilter.id in any of the following fields:
+    # filter1_id, filter2_id, filter3_id,..., filter9_id
+    queryset = AudienceFilterChain.objects.filter(
+        Q(filter1_id=audience_filter_id_to_delete) |
+        Q(filter2_id=audience_filter_id_to_delete) |
+        Q(filter3_id=audience_filter_id_to_delete) |
+        Q(filter4_id=audience_filter_id_to_delete) |
+        Q(filter5_id=audience_filter_id_to_delete) |
+        Q(filter6_id=audience_filter_id_to_delete) |
+        Q(filter7_id=audience_filter_id_to_delete) |
+        Q(filter8_id=audience_filter_id_to_delete) |
+        Q(filter9_id=audience_filter_id_to_delete))
+    chain_list = list(queryset)
+
+    # Loop through chain_list, and for each AudienceFilterChain set the filter_id to None whenever it matches
+    # the audience_filter_id_to_delete
+    chain_list_modified = []
+    chains_to_update = []
+    for chain in chain_list:
+        chain_changed = False
+        for filter_position in range(1, 10):
+            filter_id_attribute = f'filter{filter_position}_id'
+            filter_id = getattr(chain, filter_id_attribute, None)
+
+            if positive_value_exists(filter_id) and str(filter_id) == str(audience_filter_id_to_delete):
+                setattr(chain, filter_id_attribute, None)
+                chain_changed = True
+        if chain_changed:
+            chains_to_update.append(chain)
+        chain_list_modified.append(chain)
+    chain_list = chain_list_modified
+    if chains_to_update:
+        AudienceFilterChain.objects.bulk_update(
+            chains_to_update,
+            ['filter1_id', 'filter2_id', 'filter3_id', 'filter4_id',
+             'filter5_id', 'filter6_id', 'filter7_id', 'filter8_id', 'filter9_id']
+        )
+
+    # Loop through the chain_list again, and for any filterX_id that is None and there is an filter_id after it,
+    # shift the filterX_to_filterY_operator
+    chain_list_modified = []
+    chains_to_update = []
+    for chain in chain_list:
+        chain_changed = False
+        for filter_position in range(1, 9):
+            filter_id_attribute = f'filter{filter_position}_id'
+            filter_id = getattr(chain, filter_id_attribute, None)
+            next_filter_id_attribute = f'filter{filter_position + 1}_id'
+            next_filter_id = getattr(chain, next_filter_id_attribute, None)
+
+            if not positive_value_exists(filter_id) and positive_value_exists(next_filter_id):
+                setattr(chain, filter_id_attribute, next_filter_id)
+                setattr(chain, next_filter_id_attribute, None)
+                operator_attribute = f'filter{filter_position}_to_filter{filter_position + 1}_operator'
+                next_operator_attribute = f'filter{filter_position + 1}_to_filter{filter_position + 2}_operator'
+                if positive_value_exists(getattr(chain, next_operator_attribute, None)):
+                    setattr(chain, operator_attribute, getattr(chain, next_operator_attribute, None))
+                    setattr(chain, next_operator_attribute, None)
+                chain_changed = True
+        if chain_changed:
+            chains_to_update.append(chain)
+        chain_list_modified.append(chain)
+    chain_list = chain_list_modified
+    if chains_to_update:
+        AudienceFilterChain.objects.bulk_update(
+            chains_to_update,
+            ['filter1_id', 'filter2_id', 'filter3_id', 'filter4_id',
+             'filter5_id', 'filter6_id', 'filter7_id', 'filter8_id', 'filter9_id',
+             'filter1_to_filter2_operator', 'filter2_to_filter3_operator', 'filter3_to_filter4_operator',
+             'filter4_to_filter5_operator', 'filter5_to_filter6_operator', 'filter6_to_filter7_operator',
+             'filter7_to_filter8_operator', 'filter8_to_filter9_operator']
+        )
+
+    # Loop through the chain_list again, and make sure to remove any final filter1_to_filter2_operators that exist
+    #  when there is no second filter_id
+    chain_list_modified = []
+    chains_to_update = []
+    for chain in chain_list:
+        chain_changed = False
+        for filter_position in range(1, 8):  # Stopped at 8 on purpose
+            filter_id_attribute = f'filter{filter_position}_id'
+            filter_id = getattr(chain, filter_id_attribute, None)
+            next_filter_id_attribute = f'filter{filter_position + 1}_id'
+            next_filter_id = getattr(chain, next_filter_id_attribute, None)
+            if not positive_value_exists(filter_id) or not positive_value_exists(next_filter_id):
+                operator_attribute = f'filter{filter_position}_to_filter{filter_position + 1}_operator'
+                setattr(chain, operator_attribute, None)
+                chain_changed = True
+        if chain_changed:
+            chains_to_update.append(chain)
+        chain_list_modified.append(chain)
+    chain_list = chain_list_modified
+    if chains_to_update:
+        AudienceFilterChain.objects.bulk_update(
+            chains_to_update,
+            ['filter1_to_filter2_operator', 'filter2_to_filter3_operator', 'filter3_to_filter4_operator',
+             'filter4_to_filter5_operator', 'filter5_to_filter6_operator', 'filter6_to_filter7_operator',
+             'filter7_to_filter8_operator', 'filter8_to_filter9_operator']
+        )
+
+    # Now delete the AudienceFilter itself
+    try:
+        audience_filter_to_delete = AudienceFilter.objects.get(id=audience_filter_id_to_delete)
+        audience_filter_to_delete.delete()
+    except Exception as e:
+        status += "AUDIENCE_FILTER_DELETE_FAILED: " + str(e) + " "
+    return {
+        'chain_list':   chain_list,
+        'status':       status,
+        'success':      success,
+    }
+
+
+def delete_audience_filter_chain_and_children(audience_builder, audience_filter_chain_id_to_delete):
+    # Find it in current AudienceBuilder
+    chain_found = False
+    builder_relative_chain_position = None
+    status = ''
+    success = True
+
+    for builder_relative_chain_id in range(1, 10):
+        builder_relative_chain_id_attribute = f'audience_filter_chain{builder_relative_chain_id}_id'
+        chain_id = getattr(audience_builder, builder_relative_chain_id_attribute, None)
+
+        if positive_value_exists(chain_id) and str(chain_id) == str(audience_filter_chain_id_to_delete):
+            chain_found = True
+            builder_relative_chain_position = builder_relative_chain_id
+            break
+
+    if chain_found:
+        try:
+            # Get the AudienceFilterChain object
+            audience_filter_chain_to_delete = AudienceFilterChain.objects.get(
+                id=audience_filter_chain_id_to_delete)
+
+            # Delete all the AudienceFilter objects that are linked to it first
+            filter_ids_to_delete = []
+            for filter_position in range(1, 10):
+                filter_id_attribute = f'filter{filter_position}_id'
+                filter_id = getattr(audience_filter_chain_to_delete, filter_id_attribute, None)
+
+                if positive_value_exists(filter_id):
+                    filter_ids_to_delete.append(filter_id)
+
+            # Delete all the filters
+            if filter_ids_to_delete:
+                deleted_count, _ = AudienceFilter.objects.filter(
+                    id__in=filter_ids_to_delete).delete()
+                status += f"DELETED_{deleted_count}_AUDIENCE_FILTERS "
+
+            # Remove the chain reference from the AudienceBuilder
+            if positive_value_exists(builder_relative_chain_position):
+                chain_id_attribute = f'audience_filter_chain{builder_relative_chain_position}_id'
+                setattr(audience_builder, chain_id_attribute, None)
+                # Remove the chain_to_chain operator reference from the AudienceBuilder
+                if builder_relative_chain_position > 1:
+                    chain_to_chain_attribute = \
+                        f'chain{builder_relative_chain_position - 1}_to_chain{builder_relative_chain_position}_operator'
+                    setattr(audience_builder, chain_to_chain_attribute, None)
+                audience_builder.save()
+
+            # Then delete the AudienceFilterChain object itself
+            audience_filter_chain_to_delete.delete()
+            status += "AUDIENCE_FILTER_CHAIN_DELETED "
+
+        except AudienceFilterChain.DoesNotExist:
+            status += "AUDIENCE_FILTER_CHAIN_NOT_FOUND "
+        except Exception as e:
+            status += f"ERROR_DELETING_CHAIN: {str(e)} "
+            success = False
+    else:
+        status += "CHAIN_NOT_FOUND_IN_AUDIENCE_BUILDER "
+
+    return {
+        'status':   status,
+        'success':  success,
     }
 
 
@@ -382,6 +577,90 @@ def generate_email_campaign_recipients_from_audience_builder(email_campaign_id='
     }
 
 
+def reorganize_audience_filter_chains(audience_builder):
+    """
+    After deleting an AudienceFilterChain, reorganize the chain fields so there are no gaps.
+    If audience_filter_chain2_id is None but audience_filter_chain3_id has a value,
+    move chain3 to chain2, chain4 to chain3, etc.
+
+    :param audience_builder: AudienceBuilder object
+    :return: dict with status and success
+    """
+    status = ''
+    success = True
+    changes_made = False
+
+    try:
+        # Collect all chain IDs and their operators in order
+        chain_data = []
+        for position in range(1, 10):
+            chain_id_attr = f'audience_filter_chain{position}_id'
+            chain_id = getattr(audience_builder, chain_id_attr, None)
+
+            # Get the operator that connects this chain to the next one
+            operator_attr = f'chain{position}_to_chain{position + 1}_operator'
+            operator = getattr(audience_builder, operator_attr, None) if position < 9 else None
+
+            chain_data.append({
+                'position': position,
+                'chain_id': chain_id,
+                'operator': operator
+            })
+
+        # Filter out None values to get only the chains that exist
+        existing_chains = [item for item in chain_data if positive_value_exists(item['chain_id'])]
+
+        # If we have the same number of existing chains as total positions with values,
+        # there are no gaps to fill
+        non_none_count = sum(1 for item in chain_data if positive_value_exists(item['chain_id']))
+        if len(existing_chains) == non_none_count and all(
+                existing_chains[i]['position'] == i + 1 for i in range(len(existing_chains))
+        ):
+            status += "NO_REORGANIZATION_NEEDED "
+            return {
+                'audience_builder': audience_builder,
+                'changes_made': changes_made,
+                'status': status,
+                'success': success,
+            }
+
+        # Clear all chain fields first
+        for position in range(1, 10):
+            chain_id_attr = f'audience_filter_chain{position}_id'
+            setattr(audience_builder, chain_id_attr, None)
+
+            if position < 9:
+                operator_attr = f'chain{position}_to_chain{position + 1}_operator'
+                setattr(audience_builder, operator_attr, None)
+
+        # Reassign chains to sequential positions starting from 1
+        for new_position, chain_item in enumerate(existing_chains, start=1):
+            chain_id_attr = f'audience_filter_chain{new_position}_id'
+            setattr(audience_builder, chain_id_attr, chain_item['chain_id'])
+
+            # Set the operator if this isn't the last chain
+            if new_position < len(existing_chains):
+                operator_attr = f'chain{new_position}_to_chain{new_position + 1}_operator'
+                setattr(audience_builder, operator_attr, chain_item['operator'])
+
+            changes_made = True
+
+        if changes_made:
+            audience_builder.save()
+            status += f"REORGANIZED_{len(existing_chains)}_CHAINS "
+
+    except Exception as e:
+        status += f"ERROR_REORGANIZING_CHAINS: {str(e)} "
+        success = False
+
+    return {
+        'audience_builder': audience_builder,
+        'changes_made': changes_made,
+        'status': status,
+        'success': success,
+    }
+
+
 def schedule_email_campaign_recipient(
         email_campaign_recipient=None,
         email_body_raw=None,
@@ -512,7 +791,8 @@ def merge_email_campaign_recipient_with_template(
             )  # WV-2447 "Open Tracking for Email Campaign System" should go here
             email_footer_html = \
                 "<br />This email uses tracking to understand whether messages are opened " \
-                "so we can improve our communications. Learn more: <a href='https://wevote.us/privacy'>Privacy Policy</a>." \
+                "so we can improve our communications. Learn more: " \
+                "<a href='https://wevote.us/privacy'>Privacy Policy</a>." \
                 "{open_tracking_pixel_html}<br />".format(
                     open_tracking_pixel_html=open_tracking_pixel_html,
                 )
@@ -603,46 +883,71 @@ def render_audience_builder_html(
         request=None):
     audience_builder_html = ''
     audience_filter_html_dict = {}
+    chain_operand_to_follow_dict = {}
     filter_operand_to_follow_dict = {}
     status = ''
     success = True
 
-    for filter_number in range(1, 10):
-        audience_filter_id_string_list = []
-        chain_id_attribute = f'audience_filter_chain{filter_number}_id'
-        chain_id = getattr(audience_builder, chain_id_attribute, None)
+    # Render each chain one at a time
+    for builder_relative_chain_id in range(1, 10):
+        builder_relative_chain_id_string_list = []
+        builder_relative_chain_id_attribute = f'audience_filter_chain{builder_relative_chain_id}_id'
+        chain_id = getattr(audience_builder, builder_relative_chain_id_attribute, None)
 
+        # Operands between chains
+        builder_relative_chain_id_next = builder_relative_chain_id + 1
+        if builder_relative_chain_id_next < 10:
+            # chain_to_chain_operand_key must match builder_relative_chain_id_string below
+            chain_to_chain_operand_key = f'filter{builder_relative_chain_id}'
+            chain_to_chain_operand_attribute = \
+                f'chain{builder_relative_chain_id}_to_chain{builder_relative_chain_id_next}_operator'
+            chain_to_chain_operand = getattr(audience_builder, chain_to_chain_operand_attribute, '')
+            chain_operand_to_follow_dict[chain_to_chain_operand_key] = chain_to_chain_operand
+
+        # Operands between filters in this chain
         if positive_value_exists(chain_id):
             if chain_id in audience_filter_chain_dict:
                 audience_filter_chain = audience_filter_chain_dict[chain_id]
-                filter_results = render_audience_filter_chain_html(
+                for filter_relative_id in range(1, 10):
+                    builder_relative_chain_id_string = f'filter{builder_relative_chain_id}'
+                    filter_relative_id_next = filter_relative_id + 1
+                    if filter_relative_id_next < 10:
+                        filter_operator_attribute = \
+                            f'filter{filter_relative_id}_to_filter{builder_relative_chain_id_next}_operator'
+                        operand = getattr(audience_filter_chain, filter_operator_attribute, '')
+                        filter_operand_to_follow_dict[builder_relative_chain_id_string] = operand
+
+        # Render all audience_filters and the enclosing audience_filter_chain info for this chain
+        if positive_value_exists(chain_id):
+            if chain_id in audience_filter_chain_dict:
+                audience_filter_chain = audience_filter_chain_dict[chain_id]
+                chain_results = render_audience_filter_chain_html(
                     audience_builder=audience_builder,
                     audience_filter_chain=audience_filter_chain,
                     audience_filter_dict=audience_filter_dict,
                     request=request)
-                if filter_results['success']:
-                    audience_filter_id_string = f'filter{filter_number}'
-                    audience_filter_html_dict[audience_filter_id_string] = filter_results['audience_filter_chain_html']
-                    audience_filter_id_string_list.append(audience_filter_id_string)
-                    filter_number_next = filter_number + 1
-                    if filter_number_next < 10:
-                        filter_label = f'filter{filter_number}_to_filter{filter_number_next}_operator'
-                        operand = getattr(audience_filter_chain, filter_label, '')
-                        filter_operand_to_follow_dict[audience_filter_id_string] = operand
+                if chain_results['success']:
+                    builder_relative_chain_id_string = f'filter{builder_relative_chain_id}'
+                    audience_filter_html_dict[builder_relative_chain_id_string] = \
+                        chain_results['audience_filter_chain_html']
+                    builder_relative_chain_id_string_list.append(builder_relative_chain_id_string)
+
                     context = {
-                        'audience_builder_id':              audience_builder.id,
-                        'audience_filter_html_dict':        audience_filter_html_dict,
-                        'audience_filter_id_string_list':   audience_filter_id_string_list,
-                        'filter_operand_to_follow_dict':    filter_operand_to_follow_dict,
+                        'audience_builder_id': audience_builder.id,
+                        'audience_filter_html_dict': audience_filter_html_dict,
+                        'audience_builder_relative_chain_id_string_list': builder_relative_chain_id_string_list,
+                        'chain_operand_to_follow_dict': chain_operand_to_follow_dict,
+                        'filter_operand_to_follow_dict': filter_operand_to_follow_dict,
                     }
                     audience_builder_filter_chain_list_html = render_to_string(
                         "email_outbound/audience_builder_filter_chain_list.html",
                         context, request=request)
                     audience_builder_html += audience_builder_filter_chain_list_html
                 else:
-                    status += "RENDER_NOT_SUCCESSFUL: " + filter_results['status'] + " "
+                    status += "RENDER_NOT_SUCCESSFUL: " + chain_results['status'] + " "
             else:
                 status += f"AUDIENCE_FILTER_CHAIN_NOT_FOUND_IN_DICT: {chain_id} "
+
     return {
         'audience_builder_html': audience_builder_html,
         'status': status,
@@ -655,7 +960,7 @@ def render_audience_filter_chain_html(
         audience_filter_chain={},
         audience_filter_dict={},
         request=None):
-    audience_builder_html = ''
+    audience_filter_id_dict = {}
     audience_filter_html_dict = {}
     status = ''
     success = True
@@ -663,33 +968,39 @@ def render_audience_filter_chain_html(
     # Cycle through all the audience_filters in this chain
     # Loop through filter1_id to filter9_id
     filter_operand_to_follow_dict = {}
-    filter_id_string_list = []
-    for filter_number in range(1, 10):
-        filter_id_attr = f'filter{filter_number}_id'
-        filter_id = getattr(audience_filter_chain, filter_id_attr, None)
+    chain_relative_filter_id_string_list = []
+    for chain_relative_filter_id in range(1, 10):
+        # This is the attribute in audience_filter_chain which holds the id of the audience_filter
+        chain_relative_filter_id_attribute = f'filter{chain_relative_filter_id}_id'
+        audience_filter_id = getattr(audience_filter_chain, chain_relative_filter_id_attribute, None)
 
-        if positive_value_exists(filter_id):
-            if filter_id in audience_filter_dict:
-                audience_filter = audience_filter_dict[filter_id]
+        if positive_value_exists(audience_filter_id):
+            # If we recognize the id of the audience_filter, we can proceed to rendering the audience_filter html
+            if audience_filter_id in audience_filter_dict:
+                audience_filter = audience_filter_dict[audience_filter_id]
                 filter_results = render_audience_filter_html(audience_filter, request=request)
                 if filter_results['success']:
-                    filter_id_string = f'filter{filter_number}'
-                    audience_filter_html_dict[filter_id_string] = filter_results['audience_filter_html']
-                    filter_id_string_list.append(filter_id_string)
-                    filter_number_next = filter_number + 1
-                    if filter_number_next < 10:
-                        filter_label = f'filter{filter_number}_to_filter{filter_number_next}_operator'
-                        operand = getattr(audience_filter_chain, filter_label, '')
-                        filter_operand_to_follow_dict[filter_id_string] = operand
+                    chain_relative_filter_id_string = f'filter{chain_relative_filter_id}'
+                    audience_filter_html_dict[chain_relative_filter_id_string] = filter_results['audience_filter_html']
+                    audience_filter_id_dict[chain_relative_filter_id_string] = audience_filter_id
+                    chain_relative_filter_id_string_list.append(chain_relative_filter_id_string)
+                    chain_relative_filter_id_next = chain_relative_filter_id + 1
+                    if chain_relative_filter_id_next < 10:
+                        filter_operator_attribute = \
+                            f'filter{chain_relative_filter_id}_to_filter{chain_relative_filter_id_next}_operator'
+                        operand = getattr(audience_filter_chain, filter_operator_attribute, '')
+                        filter_operand_to_follow_dict[chain_relative_filter_id_string] = operand
                 else:
                     status += "RENDER_NOT_SUCCESSFUL: " + filter_results['status'] + " "
                     success = False
             else:
-                status += f"AUDIENCE_FILTER_NOT_FOUND: {filter_id} "
+                status += f"AUDIENCE_FILTER_NOT_FOUND: {audience_filter_id} "
     context = {
-        'audience_filter_html_dict':        audience_filter_html_dict,
-        'filter_id_string_list':            filter_id_string_list,
-        'filter_operand_to_follow_dict':    filter_operand_to_follow_dict,
+        'audience_filter_html_dict':            audience_filter_html_dict,
+        'audience_filter_id_dict':              audience_filter_id_dict,
+        'chain_id':                             audience_filter_chain.id,
+        'chain_relative_filter_id_string_list': chain_relative_filter_id_string_list,
+        'filter_operand_to_follow_dict':        filter_operand_to_follow_dict,
     }
     audience_filter_chain_html = render_to_string("email_outbound/audience_filter_chain.html",
                                                   context, request=request)

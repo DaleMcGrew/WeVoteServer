@@ -11,11 +11,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
 from django.db.models import Q
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
-from django.conf import settings
+
 from admin_tools.views import redirect_to_sign_in_page
 from voter.models import voter_has_authority
 import wevote_functions.admin
@@ -23,9 +23,10 @@ from wevote_functions.functions import positive_value_exists
 from wevote_functions.validate_email import validate_email
 
 from .controllers_email_campaign import audience_builder_data_retrieve, augment_email_campaign_recipient, \
-    render_audience_builder_html, render_audience_filter_html
+    render_audience_builder_html
 from .models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
-    AudienceBuilderFolder, AudienceBuilder, AudienceFilter, AudienceFilterChain, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
+    AudienceBuilderFolder, AudienceBuilder, AudienceFilter, AudienceFilterChain, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS, \
+    OPERATOR_AND, OPERATOR_EXCLUDE, OPERATOR_INCLUDE, OPERATOR_OR
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -644,7 +645,8 @@ def email_template_list_process_view(request):
 
     def back():
         return HttpResponseRedirect(
-            f"{reverse('email_outbound:email_template_list')}?google_civic_election_id={google_civic_election_id}&state_code={state_code}")
+            f"{reverse('email_outbound:email_template_list')}"
+            f"?google_civic_election_id={google_civic_election_id}&state_code={state_code}")
 
     action = request.POST.get("action", "").strip()
 
@@ -931,8 +933,8 @@ def audience_builder_edit_process_view(request):
 
     audience_filter_chain_dict = {}
     audience_filter_dict = {}
+    # Get all existing AudienceBuilder data including children (AudienceFilterChain and their AudienceFilter children)
     if success and positive_value_exists(audience_builder_id):
-        # Make sure we have at least one AudienceFilterChain and AudienceFilter for this AudienceBuilder
         results = audience_builder_data_retrieve(audience_builder_id)
         status += results['status']
         if results['success']:
@@ -944,6 +946,7 @@ def audience_builder_edit_process_view(request):
             messages.add_message(request, messages.ERROR, status)
             success = False
 
+    # Make sure we have at least one AudienceFilterChain and AudienceFilter for this AudienceBuilder
     if success and hasattr(audience_builder, 'audience_filter_chain1_id'):
         # If audience_filter_chain_dict is empty, create a default AudienceFilterChain
         if not audience_filter_chain_dict:
@@ -955,7 +958,7 @@ def audience_builder_edit_process_view(request):
                 audience_builder.save()
 
         # If audience_filter_dict is empty, create a default AudienceFilter
-        if not audience_filter_dict and hasattr(audience_filter_chain, 'audience_filter_chain2_id'):
+        if not audience_filter_dict and hasattr(audience_filter_chain, 'filter1_id'):
             audience_filter, created = AudienceFilter.objects.update_or_create(
                 audience_builder_id=audience_builder_id)
             if created:
@@ -963,41 +966,116 @@ def audience_builder_edit_process_view(request):
                 audience_filter_chain.filter1_id = audience_filter.id
                 audience_filter_chain.save()
 
-    # Some form of loop here
-    # add_audience_filter_after_
-    # add_audience_filter_chain_after_
-
-    # If the "Add new" buttons were pressed under AudienceFilterChain, create new AudienceFilterChain
-    for filter_number in range(1, 10):
+    # If an "Add new" button was pressed under AudienceFilterChain, create new AudienceFilterChain
+    #  and initial AudienceFilter
+    for builder_relative_chain_id in range(1, 10):
         next_filter_chain_found = False
-        if filter_number < 9:
+        if builder_relative_chain_id < 9:
             ok_to_create_next_chain = True
         else:
             ok_to_create_next_chain = False
-        next_filter_number = filter_number + 1
-        next_chain_id_attribute = f'audience_filter_chain{next_filter_number}_id'
-        next_chain_id = getattr(audience_builder, next_chain_id_attribute, None)
+        next_builder_relative_chain_id = builder_relative_chain_id + 1
+        next_chain_position_id_attribute = f'audience_filter_chain{next_builder_relative_chain_id}_id'
+        next_chain_id = getattr(audience_builder, next_chain_position_id_attribute, None)
 
         if positive_value_exists(next_chain_id):
             if next_chain_id in audience_filter_chain_dict:
                 next_filter_chain_found = True
         if ok_to_create_next_chain and not next_filter_chain_found:
-            add_audience_filter_chain_attribute = f'add_audience_filter_chain_after_filter{filter_number}'
+            # Here we don't have to specify the chain_id because we are just dealing with the list of 9 chains
+            add_audience_filter_chain_key = f'add_audience_filter_chain_after_filter{builder_relative_chain_id}'
             add_audience_filter_chain = \
-                request.POST.get(add_audience_filter_chain_attribute,
-                                 request.GET.get(add_audience_filter_chain_attribute, False))
+                request.POST.get(add_audience_filter_chain_key,
+                                 request.GET.get(add_audience_filter_chain_key, False))
             if positive_value_exists(add_audience_filter_chain):
                 audience_filter_chain = AudienceFilterChain.objects.create(
                     audience_builder_id=audience_builder_id)
                 audience_filter_chain_dict[audience_filter_chain.id] = audience_filter_chain
-                next_filter_number = filter_number + 1
-                chain_id_attribute = f'audience_filter_chain{next_filter_number}_id'
+                next_builder_relative_chain_id = builder_relative_chain_id + 1
+                # Keep track of the chain id in the audience_builder
+                chain_id_attribute = f'audience_filter_chain{next_builder_relative_chain_id}_id'
                 setattr(audience_builder, chain_id_attribute, audience_filter_chain.id)
+                # Add the chain_to_chain operator to the audience_builder
+                operator_attribute = \
+                    f'chain{builder_relative_chain_id}_to_chain{next_builder_relative_chain_id}_operator'
+                setattr(audience_builder, operator_attribute, OPERATOR_OR)
                 audience_builder.save()
 
-    # If the "Add new" buttons were pressed under AudienceFilter, create new AudienceFilter
-    for filter_number in range(1, 10):
-        pass
+                # Now create new AudienceFilter and link it to the chain
+                audience_filter = AudienceFilter.objects.create(
+                    audience_builder_id=audience_builder_id)
+                audience_filter_dict[audience_filter.id] = audience_filter
+                # Now link the new filter to the first spot in the chain
+                audience_filter_id_attribute = f'filter1_id'
+                setattr(audience_filter_chain, audience_filter_id_attribute, audience_filter.id)
+                audience_filter_chain.save()
+
+    # If an "Add new" button was pressed under an AudienceFilter, create new AudienceFilter
+    # builder_relative_chain_id is the order of the chain in the audience_builder object
+    for builder_relative_chain_id in range(1, 10):
+        # For example, "audience_builder.audience_filter_chain1_id" contains the unique ID of the AudienceFilterChain
+        #  this is positioned in the first "AudienceFilterChain" linked to the audience_builder object
+        builder_relative_chain_id_attribute = f'audience_filter_chain{builder_relative_chain_id}_id'
+        chain_id = getattr(audience_builder, builder_relative_chain_id_attribute, None)
+        if positive_value_exists(chain_id):
+            audience_filter_chain = audience_filter_chain_dict.get(chain_id, None)
+            if hasattr(audience_filter_chain, 'filter1_id'):
+                for filter_position_in_chain in range(1, 10):
+                    add_audience_filter_key = \
+                        f'add_audience_filter_after_filter{filter_position_in_chain}_for_chain_{chain_id}'
+                    add_audience_filter = \
+                        request.POST.get(add_audience_filter_key,
+                                         request.GET.get(add_audience_filter_key, False))
+                    if positive_value_exists(add_audience_filter):
+                        try:
+                            audience_filter = AudienceFilter.objects.create(
+                                audience_builder_id=audience_builder_id)
+                            audience_filter_dict[audience_filter.id] = audience_filter
+                            # Now link the new filter to the chain
+                            audience_filter_id_attribute = f'filter{filter_position_in_chain + 1}_id'
+                            setattr(audience_filter_chain, audience_filter_id_attribute, audience_filter.id)
+                            # Add the chain_to_chain operator to the audience_builder
+                            if filter_position_in_chain < 9:
+                                filter_to_filter_operator_attribute = \
+                                    f'filter{filter_position_in_chain}_to_filter{filter_position_in_chain + 1}_operator'
+                                setattr(audience_filter_chain, filter_to_filter_operator_attribute, OPERATOR_AND)
+                            audience_filter_chain.save()
+                            audience_filter_chain_dict[chain_id] = audience_filter_chain
+                        except Exception as e:
+                            status += f"ERROR_CREATING_FILTER: {str(e)} "
+
+    # If "Delete" button was pressed for AudienceFilter
+    audience_filter_id_to_delete = \
+        request.POST.get('audience_filter_id_to_delete',
+                         request.GET.get('audience_filter_id_to_delete', False))
+    if positive_value_exists(audience_filter_id_to_delete):
+        from email_outbound.controllers_email_campaign import delete_audience_filter
+        delete_results = delete_audience_filter(audience_filter_id_to_delete=audience_filter_id_to_delete)
+        if delete_results['success']:
+            messages.add_message(request, messages.SUCCESS, delete_results['status'])
+        else:
+            messages.add_message(request, messages.ERROR, delete_results['status'])
+
+    # If "Delete" button was pressed for AudienceFilterChain
+    audience_filter_chain_id_to_delete = \
+        request.POST.get('audience_filter_chain_id_to_delete',
+                         request.GET.get('audience_filter_chain_id_to_delete', False))
+    if positive_value_exists(audience_filter_chain_id_to_delete):
+        from email_outbound.controllers_email_campaign import delete_audience_filter_chain_and_children
+        delete_results = delete_audience_filter_chain_and_children(audience_builder, audience_filter_chain_id_to_delete)
+        if delete_results['success']:
+            messages.add_message(request, messages.SUCCESS, delete_results['status'])
+
+            # Reorganize the remaining chains to remove gaps
+            from email_outbound.controllers_email_campaign import reorganize_audience_filter_chains
+            reorganize_results = reorganize_audience_filter_chains(audience_builder)
+            if reorganize_results['success'] and reorganize_results['changes_made']:
+                messages.add_message(request, messages.SUCCESS, "Filter chains reorganized successfully.")
+            elif not reorganize_results['success']:
+                messages.add_message(request, messages.WARNING,
+                                     f"Chain deleted but reorganization had issues: {reorganize_results['status']}")
+        else:
+            messages.add_message(request, messages.ERROR, delete_results['status'])
 
     return HttpResponseRedirect(reverse('email_outbound:audience_builder_edit') +
                                 "?audience_builder_id=" + str(audience_builder_id) +
