@@ -13,43 +13,8 @@
 
 <div class="container-fluid mt-4" style="max-width: 1400px;">
   <div class="row">
-    <!-- Saved Campaigns List (Left Column) -->
-    <div class="col-md-4">
-      <div class="p-3 bg-light rounded border sticky-top" style="top: 20px; max-height: calc(100vh - 100px); overflow-y: auto;">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="mb-0">📋 Saved Campaigns</h5>
-          <button type="button" class="btn btn-sm btn-success" onclick="createNewCampaign()" title="Create new campaign">
-            <strong>+ Create</strong>
-          </button>
-        </div>
-        
-        <div class="list-group" id="campaigns-list">
-          {% if saved_campaigns %}
-            {% for campaign in saved_campaigns %}
-            <div class="list-group-item campaign-item {% if email_campaign and email_campaign.id == campaign.id %}active{% endif %}"
-                 data-campaign-id="{{ campaign.id }}">
-              <div class="d-flex justify-content-between align-items-center">
-                <div style="flex: 1; min-width: 0;">
-                  <strong class="d-block text-truncate">{{ campaign.email_campaign_name }}</strong>
-                  <small class="text-muted">
-                    ID: #{{ campaign.id }}{% if campaign.emails_sent %} | <span class="badge badge-success">Sent</span>{% endif %}
-                  </small>
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-primary ml-2" onclick="loadCampaign({{ campaign.id }})">
-                  Edit
-                </button>
-              </div>
-            </div>
-            {% endfor %}
-          {% else %}
-            <p class="text-muted text-center py-3">No saved campaigns yet.</p>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-
-    <!-- Campaign Form (Right Column) -->
-    <div class="col-md-8">
+    <!-- Campaign Form -->
+    <div class="col-md-12">
 <div class="p-4 bg-white rounded shadow-sm border">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="mb-0">
@@ -200,7 +165,7 @@
     <input type="hidden" name="scheduled_send_time" id="scheduled_send_time_input" value="{% if email_campaign.scheduled_send_time %}{{ email_campaign.scheduled_send_time|date:'Y-m-d\TH:i' }}{% endif %}">
   </form>
 </div>
-    </div><!-- end col-md-8 -->
+    </div><!-- end col-md-12 -->
   </div><!-- end row -->
 </div><!-- end container-fluid -->
 {% endblock %}
@@ -233,22 +198,6 @@
   }
   .search-result-item input[type="checkbox"] {
     margin-right: 8px;
-  }
-  .campaign-item.active {
-    background-color: #007bff !important;
-    color: white;
-  }
-  .campaign-item.active .text-muted {
-    color: rgba(255, 255, 255, 0.8) !important;
-  }
-  .campaign-item.active .btn-outline-primary {
-    color: white;
-    border-color: white;
-    background-color: transparent;
-  }
-  .campaign-item.active .btn-outline-primary:hover {
-    background-color: white;
-    color: #007bff;
   }
 </style>
 

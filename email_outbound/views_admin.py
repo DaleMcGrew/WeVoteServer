@@ -487,12 +487,25 @@ def email_campaign_list_view(request):
     google_civic_election_id = request.GET.get('google_civic_election_id', '')
     state_code = request.GET.get('state_code', '')
 
+    campaigns_queryset = EmailCampaign.objects.filter(deleted=False).order_by('-id')
+
+    # Active tab: sent campaigns
+    campaigns_sent = campaigns_queryset.filter(emails_sent=True)
+
+    # Drafts tab: not yet sent
+    campaigns_drafts = campaigns_queryset.filter(emails_sent=False)
+
+    # Archived tab filter would go here:
+
     template_values = {
         # 'election':                                 election,
         # 'election_list':                            election_list,
         'google_civic_election_id':                 google_civic_election_id,
         'state_code':                               state_code,
         # 'state_list':                               sorted_state_list,
+        'campaigns_sent':                           campaigns_sent,
+        'campaigns_drafts':                         campaigns_drafts,
+        # 'campaigns_archived':                     campaigns_archived,
     }
     return render(request, 'email_outbound/email_campaign_list.html', template_values)
 
