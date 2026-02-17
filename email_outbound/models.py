@@ -239,6 +239,7 @@ class AudienceFilter(models.Model):
 class AudienceFilterChain(models.Model):
     # When we chain AudienceFilters, chain_operator is: 'AND', 'EXCLUDE' or 'OR'
     audience_builder_id = models.PositiveIntegerField(default=None, null=True)
+    # I think we may be able to delete chain_operator
     chain_operator = models.CharField(
         max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=OPERATOR_AND)
     filter1_id = models.PositiveIntegerField(default=None, null=True)
@@ -250,14 +251,22 @@ class AudienceFilterChain(models.Model):
     filter7_id = models.PositiveIntegerField(default=None, null=True)
     filter8_id = models.PositiveIntegerField(default=None, null=True)
     filter9_id = models.PositiveIntegerField(default=None, null=True)
-    filter1_to_filter2_operator = models.CharField(default=None, max_length=16, null=True)
-    filter2_to_filter3_operator = models.CharField(default=None, max_length=16, null=True)
-    filter3_to_filter4_operator = models.CharField(default=None, max_length=16, null=True)
-    filter4_to_filter5_operator = models.CharField(default=None, max_length=16, null=True)
-    filter5_to_filter6_operator = models.CharField(default=None, max_length=16, null=True)
-    filter6_to_filter7_operator = models.CharField(default=None, max_length=16, null=True)
-    filter7_to_filter8_operator = models.CharField(default=None, max_length=16, null=True)
-    filter8_to_filter9_operator = models.CharField(default=None, max_length=16, null=True)
+    filter1_to_filter2_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter2_to_filter3_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter3_to_filter4_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter4_to_filter5_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter5_to_filter6_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter6_to_filter7_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter7_to_filter8_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter8_to_filter9_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
 
 
 class EmailCampaign(models.Model):
