@@ -3,9 +3,14 @@
 {% block title %}Audience Builder Templates{% endblock %}
 
 {% block content %}
+{% load static %}
 {% load template_filters %}
 {% load humanize %}
 {% include "admin_tools/loading_banner.html" %}
+
+<!-- Saved Audiences Drawer CSS and JS -->
+<link rel="stylesheet" href="{% static 'css/saved_audiences_drawer.css' %}">
+<script src="{% static 'js/SavedAudiencesDrawer.js' %}"></script>
 
 <style>
   .wv-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
@@ -49,6 +54,11 @@
 <div class="wv-row" style="margin-top:10px;">
   <h1 style="margin:0;">Audience Builder Templates</h1>
   <div class="wv-spacer"></div>
+
+  {# Test button to open drawer, to be removed #}
+  <button onclick="openSavedAudiencesDrawer()" class="btn btn-success" style="margin-right: 8px;">
+    🧪 Test Drawer
+  </button>
 
   {# Create Template (unfiled by default) #}
   <form class="wv-inline-form" method="post" action="{{ process_url }}">
@@ -532,6 +542,9 @@
     </form>
   </div>
 </div>
+
+{# Include Saved Audiences drawer #}
+{% include 'components/_saved_audiences_drawer.html' %}
 
 <script>
   // --- helpers ---

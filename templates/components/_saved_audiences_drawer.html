@@ -1,0 +1,48 @@
+<!-- Saved Audiences Drawer Component -->
+<!-- Overlay backdrop - click to close -->
+<div id="savedAudiencesOverlay" class="drawer-overlay" onclick="closeSavedAudiencesDrawer()"></div>
+
+<!-- Main drawer container -->
+<div id="savedAudiencesDrawer" class="saved-audiences-drawer">
+    <!-- Fixed header section -->
+    <div class="drawer-header" id="drawerHeader">
+        <!-- Title and buttons on same row -->
+        <div class="drawer-title-row">
+            <div>
+                <h1 class="drawer-title">Audience builder</h1>
+            </div>
+            <div class="drawer-actions">
+                <button class="btn" onclick="closeSavedAudiencesDrawer()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveSavedAudience()">Save audience</button>
+            </div>
+        </div>
+
+        <p class="drawer-subtitle">Provide some instructions for how to build an audience using logic.</p>
+    </div>
+
+    <!-- Main content area -->
+    <div class="drawer-content" id="drawerContent">
+        <!-- This will be filled with logic builder content by Dale -->
+        <div class="drawer-content-placeholder">
+            <p><em>Logic builder content will be added here...</em></p>
+        </div>
+    </div>
+
+    <!-- Preview section -->
+    <div class="preview-section" id="previewSection">
+        <!-- Draggable divider -->
+        <div class="resize-handle" id="resizeHandle">
+            <div class="resize-handle-bar">• • •</div>
+        </div>
+
+        <div class="preview-header">
+            <h2 class="preview-title">Audience preview</h2>
+        </div>
+        <div class="preview-content">
+            <!-- This will be filled with preview content in a different ticket -->
+            <div class="preview-content-placeholder">
+                <p><em>Preview content will be added here...</em></p>
+            </div>
+        </div>
+    </div>
+</div>
