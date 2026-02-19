@@ -82,6 +82,7 @@
 
 /* Main content area */
 .drawer-content {
+    padding: 2px 15px;
     position: absolute;
     top: 110px;
     left: 0;
@@ -94,6 +95,58 @@
     color: #6c757d;
     text-align: center;
     font-style: italic;
+}
+
+
+.drawer-message {
+    padding: 12px 16px;
+    margin-top: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    animation: slideDown 0.3s ease-out;
+}
+
+.drawer-message-success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.drawer-message-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: #64748b;
+}
+
+.error-message {
+    padding: 20px;
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-radius: 8px;
+    border: 1px solid #fca5a5;
+}
+
+.drawer-content-placeholder {
+    text-align: center;
+    padding: 40px;
+    color: #94a3b8;
 }
 
 /* Draggable divider */

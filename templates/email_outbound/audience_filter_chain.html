@@ -9,11 +9,12 @@
         
     {% if chain_relative_filter_id_string_list|length > 1 %}
     <div style="text-align: right; margin-top: 10px;">
-        <button type="submit"
+        <button onclick="submitAddDeleteButtonFromDrawer(this)"
+                type="button"
                 class="btn btn-link"
                 style="padding: 0; color: #337ab7; text-decoration: none; border: none; background: none; cursor: pointer;"
-                name="audience_filter_id_to_delete"
-                value="{{ audience_filter_id_dict|get_value_from_dict:chain_relative_filter_id_string}}"
+                data-name="audience_filter_id_to_delete"
+                data-value="{{ audience_filter_id_dict|get_value_from_dict:chain_relative_filter_id_string}}"
                 onmouseover="this.style.textDecoration='underline'"
                 onmouseout="this.style.textDecoration='none'">
             Delete
@@ -31,21 +32,23 @@
         </span>
     </div>
 {% else %}
-    <button type="submit"
+    <button onclick="submitAddDeleteButtonFromDrawer(this)"
+            type="button"
             class="btn btn-default btn-sm"
             style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; background-color: #fff; color: #333;"
-            name="add_audience_filter_after_{{ chain_relative_filter_id_string }}_for_chain_{{ chain_id }}"
-            value="1"
+            data-name="add_audience_filter_after_{{ chain_relative_filter_id_string }}_for_chain_{{ chain_id }}"
+            data-value="1"
     >
         <span style="font-weight: bold; margin-right: 4px;">+</span> Add "and"
     </button>
         
     <div style="text-align: right; margin-top: 10px;">
-        <button type="submit"
+        <button onclick="submitAddDeleteButtonFromDrawer(this)"
+                type="button"
                 class="btn btn-link"
                 style="padding: 0; color: #337ab7; text-decoration: none; border: none; background: none; cursor: pointer;"
-                name="audience_filter_chain_id_to_delete"
-                value="{{ chain_id }}"
+                data-name="audience_filter_chain_id_to_delete"
+                data-value="{{ chain_id }}"
                 onmouseover="this.style.textDecoration='underline'"
                 onmouseout="this.style.textDecoration='none'">
             Delete chain

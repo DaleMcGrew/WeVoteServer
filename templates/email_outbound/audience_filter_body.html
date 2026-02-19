@@ -1,23 +1,28 @@
 {# templates/email_outbound/audience_filter_body.html #}
   
     <div class="mb-3">
-        <select id="filter-select" class="form-select" style="color: #6c757d;">
-            <option value="" selected>Select a filter</option>
+        <select class="form-select"
+                id="filter-select"
+                name="audience_filter_type_{{ audience_filter.id }}"
+                style="color: #6c757d;"
+        >
+            <option value="" {% if not audience_filter.audience_filter_type %}selected{% endif %}>Select a filter</option>
             <optgroup label="🗳️ Election">
-                <option value="audience_type">Audience type</option>
-                <option value="election_type">Election type</option>
-                <option value="election">Election</option>
-                <option value="party">Party</option>
-                <option value="state_code">State</option>
+                <option value="AUDIENCE_TYPE_FILTER_TYPE" {% if audience_filter.audience_filter_type == "AUDIENCE_TYPE_FILTER_TYPE" %}selected{% endif %}>Audience type</option>
+{#                <option value="election_type" {% if audience_filter.audience_filter_type == "election_type" %}selected{% endif %}>Election type</option>#}
+                <option value="ELECTION_DATE_FILTER_TYPE" {% if audience_filter.audience_filter_type == "ELECTION_DATE_FILTER_TYPE" %}selected{% endif %}>Election date</option>
+                <option value="POLITICAL_PARTY_FILTER_TYPE" {% if audience_filter.audience_filter_type == "POLITICAL_PARTY_FILTER_TYPE" %}selected{% endif %}>Political party</option>
+                <option value="STATE_CODE_FILTER_TYPE" {% if audience_filter.audience_filter_type == "STATE_CODE_FILTER_TYPE" %}selected{% endif %}>State</option>
             </optgroup>
             <optgroup label="🎯 Engagement">
-                <option value="has_been_contacted">Has been contacted</option>
-                <option value="has_opened_email">Has opened email</option>
-                <option value="has_signed_in">Has signed in</option>
+                <option value="HAS_BEEN_CONTACTED_FILTER_TYPE" {% if audience_filter.audience_filter_type == "HAS_BEEN_CONTACTED_FILTER_TYPE" %}selected{% endif %}>Has been contacted</option>
+                <option value="HAS_OPENED_FILTER_TYPE" {% if audience_filter.audience_filter_type == "HAS_OPENED_FILTER_TYPE" %}selected{% endif %}>Has opened message</option>
+                <option value="HAS_SIGNED_IN_FILTER_TYPE" {% if audience_filter.audience_filter_type == "HAS_SIGNED_IN_FILTER_TYPE" %}selected{% endif %}>Has signed in</option>
+                <option value="HAS_CLAIMED_FILTER_TYPE" {% if audience_filter.audience_filter_type == "HAS_CLAIMED_FILTER_TYPE" %}selected{% endif %}>Has claimed politician profile</option>
             </optgroup>
             <optgroup label="🏠 Communication">
-                <option value="email_address">Email address</option>
-                <option value="phone_number">Phone number</option>
+                <option value="EMAIL_ADDRESS_FILTER_TYPE" {% if audience_filter.audience_filter_type == "EMAIL_ADDRESS_FILTER_TYPE" %}selected{% endif %}>Email address</option>
+                <option value="PHONE_NUMBER_FILTER_TYPE" {% if audience_filter.audience_filter_type == "PHONE_NUMBER_FILTER_TYPE" %}selected{% endif %}>Phone number</option>
             </optgroup>
         </select>
     </div>

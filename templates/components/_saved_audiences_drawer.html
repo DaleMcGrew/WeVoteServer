@@ -4,30 +4,38 @@
 
 <!-- Main drawer container -->
 <div id="savedAudiencesDrawer" class="saved-audiences-drawer">
+    <form id="audience-builder-form" method="post" action="{% url 'email_outbound:audience_builder_edit_process' %}">
+    {% csrf_token %}
+    <input type="hidden" id="audience_builder_id_id" name="audience_builder_id" value="{% if audience_builder_id %}{{ audience_builder_id }}{% endif %}">
+
     <!-- Fixed header section -->
     <div class="drawer-header" id="drawerHeader">
         <!-- Title and buttons on same row -->
         <div class="drawer-title-row">
             <div>
-                <h1 class="drawer-title">Audience builder</h1>
+                <h1 class="drawer-title">Audience Builder</h1>
             </div>
             <div class="drawer-actions">
-                <button class="btn" onclick="closeSavedAudiencesDrawer()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveSavedAudience()">Save audience</button>
+                <button class="btn btn-default" onclick="closeSavedAudiencesDrawer()" type="button">Close</button>
+                <button class="btn btn-primary" onclick="setupDrawerFormSubmission()" type="submit">Save audience</button>
             </div>
         </div>
 
-        <p class="drawer-subtitle">Provide some instructions for how to build an audience using logic.</p>
+        <p class="drawer-subtitle">Use the options below to choose who will receive this email campaign.</p>
     </div>
 
     <!-- Main content area -->
     <div class="drawer-content" id="drawerContent">
-        <!-- This will be filled with logic builder content by Dale -->
-        <div class="drawer-content-placeholder">
-            <p><em>Logic builder content will be added here...</em></p>
+
+        <div class="mb-3">
+            <label for="audience_builder_name_id" class="form-label">Audience builder name <span class="text-danger">*</span></label>
+            <input type="text" id="audience_builder_name_id" name="audience_builder_name" class="form-control" value="" required>
+        </div>
+        <!-- This will be filled with logic builder content -->
+        <div id="audienceBuilderDrawerHTML">
+            <p class="drawer-content-placeholder"><em>Logic builder content will be added here...</em></p>
         </div>
     </div>
-
     <!-- Preview section -->
     <div class="preview-section" id="previewSection">
         <!-- Draggable divider -->
@@ -45,4 +53,5 @@
             </div>
         </div>
     </div>
+    </form>
 </div>
