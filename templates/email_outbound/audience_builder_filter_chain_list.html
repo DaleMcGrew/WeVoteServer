@@ -20,10 +20,11 @@
         </span>
     </div>
     {% else %}
-    <button type="submit"
+    <button onclick="submitAddDeleteButtonFromDrawer(this)"
+            type="button"
             class="btn btn-default btn-sm" style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; background-color: #fff; color: #333;"
-            name="add_audience_filter_chain_after_{{ audience_builder_relative_chain_id_string }}"
-            value="1"
+            data-name="add_audience_filter_chain_after_{{ audience_builder_relative_chain_id_string }}"
+            data-value="1"
     >
         <span style="font-weight: bold; margin-right: 4px;">+</span> Add "or"
     </button>

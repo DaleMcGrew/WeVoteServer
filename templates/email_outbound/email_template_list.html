@@ -64,10 +64,9 @@
 </div>
 {# ---------------- ACTIVE FOLDERS ---------------- #}
 <div class="wv-section">
-  <h2 style="margin-bottom:6px;">Active Folders</h2>
   {% for f in folders_active %}
       {% with list=templates_by_folder|get_value_from_dict:f.id %}
-        <details class="wv-accordion">
+        <details class="wv-accordion" open>
           <summary class="wv-accordion-head">
             <div class="wv-accordion-title" >
                 <svg class="chevron" width="25" height="25" viewBox="0 0 24 24" aria-hidden="true">
@@ -109,11 +108,15 @@
                 {% for t in list %}
                   <div class="wv-item" id="template_row_{{ t.id }}">
                     <div>
+                      <a href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&email_template_id={{ t.id }}"
+                         style="font-size: 1.2em;">
                       <strong>{{ t.email_template_name }}</strong>
+                      </a>
                       {% if t.subject %}<span class="wv-muted">— {{ t.subject }}</span>{% endif %}
                     </div>
                     <div class="wv-actions">
-                      <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&email_template_id={{ t.id }}">Edit</a>
+                      <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&email_template_id={{ t.id }}">
+                          Edit</a>
 
                       {# Other template Options#}
                       <div class="wv-dropdown">
@@ -138,7 +141,7 @@
   {% endfor %}
 
   {# ---------------- UNFILED FOLDER ---------------- #}
-  <details class="wv-accordion" style="margin-top:10px;">
+  <details class="wv-accordion" style="margin-top:10px;" open>
     <summary class="wv-accordion-head">
       <div class="wv-accordion-title" >
         <svg class="chevron" width="25" height="25" viewBox="0 0 24 24" aria-hidden="true">
@@ -168,11 +171,15 @@
         {% for t in unfiled_templates %}
           <div class="wv-item" id="template_row_unfiled_{{ t.id }}">
             <div>
-              <strong>{{ t.email_template_name }}</strong>
+              <a href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&email_template_id={{ t.id }}"
+                 style="font-size: 1.2em;">
+                <strong>{{ t.email_template_name }}</strong>
+              </a>
               {% if t.subject %}<span class="wv-muted">— {{ t.subject }}</span>{% endif %}
             </div>
             <div class="wv-actions">
-              <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&email_template_id={{ t.id }}">Edit</a>
+              <a class="btn btn-secondary" href="{{ template_edit_url }}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&email_template_id={{ t.id }}">
+                  Edit</a>
 
               <div class="wv-dropdown">
                 <button type="button" class="wv-kebab js-dd">•••</button>
@@ -201,7 +208,7 @@
                 <path d="M7 10l5 5 5-5"></path>
             </svg>
 
-            <h2 style="margin:0;">Archived Folders</h2>
+            <h4 style="margin:0;">Archived Folders</h4>
         </div>
     </summary>
 
@@ -277,7 +284,7 @@
                 <path d="M7 10l5 5 5-5"></path>
             </svg>
 
-            <h2 style="margin:0;">Archived Templates</h2>
+            <h4 style="margin:0;">Archived Templates</h4>
         </div>
         <div class="wv-actions">
           {% if archived_templates %}

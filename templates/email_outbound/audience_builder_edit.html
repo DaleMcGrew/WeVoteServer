@@ -6,6 +6,8 @@
 {% block title %}Audience Builder Edit{% endblock %}
 
 {% block content %}
+{% load template_filters %}
+{% load humanize %}
 {% include "admin_tools/loading_banner.html" %}
 
 <a href="{% url 'email_outbound:audience_builder_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
@@ -14,16 +16,17 @@
 
 <div class="container mt-5 p-4 bg-white rounded shadow-sm border" style="max-width: 800px;">
   <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>THIS PAGE NOW DEPRECATED - PLEASE USE DRAWER</h1>
     <h4 class="mb-0">
       {% if audience_builder_id %}Audience Builder{% else %}New Audience Builder{% endif %}
     </h4>
     <div>
       <a href="{% url 'email_outbound:email_template_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}" class="btn btn-outline-secondary me-2">Cancel</a>
-      <button type="submit" form="email-template-form" class="btn btn-primary">Save</button>
+      <button type="submit" form="audience-builder-form" class="btn btn-primary">Save</button>
     </div>
   </div>
 
-  <form id="email-template-form" method="post" action="{% url 'email_outbound:audience_builder_edit_process' %}">
+  <form id="audience-builder-form-OLD" method="post" action="{% url 'email_outbound:audience_builder_edit_process' %}">
     {% csrf_token %}
 
     <div class="mb-3">

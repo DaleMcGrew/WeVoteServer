@@ -9,16 +9,14 @@ from django.template.loader import render_to_string
 
 
 from email_outbound.functions import convert_html_to_plain_text
-from email_outbound.models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
-    AudienceBuilderFolder, AudienceBuilder, AudienceFilter, AudienceFilterChain, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
+from email_outbound.models import AudienceBuilder, AudienceFilter, AudienceFilterChain
 from organization.controllers import transform_web_app_url
 from politician.models import Politician
 from voter.models import VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
-from wevote_functions.functions_date import DATE_FORMAT_YMD
 from .models import CUSTOMIZATION_TOKEN_CONVERSION_FROM_JAZZ_HR, \
-    EmailCampaign, EmailCampaignRecipient, EmailManager, EmailScheduled, EmailTemplate, \
+    EmailCampaign, EmailCampaignRecipient, EmailManager, EmailScheduled, \
     EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS, TO_BE_PROCESSED
 
 logger = wevote_functions.admin.get_logger(__name__)
@@ -661,6 +659,34 @@ def reorganize_audience_filter_chains(audience_builder):
     }
 
 
+def save_all_audience_filter_changes(audience_filter_dict={}, request=None):
+    status = ""
+    success = True
+
+    # Loop through all AudienceFilter objects in the audience_filter_dict dictionary
+    change_list = []
+    for audience_filter_id, audience_filter in audience_filter_dict.items():
+        any_changes_made = False
+        audience_filter_type_key = f'audience_filter_type_{audience_filter_id}'
+        if audience_filter_type_key in request.POST:
+            setattr(audience_filter, 'audience_filter_type', request.POST.get(audience_filter_type_key, None))
+            any_changes_made = True
+        if any_changes_made:
+            change_list.append(audience_filter)
+
+    # Save changes to the change_list in bulk
+    try:
+        AudienceFilter.objects.bulk_update(change_list, ['audience_filter_type'])
+    except Exception as e:
+        status += f"ERROR_SAVING_AUDIENCE_FILTERS: {str(e)} "
+        success = False
+
+    return {
+        'status': status,
+        'success': success,
+    }
+
+
 def schedule_email_campaign_recipient(
         email_campaign_recipient=None,
         email_body_raw=None,
@@ -978,7 +1004,10 @@ def render_audience_filter_chain_html(
             # If we recognize the id of the audience_filter, we can proceed to rendering the audience_filter html
             if audience_filter_id in audience_filter_dict:
                 audience_filter = audience_filter_dict[audience_filter_id]
-                filter_results = render_audience_filter_html(audience_filter, request=request)
+                filter_results = render_audience_filter_html(
+                    audience_filter=audience_filter,
+                    audience_filter_chain=audience_filter_chain,
+                    request=request)
                 if filter_results['success']:
                     chain_relative_filter_id_string = f'filter{chain_relative_filter_id}'
                     audience_filter_html_dict[chain_relative_filter_id_string] = filter_results['audience_filter_html']
@@ -1012,14 +1041,17 @@ def render_audience_filter_chain_html(
     }
 
 
-def render_audience_filter_html(audience_filter, request=None):
+def render_audience_filter_html(audience_filter={}, audience_filter_chain={}, request=None):
     status = ''
     success = True
     # Now build out audience filters
     context = {
+        'audience_filter': audience_filter,
+        'audience_filter_chain': audience_filter_chain,
         'filter_type': 'state_code',
     }
-    audience_filter_html = render_to_string("email_outbound/audience_filter_body.html", context, request=request)
+    audience_filter_html = \
+        render_to_string("email_outbound/audience_filter_body.html", context, request=request)
     results = {
         'audience_filter_html': audience_filter_html,
         'audience_filter_id': audience_filter.id,
