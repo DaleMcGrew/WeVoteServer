@@ -12,30 +12,114 @@ from wevote_functions.functions import convert_to_int, extract_email_addresses_f
 from wevote_settings.models import fetch_next_we_vote_id_email_integer, fetch_site_unique_id_prefix
 
 
-AUDIENCE_TYPE_FILTER_TYPE = 'AUDIENCE_TYPE_FILTER_TYPE'
+FILTER_TYPE_AUDIENCE_TYPE = 'FILTER_TYPE_AUDIENCE_TYPE'
 # We are not implementing "Election Type" at this time
-ELECTION_DATE_FILTER_TYPE = 'ELECTION_DATE_FILTER_TYPE'
-EMAIL_ADDRESS_FILTER_TYPE = 'EMAIL_ADDRESS_FILTER_TYPE'
-HAS_BEEN_CONTACTED_FILTER_TYPE = 'HAS_BEEN_CONTACTED_FILTER_TYPE'
-HAS_CLAIMED_FILTER_TYPE = 'HAS_CLAIMED_FILTER_TYPE'
-HAS_OPENED_FILTER_TYPE = 'HAS_OPENED_FILTER_TYPE'
-HAS_SIGNED_IN_FILTER_TYPE = 'HAS_SIGNED_IN_FILTER_TYPE'
-PHONE_NUMBER_FILTER_TYPE = 'PHONE_NUMBER_FILTER_TYPE'
-POLITICAL_PARTY_FILTER_TYPE = 'POLITICAL_PARTY_FILTER_TYPE'
-STATE_CODE_FILTER_TYPE = 'STATE_CODE_FILTER_TYPE'
+FILTER_TYPE_ELECTION_DATE = 'FILTER_TYPE_ELECTION_DATE'
+FILTER_TYPE_EMAIL_ADDRESS = 'FILTER_TYPE_EMAIL_ADDRESS'
+FILTER_TYPE_HAS_BEEN_CONTACTED = 'FILTER_TYPE_HAS_BEEN_CONTACTED'
+FILTER_TYPE_HAS_CLAIMED_POLITICIAN = 'FILTER_TYPE_HAS_CLAIMED_POLITICIAN'
+FILTER_TYPE_HAS_OPENED = 'FILTER_TYPE_HAS_OPENED'
+FILTER_TYPE_HAS_SIGNED_IN = 'FILTER_TYPE_HAS_SIGNED_IN'
+FILTER_TYPE_PHONE_NUMBER = 'FILTER_TYPE_PHONE_NUMBER'
+FILTER_TYPE_POLITICAL_PARTY = 'FILTER_TYPE_POLITICAL_PARTY'
+FILTER_TYPE_STATE_CODE = 'FILTER_TYPE_STATE_CODE'
 AUDIENCE_FILTER_TYPE_CHOICES = (
-    (AUDIENCE_TYPE_FILTER_TYPE,  'Audience type'),
-    (ELECTION_DATE_FILTER_TYPE, 'Election date'),
-    (EMAIL_ADDRESS_FILTER_TYPE, 'Email address'),
-    (HAS_BEEN_CONTACTED_FILTER_TYPE, 'Has been contacted'),
-    (HAS_CLAIMED_FILTER_TYPE, 'Has claimed profile'),
-    (HAS_OPENED_FILTER_TYPE, 'Has opened'),
-    (HAS_SIGNED_IN_FILTER_TYPE, 'Has signed in'),
-    (PHONE_NUMBER_FILTER_TYPE, 'Phone number'),
-    (POLITICAL_PARTY_FILTER_TYPE, 'Political party'),
-    (STATE_CODE_FILTER_TYPE, 'State code'),
+    (FILTER_TYPE_AUDIENCE_TYPE,  'Audience type'),
+    (FILTER_TYPE_ELECTION_DATE, 'Election date'),
+    (FILTER_TYPE_EMAIL_ADDRESS, 'Email address'),
+    (FILTER_TYPE_HAS_BEEN_CONTACTED, 'Has been contacted'),
+    (FILTER_TYPE_HAS_CLAIMED_POLITICIAN, 'Has claimed profile'),
+    (FILTER_TYPE_HAS_OPENED, 'Has opened'),
+    (FILTER_TYPE_HAS_SIGNED_IN, 'Has signed in'),
+    (FILTER_TYPE_PHONE_NUMBER, 'Phone number'),
+    (FILTER_TYPE_POLITICAL_PARTY, 'Political party'),
+    (FILTER_TYPE_STATE_CODE, 'State code'),
 )
-
+AUDIENCE_TYPE_IS = 'AUDIENCE_TYPE_IS'
+AUDIENCE_TYPE_IS_NOT = 'AUDIENCE_TYPE_IS_NOT'
+AUDIENCE_TYPE_MODIFIER_CHOICES = (
+    (AUDIENCE_TYPE_IS, 'is'),
+    (AUDIENCE_TYPE_IS_NOT, 'is not'),
+)
+ELECTION_IS_AFTER = 'ELECTION_IS_AFTER'
+ELECTION_IS_BEFORE = 'ELECTION_IS_BEFORE'
+ELECTION_IS_ON = 'ELECTION_IS_ON'
+ELECTION_IS_ON_OR_AFTER = 'ELECTION_IS_ON_OR_AFTER'
+ELECTION_IS_ON_OR_BEFORE = 'ELECTION_IS_ON_OR_BEFORE'
+ELECTION_MODIFIER_CHOICES = (
+    (ELECTION_IS_AFTER, 'is after'),
+    (ELECTION_IS_BEFORE, 'is before'),
+    (ELECTION_IS_ON, 'is on'),
+    (ELECTION_IS_ON_OR_AFTER, 'is on or after'),
+    (ELECTION_IS_ON_OR_BEFORE, 'is on or before'),
+)
+EMAIL_ADDRESS_CONTAINS = 'EMAIL_ADDRESS_CONTAINS'
+EMAIL_ADDRESS_EXISTS = 'EMAIL_ADDRESS_EXISTS'
+EMAIL_ADDRESS_IS_MISSING = 'EMAIL_ADDRESS_IS_MISSING'
+EMAIL_ADDRESS_MODIFIER_CHOICES = (
+    (EMAIL_ADDRESS_CONTAINS, 'contains'),
+    (EMAIL_ADDRESS_EXISTS, 'exists'),
+    (EMAIL_ADDRESS_IS_MISSING, 'is missing'),
+)
+HAS_BEEN_CONTACTED_AT_LEAST_ONCE = 'HAS_BEEN_CONTACTED_AT_LEAST_ONCE'
+HAS_BEEN_CONTACTED_LAST_DAY = 'HAS_BEEN_CONTACTED_LAST_DAY'
+HAS_BEEN_CONTACTED_LAST_3_DAYS = 'HAS_BEEN_CONTACTED_LAST_3_DAYS'
+HAS_BEEN_CONTACTED_LAST_WEEK = 'HAS_BEEN_CONTACTED_LAST_WEEK'
+HAS_BEEN_CONTACTED_LAST_MONTH = 'HAS_BEEN_CONTACTED_LAST_MONTH'
+HAS_BEEN_CONTACTED_LAST_YEAR = 'HAS_BEEN_CONTACTED_LAST_YEAR'
+HAS_BEEN_CONTACTED_NEVER = 'HAS_BEEN_CONTACTED_NEVER'
+HAS_BEEN_CONTACTED_MODIFIER_CHOICES = (
+    (HAS_BEEN_CONTACTED_AT_LEAST_ONCE, 'at least once'),
+    (HAS_BEEN_CONTACTED_LAST_DAY, 'in last day'),
+    (HAS_BEEN_CONTACTED_LAST_3_DAYS, 'in last 3 days'),
+    (HAS_BEEN_CONTACTED_LAST_WEEK, 'in last week'),
+    (HAS_BEEN_CONTACTED_LAST_MONTH, 'in last month'),
+    (HAS_BEEN_CONTACTED_LAST_YEAR, 'in last year'),
+    (HAS_BEEN_CONTACTED_NEVER, 'never'),
+)
+HAS_CLAIMED_POLITICIAN_AT_LEAST_ONCE = 'HAS_CLAIMED_POLITICIAN_AT_LEAST_ONCE'
+HAS_CLAIMED_POLITICIAN_LAST_DAY = 'HAS_CLAIMED_POLITICIAN_LAST_DAY'
+HAS_CLAIMED_POLITICIAN_LAST_3_DAYS = 'HAS_CLAIMED_POLITICIAN_LAST_3_DAYS'
+HAS_CLAIMED_POLITICIAN_LAST_WEEK = 'HAS_CLAIMED_POLITICIAN_LAST_WEEK'
+HAS_CLAIMED_POLITICIAN_LAST_MONTH = 'HAS_CLAIMED_POLITICIAN_LAST_MONTH'
+HAS_CLAIMED_POLITICIAN_LAST_YEAR = 'HAS_CLAIMED_POLITICIAN_LAST_YEAR'
+HAS_CLAIMED_POLITICIAN_NEVER = 'HAS_CLAIMED_POLITICIAN_NEVER'
+HAS_CLAIMED_POLITICIAN_MODIFIER_CHOICES = (
+    (HAS_CLAIMED_POLITICIAN_AT_LEAST_ONCE, 'at least once'),
+    (HAS_CLAIMED_POLITICIAN_LAST_DAY, 'in last day'),
+    (HAS_CLAIMED_POLITICIAN_LAST_3_DAYS, 'in last 3 days'),
+    (HAS_CLAIMED_POLITICIAN_LAST_WEEK, 'in last week'),
+    (HAS_CLAIMED_POLITICIAN_LAST_MONTH, 'in last month'),
+    (HAS_CLAIMED_POLITICIAN_LAST_YEAR, 'in last year'),
+    (HAS_CLAIMED_POLITICIAN_NEVER, 'never'),
+)
+# Has Opened Email Campaign filters
+HAS_OPENED_ANY = 'HAS_OPENED_ANY'
+HAS_OPENED_ALL = 'HAS_OPENED_ALL'
+HAS_NOT_OPENED_ANY = 'HAS_NOT_OPENED_ANY'
+HAS_NOT_OPENED_AT_LEAST_ONE = 'HAS_NOT_OPENED_AT_LEAST_ONE'
+HAS_OPENED_MODIFIER_CHOICES = (
+    (HAS_OPENED_ANY, 'any'),
+    (HAS_OPENED_ALL, 'all'),
+    (HAS_NOT_OPENED_ANY, 'none'),
+    (HAS_NOT_OPENED_AT_LEAST_ONE, 'not all (missed at least one)'),
+)
+HAS_SIGNED_IN_AT_LEAST_ONCE = 'HAS_SIGNED_IN_AT_LEAST_ONCE'
+HAS_SIGNED_IN_LAST_DAY = 'HAS_SIGNED_IN_LAST_DAY'
+HAS_SIGNED_IN_LAST_3_DAYS = 'HAS_SIGNED_IN_LAST_3_DAYS'
+HAS_SIGNED_IN_LAST_WEEK = 'HAS_SIGNED_IN_LAST_WEEK'
+HAS_SIGNED_IN_LAST_MONTH = 'HAS_SIGNED_IN_LAST_MONTH'
+HAS_SIGNED_IN_LAST_YEAR = 'HAS_SIGNED_IN_LAST_YEAR'
+HAS_SIGNED_IN_NEVER = 'HAS_SIGNED_IN_NEVER'
+HAS_SIGNED_IN_MODIFIER_CHOICES = (
+    (HAS_SIGNED_IN_AT_LEAST_ONCE, 'at least once'),
+    (HAS_SIGNED_IN_LAST_DAY, 'in last day'),
+    (HAS_SIGNED_IN_LAST_3_DAYS, 'in last 3 days'),
+    (HAS_SIGNED_IN_LAST_WEEK, 'in last week'),
+    (HAS_SIGNED_IN_LAST_MONTH, 'in last month'),
+    (HAS_SIGNED_IN_LAST_YEAR, 'in last year'),
+    (HAS_SIGNED_IN_NEVER, 'never'),
+)
 OPERATOR_AND = 'AND'
 OPERATOR_EXCLUDE = 'EXCLUDE'  # Always exclude
 OPERATOR_INCLUDE = 'INCLUDE'  # Always include
@@ -45,6 +129,20 @@ AUDIENCE_OPERATOR_CHOICES = (
     (OPERATOR_EXCLUDE, 'EXCLUDE'),
     (OPERATOR_INCLUDE, 'INCLUDE'),
     (OPERATOR_OR, 'OR'),
+)
+PHONE_NUMBER_CONTAINS = 'PHONE_NUMBER_CONTAINS'
+PHONE_NUMBER_EXISTS = 'PHONE_NUMBER_EXISTS'
+PHONE_NUMBER_IS_MISSING = 'PHONE_NUMBER_IS_MISSING'
+PHONE_NUMBER_MODIFIER_CHOICES = (
+    (PHONE_NUMBER_CONTAINS, 'contains area code'),
+    (PHONE_NUMBER_EXISTS, 'exists'),
+    (PHONE_NUMBER_IS_MISSING, 'is missing'),
+)
+STATE_IS = 'STATE_IS'
+STATE_IS_NOT = 'STATE_IS_NOT'
+STATE_MODIFIER_CHOICES = (
+    (STATE_IS, 'is'),
+    (STATE_IS_NOT, 'is not'),
 )
 
 CAMPAIGNX_NEWS_ITEM_TEMPLATE = 'CAMPAIGNX_NEWS_ITEM_TEMPLATE'
@@ -206,34 +304,38 @@ class AudienceFilter(models.Model):
     audience_filter_type = models.CharField(
         max_length=50, choices=AUDIENCE_FILTER_TYPE_CHOICES, default=None, null=True)
     audience_type_candidate = models.BooleanField(default=False)
+    audience_type_modifier = models.CharField(
+        max_length=20, choices=AUDIENCE_TYPE_MODIFIER_CHOICES, default=None, null=True)
     audience_type_organization = models.BooleanField(default=False)
     audience_type_politician = models.BooleanField(default=False)
     audience_type_voter = models.BooleanField(default=False)
-    boolean_contact_contains = models.BooleanField(default=False)
-    boolean_contact_exists = models.BooleanField(default=False)
-    boolean_contact_is_missing = models.BooleanField(default=False)
-    boolean_date_is_after = models.BooleanField(default=False)
-    boolean_date_is_before = models.BooleanField(default=False)
-    boolean_date_is_on = models.BooleanField(default=False)
-    boolean_date_is_on_or_after = models.BooleanField(default=False)
-    boolean_date_is_on_or_before = models.BooleanField(default=False)
-    boolean_is = models.BooleanField(default=False)
-    boolean_is_not = models.BooleanField(default=False)
     boolean_party_green = models.BooleanField(default=False)
     boolean_party_democrat = models.BooleanField(default=False)
     boolean_party_republican = models.BooleanField(default=False)
     boolean_party_independent = models.BooleanField(default=False)
     boolean_party_no_preference = models.BooleanField(default=False)
     boolean_party_working_families = models.BooleanField(default=False)
-    boolean_relative_never = models.BooleanField(default=False)
-    boolean_relative_at_least_once = models.BooleanField(default=False)
-    boolean_relative_last_24_hours = models.BooleanField(default=False)
-    boolean_relative_last_3_days = models.BooleanField(default=False)
-    boolean_relative_last_week = models.BooleanField(default=False)
-    boolean_relative_last_month = models.BooleanField(default=False)
-    boolean_relative_last_year = models.BooleanField(default=False)
+    election_modifier = models.CharField(
+        max_length=24, choices=ELECTION_MODIFIER_CHOICES, default=None, null=True)
+    email_address_contains_list = models.CharField(default=None, max_length=255, null=True)
+    email_address_modifier = models.CharField(
+        max_length=24, choices=EMAIL_ADDRESS_MODIFIER_CHOICES, default=None, null=True)
+    email_campaign_id_list = models.CharField(default=None, max_length=255, null=True)
     google_civic_election_id = models.PositiveIntegerField(default=None, null=True)
-    state_code_list = models.CharField(max_length=255, null=True)
+    has_been_contacted_modifier = models.CharField(
+        max_length=32, choices=HAS_BEEN_CONTACTED_MODIFIER_CHOICES, default=None, null=True)
+    has_claimed_politician_modifier = models.CharField(
+        max_length=36, choices=HAS_CLAIMED_POLITICIAN_MODIFIER_CHOICES, default=None, null=True)
+    has_opened_list = models.CharField(default=None, max_length=255, null=True)
+    has_opened_modifier = models.CharField(
+        max_length=27, choices=HAS_OPENED_MODIFIER_CHOICES, default=None, null=True)
+    has_signed_in_modifier = models.CharField(
+        max_length=30, choices=HAS_SIGNED_IN_MODIFIER_CHOICES, default=None, null=True)
+    phone_number_modifier = models.CharField(
+        max_length=23, choices=PHONE_NUMBER_MODIFIER_CHOICES, default=None, null=True)
+    state_code_list = models.CharField(default=None, max_length=255, null=True)
+    state_modifier = models.CharField(
+        max_length=12, choices=STATE_MODIFIER_CHOICES, default=None, null=True)
 
 
 class AudienceFilterChain(models.Model):
@@ -273,6 +375,7 @@ class EmailCampaign(models.Model):
     """
     An email campaign that we assemble, and then send
     """
+    date_last_updated = models.DateTimeField(auto_now=True, db_index=True)
     deleted = models.BooleanField(default=False)
     email_body_template_raw = models.TextField(null=True, blank=True)  # We keep a copy for history
     email_campaign_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)

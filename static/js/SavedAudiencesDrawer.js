@@ -4,6 +4,93 @@
 let currentMouseMoveHandler = null;
 let currentMouseUpHandler = null;
 
+
+function clearAllAudienceTypes(filterId) {
+    const checkboxes = document.querySelectorAll(`
+        input[name="audience_type_candidate_${filterId}"],
+        input[name="audience_type_organization_${filterId}"],
+        input[name="audience_type_politician_${filterId}"],
+        input[name="audience_type_voter_${filterId}"]
+    `);
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateAudienceTypeButtonText(filterId);
+}
+
+function clearAllHasOpened(filterId) {
+    const checkboxes = document.querySelectorAll(`
+        input[name="has_opened_${filterId}[]"]:checked
+    `);
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateHasOpenedButtonText(filterId);
+}
+
+function clearAllStateCodes(filterId) {
+    const checkboxes = document.querySelectorAll(`
+        input[name="state_code_${filterId}[]"]:checked
+    `);
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateStateCodeButtonText(filterId);
+}
+
+function updateAudienceTypeButtonText(filterId) {
+    const checkboxes = document.querySelectorAll(`
+        input[name="audience_type_candidate_${filterId}"]:checked,
+        input[name="audience_type_organization_${filterId}"]:checked,
+        input[name="audience_type_politician_${filterId}"]:checked,
+        input[name="audience_type_voter_${filterId}"]:checked
+    `);
+    const button = document.getElementById('audience-type-button-' + filterId);
+
+    if (checkboxes.length === 0) {
+        button.textContent = 'Select types';
+    } else {
+        const labels = Array.from(checkboxes).map(checkbox => checkbox.nextElementSibling.textContent);
+        button.textContent = labels.join(', ');
+    }
+}
+
+function updateHasOpenedButtonText(filterId) {
+    // Get all the checked state codes in has_opened_{filterId}[] and update the button text to include all of the
+    // selected campaigns
+    const checkboxes = document.querySelectorAll(`
+        input[name="has_opened_${filterId}[]"]:checked
+    `);
+    const button = document.getElementById('has-opened-button-' + filterId);
+
+    if (checkboxes.length === 0) {
+        button.textContent = '-- Select campaign(s) --';
+    } else {
+        const campaign_names = Array.from(checkboxes).map(checkbox => {
+            // Find the associated label using the checkbox's id
+            const label = document.querySelector(`label[for="${checkbox.id}"]`);
+            return label ? label.textContent.trim() : checkbox.value;
+        });
+        button.textContent = campaign_names.join(', ');
+    }
+}
+
+function updateStateCodeButtonText(filterId) {
+    // Get all the checked state codes in state_code_{filterId}[] and update the button text to include all of the
+    // selected states
+    const checkboxes = document.querySelectorAll(`
+        input[name="state_code_${filterId}[]"]:checked
+    `);
+    const button = document.getElementById('state-code-button-' + filterId);
+
+    if (checkboxes.length === 0) {
+        button.textContent = '-- Select state(s) --';
+    } else {
+        const state_codes = Array.from(checkboxes).map(checkbox => checkbox.value);
+        button.textContent = state_codes.join(', ');
+    }
+}
+
 // Initialize resize functionality
 function initializeResizeHandle() {
     const resizeHandle = document.getElementById('resizeHandle');
@@ -311,6 +398,79 @@ function submitAddDeleteButtonFromDrawer(buttonElement) {
     }
 }
 
+// For choosing from among all of the Filter types: Audience type, Election date, Political party, etc.
+function toggleAudienceFilterType(selectElement, filterId) {
+    const audienceTypeOptions = document.getElementById('audience-type-options-' + filterId);
+    const electionDateOptions = document.getElementById('election-date-options-' + filterId);
+    const emailAddressOptions = document.getElementById('email-address-options-' + filterId);
+    const hasBeenContactedOptions = document.getElementById('has-been-contacted-options-' + filterId);
+    const hasClaimedPoliticianOptions = document.getElementById('has-claimed-politician-options-' + filterId);
+    const hasOpenedOptions = document.getElementById('has-opened-options-' + filterId);
+    const hasSignedInOptions = document.getElementById('has-signed-in-options-' + filterId);
+    const phoneNumberOptions = document.getElementById('phone-number-options-' + filterId);
+    const politicalPartyOptions = document.getElementById('political-party-options-' + filterId);
+    const stateCodeOptions = document.getElementById('state-code-options-' + filterId);
+
+    // Hide all options first
+    if (audienceTypeOptions) audienceTypeOptions.style.display = 'none';
+    if (electionDateOptions) electionDateOptions.style.display = 'none';
+    if (emailAddressOptions) emailAddressOptions.style.display = 'none';
+    if (hasBeenContactedOptions) hasBeenContactedOptions.style.display = 'none';
+    if (hasClaimedPoliticianOptions) hasClaimedPoliticianOptions.style.display = 'none';
+    if (hasOpenedOptions) hasOpenedOptions.style.display = 'none';
+    if (hasSignedInOptions) hasSignedInOptions.style.display = 'none';
+    if (phoneNumberOptions) phoneNumberOptions.style.display = 'none';
+    if (politicalPartyOptions) politicalPartyOptions.style.display = 'none';
+    if (stateCodeOptions) stateCodeOptions.style.display = 'none';
+
+    // Show the selected option
+    if (selectElement.value === 'FILTER_TYPE_AUDIENCE_TYPE') {
+        if (audienceTypeOptions) audienceTypeOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_ELECTION_DATE') {
+        if (electionDateOptions) electionDateOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_EMAIL_ADDRESS') {
+        if (emailAddressOptions) emailAddressOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_HAS_BEEN_CONTACTED') {
+        if (hasBeenContactedOptions) hasBeenContactedOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_HAS_CLAIMED_POLITICIAN') {
+        if (hasClaimedPoliticianOptions) hasClaimedPoliticianOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_HAS_OPENED') {
+        if (hasOpenedOptions) hasOpenedOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_HAS_SIGNED_IN') {
+        if (hasSignedInOptions) hasSignedInOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_PHONE_NUMBER') {
+        if (phoneNumberOptions) phoneNumberOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_POLITICAL_PARTY') {
+        if (politicalPartyOptions) politicalPartyOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_STATE_CODE') {
+        if (stateCodeOptions) stateCodeOptions.style.display = 'flex';
+    }
+}
+
+function toggleDropdown(filterId, elementPrefix) {
+    const dropdown = document.getElementById(elementPrefix + filterId);
+    dropdown.classList.toggle('show');
+}
+
+function updateElectionDateButtonText(filterId, electionText, electionId) {
+    const button = document.getElementById('election-date-button-' + filterId);
+    const label = document.getElementById('election-date-label-' + filterId + '-' + electionId);
+    button.textContent = electionText;
+    // Reset the style font-weight of all labels to normal
+    const labels = document.querySelectorAll('[id^="election-date-label-"]');
+    labels.forEach(oneLabel => {
+        oneLabel.style.fontWeight = 'normal';
+    });
+    // Update the style font-weight of label to bold if selected
+    label.style.fontWeight = 'bold';
+
+    // Close the dropdown after selection
+    const dropdown = document.getElementById('election-date-dropdown-' + filterId);
+    if (dropdown) {
+        dropdown.classList.remove('show');
+    }
+}
+
 // Initialize draggable functionality
 document.addEventListener('DOMContentLoaded', function() {
     // Close drawer on Escape key
@@ -324,7 +484,51 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdowns = document.querySelectorAll('.audience-type-dropdown');
+    dropdowns.forEach(dropdown => {
+        if (!dropdown.contains(event.target)) {
+            const content = dropdown.querySelector('.audience-type-dropdown-content');
+            if (content) {
+                content.classList.remove('show');
+            }
+        }
+    });
+});
+
+// ######## Listener for audience_filter_body.html ########
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdowns = document.querySelectorAll('.audience-filter-dropdown');
+    dropdowns.forEach(dropdown => {
+        if (!dropdown.contains(event.target)) {
+            const content = dropdown.querySelector('.audience-filter-dropdown-content');
+            if (content) {
+                content.classList.remove('show');
+            }
+        }
+    });
+});
+
+// Close election date dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdowns = document.querySelectorAll('[id^="election-date-dropdown-"]');
+    dropdowns.forEach(dropdown => {
+        const filterId = dropdown.id.replace('election-date-dropdown-', '');
+        const button = document.getElementById('election-date-button-' + filterId);
+        if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+});
+
 // Expose functions globally
 window.openSavedAudiencesDrawer = openSavedAudiencesDrawer;
 window.closeSavedAudiencesDrawer = closeSavedAudiencesDrawer;
 window.submitAddDeleteButtonFromDrawer = submitAddDeleteButtonFromDrawer;
+window.toggleAudienceFilterType = toggleAudienceFilterType;
+window.toggleDropdown = toggleDropdown;
+window.updateAudienceTypeButtonText = updateAudienceTypeButtonText;
+window.updateElectionDateButtonText = updateElectionDateButtonText;
+window.updateStateCodeButtonText = updateStateCodeButtonText;
