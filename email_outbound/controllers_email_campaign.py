@@ -36,7 +36,7 @@ def audience_builder_data_retrieve(audience_builder_id):
 
     if not positive_value_exists(audience_builder_id):
         status += "AUDIENCE_BUILDER_ID_REQUIRED "
-        success = False
+        success = True
         return {
             'audience_builder': audience_builder,
             'audience_filter_chain_dict': audience_filter_chain_dict,
