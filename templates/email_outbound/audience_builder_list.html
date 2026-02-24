@@ -10,9 +10,15 @@
 {% load humanize %}
 {% include "admin_tools/loading_banner.html" %}
 
-<!-- Saved Audiences Drawer CSS and JS -->
-<link rel="stylesheet" href="{% static 'css/saved_audiences_drawer.css' %}">
-<script src="{% static 'js/SavedAudiencesDrawer.js' %}"></script>
+<!-- Audience Builder Drawer CSS -->
+<style>
+    {% include "email_outbound/css/_audience_builder_drawer_styles.html" %}
+</style>
+
+<!-- Audience Builder Drawer Javascript -->
+<script>
+    {% include "email_outbound/js/_audience_builder_drawer_js.html" %}
+</script>
 
 <style>
   .wv-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }

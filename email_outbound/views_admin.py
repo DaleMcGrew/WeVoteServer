@@ -851,7 +851,8 @@ def audience_builder_drawer_html_view(request):
 
     if results['success']:
         audience_builder = results['audience_builder']
-        audience_builder_name = audience_builder.audience_builder_name
+        if hasattr(audience_builder, 'audience_builder_name'):
+            audience_builder_name = audience_builder.audience_builder_name
         audience_filter_chain_dict = results['audience_filter_chain_dict']
         audience_filter_dict = results['audience_filter_dict']
 
