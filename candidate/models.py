@@ -2658,6 +2658,7 @@ class CandidateCampaign(models.Model):
     seo_friendly_path = models.CharField(max_length=255, null=True, unique=False, db_index=True)
     seo_friendly_path_date_last_updated = models.DateTimeField(null=True)
     supporters_count = models.PositiveIntegerField(default=0)  # From linked_campaignx_we_vote_id CampaignX entry
+    opposers_count = models.PositiveIntegerField(default=0)  # From linked_campaignx_we_vote_id CampaignX entry
     threads_handle = models.TextField(blank=True, null=True)
     tiktok_url = models.TextField(blank=True, null=True)
     

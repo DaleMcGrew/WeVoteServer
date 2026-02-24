@@ -3375,7 +3375,7 @@ def update_candidate_details_from_campaignx(candidate, campaignx):
     success = True
     save_changes = False
 
-    if not hasattr(candidate, 'supporters_count') or not hasattr(campaignx, 'supporters_count'):
+    if not hasattr(candidate, 'supporters_count') or not hasattr(campaignx, 'supporters_count') or not hasattr(candidate, 'opposers_count') or not hasattr(campaignx, 'opposers_count'):
         success = False
         status += 'UPDATE_CANDIDATE_FROM_CAMPAIGNX_MISSING_REQUIRED_ATTRIBUTES '
         results = {
@@ -3388,6 +3388,10 @@ def update_candidate_details_from_campaignx(candidate, campaignx):
     if candidate.supporters_count != campaignx.supporters_count:
         candidate.supporters_count = campaignx.supporters_count
         save_changes = True
+
+    if candidate.opposers_count != campaignx.opposers_count:
+        candidate.opposers_count = campaignx.opposers_count
+        save_changes = True 
 
     results = {
         'success': success,
