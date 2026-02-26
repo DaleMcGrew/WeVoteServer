@@ -1256,7 +1256,7 @@ def refresh_campaignx_supporters_count_in_all_children(request=None, campaignx_w
         # Update all upcoming candidates linked to CampaignX entries which were updated
         queryset = CandidateCampaign.objects.all()  # Cannot be readonly because of bulk_update below
         queryset = queryset.filter(linked_campaignx_we_vote_id__in=campaignx_we_vote_id_list)
-        queryset = queryset.filter(candidate_ultimate_election_date__gte=date_today_as_integer)
+        # queryset = queryset.filter(candidate_ultimate_election_date__gte=date_today_as_integer)
         candidate_bulk_update_list = []
         candidate_bulk_updates_made = 0
         candidate_list = list(queryset)
@@ -1274,9 +1274,9 @@ def refresh_campaignx_supporters_count_in_all_children(request=None, campaignx_w
                     candidate_bulk_updates_made += 1
         if len(candidate_bulk_update_list) > 0:
             try:
-                CandidateCampaign.objects.bulk_update(candidate_bulk_update_list, ['supporters_count'])
+                CandidateCampaign.objects.bulk_update(candidate_bulk_update_list, ['supporters_count', 'opposers_count'])
                 update_message += \
-                    "{candidate_bulk_updates_made:,} Candidate entries updated with fresh supporters_count, " \
+                    "{candidate_bulk_updates_made:,} Candidate entries updated with fresh supporters_count and opposers_count, " \
                     "".format(candidate_bulk_updates_made=candidate_bulk_updates_made)
             except Exception as e:
                 status += "ERROR with CandidateCampaign.objects.bulk_update: {e}, ".format(e=e)
