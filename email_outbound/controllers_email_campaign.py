@@ -8,13 +8,15 @@ from django.db.models import Q
 from django.template.loader import render_to_string
 
 
+from election.models import Election
 from email_outbound.functions import convert_html_to_plain_text
 from email_outbound.models import AudienceBuilder, AudienceFilter, AudienceFilterChain
 from organization.controllers import transform_web_app_url
 from politician.models import Politician
 from voter.models import VoterManager
 import wevote_functions.admin
-from wevote_functions.functions import positive_value_exists
+from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP
+from wevote_functions.functions_date import get_current_year_as_integer
 from .models import CUSTOMIZATION_TOKEN_CONVERSION_FROM_JAZZ_HR, \
     EmailCampaign, EmailCampaignRecipient, EmailManager, EmailScheduled, \
     EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS, TO_BE_PROCESSED
@@ -34,7 +36,7 @@ def audience_builder_data_retrieve(audience_builder_id):
 
     if not positive_value_exists(audience_builder_id):
         status += "AUDIENCE_BUILDER_ID_REQUIRED "
-        success = False
+        success = True
         return {
             'audience_builder': audience_builder,
             'audience_filter_chain_dict': audience_filter_chain_dict,
@@ -667,16 +669,152 @@ def save_all_audience_filter_changes(audience_filter_dict={}, request=None):
     change_list = []
     for audience_filter_id, audience_filter in audience_filter_dict.items():
         any_changes_made = False
+        # audience_filter_type
         audience_filter_type_key = f'audience_filter_type_{audience_filter_id}'
         if audience_filter_type_key in request.POST:
             setattr(audience_filter, 'audience_filter_type', request.POST.get(audience_filter_type_key, None))
             any_changes_made = True
+
+        # audience_type
+        audience_type_modifier_key = f'audience_type_modifier_{audience_filter_id}'
+        if audience_type_modifier_key in request.POST:
+            setattr(audience_filter, 'audience_type_modifier', request.POST.get(audience_type_modifier_key, None))
+            any_changes_made = True
+
+            # Candidate
+            audience_type_candidate = False
+            audience_type_candidate_key = f'audience_type_candidate_{audience_filter_id}'
+            if audience_type_candidate_key in request.POST:
+                audience_type_candidate_value = request.POST.get(audience_type_candidate_key, None)
+                if audience_type_candidate_value == "CANDIDATE":
+                    audience_type_candidate = True
+            setattr(audience_filter, 'audience_type_candidate', audience_type_candidate)
+
+            # Organization
+            audience_type_organization = False
+            audience_type_organization_key = f'audience_type_organization_{audience_filter_id}'
+            if audience_type_organization_key in request.POST:
+                audience_type_organization_value = request.POST.get(audience_type_organization_key, None)
+                if audience_type_organization_value == "ORGANIZATION":
+                    audience_type_organization = True
+            setattr(audience_filter, 'audience_type_organization', audience_type_organization)
+
+            # Politician
+            audience_type_politician = False
+            audience_type_politician_key = f'audience_type_politician_{audience_filter_id}'
+            if audience_type_politician_key in request.POST:
+                audience_type_politician_value = request.POST.get(audience_type_politician_key, None)
+                if audience_type_politician_value == "POLITICIAN":
+                    audience_type_politician = True
+            setattr(audience_filter, 'audience_type_politician', audience_type_politician)
+
+            # Voter
+            audience_type_voter = False
+            audience_type_voter_key = f'audience_type_voter_{audience_filter_id}'
+            if audience_type_voter_key in request.POST:
+                audience_type_voter_value = request.POST.get(audience_type_voter_key, None)
+                if audience_type_voter_value == "VOTER":
+                    audience_type_voter = True
+            setattr(audience_filter, 'audience_type_voter', audience_type_voter)
+
+        # election_modifier
+        election_modifier_key = f'election_modifier_{audience_filter_id}'
+        if election_modifier_key in request.POST:
+            setattr(audience_filter, 'election_modifier', request.POST.get(election_modifier_key, None))
+            any_changes_made = True
+        election_key = f'google_civic_election_id_{audience_filter_id}'
+        if election_key in request.POST:
+            setattr(audience_filter, 'google_civic_election_id', request.POST.get(election_key, None))
+            any_changes_made = True
+
+        # email_address_modifier
+        email_address_modifier_key = f'email_address_modifier_{audience_filter_id}'
+        if email_address_modifier_key in request.POST:
+            setattr(audience_filter, 'email_address_modifier', request.POST.get(email_address_modifier_key, None))
+            any_changes_made = True
+
+        # has_been_contacted_modifier
+        has_been_contacted_modifier_key = f'has_been_contacted_modifier_{audience_filter_id}'
+        if has_been_contacted_modifier_key in request.POST:
+            setattr(audience_filter, 'has_been_contacted_modifier', request.POST.get(has_been_contacted_modifier_key, None))
+            any_changes_made = True
+
+        # has_claimed_politician_modifier
+        has_claimed_politician_modifier_key = f'has_claimed_politician_modifier_{audience_filter_id}'
+        if has_claimed_politician_modifier_key in request.POST:
+            setattr(audience_filter, 'has_claimed_politician_modifier', request.POST.get(has_claimed_politician_modifier_key, None))
+            any_changes_made = True
+
+        # has_opened_modifier
+        has_opened_modifier_key = f'has_opened_modifier_{audience_filter_id}'
+        if has_opened_modifier_key in request.POST:
+            setattr(audience_filter, 'has_opened_modifier', request.POST.get(has_opened_modifier_key, None))
+            any_changes_made = True
+            # Get the list of selected state codes
+            has_opened_list_key = f'has_opened_{audience_filter_id}[]'
+            if has_opened_list_key in request.POST:
+                has_opened_selected = request.POST.getlist(f'has_opened_{audience_filter.id}[]')
+                # This will return a list like: ['32', '44', '73']
+                # Convert the list to a comma-separated string, without any square brackets, commas or spaces
+                has_opened_selected_str = ','.join(has_opened_selected)
+                setattr(audience_filter, 'has_opened_list', has_opened_selected_str)
+            else:
+                setattr(audience_filter, 'has_opened_list', None)
+
+        # has_signed_in_modifier
+        has_signed_in_modifier_key = f'has_signed_in_modifier_{audience_filter_id}'
+        if has_signed_in_modifier_key in request.POST:
+            setattr(audience_filter, 'has_signed_in_modifier', request.POST.get(has_signed_in_modifier_key, None))
+            any_changes_made = True
+
+        # phone_number_modifier
+        phone_number_modifier_key = f'phone_number_modifier_{audience_filter_id}'
+        if phone_number_modifier_key in request.POST:
+            setattr(audience_filter, 'phone_number_modifier', request.POST.get(phone_number_modifier_key, None))
+            any_changes_made = True
+
+        # state_modifier
+        if audience_filter.audience_filter_type == 'FILTER_TYPE_STATE_CODE':
+            state_modifier_key = f'state_modifier_{audience_filter_id}'
+            if state_modifier_key in request.POST:
+                setattr(audience_filter, 'state_modifier', request.POST.get(state_modifier_key, None))
+                any_changes_made = True
+            # Get the list of selected state codes
+            state_list_key = f'state_code_{audience_filter_id}[]'
+            if state_list_key in request.POST:
+                state_codes_selected = request.POST.getlist(f'state_code_{audience_filter.id}[]')
+                # This will return a list like: ['CA', 'NY', 'TX']
+                # Convert the list to a comma-separated string, without any square brackets, commas or spaces
+                state_codes_selected_str = ','.join(state_codes_selected)
+                setattr(audience_filter, 'state_code_list', state_codes_selected_str)
+                any_changes_made = True
+            else:
+                setattr(audience_filter, 'state_code_list', None)
+                any_changes_made = True
+
         if any_changes_made:
             change_list.append(audience_filter)
 
     # Save changes to the change_list in bulk
     try:
-        AudienceFilter.objects.bulk_update(change_list, ['audience_filter_type'])
+        AudienceFilter.objects.bulk_update(change_list, [
+            'audience_filter_type',
+            'audience_type_candidate',
+            'audience_type_modifier',
+            'audience_type_organization',
+            'audience_type_politician',
+            'audience_type_voter',
+            'election_modifier',
+            'email_address_modifier',
+            'google_civic_election_id',
+            'has_been_contacted_modifier',
+            'has_claimed_politician_modifier',
+            'has_opened_list',
+            'has_opened_modifier',
+            'has_signed_in_modifier',
+            'phone_number_modifier',
+            'state_code_list',
+            'state_modifier'])
     except Exception as e:
         status += f"ERROR_SAVING_AUDIENCE_FILTERS: {str(e)} "
         success = False
@@ -914,6 +1052,33 @@ def render_audience_builder_html(
     status = ''
     success = True
 
+    # Gather collection of all EmailCampaign rows so we can offer them in the AudienceFilter
+    campaign_list = []
+    try:
+        queryset = EmailCampaign.objects.all()
+        queryset = queryset.filter(deleted=False)
+        queryset = queryset.order_by('-date_last_updated')
+        campaign_list = list(queryset)
+    except Exception as e:
+        status += f"ERROR_RETRIEVING_EMAIL_CAMPAIGNS: {e}"
+        success = False
+
+    # Gather data used by multiple chains and filters
+    election_list = []
+    try:
+        this_year = get_current_year_as_integer()
+        election_list_query = Election.objects.all()
+        election_list_query = election_list_query.order_by('election_day_text', 'election_name')
+        first_day_of_year_to_show = "{year}-01-01".format(year=this_year)
+        last_day_of_year_to_show = "{year}-12-31".format(year=this_year)
+        election_list_query = election_list_query.filter(
+            election_day_text__gte=first_day_of_year_to_show,
+            election_day_text__lte=last_day_of_year_to_show)
+        election_list = list(election_list_query)
+    except Exception as e:
+        status += f"ERROR_RETRIEVING_ELECTIONS: {e}"
+        success = False
+
     # Render each chain one at a time
     for builder_relative_chain_id in range(1, 10):
         builder_relative_chain_id_string_list = []
@@ -951,6 +1116,8 @@ def render_audience_builder_html(
                     audience_builder=audience_builder,
                     audience_filter_chain=audience_filter_chain,
                     audience_filter_dict=audience_filter_dict,
+                    campaign_list=campaign_list,
+                    election_list=election_list,
                     request=request)
                 if chain_results['success']:
                     builder_relative_chain_id_string = f'filter{builder_relative_chain_id}'
@@ -985,6 +1152,8 @@ def render_audience_filter_chain_html(
         audience_builder={},
         audience_filter_chain={},
         audience_filter_dict={},
+        campaign_list=[],
+        election_list=[],
         request=None):
     audience_filter_id_dict = {}
     audience_filter_html_dict = {}
@@ -1007,6 +1176,8 @@ def render_audience_filter_chain_html(
                 filter_results = render_audience_filter_html(
                     audience_filter=audience_filter,
                     audience_filter_chain=audience_filter_chain,
+                    campaign_list=campaign_list,
+                    election_list=election_list,
                     request=request)
                 if filter_results['success']:
                     chain_relative_filter_id_string = f'filter{chain_relative_filter_id}'
@@ -1041,14 +1212,87 @@ def render_audience_filter_chain_html(
     }
 
 
-def render_audience_filter_html(audience_filter={}, audience_filter_chain={}, request=None):
+def render_audience_filter_html(
+        audience_filter={},
+        audience_filter_chain={},
+        campaign_list=[],
+        election_list=[],
+        request=None):
+    audience_type_list = [
+        'audience_type_candidate',
+        'audience_type_organization',
+        'audience_type_politician',
+        'audience_type_voter',
+    ]
+    audience_types_selected_string = ''
+    election_name_selected = ''
+    has_opened_selected = []
+    has_opened_selected_string = ''
+    state_codes_selected = []
+    state_codes_selected_string = ''
     status = ''
     success = True
-    # Now build out audience filters
+    # If a valid audience_filter was passed in, render the audience_filter html
+    if hasattr(audience_filter, 'google_civic_election_id'):
+        # If any of the following audience_type_ values are true (like audience_type_candidate,
+        # audience_type_voter, etc.), create a string that shows "Candidate, Voter" etc.
+        if positive_value_exists(audience_filter.audience_type_candidate) or \
+                positive_value_exists(audience_filter.audience_type_voter) or \
+                positive_value_exists(audience_filter.audience_type_organization) or \
+                positive_value_exists(audience_filter.audience_type_politician):
+            audience_type_name_dict = {
+                'audience_type_candidate': 'Candidate',
+                'audience_type_organization': 'Organization',
+                'audience_type_politician': 'Politician',
+                'audience_type_voter': 'Voter',
+            }
+            # Loop through audience_type_list. If audience_filter.audience_type_... is true, append the corresponding
+            # name from audience_type_name_list to audience_types_selected_string
+            for audience_type in audience_type_list:
+                if positive_value_exists(getattr(audience_filter, audience_type)):
+                    audience_types_selected_string += audience_type_name_dict[audience_type] + ', '
+            # Remove the trailing comma and space
+            audience_types_selected_string = audience_types_selected_string[:-2]
+
+        if positive_value_exists(audience_filter.google_civic_election_id):
+            # loop through election_list and find the election with the same google_civic_election_id
+            audience_filter_election_id = convert_to_int(audience_filter.google_civic_election_id)
+            for one_election in election_list:
+                one_election_id = convert_to_int(one_election.google_civic_election_id)
+                if one_election_id == audience_filter_election_id:
+                    election_name_selected = one_election.election_name
+                    break
+
+        if positive_value_exists(audience_filter.has_opened_list):
+            # Convert a comma separated list of EmailCampaign ids (ex/ "34,53") in has_opened_list,
+            #  to a python list
+            has_opened_selected = audience_filter.has_opened_list.split(',')
+            has_opened_selected_name_list = []
+            for one_campaign in campaign_list:
+                if str(one_campaign.id) in has_opened_selected:
+                    has_opened_selected_name_list.append(one_campaign.email_campaign_name)
+            has_opened_selected_string = ', '.join(has_opened_selected_name_list)
+
+        if positive_value_exists(audience_filter.state_code_list):
+            # Convert a comma separated list of state codes (ex/ "CA,AZ") in state_code_list, to a python list
+            state_code_list = audience_filter.state_code_list.split(',')
+            # Convert each state code in state_code_list to uppercase
+            state_code_list = [state_code.upper() for state_code in state_code_list]
+            state_codes_selected = state_code_list
+            state_codes_selected_string = ', '.join(state_code_list)
+
     context = {
         'audience_filter': audience_filter,
         'audience_filter_chain': audience_filter_chain,
-        'filter_type': 'state_code',
+        'audience_types_selected_string': audience_types_selected_string,
+        'campaign_list': campaign_list,
+        'election_name_selected': election_name_selected,
+        'election_list': election_list,
+        'has_opened_selected': has_opened_selected,
+        'has_opened_selected_string': has_opened_selected_string,
+        'state_code_map': STATE_CODE_MAP,
+        'state_codes_selected': state_codes_selected,
+        'state_codes_selected_string': state_codes_selected_string,
     }
     audience_filter_html = \
         render_to_string("email_outbound/audience_filter_body.html", context, request=request)
