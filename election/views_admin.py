@@ -62,6 +62,8 @@ WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 GOOGLE_MAPS_API_KEY = get_environment_variable("GOOGLE_MAPS_API_KEY")
 
 POSITIONS_GOAL_CANDIDATE_MULTIPLIER = .9
+SERVER_IS_SOURCE_OF_TRUTH = positive_value_exists(get_environment_variable("SERVER_IS_SOURCE_OF_TRUTH",
+                                                                           no_exception=True))
 
 
 def test_view(request):
@@ -1248,6 +1250,7 @@ def election_list_view(request):
         'election_search':              election_search,
         'google_civic_election_id':     google_civic_election_id,
         'messages_on_stage':            messages_on_stage,
+        'SERVER_IS_SOURCE_OF_TRUTH':    SERVER_IS_SOURCE_OF_TRUTH,
         'show_all_elections':           show_all_elections,
         'show_all_elections_this_year': show_all_elections_this_year,
         'show_election_statistics':     show_election_statistics,

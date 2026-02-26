@@ -279,6 +279,8 @@ def elections_import_from_structured_json(structured_json):  # Consumes election
             if "use_google_civic_as_data_source" in one_election else ''
         use_vote_usa_as_data_source = one_election["use_vote_usa_as_data_source"] \
             if "use_vote_usa_as_data_source" in one_election else ''
+        vote_usa_same_day_election_suffix_list = one_election["vote_usa_same_day_election_suffix_list"] \
+            if "vote_usa_same_day_election_suffix_list" in one_election else ''
 
         # Make sure we have the minimum required variables
         if not positive_value_exists(google_civic_election_id) or not positive_value_exists(election_name):
@@ -302,7 +304,9 @@ def elections_import_from_structured_json(structured_json):  # Consumes election
             use_ctcl_as_data_source=use_ctcl_as_data_source,
             use_ctcl_as_data_source_by_state_code=use_ctcl_as_data_source_by_state_code,
             use_google_civic_as_data_source=use_google_civic_as_data_source,
-            use_vote_usa_as_data_source=use_vote_usa_as_data_source)
+            use_vote_usa_as_data_source=use_vote_usa_as_data_source,
+            vote_usa_same_day_election_suffix_list=vote_usa_same_day_election_suffix_list,
+        )
 
         if results['success']:
             if results['new_election_created']:
