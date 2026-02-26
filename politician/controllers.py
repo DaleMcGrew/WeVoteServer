@@ -475,7 +475,7 @@ def find_candidates_to_link_to_this_politician(politician=None):
                 trigram_match=TrigramSimilarity('candidate_name', full_name)
             )
             # Add trigram filter with lower threshold for inclusion
-            new_filter = Q(trigram_match__gt=0.15)
+            new_filter = Q(trigram_match__gt=0.75)
             filters.append(new_filter)
 
         if positive_value_exists(politician.politician_twitter_handle):
@@ -537,7 +537,7 @@ def find_candidates_to_link_to_this_politician(politician=None):
             queryset = queryset.filter(final_filters)
 
         # Order by trigram match score if available, otherwise by name
-        if 'trigram_match' in [field.name for field in queryset.query.annotations.values()]:
+        if 'trigram_match' in queryset.query.annotations:
             queryset = queryset.order_by('-trigram_match', 'candidate_name')
         else:
             queryset = queryset.order_by('candidate_name')
