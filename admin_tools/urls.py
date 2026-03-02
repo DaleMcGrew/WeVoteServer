@@ -23,4 +23,5 @@ urlpatterns = [
     re_path(r'^import_sample_data/$', views.import_sample_data_view, name='import_sample_data'),
     re_path(r'^statistics/$', views.statistics_summary_view, name='statistics_summary'),
     re_path(r'^sync_dashboard/$', views.sync_data_with_master_servers_view, name='sync_dashboard'),
+    re_path(r'^jira_import/$', views.jira_import_view, name='jira_import'),
 ]

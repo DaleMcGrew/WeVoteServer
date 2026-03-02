@@ -2,6 +2,19 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 import os
+import sys
+
+# Ensure JiraUtil modules are importable in all environments:
+#   - Local dev: resolved relative to this file (../../../JiraUtil/python)
+#   - Docker:    mounted at /wevote/jira-util via docker-compose.override.yml
+for _jira_util_candidate in [
+    os.path.normpath(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                  '..', 'JiraUtil', 'python')),
+    '/wevote/jira-util',
+]:
+    if os.path.isdir(_jira_util_candidate) and _jira_util_candidate not in sys.path:
+        sys.path.insert(0, _jira_util_candidate)
+        break
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -68,6 +81,10 @@ WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
 TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 
+JIRA_URL = get_environment_variable("JIRA_URL", no_exception=True)
+JIRA_USERNAME = get_environment_variable("JIRA_USERNAME", no_exception=True)
+JIRA_API_TOKEN = get_environment_variable("JIRA_API_TOKEN", no_exception=True)
+JIRA_PROJECT_KEY = get_environment_variable("JIRA_PROJECT_KEY", no_exception=True)
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -2105,3 +2122,76 @@ def sync_data_with_master_servers_view(request):
             template_values['fast_load_start_token_error'] = token_creation_info['error_message']
 
     return response
+
+@login_required
+def jira_import_view(request):
+    authority_required = {'admin'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    import tempfile
+    import os
+
+    missing_vars = [name for name, val in [
+        ('JIRA_URL', JIRA_URL),
+        ('JIRA_USERNAME', JIRA_USERNAME),
+        ('JIRA_API_TOKEN', JIRA_API_TOKEN),
+        ('JIRA_PROJECT_KEY', JIRA_PROJECT_KEY),
+    ] if not val]
+
+    preview_summary = None
+    import_stats = None
+    action = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+        uploaded_file = request.FILES.get('excel_file')
+
+        if not uploaded_file:
+            messages.error(request, "No file uploaded. Please select an Excel (.xlsx) file.")
+        else:
+            tmp_path = None
+            try:
+                suffix = os.path.splitext(uploaded_file.name)[1] or '.xlsx'
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    for chunk in uploaded_file.chunks():
+                        tmp.write(chunk)
+                    tmp_path = tmp.name
+
+                from jira_loader import JiraLoader
+
+                loader = JiraLoader(tmp_path)
+
+                if action == 'preview':
+                    preview_summary = loader.get_summary()
+
+                elif action == 'import':
+                    if missing_vars:
+                        messages.error(
+                            request,
+                            "Cannot import: missing JIRA credentials: {}".format(', '.join(missing_vars))
+                        )
+                    else:
+                        from jira_api_loader import JiraApiLoader
+                        epics = loader.load()
+                        api_loader = JiraApiLoader(
+                            jira_url=JIRA_URL,
+                            username=JIRA_USERNAME,
+                            api_token=JIRA_API_TOKEN,
+                            project_key=JIRA_PROJECT_KEY,
+                        )
+                        import_stats = api_loader.load_all_epics(epics, dry_run=False)
+
+            except Exception as e:
+                messages.error(request, "Error processing file: {}".format(str(e)))
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+
+    template_values = {
+        'missing_vars': missing_vars,
+        'preview_summary': preview_summary,
+        'import_stats': import_stats,
+        'action': action,
+    }
+    return render(request, 'admin_tools/jira_import.html', template_values)
