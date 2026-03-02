@@ -59,7 +59,9 @@ def elections_sync_out_view(request):  # electionsSyncOut
             'use_ctcl_as_data_source',
             'use_ctcl_as_data_source_by_state_code',
             'use_google_civic_as_data_source',
-            'use_vote_usa_as_data_source')
+            'use_vote_usa_as_data_source',
+            'vote_usa_same_day_election_suffix_list',
+        )
         if election_list_dict:
             election_list_json = list(election_list_dict)
             return HttpResponse(json.dumps(election_list_json), content_type='application/json')

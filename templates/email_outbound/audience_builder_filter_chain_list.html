@@ -1,0 +1,38 @@
+{# templates/email_outbound/audience_builder_filter_chain_list.html #}
+  
+{% load template_filters %}
+<!-- START OF audience_builder_filter_chain_list.html -->
+
+    <input type="hidden" name="filter_chain_id" value="{{ filter_chain_id }}" />
+    <input type="hidden" name="operator" value="and" />
+
+{% for audience_builder_relative_chain_id_string in audience_builder_relative_chain_id_string_list %}
+<!-- START OF audience_builder_filter_chain_list row -->
+<div style="background: #d4e4f7; border: 2px solid #d4e4f7; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+    {{ audience_filter_html_dict|get_value_from_dict:audience_builder_relative_chain_id_string|safe }}
+</div>
+    
+<div style="align-items: center; display: flex; justify-content: space-between;">
+    {% if chain_operand_to_follow_dict|get_value_from_dict:audience_builder_relative_chain_id_string %}
+    <div style="margin: 0 0 8px 0;">
+        <span style="display: inline-block; background-color: #EEB600; color: white; padding: 4px 18px; border-radius: 8px; font-weight: 500; text-transform: lowercase;">
+            {{ chain_operand_to_follow_dict|get_value_from_dict:audience_builder_relative_chain_id_string }}
+        </span>
+    </div>
+    {% else %}
+    <button onclick="submitAddDeleteButtonFromDrawer(this)"
+            type="button"
+            class="btn btn-default btn-sm" style="border: 1px solid #ccc; border-radius: 4px; padding: 4px 10px; background-color: #fff; color: #333;"
+            data-name="add_audience_filter_chain_after_{{ audience_builder_relative_chain_id_string }}"
+            data-value="1"
+    >
+        <span style="font-weight: bold; margin-right: 4px;">+</span> Add "or"
+    </button>
+    <br />
+    <br />
+    {% endif %}
+</div>
+<!-- END OF audience_builder_filter_chain_list row -->
+{% endfor %}
+
+<!-- END OF audience_builder_filter_chain_list.html -->

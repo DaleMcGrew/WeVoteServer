@@ -1230,6 +1230,20 @@ def extract_vote_usa_office_id(raw_vote_usa_office_id):
         return ''
 
 
+def augment_vote_usa_office_id(vote_usa_office_id, primary_party=''):
+    if positive_value_exists(primary_party):
+        primary_party_suffix = ""
+        if primary_party.lower() == 'democratic party':
+            primary_party_suffix = 'PD'
+        elif primary_party.lower() == 'libertarian party':
+            primary_party_suffix = 'PL'
+        elif primary_party.lower() == 'republican party':
+            primary_party_suffix = 'PR'
+        if positive_value_exists(primary_party_suffix):
+            return vote_usa_office_id + '|' + primary_party_suffix
+    return vote_usa_office_id
+
+
 def extract_website_from_url(url_string):
     """
 

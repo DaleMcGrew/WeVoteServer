@@ -22,7 +22,8 @@ from office.models import ContestOfficeManager, ContestOfficeListManager
 from polling_location.models import PollingLocationManager
 import requests
 from voter.models import fetch_voter_id_from_voter_device_link, VoterAddressManager
-from wevote_functions.functions import convert_district_scope_to_ballotpedia_race_office_level, \
+from wevote_functions.functions import augment_vote_usa_office_id, \
+    convert_district_scope_to_ballotpedia_race_office_level, \
     convert_level_to_race_office_level, convert_state_text_to_state_code, convert_to_int, \
     extract_district_id_label_when_district_id_exists_from_ocd_id, extract_district_id_from_ocd_division_id, \
     extract_facebook_username_from_text_string, extract_instagram_handle_from_text_string, \
@@ -1317,22 +1318,6 @@ def groom_and_store_google_civic_office_json_2021(
         }
         return results
 
-    ctcl_office_uuid = None
-    vote_usa_office_id = None
-    if positive_value_exists(use_ctcl):
-        ctcl_office_uuid = one_contest_json['id']
-    elif positive_value_exists(use_vote_usa):
-        raw_vote_usa_office_id = one_contest_json['id']
-        vote_usa_office_id = extract_vote_usa_office_id(raw_vote_usa_office_id)
-
-    office_name = one_contest_json['office']
-
-    if "/n" in office_name:
-        # Sometimes a line break is passed in with the office_name
-        office_name = office_name.replace("/n", " ")
-        office_name = office_name.strip()
-        one_contest_json['office'] = office_name
-
     # The number of candidates that a voter may vote for in this contest.
     if 'numberVotingFor' in one_contest_json:
         number_voting_for = one_contest_json['numberVotingFor']
@@ -1346,29 +1331,47 @@ def groom_and_store_google_civic_office_json_2021(
         number_elected = str(1)
 
     # These are several fields that are shared in common between offices and measures
-    results = process_contest_common_fields_from_structured_json(one_contest_json, is_ctcl=use_ctcl)
+    common_results = process_contest_common_fields_from_structured_json(one_contest_json, is_ctcl=use_ctcl)
 
     # ballot_placement: A number specifying the position of this contest on the voter's ballot.
-    google_ballot_placement = results['ballot_placement']
-    primary_party = results['primary_party']  # If this is a partisan election, the name of the party it is for.
+    google_ballot_placement = common_results['ballot_placement']
+    primary_party = common_results['primary_party']  # If this is a partisan election, the name of the party it is for.
+
+    ctcl_office_uuid = None
+    vote_usa_office_id = None
+    if positive_value_exists(use_ctcl):
+        ctcl_office_uuid = one_contest_json['id']
+    elif positive_value_exists(use_vote_usa):
+        raw_vote_usa_office_id = one_contest_json['id']
+        vote_usa_office_id = extract_vote_usa_office_id(raw_vote_usa_office_id)
+        # Create a different office for each political party primary race
+        vote_usa_office_id = augment_vote_usa_office_id(vote_usa_office_id, primary_party)
+
+    office_name = one_contest_json['office']
+
+    if "/n" in office_name:
+        # Sometimes a line break is passed in with the office_name
+        office_name = office_name.replace("/n", " ")
+        office_name = office_name.strip()
+        one_contest_json['office'] = office_name
 
     # district_scope: The geographic scope of this district. If unspecified the
     # district's geography is not known. One of: national, statewide, congressional, stateUpper, stateLower,
     # countywide, judicial, schoolBoard, cityWide, township, countyCouncil, cityCouncil, ward, special
-    district_scope = results['district_scope']
+    district_scope = common_results['district_scope']
     if office_name in OFFICE_NAMES_WITH_NO_STATE:
         ballotpedia_race_office_level = 'Federal'
     else:
         ballotpedia_race_office_level = convert_district_scope_to_ballotpedia_race_office_level(district_scope)
-    office_ocd_division_id = results['contest_ocd_division_id']
-    district_id = results['district_id']
-    district_name = results['district_name']  # The name of the district.
+    office_ocd_division_id = common_results['contest_ocd_division_id']
+    district_id = common_results['district_id']
+    district_name = common_results['district_name']  # The name of the district.
 
     # electorate_specifications: A description of any additional eligibility requirements for voting in this contest.
-    electorate_specifications = results['electorate_specifications']
+    electorate_specifications = common_results['electorate_specifications']
 
     # special: "Yes" or "No" depending on whether this a contest being held outside the normal election cycle.
-    special = results['special']
+    special = common_results['special']
 
     # We want to convert this from an array to three fields for the same table
     # levels: string, A list of office levels to filter by. Only offices that serve at least one of these levels

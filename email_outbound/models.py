@@ -4,12 +4,146 @@
 
 from datetime import date, timedelta
 from django.apps import apps
-from django.db import models
+from django.db import IntegrityError, models
 from django.core.mail import EmailMultiAlternatives, get_connection
 from config.base import get_environment_variable
 from wevote_functions.functions import convert_to_int, extract_email_addresses_from_string, generate_random_string, \
     positive_value_exists
 from wevote_settings.models import fetch_next_we_vote_id_email_integer, fetch_site_unique_id_prefix
+
+
+FILTER_TYPE_AUDIENCE_TYPE = 'FILTER_TYPE_AUDIENCE_TYPE'
+# We are not implementing "Election Type" at this time
+FILTER_TYPE_ELECTION_DATE = 'FILTER_TYPE_ELECTION_DATE'
+FILTER_TYPE_EMAIL_ADDRESS = 'FILTER_TYPE_EMAIL_ADDRESS'
+FILTER_TYPE_HAS_BEEN_CONTACTED = 'FILTER_TYPE_HAS_BEEN_CONTACTED'
+FILTER_TYPE_HAS_CLAIMED_POLITICIAN = 'FILTER_TYPE_HAS_CLAIMED_POLITICIAN'
+FILTER_TYPE_HAS_OPENED = 'FILTER_TYPE_HAS_OPENED'
+FILTER_TYPE_HAS_SIGNED_IN = 'FILTER_TYPE_HAS_SIGNED_IN'
+FILTER_TYPE_PHONE_NUMBER = 'FILTER_TYPE_PHONE_NUMBER'
+FILTER_TYPE_POLITICAL_PARTY = 'FILTER_TYPE_POLITICAL_PARTY'
+FILTER_TYPE_STATE_CODE = 'FILTER_TYPE_STATE_CODE'
+AUDIENCE_FILTER_TYPE_CHOICES = (
+    (FILTER_TYPE_AUDIENCE_TYPE,  'Audience type'),
+    (FILTER_TYPE_ELECTION_DATE, 'Election date'),
+    (FILTER_TYPE_EMAIL_ADDRESS, 'Email address'),
+    (FILTER_TYPE_HAS_BEEN_CONTACTED, 'Has been contacted'),
+    (FILTER_TYPE_HAS_CLAIMED_POLITICIAN, 'Has claimed profile'),
+    (FILTER_TYPE_HAS_OPENED, 'Has opened'),
+    (FILTER_TYPE_HAS_SIGNED_IN, 'Has signed in'),
+    (FILTER_TYPE_PHONE_NUMBER, 'Phone number'),
+    (FILTER_TYPE_POLITICAL_PARTY, 'Political party'),
+    (FILTER_TYPE_STATE_CODE, 'State code'),
+)
+AUDIENCE_TYPE_IS = 'AUDIENCE_TYPE_IS'
+AUDIENCE_TYPE_IS_NOT = 'AUDIENCE_TYPE_IS_NOT'
+AUDIENCE_TYPE_MODIFIER_CHOICES = (
+    (AUDIENCE_TYPE_IS, 'is'),
+    (AUDIENCE_TYPE_IS_NOT, 'is not'),
+)
+ELECTION_IS_AFTER = 'ELECTION_IS_AFTER'
+ELECTION_IS_BEFORE = 'ELECTION_IS_BEFORE'
+ELECTION_IS_ON = 'ELECTION_IS_ON'
+ELECTION_IS_ON_OR_AFTER = 'ELECTION_IS_ON_OR_AFTER'
+ELECTION_IS_ON_OR_BEFORE = 'ELECTION_IS_ON_OR_BEFORE'
+ELECTION_MODIFIER_CHOICES = (
+    (ELECTION_IS_AFTER, 'is after'),
+    (ELECTION_IS_BEFORE, 'is before'),
+    (ELECTION_IS_ON, 'is on'),
+    (ELECTION_IS_ON_OR_AFTER, 'is on or after'),
+    (ELECTION_IS_ON_OR_BEFORE, 'is on or before'),
+)
+EMAIL_ADDRESS_CONTAINS = 'EMAIL_ADDRESS_CONTAINS'
+EMAIL_ADDRESS_EXISTS = 'EMAIL_ADDRESS_EXISTS'
+EMAIL_ADDRESS_IS_MISSING = 'EMAIL_ADDRESS_IS_MISSING'
+EMAIL_ADDRESS_MODIFIER_CHOICES = (
+    (EMAIL_ADDRESS_CONTAINS, 'contains'),
+    (EMAIL_ADDRESS_EXISTS, 'exists'),
+    (EMAIL_ADDRESS_IS_MISSING, 'is missing'),
+)
+HAS_BEEN_CONTACTED_AT_LEAST_ONCE = 'HAS_BEEN_CONTACTED_AT_LEAST_ONCE'
+HAS_BEEN_CONTACTED_LAST_DAY = 'HAS_BEEN_CONTACTED_LAST_DAY'
+HAS_BEEN_CONTACTED_LAST_3_DAYS = 'HAS_BEEN_CONTACTED_LAST_3_DAYS'
+HAS_BEEN_CONTACTED_LAST_WEEK = 'HAS_BEEN_CONTACTED_LAST_WEEK'
+HAS_BEEN_CONTACTED_LAST_MONTH = 'HAS_BEEN_CONTACTED_LAST_MONTH'
+HAS_BEEN_CONTACTED_LAST_YEAR = 'HAS_BEEN_CONTACTED_LAST_YEAR'
+HAS_BEEN_CONTACTED_NEVER = 'HAS_BEEN_CONTACTED_NEVER'
+HAS_BEEN_CONTACTED_MODIFIER_CHOICES = (
+    (HAS_BEEN_CONTACTED_AT_LEAST_ONCE, 'at least once'),
+    (HAS_BEEN_CONTACTED_LAST_DAY, 'in last day'),
+    (HAS_BEEN_CONTACTED_LAST_3_DAYS, 'in last 3 days'),
+    (HAS_BEEN_CONTACTED_LAST_WEEK, 'in last week'),
+    (HAS_BEEN_CONTACTED_LAST_MONTH, 'in last month'),
+    (HAS_BEEN_CONTACTED_LAST_YEAR, 'in last year'),
+    (HAS_BEEN_CONTACTED_NEVER, 'never'),
+)
+HAS_CLAIMED_POLITICIAN_AT_LEAST_ONCE = 'HAS_CLAIMED_POLITICIAN_AT_LEAST_ONCE'
+HAS_CLAIMED_POLITICIAN_LAST_DAY = 'HAS_CLAIMED_POLITICIAN_LAST_DAY'
+HAS_CLAIMED_POLITICIAN_LAST_3_DAYS = 'HAS_CLAIMED_POLITICIAN_LAST_3_DAYS'
+HAS_CLAIMED_POLITICIAN_LAST_WEEK = 'HAS_CLAIMED_POLITICIAN_LAST_WEEK'
+HAS_CLAIMED_POLITICIAN_LAST_MONTH = 'HAS_CLAIMED_POLITICIAN_LAST_MONTH'
+HAS_CLAIMED_POLITICIAN_LAST_YEAR = 'HAS_CLAIMED_POLITICIAN_LAST_YEAR'
+HAS_CLAIMED_POLITICIAN_NEVER = 'HAS_CLAIMED_POLITICIAN_NEVER'
+HAS_CLAIMED_POLITICIAN_MODIFIER_CHOICES = (
+    (HAS_CLAIMED_POLITICIAN_AT_LEAST_ONCE, 'at least once'),
+    (HAS_CLAIMED_POLITICIAN_LAST_DAY, 'in last day'),
+    (HAS_CLAIMED_POLITICIAN_LAST_3_DAYS, 'in last 3 days'),
+    (HAS_CLAIMED_POLITICIAN_LAST_WEEK, 'in last week'),
+    (HAS_CLAIMED_POLITICIAN_LAST_MONTH, 'in last month'),
+    (HAS_CLAIMED_POLITICIAN_LAST_YEAR, 'in last year'),
+    (HAS_CLAIMED_POLITICIAN_NEVER, 'never'),
+)
+# Has Opened Email Campaign filters
+HAS_OPENED_ANY = 'HAS_OPENED_ANY'
+HAS_OPENED_ALL = 'HAS_OPENED_ALL'
+HAS_NOT_OPENED_ANY = 'HAS_NOT_OPENED_ANY'
+HAS_NOT_OPENED_AT_LEAST_ONE = 'HAS_NOT_OPENED_AT_LEAST_ONE'
+HAS_OPENED_MODIFIER_CHOICES = (
+    (HAS_OPENED_ANY, 'any'),
+    (HAS_OPENED_ALL, 'all'),
+    (HAS_NOT_OPENED_ANY, 'none'),
+    (HAS_NOT_OPENED_AT_LEAST_ONE, 'not all (missed at least one)'),
+)
+HAS_SIGNED_IN_AT_LEAST_ONCE = 'HAS_SIGNED_IN_AT_LEAST_ONCE'
+HAS_SIGNED_IN_LAST_DAY = 'HAS_SIGNED_IN_LAST_DAY'
+HAS_SIGNED_IN_LAST_3_DAYS = 'HAS_SIGNED_IN_LAST_3_DAYS'
+HAS_SIGNED_IN_LAST_WEEK = 'HAS_SIGNED_IN_LAST_WEEK'
+HAS_SIGNED_IN_LAST_MONTH = 'HAS_SIGNED_IN_LAST_MONTH'
+HAS_SIGNED_IN_LAST_YEAR = 'HAS_SIGNED_IN_LAST_YEAR'
+HAS_SIGNED_IN_NEVER = 'HAS_SIGNED_IN_NEVER'
+HAS_SIGNED_IN_MODIFIER_CHOICES = (
+    (HAS_SIGNED_IN_AT_LEAST_ONCE, 'at least once'),
+    (HAS_SIGNED_IN_LAST_DAY, 'in last day'),
+    (HAS_SIGNED_IN_LAST_3_DAYS, 'in last 3 days'),
+    (HAS_SIGNED_IN_LAST_WEEK, 'in last week'),
+    (HAS_SIGNED_IN_LAST_MONTH, 'in last month'),
+    (HAS_SIGNED_IN_LAST_YEAR, 'in last year'),
+    (HAS_SIGNED_IN_NEVER, 'never'),
+)
+OPERATOR_AND = 'AND'
+OPERATOR_EXCLUDE = 'EXCLUDE'  # Always exclude
+OPERATOR_INCLUDE = 'INCLUDE'  # Always include
+OPERATOR_OR = 'OR'
+AUDIENCE_OPERATOR_CHOICES = (
+    (OPERATOR_AND,  'AND'),
+    (OPERATOR_EXCLUDE, 'EXCLUDE'),
+    (OPERATOR_INCLUDE, 'INCLUDE'),
+    (OPERATOR_OR, 'OR'),
+)
+PHONE_NUMBER_CONTAINS = 'PHONE_NUMBER_CONTAINS'
+PHONE_NUMBER_EXISTS = 'PHONE_NUMBER_EXISTS'
+PHONE_NUMBER_IS_MISSING = 'PHONE_NUMBER_IS_MISSING'
+PHONE_NUMBER_MODIFIER_CHOICES = (
+    (PHONE_NUMBER_CONTAINS, 'contains area code'),
+    (PHONE_NUMBER_EXISTS, 'exists'),
+    (PHONE_NUMBER_IS_MISSING, 'is missing'),
+)
+STATE_IS = 'STATE_IS'
+STATE_IS_NOT = 'STATE_IS_NOT'
+STATE_MODIFIER_CHOICES = (
+    (STATE_IS, 'is'),
+    (STATE_IS_NOT, 'is not'),
+)
 
 CAMPAIGNX_NEWS_ITEM_TEMPLATE = 'CAMPAIGNX_NEWS_ITEM_TEMPLATE'
 CAMPAIGNX_FRIEND_HAS_SUPPORTED_TEMPLATE = 'CAMPAIGNX_FRIEND_HAS_SUPPORTED_TEMPLATE'
@@ -63,6 +197,7 @@ SEND_STATUS_CHOICES = (
 )
 
 EMAIL_SECRET_KEY_LENGTH = 12
+OPEN_TRACKING_CODE_LENGTH = 16
 SUBSCRIPTION_SECRET_KEY_LENGTH = 48
 
 SENDGRID_API_KEY = get_environment_variable("SENDGRID_API_KEY", no_exception=True)
@@ -106,10 +241,141 @@ CUSTOMIZATION_TOKEN_CONVERSION_FROM_JAZZ_HR = {
 }
 
 
+# Linking structure:
+# AudienceBuilder -> AudienceFilterChain(s) -> AudienceFilter(s)
+# Even if only one AudienceFilter used, always link to AudienceFilterChain so we
+class AudienceBuilder(models.Model):
+    """
+    Django model representing a template for defining bulk email/text/notification recipients.
+    """
+    archived = models.BooleanField(default=False)
+    audience_builder_folder_id = models.PositiveIntegerField(default=None, null=True)
+    audience_builder_name = models.CharField(db_index=True, max_length=255, null=True)
+    audience_filter_chain1_id = models.PositiveIntegerField(default=None, null=True)
+    audience_filter_chain2_id = models.PositiveIntegerField(default=None, null=True)
+    audience_filter_chain3_id = models.PositiveIntegerField(default=None, null=True)
+    audience_filter_chain4_id = models.PositiveIntegerField(default=None, null=True)
+    audience_filter_chain5_id = models.PositiveIntegerField(default=None, null=True)
+    audience_filter_chain6_id = models.PositiveIntegerField(default=None, null=True)
+    audience_filter_chain7_id = models.PositiveIntegerField(default=None, null=True)
+    audience_filter_chain8_id = models.PositiveIntegerField(default=None, null=True)
+    audience_filter_chain9_id = models.PositiveIntegerField(default=None, null=True)
+    # When we chain AudienceBuilder, parent_template_operator is: 'AND', 'EXCLUDE' or 'OR'
+    chain1_to_chain2_operator = models.CharField(
+        choices=AUDIENCE_OPERATOR_CHOICES, default=None, max_length=8, null=True)
+    chain2_to_chain3_operator = models.CharField(
+        choices=AUDIENCE_OPERATOR_CHOICES, default=None, max_length=8, null=True)
+    chain3_to_chain4_operator = models.CharField(
+        choices=AUDIENCE_OPERATOR_CHOICES, default=None, max_length=8, null=True)
+    chain4_to_chain5_operator = models.CharField(
+        choices=AUDIENCE_OPERATOR_CHOICES, default=None, max_length=8, null=True)
+    chain5_to_chain6_operator = models.CharField(
+        choices=AUDIENCE_OPERATOR_CHOICES, default=None, max_length=8, null=True)
+    chain6_to_chain7_operator = models.CharField(
+        choices=AUDIENCE_OPERATOR_CHOICES, default=None, max_length=8, null=True)
+    chain7_to_chain8_operator = models.CharField(
+        choices=AUDIENCE_OPERATOR_CHOICES, default=None, max_length=8, null=True)
+    chain8_to_chain9_operator = models.CharField(
+        choices=AUDIENCE_OPERATOR_CHOICES, default=None, max_length=8, null=True)
+    deleted = models.BooleanField(default=False)
+
+
+class AudienceBuilderFolder(models.Model):
+    """
+    A folder where we organize AudienceBuilders.
+    """
+    audience_builder_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
+    archived = models.BooleanField(default=False)
+    deleted = models.BooleanField(default=False)
+
+
+class AudienceBuilderLink(models.Model):
+    """
+    How we link AudienceBuilder to an EmailCampaign
+    That is, we describe who a bulk email message will be sent to in the AudienceBuilder, and then attach
+    these rules to an EmailCampaign.
+    """
+    email_campaign_id = models.PositiveIntegerField(default=0, null=True)
+    audience_builder_id = models.PositiveIntegerField(default=0, null=True)
+
+
+class AudienceFilter(models.Model):
+    audience_builder_id = models.PositiveIntegerField(default=None, null=True)
+    audience_filter_type = models.CharField(
+        max_length=50, choices=AUDIENCE_FILTER_TYPE_CHOICES, default=None, null=True)
+    audience_type_candidate = models.BooleanField(default=False)
+    audience_type_modifier = models.CharField(
+        max_length=20, choices=AUDIENCE_TYPE_MODIFIER_CHOICES, default=None, null=True)
+    audience_type_organization = models.BooleanField(default=False)
+    audience_type_politician = models.BooleanField(default=False)
+    audience_type_voter = models.BooleanField(default=False)
+    boolean_party_green = models.BooleanField(default=False)
+    boolean_party_democrat = models.BooleanField(default=False)
+    boolean_party_republican = models.BooleanField(default=False)
+    boolean_party_independent = models.BooleanField(default=False)
+    boolean_party_no_preference = models.BooleanField(default=False)
+    boolean_party_working_families = models.BooleanField(default=False)
+    election_modifier = models.CharField(
+        max_length=24, choices=ELECTION_MODIFIER_CHOICES, default=None, null=True)
+    email_address_contains_list = models.CharField(default=None, max_length=255, null=True)
+    email_address_modifier = models.CharField(
+        max_length=24, choices=EMAIL_ADDRESS_MODIFIER_CHOICES, default=None, null=True)
+    email_campaign_id_list = models.CharField(default=None, max_length=255, null=True)
+    google_civic_election_id = models.PositiveIntegerField(default=None, null=True)
+    has_been_contacted_modifier = models.CharField(
+        max_length=32, choices=HAS_BEEN_CONTACTED_MODIFIER_CHOICES, default=None, null=True)
+    has_claimed_politician_modifier = models.CharField(
+        max_length=36, choices=HAS_CLAIMED_POLITICIAN_MODIFIER_CHOICES, default=None, null=True)
+    has_opened_list = models.CharField(default=None, max_length=255, null=True)
+    has_opened_modifier = models.CharField(
+        max_length=27, choices=HAS_OPENED_MODIFIER_CHOICES, default=None, null=True)
+    has_signed_in_modifier = models.CharField(
+        max_length=30, choices=HAS_SIGNED_IN_MODIFIER_CHOICES, default=None, null=True)
+    phone_number_modifier = models.CharField(
+        max_length=23, choices=PHONE_NUMBER_MODIFIER_CHOICES, default=None, null=True)
+    state_code_list = models.CharField(default=None, max_length=255, null=True)
+    state_modifier = models.CharField(
+        max_length=12, choices=STATE_MODIFIER_CHOICES, default=None, null=True)
+
+
+class AudienceFilterChain(models.Model):
+    # When we chain AudienceFilters, chain_operator is: 'AND', 'EXCLUDE' or 'OR'
+    audience_builder_id = models.PositiveIntegerField(default=None, null=True)
+    # I think we may be able to delete chain_operator
+    chain_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=OPERATOR_AND)
+    filter1_id = models.PositiveIntegerField(default=None, null=True)
+    filter2_id = models.PositiveIntegerField(default=None, null=True)
+    filter3_id = models.PositiveIntegerField(default=None, null=True)
+    filter4_id = models.PositiveIntegerField(default=None, null=True)
+    filter5_id = models.PositiveIntegerField(default=None, null=True)
+    filter6_id = models.PositiveIntegerField(default=None, null=True)
+    filter7_id = models.PositiveIntegerField(default=None, null=True)
+    filter8_id = models.PositiveIntegerField(default=None, null=True)
+    filter9_id = models.PositiveIntegerField(default=None, null=True)
+    filter1_to_filter2_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter2_to_filter3_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter3_to_filter4_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter4_to_filter5_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter5_to_filter6_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter6_to_filter7_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter7_to_filter8_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+    filter8_to_filter9_operator = models.CharField(
+        max_length=24, choices=AUDIENCE_OPERATOR_CHOICES, default=None, null=True)
+
+
 class EmailCampaign(models.Model):
     """
     An email campaign that we assemble, and then send
     """
+    date_last_updated = models.DateTimeField(auto_now=True, db_index=True)
     deleted = models.BooleanField(default=False)
     email_body_template_raw = models.TextField(null=True, blank=True)  # We keep a copy for history
     email_campaign_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
@@ -122,7 +388,7 @@ class EmailCampaign(models.Model):
     is_for_staff = models.BooleanField(default=False)
     is_for_voter = models.BooleanField(default=False)
     reply_to_email = models.TextField(null=True, blank=True)
-    scheduled_by_voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
+    scheduled_by_voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
     scheduled_send_time = models.DateTimeField(null=True, blank=True)
     voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
 
@@ -160,7 +426,7 @@ class EmailCampaignRecipient(models.Model):
     manually_added = models.BooleanField(default=False)
     office_url = models.TextField(null=True, blank=True)
     office_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
-    open_tracking_code = models.CharField(max_length=255, default=None, null=True, db_index=True)
+    open_tracking_code = models.CharField(max_length=255, default=None, null=True,  unique=True, db_index=True)
     open_tracking_count = models.PositiveIntegerField(default=0, null=False)
     open_tracking_first_open = models.DateTimeField(null=True)
     open_tracking_last_open = models.DateTimeField(null=True)
@@ -187,6 +453,25 @@ class EmailCampaignRecipient(models.Model):
     sender_voter_we_vote_id = models.CharField(max_length=255, null=True)
     supporters_count = models.PositiveIntegerField(default=0, null=False)
     voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
+
+    # Generate an open tracking code for the recipient
+    @staticmethod
+    def generate_open_tracking_code(email_campaign_recipient):
+        # If the recipient does not exist, or does not have an open tracking code, return an empty string
+        if not email_campaign_recipient or not hasattr(email_campaign_recipient, "open_tracking_code"):
+            return ""
+        if positive_value_exists(email_campaign_recipient.open_tracking_code):
+            return email_campaign_recipient.open_tracking_code
+        # Try 5 times to generate a unique open tracking code
+        for _ in range(5):
+            email_campaign_recipient.open_tracking_code = generate_random_string(OPEN_TRACKING_CODE_LENGTH)
+            try:
+                email_campaign_recipient.save(update_fields=["open_tracking_code"])
+                return email_campaign_recipient.open_tracking_code
+            except IntegrityError:
+                pass
+        # If we fail to generate a unique open tracking code, return an empty string
+        return ""
 
 
 class EmailAddress(models.Model):
@@ -1516,58 +1801,6 @@ class EmailTemplateFolder(models.Model):
     email_template_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
     archived = models.BooleanField(default=False)
     deleted = models.BooleanField(default=False)
-
-
-class EmailAudienceBuilderFolder(models.Model):
-    """
-    A folder where we organize AudienceBuilders.
-    """
-    audience_builder_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
-    archived = models.BooleanField(default=False)
-    deleted = models.BooleanField(default=False)
-
-
-class EmailAudienceBuilderLink(models.Model):
-    """
-    How we link EmailAudienceBuilder to an EmailCampaign
-    That is, we describe who a bulk email message will be sent to in the EmailAudienceBuilder, and then attach
-    these rules to an EmailCampaign.
-    """
-    email_campaign_id = models.PositiveIntegerField(default=0, null=True)
-    audience_builder_id = models.PositiveIntegerField(default=0, null=True)
-
-
-class EmailAudienceBuilder(models.Model):
-    """
-    Django model representing a template for defining bulk email recipients.
-
-    This model stores templates with search criteria used to create lists of email recipients
-    for bulk messaging campaigns.
-    """
-    archived = models.BooleanField(default=False)
-    deleted = models.BooleanField(default=False)
-    has_email = models.BooleanField(default=None, null=True)
-    has_no_email = models.BooleanField(default=None, null=True)
-    has_no_sms = models.BooleanField(default=None, null=True)
-    has_sms = models.BooleanField(default=None, null=True)
-    include_candidates_from_prior_elections = models.BooleanField(default=None, null=True)
-    is_candidate = models.BooleanField(default=None, null=True)
-    is_organization = models.BooleanField(default=None, null=True)
-    is_politician = models.BooleanField(default=None, null=True)
-    is_voter = models.BooleanField(default=None, null=True)
-    # When we chain EmailAudienceBuilder, parent_template_operator is: 'AND', 'EXCLUDE' or 'OR'
-    parent_template_operator = models.CharField(db_index=True, max_length=16, null=True)
-    # We can chain multiple EmailAudienceBuilder together to create a more complex rule set
-    parent_audience_builder_id = models.PositiveIntegerField(default=0, null=True)
-    audience_builder_folder_id = models.PositiveIntegerField(default=0, null=True)
-    audience_builder_name = models.CharField(db_index=True, max_length=255, null=True)
-    search_google_civic_election_id = models.PositiveIntegerField(default=0, null=True)
-    search_term_candidate = models.CharField(max_length=255, null=True)
-    search_term_organization = models.CharField(max_length=255, null=True)
-    search_term_politician = models.CharField(max_length=255, null=True)
-    search_term_political_party = models.CharField(max_length=255, null=True)
-    search_term_state_code = models.CharField(max_length=255, null=True)
-
 
 
 def update_friend_invitation_email_link_with_new_email(deleted_email_we_vote_id, updated_email_we_vote_id):

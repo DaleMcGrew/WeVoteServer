@@ -1,0 +1,534 @@
+// Saved Audiences Drawer JavaScript
+
+// Store event handlers so we can remove them later
+let currentMouseMoveHandler = null;
+let currentMouseUpHandler = null;
+
+
+function clearAllAudienceTypes(filterId) {
+    const checkboxes = document.querySelectorAll(`
+        input[name="audience_type_candidate_${filterId}"],
+        input[name="audience_type_organization_${filterId}"],
+        input[name="audience_type_politician_${filterId}"],
+        input[name="audience_type_voter_${filterId}"]
+    `);
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateAudienceTypeButtonText(filterId);
+}
+
+function clearAllHasOpened(filterId) {
+    const checkboxes = document.querySelectorAll(`
+        input[name="has_opened_${filterId}[]"]:checked
+    `);
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateHasOpenedButtonText(filterId);
+}
+
+function clearAllStateCodes(filterId) {
+    const checkboxes = document.querySelectorAll(`
+        input[name="state_code_${filterId}[]"]:checked
+    `);
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateStateCodeButtonText(filterId);
+}
+
+function updateAudienceTypeButtonText(filterId) {
+    const checkboxes = document.querySelectorAll(`
+        input[name="audience_type_candidate_${filterId}"]:checked,
+        input[name="audience_type_organization_${filterId}"]:checked,
+        input[name="audience_type_politician_${filterId}"]:checked,
+        input[name="audience_type_voter_${filterId}"]:checked
+    `);
+    const button = document.getElementById('audience-type-button-' + filterId);
+
+    if (checkboxes.length === 0) {
+        button.textContent = 'Select types';
+    } else {
+        const labels = Array.from(checkboxes).map(checkbox => checkbox.nextElementSibling.textContent);
+        button.textContent = labels.join(', ');
+    }
+}
+
+function updateHasOpenedButtonText(filterId) {
+    // Get all the checked state codes in has_opened_{filterId}[] and update the button text to include all of the
+    // selected campaigns
+    const checkboxes = document.querySelectorAll(`
+        input[name="has_opened_${filterId}[]"]:checked
+    `);
+    const button = document.getElementById('has-opened-button-' + filterId);
+
+    if (checkboxes.length === 0) {
+        button.textContent = '-- Select campaign(s) --';
+    } else {
+        const campaign_names = Array.from(checkboxes).map(checkbox => {
+            // Find the associated label using the checkbox's id
+            const label = document.querySelector(`label[for="${checkbox.id}"]`);
+            return label ? label.textContent.trim() : checkbox.value;
+        });
+        button.textContent = campaign_names.join(', ');
+    }
+}
+
+function updateStateCodeButtonText(filterId) {
+    // Get all the checked state codes in state_code_{filterId}[] and update the button text to include all of the
+    // selected states
+    const checkboxes = document.querySelectorAll(`
+        input[name="state_code_${filterId}[]"]:checked
+    `);
+    const button = document.getElementById('state-code-button-' + filterId);
+
+    if (checkboxes.length === 0) {
+        button.textContent = '-- Select state(s) --';
+    } else {
+        const state_codes = Array.from(checkboxes).map(checkbox => checkbox.value);
+        button.textContent = state_codes.join(', ');
+    }
+}
+
+// Initialize resize functionality
+function initializeResizeHandle() {
+    const resizeHandle = document.getElementById('resizeHandle');
+    const previewSection = document.getElementById('previewSection');
+    const drawerHeader = document.getElementById('drawerHeader');
+
+    if (!resizeHandle || !previewSection || !drawerHeader) {
+        console.warn('Saved Audiences Drawer: Required elements not found for resize');
+        return;
+    }
+
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    // Calculate the maximum height (stop right below the title row with buttons)
+    function getMaxHeight() {
+        const drawer = document.getElementById('savedAudiencesDrawer');
+        const drawerHeight = drawer.offsetHeight;
+
+        // Find the title row to measure where it ends
+        const titleRow = drawerHeader.querySelector('.drawer-title-row');
+        if (titleRow) {
+            const titleRowBottom = titleRow.getBoundingClientRect().bottom - drawer.getBoundingClientRect().top;
+            // Max height = drawer height - title row bottom position - small margin
+            return drawerHeight - titleRowBottom - 10;
+        }
+
+        // Fallback: use approximate title row height
+        return drawerHeight - 80;
+    }
+
+    // Remove previous event listeners if they exist
+    if (currentMouseMoveHandler) {
+        document.removeEventListener('mousemove', currentMouseMoveHandler);
+    }
+    if (currentMouseUpHandler) {
+        document.removeEventListener('mouseup', currentMouseUpHandler);
+    }
+
+    // Clone and replace the resize handle to remove all its event listeners
+    const newResizeHandle = resizeHandle.cloneNode(true);
+    resizeHandle.parentNode.replaceChild(newResizeHandle, resizeHandle);
+
+    // Mouse down on resize handle
+    newResizeHandle.addEventListener('mousedown', function(e) {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = previewSection.offsetHeight;
+
+        e.preventDefault();
+        newResizeHandle.classList.add('resizing');
+        document.body.style.cursor = 'ns-resize';
+        document.body.style.userSelect = 'none';
+    });
+
+    // Mouse move - resize preview section
+    const mouseMoveHandler = function(e) {
+        if (!isResizing) return;
+
+        // Calculate new height (inverted because section grows upward)
+        const deltaY = startY - e.clientY;
+        const newHeight = startHeight + deltaY;
+
+        // Get constraints
+        const minHeight = 60;  // Minimum collapsed height
+        const maxHeight = getMaxHeight();  // Maximum height (right below header)
+
+        // Constrain the height
+        const constrainedHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
+
+        // Apply the new height
+        previewSection.style.height = constrainedHeight + 'px';
+    };
+
+    // Mouse up - stop resizing
+    const mouseUpHandler = function() {
+        if (isResizing) {
+            isResizing = false;
+            newResizeHandle.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+    };
+
+    document.addEventListener('mousemove', mouseMoveHandler);
+    document.addEventListener('mouseup', mouseUpHandler);
+}
+
+// Open the drawer
+function openSavedAudiencesDrawer(audienceBuilderId = '') {
+    // console.log('openSavedAudiencesDrawer audience builder ID:', audienceBuilderId);
+    const audienceBuilderIdContent = document.getElementById('audience_builder_id_id');
+    const audienceBuilderNameContent = document.getElementById('audience_builder_name_id');
+    const drawer = document.getElementById('savedAudiencesDrawer');
+    const drawerContent = document.getElementById('audienceBuilderDrawerHTML');
+    const overlay = document.getElementById('savedAudiencesOverlay');
+
+    if (drawer && overlay) {
+        drawer.classList.add('open');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+
+        // Initialize resize handle after drawer is opened
+        setTimeout(() => {
+            initializeResizeHandle();
+        }, 100);
+    }
+    if (drawerContent) {
+        // Show loading state
+        drawerContent.innerHTML = '<div class="loading-spinner">Loading audience builder...</div>';
+        audienceBuilderIdContent.value = audienceBuilderId;
+        audienceBuilderNameContent.value = 'Loading...';
+
+        // Fetch the HTML from the server
+        const url = '/email/audience_builder_drawer_html' + '?audience_builder_id=' + audienceBuilderId;
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                drawerContent.innerHTML = data.html;
+                audienceBuilderNameContent.value = data.audience_builder_name;
+            } else {
+                drawerContent.innerHTML = '<div class="error-message">Error loading content: ' + data.status + '</div>';
+            }
+            initializeResizeHandle();
+        })
+        .catch(error => {
+            console.error('Error fetching audience builder HTML:', error);
+            drawerContent.innerHTML = '<div class="error-message">Failed to load audience builder. Please try again.</div>';
+        });
+    }
+}
+
+// Close the drawer
+function closeSavedAudiencesDrawer() {
+    const drawer = document.getElementById('savedAudiencesDrawer');
+    const overlay = document.getElementById('savedAudiencesOverlay');
+
+    if (drawer && overlay) {
+        drawer.classList.remove('open');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+// Handle form submission within the drawer
+function setupDrawerFormSubmission() {
+    const form = document.getElementById('audience-builder-form');
+    if (form) {
+        console.log('setupDrawerFormSubmission, form FOUND');
+    } else {
+        console.log('setupDrawerFormSubmission, form NOT found');
+    }
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const formData = new FormData(form);
+            const drawerContent = document.getElementById('audienceBuilderDrawerHTML');
+
+            // Show loading state
+            if (drawerContent) {
+                drawerContent.innerHTML = '<div class="loading-spinner">Saving and reloading...</div>';
+            }
+
+            // Submit form via fetch
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Update the drawer content with the returned HTML
+                    if (drawerContent && data.html) {
+                        drawerContent.innerHTML = data.html;
+                        initializeResizeHandle();
+                    }
+
+                    // Show success message if provided
+                    if (data.message) {
+                        showDrawerMessage(data.message, 'success');
+                    }
+                } else {
+                    // Show error message
+                    if (drawerContent) {
+                        drawerContent.innerHTML = '<div class="error-message">Error: ' + (data.status || 'Unknown error') + '</div>';
+                    }
+                    if (data.message) {
+                        showDrawerMessage(data.message, 'error');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting form:', error);
+                if (drawerContent) {
+                    drawerContent.innerHTML = '<div class="error-message">Failed to save. Please try again.</div>';
+                }
+                showDrawerMessage('Failed to save audience builder', 'error');
+            });
+        });
+    }
+}
+
+// Helper function to show messages in the drawer
+function showDrawerMessage(message, type) {
+    const header = document.getElementById('drawerHeader');
+    if (header) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `drawer-message drawer-message-${type}`;
+        messageDiv.textContent = message;
+        header.appendChild(messageDiv);
+
+        // Remove message after 5 seconds
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 5000);
+    }
+}
+
+function submitAddDeleteButtonFromDrawer(buttonElement) {
+    const form = document.getElementById('audience-builder-form');
+    if (form) {
+        const formData = new FormData(form);
+
+        // Add the button's name and value to the form data
+        const buttonName = buttonElement.getAttribute('data-name');
+        const buttonValue = buttonElement.getAttribute('data-value');
+        formData.append(buttonName, buttonValue);
+
+        const drawerContent = document.getElementById('audienceBuilderDrawerHTML');
+
+        // Show loading state
+        if (drawerContent) {
+            drawerContent.innerHTML = '<div class="loading-spinner">Saving and reloading...</div>';
+        }
+
+        // Submit form via fetch
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Update the drawer content with the returned HTML
+                if (drawerContent && data.html) {
+                    drawerContent.innerHTML = data.html;
+                    initializeResizeHandle();
+                }
+
+                // Show success message if provided
+                if (data.message) {
+                    showDrawerMessage(data.message, 'success');
+                }
+            } else {
+                // Show error message
+                if (drawerContent) {
+                    drawerContent.innerHTML = '<div class="error-message">Error: ' + (data.status || 'Unknown error') + '</div>';
+                }
+                if (data.message) {
+                    showDrawerMessage(data.message, 'error');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting form:', error);
+            if (drawerContent) {
+                drawerContent.innerHTML = '<div class="error-message">Failed to save. Please try again.</div>';
+            }
+            showDrawerMessage('Failed to save audience builder', 'error');
+        });
+    }
+}
+
+// For choosing from among all of the Filter types: Audience type, Election date, Political party, etc.
+function toggleAudienceFilterType(selectElement, filterId) {
+    const audienceTypeOptions = document.getElementById('audience-type-options-' + filterId);
+    const electionDateOptions = document.getElementById('election-date-options-' + filterId);
+    const emailAddressOptions = document.getElementById('email-address-options-' + filterId);
+    const hasBeenContactedOptions = document.getElementById('has-been-contacted-options-' + filterId);
+    const hasClaimedPoliticianOptions = document.getElementById('has-claimed-politician-options-' + filterId);
+    const hasOpenedOptions = document.getElementById('has-opened-options-' + filterId);
+    const hasSignedInOptions = document.getElementById('has-signed-in-options-' + filterId);
+    const phoneNumberOptions = document.getElementById('phone-number-options-' + filterId);
+    const politicalPartyOptions = document.getElementById('political-party-options-' + filterId);
+    const stateCodeOptions = document.getElementById('state-code-options-' + filterId);
+
+    // Hide all options first
+    if (audienceTypeOptions) audienceTypeOptions.style.display = 'none';
+    if (electionDateOptions) electionDateOptions.style.display = 'none';
+    if (emailAddressOptions) emailAddressOptions.style.display = 'none';
+    if (hasBeenContactedOptions) hasBeenContactedOptions.style.display = 'none';
+    if (hasClaimedPoliticianOptions) hasClaimedPoliticianOptions.style.display = 'none';
+    if (hasOpenedOptions) hasOpenedOptions.style.display = 'none';
+    if (hasSignedInOptions) hasSignedInOptions.style.display = 'none';
+    if (phoneNumberOptions) phoneNumberOptions.style.display = 'none';
+    if (politicalPartyOptions) politicalPartyOptions.style.display = 'none';
+    if (stateCodeOptions) stateCodeOptions.style.display = 'none';
+
+    // Show the selected option
+    if (selectElement.value === 'FILTER_TYPE_AUDIENCE_TYPE') {
+        if (audienceTypeOptions) audienceTypeOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_ELECTION_DATE') {
+        if (electionDateOptions) electionDateOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_EMAIL_ADDRESS') {
+        if (emailAddressOptions) emailAddressOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_HAS_BEEN_CONTACTED') {
+        if (hasBeenContactedOptions) hasBeenContactedOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_HAS_CLAIMED_POLITICIAN') {
+        if (hasClaimedPoliticianOptions) hasClaimedPoliticianOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_HAS_OPENED') {
+        if (hasOpenedOptions) hasOpenedOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_HAS_SIGNED_IN') {
+        if (hasSignedInOptions) hasSignedInOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_PHONE_NUMBER') {
+        if (phoneNumberOptions) phoneNumberOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_POLITICAL_PARTY') {
+        if (politicalPartyOptions) politicalPartyOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_STATE_CODE') {
+        if (stateCodeOptions) stateCodeOptions.style.display = 'flex';
+    }
+}
+
+function toggleDropdown(filterId, elementPrefix) {
+    const dropdown = document.getElementById(elementPrefix + filterId);
+    dropdown.classList.toggle('show');
+}
+
+function updateElectionDateButtonText(filterId, electionText, electionId) {
+    const button = document.getElementById('election-date-button-' + filterId);
+    const label = document.getElementById('election-date-label-' + filterId + '-' + electionId);
+    button.textContent = electionText;
+    // Reset the style font-weight of all labels to normal
+    const labels = document.querySelectorAll('[id^="election-date-label-"]');
+    labels.forEach(oneLabel => {
+        oneLabel.style.fontWeight = 'normal';
+    });
+    // Update the style font-weight of label to bold if selected
+    label.style.fontWeight = 'bold';
+
+    // Close the dropdown after selection
+    const dropdown = document.getElementById('election-date-dropdown-' + filterId);
+    if (dropdown) {
+        dropdown.classList.remove('show');
+    }
+}
+
+// Initialize draggable functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Close drawer on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const drawer = document.getElementById('savedAudiencesDrawer');
+            if (drawer && drawer.classList.contains('open')) {
+                closeSavedAudiencesDrawer();
+            }
+        }
+    });
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdowns = document.querySelectorAll('.audience-type-dropdown');
+    dropdowns.forEach(dropdown => {
+        if (!dropdown.contains(event.target)) {
+            const content = dropdown.querySelector('.audience-type-dropdown-content');
+            if (content) {
+                content.classList.remove('show');
+            }
+        }
+    });
+});
+
+// ######## Listener for audience_filter_body.html ########
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdowns = document.querySelectorAll('.audience-filter-dropdown');
+    dropdowns.forEach(dropdown => {
+        if (!dropdown.contains(event.target)) {
+            const content = dropdown.querySelector('.audience-filter-dropdown-content');
+            if (content) {
+                content.classList.remove('show');
+            }
+        }
+    });
+});
+
+// Close election date dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdowns = document.querySelectorAll('[id^="election-date-dropdown-"]');
+    dropdowns.forEach(dropdown => {
+        const filterId = dropdown.id.replace('election-date-dropdown-', '');
+        const button = document.getElementById('election-date-button-' + filterId);
+        if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+});
+
+// Expose functions globally
+window.openSavedAudiencesDrawer = openSavedAudiencesDrawer;
+window.closeSavedAudiencesDrawer = closeSavedAudiencesDrawer;
+window.submitAddDeleteButtonFromDrawer = submitAddDeleteButtonFromDrawer;
+window.toggleAudienceFilterType = toggleAudienceFilterType;
+window.toggleDropdown = toggleDropdown;
+window.updateAudienceTypeButtonText = updateAudienceTypeButtonText;
+window.updateElectionDateButtonText = updateElectionDateButtonText;
+window.updateStateCodeButtonText = updateStateCodeButtonText;

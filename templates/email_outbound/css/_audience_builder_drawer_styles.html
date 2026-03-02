@@ -1,0 +1,350 @@
+/* CSS for Saved Audiences Drawer, brought in as a Django template include */
+
+/* ######## START of audience_filter_body.html styles ######## */
+.audience-filter-dropdowns-flex {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+}
+
+.audience-filter-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.audience-filter-dropdown-button {
+    background-color: white;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+    color: #212529;
+    cursor: pointer;
+    min-width: 200px;
+    text-align: left;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+}
+
+.audience-filter-dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: white;
+    min-width: 200px;
+    box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 12px;
+    z-index: 1;
+    margin-top: 4px;
+}
+
+.audience-filter-dropdown-content.show {
+    display: block;
+}
+
+/* START Audience type right-most Dropdown Options */
+.audience-filter-audience-type-option {
+    display: flex;
+    align-items: center;
+    padding: 6px 0;
+}
+
+.audience-filter-audience-type-option input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.audience-filter-audience-type-option label {
+    cursor: pointer;
+    margin-bottom: 0;
+    user-select: none;
+}
+/* END Audience type right-most Dropdown Options */
+
+
+/* START Election date right-most Dropdown Options */
+.audience-filter-election-date-option {
+    display: flex;
+    align-items: center;
+    padding: 6px 0;
+}
+
+.audience-filter-election-date-option input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.audience-filter-election-date-option label {
+    cursor: pointer;
+    margin-bottom: 0;
+    user-select: none;
+}
+/* END Election date right-most Dropdown Options */
+
+.audience-filter-clear-all-link {
+    color: #0d6efd;
+    text-decoration: none;
+    font-size: 0.875rem;
+    float: right;
+    margin-bottom: 8px;
+}
+
+.audience-filter-clear-all-link:hover {
+    text-decoration: underline;
+}
+/* ######## END of audience_filter_body.html styles ######## */
+
+/* Transparent overlay */
+.drawer-overlay {
+    position: fixed;
+    top: 52px; /* Below navbar */
+    left: 75px; /* After left sidebar */
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.25); /* Slight gray overlay for page contents */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    z-index: 1999;
+}
+
+.drawer-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Main drawer container */
+.saved-audiences-drawer {
+    position: fixed;
+    top: 52px; /* Match navbar height from template_base.html */
+    right: -85%;
+    width: 85%;
+    height: calc(100vh - 52px); /* Full height minus navbar */
+    background-color: #f8f9fa;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    transition: right 0.3s ease;
+    z-index: 2000;
+    overflow: hidden;
+}
+
+.saved-audiences-drawer.open {
+    right: 0;
+}
+
+/* Header section */
+.drawer-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 20px 32px 16px 32px;
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #ffffff;
+    z-index: 50; /* Lower z-index so preview can go over it */
+}
+
+/* Title row */
+.drawer-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.drawer-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #212121;
+    margin: 0;
+}
+
+.drawer-subtitle {
+    font-size: 14px;
+    color: #666666;
+    margin: 0;
+}
+
+.drawer-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.drawer-actions .btn {
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+/* Main content area */
+.drawer-content {
+    padding: 2px 15px;
+    position: absolute;
+    top: 110px;
+    left: 0;
+    right: 0;
+    bottom: 72px; /* Stop above collapsed preview (60px + 12px divider) */
+    overflow-y: auto;
+}
+
+.drawer-content-placeholder {
+    color: #6c757d;
+    text-align: center;
+    font-style: italic;
+}
+
+
+.drawer-message {
+    padding: 12px 16px;
+    margin-top: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    animation: slideDown 0.3s ease-out;
+}
+
+.drawer-message-success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.drawer-message-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: #64748b;
+}
+
+.error-message {
+    padding: 20px;
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-radius: 8px;
+    border: 1px solid #fca5a5;
+}
+
+.drawer-content-placeholder {
+    text-align: center;
+    padding: 40px;
+    color: #94a3b8;
+}
+
+/* Draggable divider */
+.resize-handle {
+    position: relative;
+    width: 100%;
+    height: 8px;
+    background-color: #ffffff;
+    border-top: 1.5px solid #ced4da;
+    border-bottom: 1.5px solid #ced4da;
+    cursor: ns-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    z-index: 200; /* Highest z-index to always be visible and clickable */
+}
+
+/* Just display text dots */
+.resize-handle-bar {
+    color: #adb5bd;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.resize-handle:hover .resize-handle-bar {
+    color: #6c757d;
+}
+
+.resize-handle.resizing .resize-handle-bar {
+    color: #495057;
+}
+
+/* Preview section */
+.preview-section {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 250px;
+    min-height: 60px;
+    z-index: 100; /* Above header (50) and content */
+}
+
+.preview-header {
+    padding: 20px 32px 16px 32px;
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #f8fafc;
+    flex-shrink: 0;
+}
+
+.preview-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #212121;
+    margin: 0;
+}
+
+.preview-content {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f8fafc;
+    padding: 20px 32px;
+}
+
+.preview-content-placeholder {
+    padding: 40px 20px;
+    color: #6c757d;
+    text-align: center;
+    font-style: italic;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    /* On tablets, drawer takes full width, covers sidebar */
+    .saved-audiences-drawer {
+        width: 100%;
+        right: -100%;
+    }
+
+    .drawer-overlay {
+        left: 0; /* Cover sidebar on tablets */
+    }
+}
+
+@media (max-width: 767px) {
+    /* On mobile, drawer takes full width */
+    .saved-audiences-drawer {
+        width: 100%;
+        right: -100%;
+    }
+
+    .drawer-overlay {
+        left: 0; /* Cover everything on mobile */
+    }
+
+    .drawer-header {
+        padding: 15px 20px;
+    }
+}

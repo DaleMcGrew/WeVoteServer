@@ -1,3 +1,6 @@
+# cloudwatch_logging/views_admin.py
+# Brought to you by We Vote. Be good.
+# -*- coding: UTF-8 -*-
 
 import json
 import logging
@@ -7,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from admin_tools.views import redirect_to_sign_in_page
 from voter.models import voter_has_authority
+
 
 class CloudWatchLogForm(forms.Form):
     level = forms.ChoiceField(
@@ -27,10 +31,11 @@ class CloudWatchLogForm(forms.Form):
         help_text="Optional: something like voter_id or username (avoid PII).",
     )
 
+
 @login_required
 def cloudwatch_log_form_view(request):
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
-    authority_required = {'admin'}
+    authority_required = {'verified_volunteer'}
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
 
@@ -47,15 +52,15 @@ def cloudwatch_log_form_view(request):
                 "user_context": form.cleaned_data["user_context"],
             }
             if result["level"] == "INFO":
-                logging.info("[TEST_WARNING]: " + json.dumps(result))
+                logging.info("[TEST_INFO]: " + json.dumps(result))
             elif result["level"] == "WARN":
-                logging.warning("[TEST_WARNING]: " + json.dumps(result))
+                logging.warning("[TEST_WARN]: " + json.dumps(result))
             elif result["level"] == "DEBUG":
-                logging.debug("[TEST_WARNING]: " + json.dumps(result))
+                logging.debug("[TEST_DEBUG]: " + json.dumps(result))
             elif result["level"] == "ERROR":
-                logging.error("[TEST_WARNING]: " + json.dumps(result))
+                logging.error("[TEST_ERROR]: " + json.dumps(result))
             elif result["level"] == "CRITICAL":
-                logging.critical("[TEST_WARNING]: " + json.dumps(result))
+                logging.critical("[TEST_CRITICAL]: " + json.dumps(result))
             result["success"] = True
         else:
             result = {"success": False, "error": "Form invalid", "details": form.errors}

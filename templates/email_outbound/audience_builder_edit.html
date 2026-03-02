@@ -1,0 +1,47 @@
+{# templates/email_outbound/audience_builder_edit.html #}
+{% extends "template_base.html" %}
+
+{% load static %}
+
+{% block title %}Audience Builder Edit{% endblock %}
+
+{% block content %}
+{% load template_filters %}
+{% load humanize %}
+{% include "admin_tools/loading_banner.html" %}
+
+<a href="{% url 'email_outbound:audience_builder_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+    &lt; Back to List
+</a>
+
+<div class="container mt-5 p-4 bg-white rounded shadow-sm border" style="max-width: 800px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>THIS PAGE NOW DEPRECATED - PLEASE USE DRAWER</h1>
+    <h4 class="mb-0">
+      {% if audience_builder_id %}Audience Builder{% else %}New Audience Builder{% endif %}
+    </h4>
+    <div>
+      <a href="{% url 'email_outbound:email_template_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}" class="btn btn-outline-secondary me-2">Cancel</a>
+      <button type="submit" form="audience-builder-form" class="btn btn-primary">Save</button>
+    </div>
+  </div>
+
+  <form id="audience-builder-form-OLD" method="post" action="{% url 'email_outbound:audience_builder_edit_process' %}">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label for="audience_builder_name_id" class="form-label">Name <span class="text-danger">*</span></label>
+        <input type="text" id="audience_builder_name_id" name="audience_builder_name" class="form-control" value="{% if audience_builder %}{{ audience_builder.audience_builder_name }}{% else %}{{ audience_builder_name }}{% endif %}" required>
+    </div>
+
+    {{ audience_builder_html|safe }}
+
+    <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
+    <input type="hidden" name="state_code" value="{{ state_code }}">
+    <input type="hidden" name="audience_builder_id" value="{% if audience_builder_id %}{{ audience_builder_id }}{% endif %}">
+    <input type="hidden" name="selected_folder_id" value="{{ selected_folder_id }}">
+  </form>
+</div>
+
+{% load static %}
+{% endblock %}

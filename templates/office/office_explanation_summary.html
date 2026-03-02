@@ -11,6 +11,12 @@
 
     <h1>{{ office_explanation.office_explanation_name }}</h1>
     <div>
+        <strong>WeVote ID:</strong>
+        {% if office_explanation.we_vote_id %}
+        {{ office_explanation.we_vote_id }}
+        {% endif %}
+    </div>
+    <div>
         <strong>State Code:</strong>
         {% if office_explanation.state_code %}
         {{ office_explanation.state_code }}
@@ -19,20 +25,20 @@
     <p>{{ office_explanation.office_explanation|default_if_none:"" }}</p>
     <div>
         <strong>Horizontal Video URL:</strong>
-        {% if office_explanation.horizontal_video_url %}
-        {{ office_explanation.horizontal_video_url }}
+        {% if office_explanation.video_url_horizontal %}
+        {{ office_explanation.video_url_horizontal }}
         {% endif %}
     </div>
     <div>
         <strong>Square Video URL:</strong>
-        {% if office_explanation.square_video_url %}
-        {{ office_explanation.square_video_url }}
+        {% if office_explanation.video_url_square %}
+        {{ office_explanation.video_url_square }}
         {% endif %}
     </div>
     <div>
         <strong>Vertical Video URL:</strong>
-        {% if office_explanation.vertical_video_url %}
-        {{ office_explanation.vertical_video_url }}
+        {% if office_explanation.video_url_vertical %}
+        {{ office_explanation.video_url_vertical }}
         {% endif %}
     </div>
     <div>
@@ -50,5 +56,149 @@
     <h1>No Office Explanation Found</h1>
     <p>The requested office explanation was not found.</p>
 {% endif %}
+
+{# --- Video Preview (defaults to horizontal) --- #}
+<div class="form-group">
+  <label class="col-sm-3 control-label">Video Preview</label>
+  <div class="col-sm-8">
+    <div style="border:1px solid #ddd; padding:10px; border-radius:4px;">
+      <div style="margin-bottom:8px; font-size:.9em;">
+        Previewing:
+        <button type="button" class="btn btn-default btn-xs" id="preview_horizontal_btn">Horizontal</button>
+        <button type="button" class="btn btn-default btn-xs" id="preview_square_btn">Square</button>
+        <button type="button" class="btn btn-default btn-xs" id="preview_vertical_btn">Vertical</button>
+      </div>
+
+      <div id="video_preview_wrapper" style="width:100%; max-width:720px;">
+        <div id="video_preview_aspect" style="position:relative; width:100%; padding-top:56.25%;">
+          <iframe
+            id="video_preview_iframe"
+            src=""
+            referrerpolicy="origin-when-cross-origin"
+            style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        </div>
+
+        <div id="video_preview_empty" style="display:none; padding:10px; color:#666; font-size:.9em;">
+          Enter a video URL above to see a preview.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+
+    // Get URLS from the page
+    const horizontalURL = "{{ office_explanation.video_url_horizontal|escapejs }}";
+    const squareURL     = "{{ office_explanation.video_url_square|escapejs }}";
+    const verticalURL   = "{{ office_explanation.video_url_vertical|escapejs }}";
+
+    // Preview elements
+    const iframe   = document.getElementById('video_preview_iframe');
+    const emptyMsg = document.getElementById('video_preview_empty');
+    const aspectBox = document.getElementById('video_preview_aspect');
+
+    // Buttons
+    const btnH = document.getElementById('preview_horizontal_btn');
+    const btnS = document.getElementById('preview_square_btn');
+    const btnV = document.getElementById('preview_vertical_btn');
+
+    // Keep track of selected source (default horizontal)
+    let active = 'horizontal';
+
+    function setActiveButton() {
+      // Simple visual cue without needing extra CSS
+      [btnH, btnS, btnV].forEach(b => b.classList.remove('btn-primary'));
+      [btnH, btnS, btnV].forEach(b => b.classList.add('btn-default'));
+
+      if (active === 'horizontal') btnH.classList.add('btn-primary');
+      if (active === 'square')     btnS.classList.add('btn-primary');
+      if (active === 'vertical')   btnV.classList.add('btn-primary');
+    }
+
+    function setAspectRatio(mode) {
+      // horizontal 16:9, square 1:1, vertical 9:16
+      let paddingTop = '56.25%'; // 16:9
+      if (mode === 'square') paddingTop = '100%';
+      if (mode === 'vertical') paddingTop = '177.78%'; // 16/9 * 100
+      aspectBox.style.paddingTop = paddingTop;
+    }
+
+    function normalizeEmbedUrl(url) {
+      if (!url) return '';
+
+      // YouTube patterns
+      // - https://www.youtube.com/watch?v=ID
+      // - https://youtu.be/ID
+      // - https://www.youtube.com/embed/ID
+      const ytMatch =
+        url.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/) ||
+        url.match(/youtube\.com\/watch\?v=([A-Za-z0-9_-]{6,})/) ||
+        url.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/);
+
+      if (ytMatch && ytMatch[1]) {
+        return 'https://www.youtube.com/embed/' + ytMatch[1];
+      }
+
+      // Vimeo patterns
+      // - https://vimeo.com/123456789
+      // - https://player.vimeo.com/video/123456789
+      const vimeoMatch =
+        url.match(/vimeo\.com\/(\d+)/) ||
+        url.match(/player\.vimeo\.com\/video\/(\d+)/);
+
+      if (vimeoMatch && vimeoMatch[1]) {
+        return 'https://player.vimeo.com/video/' + vimeoMatch[1];
+      }
+
+      // If it's already an embed URL or some other provider, try it as-is
+      return url;
+    }
+
+    function getActiveUrl() {
+      if (active === 'horizontal') return horizontalURL || '';
+      if (active === 'square')     return squareURL || '';
+      if (active === 'vertical')   return verticalURL || '';
+      return '';
+    }
+
+    function renderPreview() {
+      const rawUrl = (getActiveUrl() || '').trim();
+      const embedUrl = normalizeEmbedUrl(rawUrl);
+
+      setActiveButton();
+      setAspectRatio(active);
+
+      if (!embedUrl) {
+        iframe.src = '';
+        aspectBox.style.display = 'none';
+        emptyMsg.style.display = 'block';
+        return;
+      }
+
+      emptyMsg.style.display = 'none';
+      aspectBox.style.display = 'block';
+      iframe.src = embedUrl;
+    }
+
+    // Button handlers
+    btnH.addEventListener('click', function() { active = 'horizontal'; renderPreview(); });
+    btnS.addEventListener('click', function() { active = 'square'; renderPreview(); });
+    btnV.addEventListener('click', function() { active = 'vertical'; renderPreview(); });
+
+    // Live update when URLs change
+    [horizontalURL, squareURL, verticalURL].forEach(function(url) {
+      if (!url) return;
+      // No need to add event listeners since URLs are static in this context
+    });
+
+    // Initial render: default to horizontal
+    renderPreview();
+  })();
+</script>
 
 {% endblock content %}
