@@ -29,12 +29,12 @@
                 class="form-select form-select-sm me-0"
                 style="width: auto;">
           <option value="now">Now</option>
-          <option value="tomorrow_9">Tomorrow at 9:00 AM</option>
-          <option value="tomorrow_16">Tomorrow at 4:00 PM</option>
-          <option value="day2_9">Day after tomorrow</option>
-          <option value="day3_9">Day after that</option>
-          <option value="saved" style="display: none;"></option>
-          <option value="custom">Custom…</option>
+          <option value="tomorrow_9" disabled>Tomorrow at 9:00 AM</option>
+          <option value="tomorrow_16" disabled>Tomorrow at 4:00 PM</option>
+          <option value="day2_9" disabled>Day after tomorrow</option>
+          <option value="day3_9" disabled>Day after that</option>
+          <option value="saved" style="display: none;" disabled></option>
+          <option value="custom" disabled>Custom…</option>
         </select>
         <input type="datetime-local" id="scheduled-datetime" class="form-control form-control-sm me-2" style="width: auto; display: none !important;">&nbsp;
         <button type="submit" id="send-campaign-btn" class="btn btn-success">Send</button> <!-- Also submits email-campaign-form //-->
@@ -80,7 +80,7 @@
                        name="from_email_name"
                        class="form-control"
                        value="{% if email_campaign %}{{ email_campaign.from_email_name|default_if_none:"" }}{% endif %}"
-                       placeholder="Default is We Vote">
+                       placeholder="Default is WeVote">
             </div>
         </div>
 
@@ -93,10 +93,25 @@
 
     <!-- Recipients Section -->
     <div class="mb-3">
-      <label class="form-label">Search Recipients</label>
       <div class="d-flex gap-2 mb-2">
-        <input type="text" id="recipient_search" class="form-control" placeholder="Search by name or email..." style="flex: 1;">
-        <button type="button" class="btn border border-secondary text-secondary bg-transparent" id="search_btn" style="white-space: nowrap;">Add Recipient</button>
+          <div>
+              <label class="form-label">Add Audience ID</label>
+              <div class="d-flex gap-2 mb-2">
+                <input type="text"
+                       name="audience_builder_id"
+                       class="form-control"
+                       value="{% if email_campaign and email_campaign.audience_builder_id != 0 %}{{ email_campaign.audience_builder_id|default_if_none:"" }}{% endif %}"
+                       placeholder="ID of Audience Builder..." style="flex: 1;"
+                >
+              </div>
+          </div>
+          <div class="col-md-4">
+              <label class="form-label">Add Individual Recipients</label>
+              <div class="d-flex gap-2 mb-2">
+                <input type="text" id="recipient_search" class="form-control" placeholder="Search by name or email..." style="flex: 1;">
+                <button type="button" class="btn border border-secondary text-secondary bg-transparent" id="search_btn" style="white-space: nowrap;">Add Recipient</button>
+              </div>
+          </div>
       </div>
       
       <div id="search_results" class="border rounded p-2 mb-2" style="max-height: 300px; overflow-y: auto; display: none;">
