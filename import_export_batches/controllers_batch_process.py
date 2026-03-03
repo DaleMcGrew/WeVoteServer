@@ -295,7 +295,7 @@ def process_next_ballot_items():
         }
         return results
 
-    # Note this batch_process_list does not included checked out items that haven't timed out
+    # Note this batch_process_list does not include checked out items that haven't timed out
     #  These are all batch processes that need to be worked on
     batch_process_list = []
     if positive_value_exists(results['batch_process_list_found']):
@@ -2064,7 +2064,7 @@ def process_one_ballot_item_batch_process(batch_process):
                 except Exception as e:
                     status += "CANNOT_CLEAR_OUT_DATE_CHECKED_OUT: " + str(e) + " "
 
-                # We don't want to stop these processes this way any more
+                # We don't want to stop these processes this way anymore
                 # if not positive_value_exists(retrieve_row_count):
                 #     if batch_process.kind_of_process == RETRIEVE_BALLOT_ITEMS_FROM_POLLING_LOCATIONS \
                 #             or batch_process.kind_of_process == REFRESH_BALLOT_ITEMS_FROM_POLLING_LOCATIONS \

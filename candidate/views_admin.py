@@ -2541,16 +2541,17 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
             'vote_usa_office_id_dict':              
             {
                 'label':    'Vote USA Office Id',
-                'id':       'vote_usa_office_id',
-                'name':     'vote_usa_office',
+                'id':       'vote_usa_office_id_id',
+                'name':     'vote_usa_office_id',
                 'value':     vote_usa_office_id if vote_usa_office_id else candidate_on_stage.vote_usa_office_id
             }, 
             'vote_usa_politician_id_dict':              
             {
                 'label':    'Vote USA Politician Id',
-                'id':       'vote_usa_politician_id',
-                'name':     'vote_usa_politician',
-                'value':     vote_usa_politician_id if vote_usa_politician_id else candidate_on_stage.vote_usa_politician_id
+                'id':       'vote_usa_politician_id_id',
+                'name':     'vote_usa_politician_id',
+                'value':     vote_usa_politician_id \
+                    if vote_usa_politician_id else candidate_on_stage.vote_usa_politician_id
             }, 
             # 'vote_usa_profile_image_url_https': vote_usa_profile_image_url_https,
             'web_app_root_url':                 web_app_root_url,
@@ -2997,7 +2998,8 @@ def candidate_edit_process_view(request):
                 change_description += "ADDED: Link to Office " + candidate_to_office_link.contest_office_we_vote_id + " "
                 change_description_changed = True
             else:
-                messages.add_message(request, messages.ERROR, 'Candidate-to-Office Link already exists.')
+                status += 'Candidate-to-Office Link already exists: ' + results['status'] + " "
+                messages.add_message(request, messages.ERROR, status)
         else:
             messages.add_message(
                 request, messages.ERROR,
