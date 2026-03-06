@@ -325,12 +325,12 @@ class JiraExcelLoader:
                 'due_date': story.due_date
             }
 
+            # Create subtasks (only email and basic_info, not views_positions)
             if pd.notna(row.iloc[COL_EMAIL_URL]):
                 story.add_sub_task(JiraSubTask(task_type='email', task_url=row.iloc[COL_EMAIL_URL], **common_subtask_fields))
             if pd.notna(row.iloc[COL_BASIC_INFO_URL]):
                 story.add_sub_task(JiraSubTask(task_type='basic_info', task_url=row.iloc[COL_BASIC_INFO_URL], **common_subtask_fields))
-            if pd.notna(row.iloc[COL_VIEWS_POSITIONS_URL]):
-                story.add_sub_task(JiraSubTask(task_type='views_positions', task_url=row.iloc[COL_VIEWS_POSITIONS_URL], **common_subtask_fields))
+            # Note: views_positions subtask intentionally not created
 
             epic.add_story(story)
 
