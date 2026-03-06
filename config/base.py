@@ -156,6 +156,7 @@ INSTALLED_APPS = (
     'import_export_facebook',
     'import_export_google_civic',
     'import_export_google_play_store',
+    'import_export_jira',
     'import_export_maplight',
     'import_export_open_people',
     'import_export_openreplay',

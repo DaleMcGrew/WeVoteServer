@@ -90,6 +90,8 @@ urlpatterns = [
                     namespace="import_export_wikipedia")),
     re_path(r'^import_export_endorsements/', include((
         'import_export_endorsements.urls','import_export_endorsements'), namespace="import_export_endorsements")),
+    re_path(r'^import_export_jira/',
+            include(('import_export_jira.urls', 'import_export_jira'), namespace="import_export_jira")),
     re_path(r'^info/', include(('quick_info.urls', 'quick_info'), namespace="quick_info")),
     re_path(r'^issue/', include(('issue.urls', 'issue'), namespace="issue")),
     re_path(r'^m/', include(('measure.urls', 'measure'), namespace="measure")),
