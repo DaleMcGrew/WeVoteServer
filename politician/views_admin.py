@@ -1925,12 +1925,14 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             if linked_campaignx and positive_value_exists(linked_campaignx.we_vote_id):
                 politician_linked_campaignx_we_vote_id = linked_campaignx.we_vote_id
                 if not positive_value_exists(linked_campaignx.passkey_for_creating_campaign_owner):
+                    # Also used as politician_passkey
                     try:
                         linked_campaignx.passkey_for_creating_campaign_owner = \
                             generate_random_string(8, remove_confusing_digits=True)
                         linked_campaignx.save()
                     except Exception as e:
                         status += "COULD_NOT_GENERATE_PASSKEY_FOR_CAMPAIGN_OWNER: " + str(e) + " "
+                # passkey_for_creating_campaign_owner also used for politician_passkey
                 linked_campaignx_passkey = linked_campaignx.passkey_for_creating_campaign_owner
         elif positive_value_exists(politician_on_stage.linked_campaignx_we_vote_id):
             politician_linked_campaignx_we_vote_id = politician_on_stage.linked_campaignx_we_vote_id

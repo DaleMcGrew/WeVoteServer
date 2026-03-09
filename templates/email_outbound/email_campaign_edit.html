@@ -98,6 +98,7 @@
               <label class="form-label">Add Audience ID</label>
               <div class="d-flex gap-2 mb-2">
                 <input type="text"
+                       id="audience_builder_id_id"
                        name="audience_builder_id"
                        class="form-control"
                        value="{% if email_campaign and email_campaign.audience_builder_id != 0 %}{{ email_campaign.audience_builder_id|default_if_none:"" }}{% endif %}"
@@ -484,9 +485,11 @@
       const campaignTitle = document.getElementById('campaign_title').value.trim();
       // const templateId = document.getElementById('template_select').value;
       const hasRecipients = selectedRecipientDictList.length > 0;
+      const hasAudienceBuilder = document.getElementById('audience_builder_id_id').value;
       const sendBtn = document.getElementById('send-campaign-btn');
       
-      if (campaignTitle && hasRecipients) {
+      // TODO: Give indication in the UI why the send button is disabled
+      if (campaignTitle && (hasRecipients || hasAudienceBuilder)) {
         sendBtn.disabled = false;
       } else {
         sendBtn.disabled = true;
@@ -717,7 +720,8 @@
       const action = isScheduled ? 'schedule' : 'send';
       const timeInfo = isScheduled ? ' for ' + new Date(scheduledTime).toLocaleString() : '';
 
-      if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign to ' + String(selectedRecipientDictList.length) + ' recipient(s)' + timeInfo + '?')) {
+      // if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign to ' + String(selectedRecipientDictList.length) + ' recipient(s)' + timeInfo + '?')) {
+      if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign?')) {
         // alert(action.charAt(0).toUpperCase() + action.slice(1) + ' functionality will be implemented on the backend.');
         // We want to call the save API with a variable to proceed to sending after save
         sendButtonClicked.value = 1;

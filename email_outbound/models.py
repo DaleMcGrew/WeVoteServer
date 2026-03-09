@@ -211,8 +211,6 @@ EMAIL_USE_TLS = get_environment_variable("EMAIL_USE_TLS", no_exception=True)
 EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS = [
     "[email_footer]",
     "[job_title]",
-    "[link_to_office]",
-    "[link_to_politician]",
     "[my_first_name]",
     "[my_last_name]",
     "[my_full_name]",
@@ -453,6 +451,7 @@ class EmailCampaignRecipient(models.Model):
     sender_last_name = models.CharField(max_length=255, null=True)
     sender_voter_we_vote_id = models.CharField(max_length=255, null=True)
     supporters_count = models.PositiveIntegerField(default=0, null=False)
+    # What is this last voter_we_vote_id?
     voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, unique=False, db_index=True)
 
     # Generate an open tracking code for the recipient

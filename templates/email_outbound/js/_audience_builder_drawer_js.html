@@ -240,12 +240,15 @@ function openSavedAudiencesDrawer(audienceBuilderId = '') {
         });
     }
     if (drawerPreviewContent) {
-        return getAudienceBuilderPreviewHTML(audienceBuilderId, drawerPreviewContent);
+        setTimeout(() => {
+            refreshAudienceBuilderPreviewHTML(audienceBuilderId);
+        }, 500);
     }
 }
 
-function getAudienceBuilderPreviewHTML(audienceBuilderId, drawerPreviewContent) {
+function refreshAudienceBuilderPreviewHTML(audienceBuilderId) {
     // Show loading state
+    const drawerPreviewContent = document.getElementById('audienceBuilderDrawerPreviewHTML');
     drawerPreviewContent.innerHTML = '<div class="loading-spinner">Loading preview...</div>';
 
     // Fetch the HTML from the server
@@ -267,6 +270,7 @@ function getAudienceBuilderPreviewHTML(audienceBuilderId, drawerPreviewContent) 
         return response.json();
     })
     .then(data => {
+        // console.log('refreshAudienceBuilderPreviewHTML, data:', data);
         if (data.success) {
             drawerPreviewContent.innerHTML = data.html;
         } else {
@@ -313,10 +317,13 @@ function setupDrawerFormSubmission() {
                 submitAudienceBuilderForm(drawerContent, form, formData);
             }
             if (drawerPreviewContent) {
+                // console.log('setupDrawerFormSubmission, drawerPreviewContent FOUND');
                 const audienceBuilderIdContent = document.getElementById('audience_builder_id_id');
                 const audienceBuilderId = audienceBuilderIdContent.value;
-                // console.log('getAudienceBuilderPreviewHTML, audienceBuilderId:', audienceBuilderId);
-                getAudienceBuilderPreviewHTML(audienceBuilderId, drawerPreviewContent);
+                // console.log('setupDrawerFormSubmission, drawerPreviewContent:', drawerPreviewContent);
+                setTimeout(() => {
+                    refreshAudienceBuilderPreviewHTML(audienceBuilderId);
+                }, 500);
             }
         });
     }
@@ -357,10 +364,13 @@ function submitAddDeleteButtonFromDrawer(buttonElement) {
             submitAudienceBuilderForm(drawerContent, form, formData);
         }
         if (drawerPreviewContent) {
+            // console.log('submitAddDeleteButtonFromDrawer, drawerPreviewContent FOUND');
             const audienceBuilderIdContent = document.getElementById('audience_builder_id_id');
             const audienceBuilderId = audienceBuilderIdContent.value;
-            // console.log('getAudienceBuilderPreviewHTML, audienceBuilderId:', audienceBuilderId);
-            getAudienceBuilderPreviewHTML(audienceBuilderId, drawerPreviewContent);
+            // console.log('submitAddDeleteButtonFromDrawer, drawerPreviewContent:', drawerPreviewContent);
+            setTimeout(() => {
+                refreshAudienceBuilderPreviewHTML(audienceBuilderId);
+            }, 500);
         }
     }
 }
