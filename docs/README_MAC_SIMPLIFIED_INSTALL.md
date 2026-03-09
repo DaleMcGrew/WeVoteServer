@@ -210,37 +210,32 @@ Python 3.13.2
 If you are sure that Postgres has not already been installed, and is not currently running on this Mac, you can skip
 this step.  To see if postgres is already running, check with lsof in a terminal window `lsof -i -P | grep -i "listen" | grep postgres`:
 
-    ```
     lsof -i -P | grep -i "listen" | grep postgres
-    ```
 
-    Results:
-    ```
+Results:
     postgres  13254 admin    5u  IPv6 0x35032d9cf207f247      0t0  TCP localhost:5432 (LISTEN)
     postgres  13254 admin    6u  IPv4 0x35032d9d01cd2647      0t0  TCP localhost:5432 (LISTEN)
-    ```  
  
-    If the output shows postgres has already been installed and is listening on port 5432.  Stop and fix this,  
-    otherwise you would install a second postgres instance running on port 5433, and the result would be hours of "port 
-    assignment" mess to clean up.
+If the output shows postgres has already been installed and is listening on port 5432.  Stop and fix this,  
+otherwise you would install a second postgres instance running on port 5433, and the result would be hours of "port 
+assignment" mess to clean up.
 
-    ```
     brew services stop postgresql
-    ```
-   
-    **If that lsof line returns nothing**, then you don't currently have postgres running, and you can continue on to the next step.
 
-    or
    
-    **If you don't mind fully deleting any Postgres database data that you have already installed**, then delete the existing Postgres now.  If you installed postgres with homebrew try `brew uninstall postgresql`, 
+**If that lsof line returns nothing**, then you don't currently have postgres running, and you can continue on to the next step.
+
+or
+   
+**If you don't mind fully deleting any Postgres database data that you have already installed**, then delete the existing Postgres now.  If you installed postgres with homebrew try `brew uninstall postgresql`, 
     but if that fails Postgres can be setup in many ways, so there are no detailed instructions here on how to delete Postgres (but. You can start with running `which postgres`
     in a terminal and going to that directory and deleting the instance or the symbolic links to the instance.  
     Next step is to reboot your Mac to see if Postgres starts up again.
 
-    or
+or
 
-    **If you have to keep some data that is already stored in the Postgres instance on your Mac** that you absolutely need to 
-    retain, then you will need to manually upgrade Postgres.  This is a ton of work, and is rarely necessary.
+**If you have to keep some data that is already stored in the Postgres instance on your Mac** that you absolutely need to 
+retain, then you will need to manually upgrade Postgres.  This is a ton of work, and is rarely necessary.
    
 
 <H2>Install or update postgres</H2>
@@ -322,13 +317,14 @@ Use home brew to install postgres Version 14, the point version does not matter.
 (venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % brew install postgresql@14
 ... Homebrew logs a whole bunch of lines about updating formulas, fetching, downloading, and pouring formulae...
 ... then finally it logs ...
+==> postgresql@14
 This formula has created a default database cluster with:
-  initdb --locale=C -E UTF-8 /usr/local/var/postgresql@14
+  initdb --locale=en_US.UTF-8 -E UTF-8 /opt/homebrew/var/postgresql@14
 
-To start postgresql@14 now and restart at login:
-  brew services start postgresql@14
+To restart postgresql@14 after an upgrade:
+  brew services restart postgresql@14
 Or, if you don't want/need a background service you can just run:
-  /usr/local/opt/postgresql@14/bin/postgres -D /usr/local/var/postgresql@14
+  /opt/homebrew/opt/postgresql@14/bin/postgres -D /opt/homebrew/var/postgresql@14
 (venv3.13.2) stevepodell@Steves-MBP-M1-Dec2021 WeVoteServer % 
 ```
 Those lines at the end provide useful information.  
