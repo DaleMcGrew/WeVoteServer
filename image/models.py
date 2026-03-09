@@ -3,12 +3,14 @@
 # -*- coding: UTF-8 -*-
 
 from config.base import get_environment_variable
+from copy import deepcopy
 from datetime import date
 from django.db import models
 from exception.models import handle_record_found_more_than_one_exception, handle_exception, \
     handle_record_not_saved_exception, handle_record_not_deleted_exception
 from pathlib import Path
-from PIL import ExifTags, GifImagePlugin, Image, ImageOps
+from PIL import ExifTags, GifImagePlugin, Image, ImageOps, ImageSequence
+from subprocess import run
 from urllib.request import urlretrieve
 from urllib.error import HTTPError
 from wevote_functions.functions import convert_to_int, positive_value_exists
@@ -2096,7 +2098,10 @@ class WeVoteImageManager(models.Manager):
         """        
         original_image_local_path = "/tmp/" + image_local_path
         converted_image_local_path = "/tmp/"
+        converted_image_format = None
+        frames = []
         image = None
+        media_type = None
         resized_image_created = False
         status = ''
         
@@ -2113,111 +2118,66 @@ class WeVoteImageManager(models.Manager):
             }
             return results
 
-        # We leave gif out of this format_conversion_map because we need to honor incoming save_gif_as_webp switch
-        format_conversion_map = {
-            "svg": "png",
-            "tiff": "png"
-        }
+        # The client converts SVGs and TIFFs to PNGs
+
+        format_conversion_map = {}
+
+        if save_gif_as_webp:
+            format_conversion_map['gif'] = 'webp'
 
         if original_image_format in format_conversion_map:
             converted_image_format = format_conversion_map[original_image_format]
-            image_name = f"{original_image_stem}.{converted_image_format}"
-            converted_image_local_path += image_name
-            if original_image_format == "svg":
-                try:
-                    from cairosvg import svg2png
-                    svg2png(url=original_image_local_path, write_to=converted_image_local_path)
-                except Exception as e:
-                    status += "FAILED_TO_CONVERT_SVG_TO_PNG: " + str(e) + " "
-                    image = Image.open(original_image_local_path)
-                    image.save(converted_image_local_path)
-            else:
-                image = Image.open(original_image_local_path)
-                image.save(converted_image_local_path)
-        elif original_image_format == "gif":
-            if save_gif_as_webp:
-                converted_image_format = "webp"
-                image_name = f"{original_image_stem}.{converted_image_format}"
-                converted_image_local_path += image_name
-                image = Image.open(original_image_local_path)
-                image.save(converted_image_local_path, save_all=True)
-            else:
-                converted_image_format = "gif"
-                converted_image_local_path = original_image_local_path
-                image = Image.open(original_image_local_path)
-                image.save(converted_image_local_path, save_all=True)
-        
+            converted_image_name = f"{original_image_stem}.{converted_image_format}"
+            converted_image_local_path += converted_image_name
         else:
-            converted_image_local_path = original_image_local_path
-            converted_image_format = original_image_format
+            converted_image_format = deepcopy(original_image_format)
+            converted_image_local_path = deepcopy(original_image_local_path)
+            
         
         try:
-            image = Image.open(converted_image_local_path)
-        except Exception as e:
-            exception_message = "RESIZE_WE_VOTE_MASTER_IMAGE_FAILED_OPENING: " + str(e) + " "
-            handle_exception(e, logger=logger, exception_message=exception_message)
-
-        try:
-            # Remove sensitive data
-            # See https://web.mit.edu/Graphics/src/Image-ExifTool-6.99/html/TagNames/GPS.html
+            image = Image.open(original_image_local_path)
+            media_type = image.get_format_mimetype()
+            # Color
+            if image.has_transparency_data:
+                image = image.convert('RGBA')
+            else:
+                image = image.convert('RGB')
+            # GPS
             exif = image.getexif()
             gps_ifd = exif.get_ifd(ExifTags.IFD.GPSInfo)
             gps_ifd.clear()
+            # Pillow still cannot handle animated images
+            # Forward those to a CDN
+            if media_type in {'image/gif', 'image/webp'}:
+                pass
+            else:
+                centering_x = 0.5
+                target_size = (image_width, image_height)
+                if image_type == FACEBOOK_BACKGROUND_IMAGE_NAME:
+                    centering_y = ((image.height - image_offset_y) * 0.5) / image.height
+                    centering = (centering_x, centering_y)
+                    image = ImageOps.fit(image, target_size, Image.Resampling.LANCZOS, centering)
+                else:
+                    image = ImageOps.contain(image, target_size, Image.Resampling.LANCZOS)
+                if media_type == 'image/jpeg':
+                    image.save(converted_image_local_path, quality=95, subsampling=0)
+                else:
+                    image.save(converted_image_local_path)
+            
         except Exception as e:
-            exception_message = "REMOVE_SENSITIVE_DATA_FAILED: " + str(e) + " "
+            exception_message = "FAILED_TO_RESIZE_IMAGE: " + str(e) + " "
             handle_exception(e, logger=logger, exception_message=exception_message)
 
-        # Resize
-        centering_x = 0.5
-        if image_type == TWITTER_BACKGROUND_IMAGE_NAME or image_type == TWITTER_BANNER_IMAGE_NAME:
-            image = image.resize((image_width, image_height), Image.Resampling.LANCZOS)
-        elif image_type == FACEBOOK_BACKGROUND_IMAGE_NAME:
-            centering_y = ((image.height - image_offset_y) * 0.5) / image.height
-            image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS,
-                                 centering=(centering_x, centering_y))
-        else:
-            if image_width == image_height:
-                image = crop_to_square(image)
-                image = image.resize((image_width, image_height), Image.Resampling.LANCZOS)
-            else:
-                # Calculate the aspect ratio
-                aspect_ratio = image.width / image.height
-                target_ratio = image_width / image_height
-
-                if aspect_ratio > target_ratio:
-                    # Image is wider, scale based on width
-                    new_width = image_width
-                    new_height = int(new_width / aspect_ratio)
-                else:
-                    # Image is taller, scale based on height
-                    new_height = image_height
-                    new_width = int(new_height * aspect_ratio)
-
-                # Resize the image while maintaining aspect ratio
-                # image.thumbnail((new_width, new_height), Image.Resampling.LANCZOS)
-                image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            # else:
-            #     centering_y = centering_x
-            #     image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS,
-            #                          centering=(centering_x, centering_y))
+        finally:
+            image.close()
         
-        try:
-            if converted_image_format.lower() in {'jpeg', 'jpg', 'jpe', 'jif', 'jfif', 'jfi'}:
-                image = image.convert('RGB')
-                image.save(converted_image_local_path, quality=95, subsampling=0)
-            elif converted_image_format.lower() in {'gif', 'webp'}:
-                image.save(converted_image_local_path, save_all=True)
-            else:
-                image.save(converted_image_local_path)
-
-            resized_image_created = True
-        except Exception as e:
-            status += "IMAGE_SAVE_FAILED: " + str(e) + " "
-            resized_image_created = False
+        resized_image_created = True
+        
         results = {
             'status':                   status,
             'resized_image_created':    resized_image_created,
         }
+        
         return results
 
     @staticmethod
@@ -2313,7 +2273,7 @@ class WeVoteImageManager(models.Manager):
             image_stored_to_aws = False
             exception_message = "store_image_file_to_aws failed"
             handle_exception(e, logger=logger, exception_message=exception_message)
-
+        
         return image_stored_to_aws
 
     @staticmethod
