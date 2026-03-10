@@ -90,6 +90,8 @@ urlpatterns = [
                     namespace="import_export_wikipedia")),
     re_path(r'^import_export_endorsements/', include((
         'import_export_endorsements.urls','import_export_endorsements'), namespace="import_export_endorsements")),
+    re_path(r'^import_export_jira/',
+            include(('import_export_jira.urls', 'import_export_jira'), namespace="import_export_jira")),
     re_path(r'^info/', include(('quick_info.urls', 'quick_info'), namespace="quick_info")),
     re_path(r'^issue/', include(('issue.urls', 'issue'), namespace="issue")),
     re_path(r'^m/', include(('measure.urls', 'measure'), namespace="measure")),
@@ -111,7 +113,6 @@ urlpatterns = [
                     namespace="support_oppose_deciding")),
     re_path(r'^stripe_donations/', include(('stripe_donations.urls', 'stripe'), namespace="stripe_donations")),
     re_path(r'^tag/', include(('tag.urls', 'tag'), namespace="tag")),
-    re_path(r'^tinymce/', include("tinymce.urls")),
     re_path(r'^twitter/', include(('import_export_twitter.urls', 'twitter'), namespace="twitter")),
     re_path(r'^twitter2/', include(('twitter.urls', 'twitter2'), namespace="twitter2")),
     re_path(r'^volunteer/', include(('volunteer_task.urls', 'volunteer'), namespace="volunteer_task")),

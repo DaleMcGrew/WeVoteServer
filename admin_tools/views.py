@@ -2,14 +2,15 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 import os
+import sys
 
+from django.shortcuts import render
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
 from django.db.models import Q
 from django.http import HttpResponseRedirect
-from django.shortcuts import render
 from django.urls import reverse
 from django.template.response import TemplateResponse
 import requests
@@ -68,6 +69,10 @@ WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
 TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
 
+JIRA_URL = get_environment_variable("JIRA_URL", no_exception=True)
+JIRA_USERNAME = get_environment_variable("JIRA_USERNAME", no_exception=True)
+JIRA_API_TOKEN = get_environment_variable("JIRA_API_TOKEN", no_exception=True)
+JIRA_PROJECT_KEY = get_environment_variable("JIRA_PROJECT_KEY", no_exception=True)
 
 logger = wevote_functions.admin.get_logger(__name__)
 

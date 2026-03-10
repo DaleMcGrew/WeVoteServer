@@ -133,6 +133,7 @@ def do_webapp_autocomplete_proxy(request):
         success = True
     else:
         logger.error('webAppAutocompleteProxy POST to Google error: %s', str(r))
+        logger.log('webAppAutocompleteProxy POST to Google error: %s', str(r.content))
         status = 'webAppAutocompleteProxy POST to Google error: %s', str(r)
     json_data = {
         'matches': matches,

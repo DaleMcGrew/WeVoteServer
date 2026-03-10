@@ -2941,6 +2941,7 @@ def voter_update_view(request):  # voterUpdate
                 campaign = CampaignX.objects.using('readonly').get(linked_politician_we_vote_id=politician_we_vote_id)
                 campaignx_we_vote_id = campaign.we_vote_id
                 if passkey_to_verify_politician_control == campaign.passkey_for_creating_campaign_owner:
+                    # passkey_for_creating_campaign_owner also used for politician_passkey
                     passkey_verified = True
                 else:
                     passkey_received_but_not_accepted = True

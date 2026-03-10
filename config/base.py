@@ -156,6 +156,7 @@ INSTALLED_APPS = (
     'import_export_facebook',
     'import_export_google_civic',
     'import_export_google_play_store',
+    'import_export_jira',
     'import_export_maplight',
     'import_export_open_people',
     'import_export_openreplay',
@@ -189,7 +190,6 @@ INSTALLED_APPS = (
     'stripe_ip_history',
     'support_oppose_deciding',
     'tag',
-    'tinymce',
     'twitter',  # See also import_export_twitter
     'volunteer_task',
     'voter',  # See also AUTH_USER_MODEL in config/settings.py

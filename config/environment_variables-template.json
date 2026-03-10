@@ -6,6 +6,7 @@
   "WEB_APP_ROOT_URL":               "http://localhost:3000",
   "CAMPAIGNS_ROOT_URL":             "http://localhost:3000",
   "CHALLENGES_ROOT_URL":            "http://localhost:3000",
+  "_comment":                       "Valid timezone options include: US/Eastern (EST), US/Pacific, etc.",
   "TIME_ZONE":                      "US/Pacific",
   "SERVER_IS_SOURCE_OF_TRUTH":      false,
   "SERVER_IN_DEBUG_MODE":           true,
@@ -246,6 +247,12 @@
   "_comment":                       "Settings for running Selenium tests on BrowserStack",
   "BROWSERSTACK_USERNAME":          "",
   "BROWSERSTACK_ACCESS_KEY":        "",
+
+  "_comment":                       "JIRA Integration Settings",
+  "JIRA_URL":                       "",
+  "JIRA_USERNAME":                  "",
+  "JIRA_API_TOKEN":                 "",
+  "JIRA_PROJECT_KEY":               "",
 
   "_comment":                       "End of environment_variables.json"
 }
