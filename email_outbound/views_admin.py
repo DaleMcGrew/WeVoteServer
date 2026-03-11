@@ -22,7 +22,7 @@ import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists
 from wevote_functions.validate_email import validate_email
 
-from .controllers_email_campaign import augment_email_campaign_recipient, \
+from .controllers_email_campaign import augment_email_campaign_recipient, refresh_email_campaign_data, \
     render_audience_builder_html
 from .controllers_audience_builder import audience_builder_data_retrieve, render_audience_builder_preview_html
 from .models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
@@ -385,14 +385,19 @@ def email_campaign_edit_view(request):
     campaign_id = request.GET.get('id', '')
     
     # Load existing campaign if editing
-    email_campaign = None
     campaign_recipients = []
+    email_campaign = None
+    emails_sent = False
     if campaign_id:
         try:
             email_campaign = EmailCampaign.objects.get(id=campaign_id)
+            emails_sent = positive_value_exists(email_campaign.emails_sent)
             
-            # Load recipients for this campaign
-            recipients = EmailCampaignRecipient.objects.filter(email_campaign_id=campaign_id)
+            # Load recipients for this campaign who were manually added
+            recipients = EmailCampaignRecipient.objects.filter(
+                email_campaign_id=campaign_id,
+                manually_added=True,
+            )
             campaign_recipients = []
             for recipient in recipients:
                 recipient_dict = {
@@ -474,6 +479,7 @@ def email_campaign_edit_view(request):
     # Step 3: Pass data to template
     import json
     template_values = {
+        'emails_sent':  emails_sent,
         'folder_tree': folder_tree,
         'google_civic_election_id': google_civic_election_id,
         'state_code': state_code,
@@ -493,18 +499,46 @@ def email_campaign_list_view(request):
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
 
+    fields_changed = []
     google_civic_election_id = request.GET.get('google_civic_election_id', '')
     state_code = request.GET.get('state_code', '')
+    status = ''
+    update_list = []
 
     campaigns_queryset = EmailCampaign.objects.filter(deleted=False).order_by('-id')
 
     # Active tab: sent campaigns
     campaigns_sent = campaigns_queryset.filter(emails_sent=True)
+    for campaign in campaigns_sent:
+        # Refresh the recipient_count, bounce_count, and open_count for all sent campaigns
+        refresh_results = refresh_email_campaign_data(campaign)
+        if refresh_results['changes_made']:
+            update_list.append(refresh_results['email_campaign'])
+            fields_changed_temp = refresh_results['fields_changed']
+            # Update the fields_changed list with any additional fields in fields_changed_temp
+            fields_changed.extend(fields_changed_temp)
+
+        if campaign.recipient_count and campaign.recipient_count > 0 and campaign.open_count:
+            campaign.open_rate = round((campaign.open_count / campaign.recipient_count) * 100, 2)
+        else:
+            campaign.open_rate = None
 
     # Drafts tab: not yet sent
     campaigns_drafts = campaigns_queryset.filter(emails_sent=False)
 
     # Archived tab filter would go here:
+
+    if len(update_list) > 0:
+        # Do a bulk update of the changes made in the update_list of EmailCampaign objects
+        try:
+            EmailCampaign.objects.bulk_update(update_list, fields_changed)
+            status += \
+                "{campaign_updates_made:,} campaigns updated " \
+                "".format(campaign_updates_made=len(update_list))
+        except Exception as e:
+            messages.add_message(request, messages.ERROR,
+                                 "ERROR with PositionEntered.objects.bulk_update: {e}, "
+                                 "".format(e=e))
 
     template_values = {
         # 'election':                                 election,
@@ -517,6 +551,40 @@ def email_campaign_list_view(request):
         # 'campaigns_archived':                     campaigns_archived,
     }
     return render(request, 'email_outbound/email_campaign_list.html', template_values)
+
+
+@login_required
+def email_recipient_list_view(request):
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    campaign_id = request.GET.get('id', '')
+    google_civic_election_id = request.GET.get('google_civic_election_id', '')
+    state_code = request.GET.get('state_code', '')
+    status = ''
+
+    email_campaign = EmailCampaign.objects.get(id=campaign_id)
+
+    queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=campaign_id)
+
+    # Opened the email
+    recipient_open_list = queryset.filter(open_tracking_count__gt=0)
+
+    # Not opened yet
+    recipient_not_opened_list = queryset.filter(open_tracking_count=0)
+
+    # Bounced tab filter would go here:
+
+    template_values = {
+        'email_campaign':             email_campaign,
+        'google_civic_election_id': google_civic_election_id,
+        'state_code':               state_code,
+        'recipient_open_list':      recipient_open_list,
+        'recipient_not_opened_list': recipient_not_opened_list,
+    }
+    return render(request, 'email_outbound/email_recipient_list.html', template_values)
 
 
 @login_required
@@ -1503,3 +1571,24 @@ def email_template_content_view(request):
             'success': False,
             'error': 'Template not found'
         }, status=404)
+
+
+@login_required
+def email_recipient_view(request, email_recipient_id=0):
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    google_civic_election_id = request.GET.get('google_civic_election_id', '')
+    state_code = request.GET.get('state_code', '')
+    status = ''
+
+    email_recipient = EmailCampaignRecipient.objects.get(id=email_recipient_id)
+
+    template_values = {
+        'email_recipient':          email_recipient,
+        'google_civic_election_id': google_civic_election_id,
+        'state_code':               state_code,
+    }
+    return render(request, 'email_outbound/view_recipient_email.html', template_values)

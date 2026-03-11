@@ -21,10 +21,13 @@ urlpatterns = [
     re_path(r'^edit_campaign_process/$', views_admin.email_campaign_edit_process_view,
             name='email_campaign_edit_process'),
     re_path(r'^edit_template/$', views_admin.email_template_edit_view, name='email_template_edit'),
+    re_path(r'^email_recipient_list/$', views_admin.email_recipient_list_view, name='email_recipient_list'),
     re_path(r'^edit_template_process/$', views_admin.email_template_edit_process_view,
             name='email_template_edit_process'),
     re_path(r'^email_template_list/$', views_admin.email_template_list_view, name='email_template_list'),
     re_path(r'^email_template_list_process/$', views_admin.email_template_list_process_view,
             name='email_template_list_process'),
     re_path(r'^template_content/$', views_admin.email_template_content_view, name='email_template_content'),
+    re_path(r'^view_recipient_email/(?P<email_recipient_id>[0-9]+)/$',
+            views_admin.email_recipient_view, name='view_recipient_email'),
 ]

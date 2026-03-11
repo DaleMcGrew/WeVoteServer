@@ -22,8 +22,17 @@
     </h4>
     <div>
       <a href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}" class="btn btn-outline-secondary me-2">Cancel</a>
+    {% if emails_sent %}
+        <button type="input" form="email-campaign-form" class="btn btn-secondary me-2" disabled>ALREADY SENT</button>
+    {% else %}
       <button type="submit" form="email-campaign-form" class="btn btn-primary me-2">Save Draft</button>
+    {% endif %}
     </div>
+    {% if emails_sent %}
+        {% if email_campaign.date_sent %}
+            Sent on {{ email_campaign.date_sent|date:"F j, Y, g:ia" }}
+        {% endif %}
+    {% else %}
     <div>
         <select name="send-time" id="send-time-select"
                 class="form-select form-select-sm me-0"
@@ -39,6 +48,7 @@
         <input type="datetime-local" id="scheduled-datetime" class="form-control form-control-sm me-2" style="width: auto; display: none !important;">&nbsp;
         <button type="submit" id="send-campaign-btn" class="btn btn-success">Send</button> <!-- Also submits email-campaign-form //-->
     </div>
+    {% endif %}
   </div>
 
   <form id="email-campaign-form" method="post" action="{% url 'email_outbound:email_campaign_edit_process' %}">
@@ -85,7 +95,9 @@
         </div>
 
         <div class="col-md-4">
+    {% if not emails_sent %}
         {% include "components/selection_tree/selection_tree.html" with selection_type="Email Template" selection_tree_data=folder_tree %}
+    {% endif %}
         </div>
     </div>
 
@@ -106,6 +118,7 @@
                 >
               </div>
           </div>
+       {% if not emails_sent %}
           <div class="col-md-4">
               <label class="form-label">Add Individual Recipients</label>
               <div class="d-flex gap-2 mb-2">
@@ -113,6 +126,7 @@
                 <button type="button" class="btn border border-secondary text-secondary bg-transparent" id="search_btn" style="white-space: nowrap;">Add Recipient</button>
               </div>
           </div>
+       {% endif %}
       </div>
       
       <div id="search_results" class="border rounded p-2 mb-2" style="max-height: 300px; overflow-y: auto; display: none;">
@@ -126,7 +140,9 @@
       <div class="border rounded p-3" style="min-height: 100px; background-color: #f8f9fa;">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <strong>Selected Recipients (<span id="recipient_count">0</span>)</strong>
+        {% if not emails_sent %}
           <button type="button" class="btn btn-sm btn-outline-danger" id="clear_all_btn">Clear All</button>
+        {% endif %}
         </div>
         <div id="selected_recipients"></div>
       </div>
@@ -487,7 +503,7 @@
       const hasRecipients = selectedRecipientDictList.length > 0;
       const hasAudienceBuilder = document.getElementById('audience_builder_id_id').value;
       const sendBtn = document.getElementById('send-campaign-btn');
-      
+
       // TODO: Give indication in the UI why the send button is disabled
       if (campaignTitle && (hasRecipients || hasAudienceBuilder)) {
         sendBtn.disabled = false;

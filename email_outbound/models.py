@@ -374,7 +374,9 @@ class EmailCampaign(models.Model):
     An email campaign that we assemble, and then send
     """
     audience_builder_id = models.PositiveIntegerField(default=0, null=False)
+    bounce_count = models.PositiveIntegerField(default=0, null=False)
     date_last_updated = models.DateTimeField(auto_now=True, db_index=True)
+    date_sent = models.DateTimeField(default=None, null=True)
     deleted = models.BooleanField(default=False)
     email_body_template_raw = models.TextField(null=True, blank=True)  # We keep a copy for history
     email_campaign_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
@@ -386,6 +388,8 @@ class EmailCampaign(models.Model):
     is_for_politician = models.BooleanField(default=False)
     is_for_staff = models.BooleanField(default=False)
     is_for_voter = models.BooleanField(default=False)
+    open_count = models.PositiveIntegerField(default=0, null=False)
+    recipient_count = models.PositiveIntegerField(default=0, null=False)
     reply_to_email = models.TextField(null=True, blank=True)
     scheduled_by_voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
     scheduled_send_time = models.DateTimeField(null=True, blank=True)

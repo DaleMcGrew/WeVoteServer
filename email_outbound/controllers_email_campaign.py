@@ -963,6 +963,42 @@ def merge_email_campaign_recipient_with_template(
     return results
 
 
+def refresh_email_campaign_data(email_campaign):
+    changes_made = False
+    fields_changed = []
+    status = ''
+    success = True
+    # Refresh the recipient_count, bounce_count, and open_count for all sent campaigns
+    if not positive_value_exists(email_campaign.recipient_count):
+        try:
+            queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=email_campaign.id)
+            email_campaign.recipient_count = queryset.count()
+            if 'recipient_count' not in fields_changed:
+                fields_changed.append('recipient_count')
+            changes_made = True
+        except Exception as e:
+            status += f"ERROR_RETRIEVING_RECIPIENT_COUNT: {e}"
+
+    try:
+        queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=email_campaign.id)
+        queryset = queryset.filter(open_tracking_count__gt=0)
+        email_campaign.open_count = queryset.count()
+        if 'open_count' not in fields_changed:
+            fields_changed.append('open_count')
+        changes_made = True
+    except Exception as e:
+        status += f"ERROR_RETRIEVING_OPEN_COUNT: {e}"
+
+    results = {
+        'changes_made':     changes_made,
+        'email_campaign':   email_campaign,
+        'fields_changed':   fields_changed,
+        'status':           status,
+        'success':          success,
+    }
+    return results
+
+
 def render_audience_builder_html(
         audience_builder={},
         audience_filter_chain_dict={},
