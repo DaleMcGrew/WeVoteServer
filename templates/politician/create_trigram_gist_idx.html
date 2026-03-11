@@ -1,0 +1,37 @@
+{# templates/politician/create_trigram_gist_idx.html #}
+{% extends "template_base.html" %}
+
+{% block title %}Create Trigram Gist Index{% endblock %}
+
+{% block content %}
+
+<h1>Create Trigram Gist Index</h1>
+
+<form method="POST">
+    {% csrf_token %}
+    <label>Index Field </label>
+    <input type="text" name="index_field" value="{{ field|default:'' }}">
+    <button type="submit">Submit</button>
+</form>
+
+
+{% if status_message %}
+    <div class="alert alert-{{ status_type|default:'info' }} alert-dismissible fade in" role="alert">
+        <strong>
+            {% if status_type == 'success' %}
+                Success!
+            {% elif status_type == 'info' %}
+                Info!
+            {% elif status_type == 'error' %}
+                Error!
+            {% endif %}
+        </strong> {{ status_message }}
+    </div>
+{% endif %}
+
+<p>
+    <a href="{% url 'politician:politician_list' %}">
+    < Back to Politicians</a>
+</p>
+
+{% endblock %}

@@ -16,10 +16,19 @@
         Import New Candidates <span class="glyphicon glyphicon-new-window"></span></a>&nbsp;
     <a href="{% url 'candidate:candidates_data_cleaning' %}?google_civic_election_id={{ google_civic_election_id }}&show_all_elections={{ show_all_elections }}&show_this_year_of_candidates={{ show_this_year_of_candidates }}&state_code={{ state_code }}"
        target="_blank">
-  Data Cleaning <span class="glyphicon glyphicon-new-window"></span></a>
+  Data Cleaning <span class="glyphicon glyphicon-new-window"></span></a>&nbsp;
+    {% if trigram_gist_idx_exists %}
+      <a class="disabled"
+         target="_blank">
+  Add Trigram_Gist <span class="glyphicon glyphicon-new-window"></span></a>
+    {% else %}
+      <a href="{% url 'candidate:create_trigram_gist_idx' %}?google_civic_election_id={{ google_civic_election_id }}&show_all_elections={{ show_all_elections }}&show_this_year_of_candidates={{ show_this_year_of_candidates }}&state_code={{ state_code }}"
+         target="_blank">
+  Add Trigram_Gist <span class="glyphicon glyphicon-new-window"></span></a>
+    {% endif %}
 </p>
 
-{% csrf_token %}
+% {csrf_token %}
 
 <form name="candidate_choose_election" id="candidate_choose_election_id" method="get" action="{% url 'candidate:candidate_list' %}">
     {# These are input checkboxes from a form further down this page #}

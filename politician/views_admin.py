@@ -46,6 +46,7 @@ from volunteer_task.models import VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS
     VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION, VolunteerTaskManager
 from voter.models import fetch_voter_from_voter_device_link, voter_has_authority, VoterManager
 from wevote_functions import functions_test_links
+from wevote_functions.create_trigram_index import create_trigram_index
 from wevote_functions.functions import convert_to_int, convert_to_political_party_constant, \
     extract_first_name_from_full_name, extract_instagram_handle_from_text_string, \
     extract_middle_name_from_full_name, extract_last_name_from_full_name, \
@@ -4628,3 +4629,45 @@ def update_recommended_politicians_view(request):
     return HttpResponseRedirect(reverse('politician:politician_list', args=()) +
                                 "?state_code={state_code}"
                                 "".format(state_code=state_code))
+
+@login_required
+def create_trigram_gist_idx_view(request):
+    """
+    Create a trigram index on the Politician table to speed up searches.
+    """
+    authority_required = {'admin'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    status_message = None
+    status_type = None
+    indexes_created = []
+    indexes_already_existed = []
+
+    try:
+        # In the future, we might want to allow the user to specify the model and fields
+       if request.method == "POST":
+            # field value coming from form input
+            field_name = request.POST.get("index_field")
+            model = Politician
+            fields = [field_name] if field_name else []
+
+            if not fields:
+                raise Exception("No field provided for index creation.")
+            results = create_trigram_index(model, fields)
+        
+            status_message = results['status']
+            status_type = results.get('status_level', 'error' if not results['success'] else 'success')
+            indexes_created = results.get('indexes_created', [])
+            indexes_already_existed = results.get('indexes_already_existed', [])
+    except Exception as e:
+        status_message = f"Failed to create trigram index: {e}"
+        status_type = "error"
+
+    template_variables = {
+        'status_message': status_message,
+        'status_type': status_type,
+        'indexes_created': indexes_created,
+        'indexes_already_existed': indexes_already_existed,
+    }
+    return render(request, 'politician/create_trigram_gist_idx.html', template_variables)
