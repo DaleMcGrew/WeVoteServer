@@ -3,6 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 import json
+import re
 from datetime import datetime
 from django.utils import timezone
 from urllib.parse import urlencode
@@ -1585,9 +1586,19 @@ def email_recipient_view(request, email_recipient_id=0):
     status = ''
 
     email_recipient = EmailCampaignRecipient.objects.get(id=email_recipient_id)
+    email_body_assembled = email_recipient.email_body_assembled
+    if email_body_assembled:
+        try:
+            # We want to search for this pattern "/apis/v1/opened/hcRlYMGJCK4yLZuz/" in email_body_assembled,
+            #  where hcRlYMGJCK4yLZuz could be any random string, and then remove that final random string.
+            email_body_assembled = re.sub(r'/apis/v1/opened/[a-zA-Z0-9]+/', '/apis/v1/opened/DONOTTRACK/',
+                                          email_body_assembled)
+        except Exception as e:
+            email_body_assembled = email_recipient.email_body_assembled
+            status += "ERROR_SUBSTITUTING_EMAIL_BODY_ASSEMBLED: " + str(e) + " "
 
     template_values = {
-        'email_recipient':          email_recipient,
+        'email_body_assembled':     email_body_assembled,
         'google_civic_election_id': google_civic_election_id,
         'state_code':               state_code,
     }
