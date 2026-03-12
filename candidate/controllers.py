@@ -8,6 +8,7 @@ from socket import timeout
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.timezone import now
+from django.contrib.postgres.search import TrigramSimilarity
 import wevote_functions.admin
 from apis_v1.views.views_extension import process_pdf_to_html
 from ballot.models import CANDIDATE
@@ -3093,9 +3094,19 @@ def find_organization_endorsements_of_candidates_on_one_web_page(site_url, endor
 def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=None):
     """
     Find Candidates that might be duplicates to see if we want to merge them with this Candidate
+    
+    Supports two query methods:
+    - Trigram-based fuzzy matching on names with similarity threshold (use_trigram_match=True)
+    - Exact matching logic (use_trigram_match=False) - default method
+    
+    Threshold values for trigram similarity:
+    - 0.1: Very loose matching (high recall, low precision)
+    - 0.3: Standard fuzzy matching (balanced)
+    - 0.5: Stricter matching (lower recall, higher precision)
+    - 0.7: Very strict matching (high precision, low recall)
 
-    :param candidate:
-    :return:
+    :param candidate: Candidate object to find duplicates for
+    :return: List of up to 20 potential duplicate candidates
     """
     if not hasattr(candidate, 'we_vote_id'):
         return []
@@ -3104,6 +3115,9 @@ def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=No
     results = candidate_manager.retrieve_candidates_are_not_duplicates_list(candidate.we_vote_id, read_only=True)
     candidates_are_not_duplicates_list_we_vote_ids = results['candidates_are_not_duplicates_list_we_vote_ids']
     candidates_are_not_duplicates_list_we_vote_ids.append(candidate.we_vote_id)
+    # Local variables for query control
+    use_trigram_match = False
+    threshold = 0.3  # Standard fuzzy matching threshold (0.0-1.0 scale)
     try:
         queryset = CandidateCampaign.objects.using('readonly').all()
         queryset = queryset.exclude(we_vote_id__in=candidates_are_not_duplicates_list_we_vote_ids)
@@ -3131,55 +3145,133 @@ def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=No
         # "OR" filters below
         filters = []
 
-        new_filter = \
-            Q(candidate_name__iexact=last_name) | \
-            Q(ballotpedia_candidate_name__iexact=last_name)
+        # Last name filter (trigram-enabled for fuzzy matching with threshold)
+        if use_trigram_match and positive_value_exists(last_name):
+            queryset = queryset.annotate(
+                last_name_similarity=TrigramSimilarity('candidate_name', last_name)
+            ).annotate(
+                ballotpedia_name_similarity=TrigramSimilarity('ballotpedia_candidate_name', last_name)
+            )
+            new_filter = (
+                Q(last_name_similarity__gt=threshold) |
+                Q(ballotpedia_name_similarity__gt=threshold)
+            )
+        else:
+            new_filter = (
+                Q(candidate_name__iexact=last_name) |
+                Q(ballotpedia_candidate_name__iexact=last_name)
+            )
         filters.append(new_filter)
 
-        # new_filter = \
-        #     Q(candidate_name__icontains=first_name) & \
-        #     Q(candidate_name__icontains=last_name)
-        # filters.append(new_filter)
-
-        # new_filter = \
-        #     Q(ballotpedia_candidate_name__icontains=first_name) & \
-        #     Q(ballotpedia_candidate_name__icontains=last_name)
-        # filters.append(new_filter)
-
-        new_filter = (
+        # Main candidate name filter (trigram-enabled for fuzzy matching with threshold)
+        if use_trigram_match and positive_value_exists(candidate.candidate_name):
+            queryset = queryset.annotate(
+                main_candidate_similarity=TrigramSimilarity('candidate_name', candidate.candidate_name)
+            ).annotate(
+                ballotpedia_candidate_similarity=TrigramSimilarity('ballotpedia_candidate_name', candidate.candidate_name)
+            ).annotate(
+                civic_name1_similarity=TrigramSimilarity('google_civic_candidate_name', candidate.candidate_name)
+            ).annotate(
+                civic_name2_similarity=TrigramSimilarity('google_civic_candidate_name2', candidate.candidate_name)
+            ).annotate(
+                civic_name3_similarity=TrigramSimilarity('google_civic_candidate_name3', candidate.candidate_name)
+            )
+            new_filter = (
+                Q(main_candidate_similarity__gt=threshold) |
+                Q(ballotpedia_candidate_similarity__gt=threshold) |
+                Q(civic_name1_similarity__gt=threshold) |
+                Q(civic_name2_similarity__gt=threshold) |
+                Q(civic_name3_similarity__gt=threshold)
+            )
+        else:
+            new_filter = (
                 Q(candidate_name__iexact=candidate.candidate_name) |
                 Q(ballotpedia_candidate_name__iexact=candidate.candidate_name) |
                 Q(google_civic_candidate_name__iexact=candidate.candidate_name) |
                 Q(google_civic_candidate_name2__iexact=candidate.candidate_name) |
                 Q(google_civic_candidate_name3__iexact=candidate.candidate_name)
-        )
+            )
         filters.append(new_filter)
 
+        # Google civic name variant 1 filter (trigram-enabled with threshold)
         if positive_value_exists(candidate.google_civic_candidate_name):
-            new_filter = (
+            if use_trigram_match:
+                queryset = queryset.annotate(
+                    civic_var1_cand_sim=TrigramSimilarity('candidate_name', candidate.google_civic_candidate_name)
+                ).annotate(
+                    civic_var1_civic1_sim=TrigramSimilarity('google_civic_candidate_name', candidate.google_civic_candidate_name)
+                ).annotate(
+                    civic_var1_civic2_sim=TrigramSimilarity('google_civic_candidate_name2', candidate.google_civic_candidate_name)
+                ).annotate(
+                    civic_var1_civic3_sim=TrigramSimilarity('google_civic_candidate_name3', candidate.google_civic_candidate_name)
+                )
+                new_filter = (
+                    Q(civic_var1_cand_sim__gt=threshold) |
+                    Q(civic_var1_civic1_sim__gt=threshold) |
+                    Q(civic_var1_civic2_sim__gt=threshold) |
+                    Q(civic_var1_civic3_sim__gt=threshold)
+                )
+            else:
+                new_filter = (
                     Q(candidate_name__iexact=candidate.google_civic_candidate_name) |
                     Q(google_civic_candidate_name__iexact=candidate.google_civic_candidate_name) |
                     Q(google_civic_candidate_name2__iexact=candidate.google_civic_candidate_name) |
                     Q(google_civic_candidate_name3__iexact=candidate.google_civic_candidate_name)
-            )
+                )
             filters.append(new_filter)
 
+        # Google civic name variant 2 filter (trigram-enabled with threshold)
         if positive_value_exists(candidate.google_civic_candidate_name2):
-            new_filter = (
+            if use_trigram_match:
+                queryset = queryset.annotate(
+                    civic_var2_cand_sim=TrigramSimilarity('candidate_name', candidate.google_civic_candidate_name2)
+                ).annotate(
+                    civic_var2_civic1_sim=TrigramSimilarity('google_civic_candidate_name', candidate.google_civic_candidate_name2)
+                ).annotate(
+                    civic_var2_civic2_sim=TrigramSimilarity('google_civic_candidate_name2', candidate.google_civic_candidate_name2)
+                ).annotate(
+                    civic_var2_civic3_sim=TrigramSimilarity('google_civic_candidate_name3', candidate.google_civic_candidate_name2)
+                )
+                new_filter = (
+                    Q(civic_var2_cand_sim__gt=threshold) |
+                    Q(civic_var2_civic1_sim__gt=threshold) |
+                    Q(civic_var2_civic2_sim__gt=threshold) |
+                    Q(civic_var2_civic3_sim__gt=threshold)
+                )
+            else:
+                new_filter = (
                     Q(candidate_name__iexact=candidate.google_civic_candidate_name2) |
                     Q(google_civic_candidate_name__iexact=candidate.google_civic_candidate_name2) |
                     Q(google_civic_candidate_name2__iexact=candidate.google_civic_candidate_name2) |
                     Q(google_civic_candidate_name3__iexact=candidate.google_civic_candidate_name2)
-            )
+                )
             filters.append(new_filter)
 
+        # Google civic name variant 3 filter (trigram-enabled with threshold)
         if positive_value_exists(candidate.google_civic_candidate_name3):
-            new_filter = (
+            if use_trigram_match:
+                queryset = queryset.annotate(
+                    civic_var3_cand_sim=TrigramSimilarity('candidate_name', candidate.google_civic_candidate_name3)
+                ).annotate(
+                    civic_var3_civic1_sim=TrigramSimilarity('google_civic_candidate_name', candidate.google_civic_candidate_name3)
+                ).annotate(
+                    civic_var3_civic2_sim=TrigramSimilarity('google_civic_candidate_name2', candidate.google_civic_candidate_name3)
+                ).annotate(
+                    civic_var3_civic3_sim=TrigramSimilarity('google_civic_candidate_name3', candidate.google_civic_candidate_name3)
+                )
+                new_filter = (
+                    Q(civic_var3_cand_sim__gt=threshold) |
+                    Q(civic_var3_civic1_sim__gt=threshold) |
+                    Q(civic_var3_civic2_sim__gt=threshold) |
+                    Q(civic_var3_civic3_sim__gt=threshold)
+                )
+            else:
+                new_filter = (
                     Q(candidate_name__iexact=candidate.google_civic_candidate_name3) |
                     Q(google_civic_candidate_name__iexact=candidate.google_civic_candidate_name3) |
                     Q(google_civic_candidate_name2__iexact=candidate.google_civic_candidate_name3) |
                     Q(google_civic_candidate_name3__iexact=candidate.google_civic_candidate_name3)
-            )
+                )
             filters.append(new_filter)
 
         if positive_value_exists(candidate.candidate_twitter_handle):
