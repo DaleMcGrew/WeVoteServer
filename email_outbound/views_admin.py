@@ -3,8 +3,8 @@
 # -*- coding: UTF-8 -*-
 import base64
 import json
-import os
 import re
+import uuid
 from datetime import datetime
 import time
 
@@ -15,7 +15,6 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
 from django.db.models import Q
-from django.http import JsonResponse
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, StreamingHttpResponse
 from django.http import HttpResponseRedirect
@@ -29,7 +28,7 @@ import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists
 from wevote_functions.validate_email import validate_email
 from .functions import build_s3_key, upload_fileobj_to_s3, delete_from_s3, download_bytes_from_s3, \
-    move_s3_object
+    move_s3_object, cleanup_unused_inline_attachments
 
 from .controllers_email_campaign import augment_email_campaign_recipient, refresh_email_campaign_data, \
     render_audience_builder_html
@@ -40,6 +39,7 @@ from .models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCamp
 
 logger = wevote_functions.admin.get_logger(__name__)
 
+# can change these restrictions accordingly
 MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024  # 10MB; adjust to your needs
 ALLOWED_CONTENT_TYPES = {
     "application/pdf",
@@ -195,6 +195,9 @@ def email_campaign_edit_process_view(request):
                 att.email_campaign = email_campaign
                 att.draft_uuid = None
                 att.save(update_fields=["s3_key", "email_campaign", "draft_uuid"])
+
+    # clean up previously saved inline images removed before hitting save
+    cleanup_unused_inline_attachments(html=email_body, email_campaign=email_campaign)
 
     # Find all existing manually entered recipients for this email_campaign so we can remove them if they don't come in
     manually_added_recipients = []
@@ -425,6 +428,9 @@ def email_campaign_edit_view(request):
     google_civic_election_id = request.GET.get('google_civic_election_id', '')
     state_code = request.GET.get('state_code', '')
     campaign_id = request.GET.get('id', '')
+
+    # generate uuid unique identifier to pre-save the attachments
+    draft_uuid = uuid.uuid4()
     
     # Load existing campaign if editing
     campaign_recipients = []
@@ -529,6 +535,7 @@ def email_campaign_edit_view(request):
         'saved_campaigns': saved_campaigns,
         'campaign_recipients': json.dumps(campaign_recipients),
         'token_list': EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS,
+        'draft_uuid': draft_uuid
     }
 
     return render(request, 'email_outbound/email_campaign_edit.html', template_values)
@@ -546,6 +553,21 @@ def email_campaign_list_view(request):
     state_code = request.GET.get('state_code', '')
     status = ''
     update_list = []
+    draft_uuid = request.GET.get('draft_uuid', request.POST.get('draft_uuid', ''))
+
+    # on cancel, delete unsaved attachments temporarily stored in s3
+    # delete behavior: only delete from s3 if no other copies/references of attachment remain
+    if draft_uuid:
+        attachments = list(EmailAttachments.objects.filter(draft_uuid=draft_uuid))
+        for att in attachments:
+            att_s3_key = att.s3_key
+            att_count = EmailAttachments.objects.filter(s3_key=att_s3_key).count()
+            if att_count > 1:
+                att.delete()
+            elif att_count == 1:
+                att.delete()
+                delete_from_s3(key=att.s3_key)
+            messages.success(request, "Attachment deleted")
 
     campaigns_queryset = EmailCampaign.objects.filter(deleted=False).order_by('-id')
 
@@ -641,6 +663,9 @@ def email_template_edit_view(request):
     email_template_id = request.GET.get('email_template_id', 0)
     default_folder_id = request.GET.get('default_email_template_folder_id', None)
 
+    # generate unique identifier to temporarily attach attachments to before save
+    draft_uuid = uuid.uuid4()
+
     # Load existing template if editing
     email_template = None
     if positive_value_exists(email_template_id):
@@ -669,26 +694,18 @@ def email_template_edit_view(request):
         'selected_folder_id':       selected_folder_id,
         'state_code':               state_code,
         'token_list':               EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS,
+        'draft_uuid':               draft_uuid,
         # 'state_list':             sorted_state_list,
     }
     return render(request, 'email_outbound/email_template_edit.html', template_values)
-
+# Upload attachments to S3 temporarily to the draft uuid
+# expects query params: draft UUID
 @login_required
 def attachment_upload_view(request) -> HttpResponse:
-    """
-    expects query params:
-      - campaign_id or template_id
-    """
-    # delete_files_in_s3()
-    campaign_id = request.GET.get("campaign_id") or request.POST.get("campaign_id") or None
-    template_id = request.GET.get("template_id") or request.POST.get("template_id") or None
     draft_uuid = request.GET.get("draft_uuid") or request.POST.get("draft_uuid") or None
 
-    campaign = get_object_or_404(EmailCampaign, pk=campaign_id) if campaign_id else None
-    template = get_object_or_404(EmailTemplate, pk=template_id) if template_id else None
-
-    if not campaign_id and not template_id and not draft_uuid:
-        return HttpResponseBadRequest("campaign_id or template_id or draft_uuid is required")
+    if not draft_uuid:
+        return HttpResponseBadRequest("draft_uuid is required")
 
     # POST
     print("no issues till here")
@@ -706,35 +723,31 @@ def attachment_upload_view(request) -> HttpResponse:
         if content_type and content_type not in ALLOWED_CONTENT_TYPES:
             return HttpResponseBadRequest(f"Unsupported content type: {content_type}")
 
-        # bucket = settings.AWS_S3_EMAIL_BUCKET
-        # if not bucket:
-        #     return HttpResponseBadRequest("AWS_S3_EMAIL_BUCKET is not configured.")
+        # build s3 key
         key = build_s3_key(
-            campaign_id=int(campaign_id) if campaign_id else None,
-            template_id=int(template_id) if template_id else None,
-            draft_uuid=draft_uuid if draft_uuid else None,
+            campaign_id=None,
+            template_id=None,
+            draft_uuid=draft_uuid,
             original_filename=f.name,
         )
-        t0 = time.perf_counter()
+
         size_bytes = upload_fileobj_to_s3(
             fileobj=f,
             key=key,
             content_type=content_type,
         )
-        t1 = time.perf_counter()
-        print(f"S3 upload {f.name} took {(t1 - t0)}s")
-        t2 = time.perf_counter()
+
+        # create attachment object with s3 key and other details
         att = EmailAttachments.objects.create(
-            email_campaign=campaign,
-            email_template=template,
-            draft_uuid=None if (campaign_id or template_id) else draft_uuid,
+            email_campaign=None,
+            email_template=None,
+            draft_uuid=draft_uuid,
             s3_key=key,
             original_name=f.name,
             content_type=content_type,
             file_size=size_bytes or int(f.size or 0),
         )
-        t3 = time.perf_counter()
-        print(f"DB create {f.name} took {(t3 - t2)}s")
+
         created.append({
             "id": att.id,
             "name": att.original_name or f.name,
@@ -743,24 +756,23 @@ def attachment_upload_view(request) -> HttpResponse:
     messages.success(request, "Attachment uploaded.")
     return JsonResponse({"ok": True, "attachments": created})
 
-
+# delete attachments using attachment id
+# delete from s3 only if 1 copy or referrence remains
 @login_required
 def attachment_delete_view(request, attachment_id: int) -> HttpResponse:
     att = get_object_or_404(EmailAttachments, id=attachment_id)
     att_s3_key = att.s3_key
     att_count = EmailAttachments.objects.filter(s3_key=att_s3_key).count()
-    # print(f"att_count: {att_count}")
     if att_count > 1:
         att.delete()
-        # print(f"does it exist: {EmailAttachments.objects.filter(EmailAttachments, id=attachment_id)}")
     elif att_count == 1:
         att.delete()
         delete_from_s3(key=att.s3_key)
-        # print(f"does it exist last count: {EmailAttachments.objects.filter(EmailAttachments, id=attachment_id)}")
     messages.success(request, "Attachment deleted.")
     # redirect back
     return JsonResponse({"ok": True, "deleted_id": attachment_id})
 
+# download attachments using attachment id (using max preset file size vals)
 @login_required
 def attachment_download_view(request, attachment_id: int) -> StreamingHttpResponse:
     att = get_object_or_404(EmailAttachments, id=attachment_id)
@@ -772,6 +784,7 @@ def attachment_download_view(request, attachment_id: int) -> StreamingHttpRespon
     resp["Content-Disposition"] = f'attachment; filename="{att.original_name}"'
     return resp
 
+# copy attachments from template to campaign
 @login_required
 def copy_attachments_to_campaign(request, template_id, campaign_id, draft_uuid):
     template_id = int(template_id) if template_id and template_id != 'null' else None
@@ -784,6 +797,20 @@ def copy_attachments_to_campaign(request, template_id, campaign_id, draft_uuid):
     attachments = []
     try:
         template_attachments = list(EmailAttachments.objects.filter(email_template=template))
+        # delete old inline attachments on campaign when copying in new template
+        if campaign_id:
+            campaign_inline_attachments = list(EmailAttachments.objects.filter(email_campaign=campaign, is_inline=True))
+            for c_att in campaign_inline_attachments:
+                att_s3_key = c_att.s3_key
+                att_count = EmailAttachments.objects.filter(s3_key=att_s3_key).count()
+                if att_count > 1:
+                    c_att.delete()
+                elif att_count == 1:
+                    c_att.delete()
+                    delete_from_s3(key=c_att.s3_key)
+                messages.success(request, "Attachment deleted.")
+
+        # copy in new attachments from template to campaign
         if draft_uuid:
             for att in template_attachments:
                 if not EmailAttachments.objects.filter(draft_uuid=draft_uuid, s3_key=att.s3_key).exists():
@@ -794,33 +821,83 @@ def copy_attachments_to_campaign(request, template_id, campaign_id, draft_uuid):
                         original_name=att.original_name,
                         content_type=att.content_type,
                         file_size=att.file_size,
+                        is_inline=att.is_inline,
                     )
 
                     attachments.append({
                         "id": new_att.id,
                         "name": new_att.original_name,
-                    })
-        else:
-            for att in template_attachments:
-                if not EmailAttachments.objects.filter(email_campaign=campaign, s3_key=att.s3_key).exists():
-                    # print(f"teh attachments that match these criteria")
-                    new_att = EmailAttachments.objects.create(
-                        email_campaign=campaign,
-                        email_template=None,
-                        s3_key=att.s3_key,
-                        original_name=att.original_name,
-                        content_type=att.content_type,
-                        file_size=att.file_size,
-                    )
-
-                    attachments.append({
-                        "id": new_att.id,
-                        "name": new_att.original_name,
+                        "is_inline": new_att.is_inline,
                     })
     except EmailAttachments.DoesNotExist:
         return JsonResponse({"ok": False, "attachments": attachments})
 
     return JsonResponse({"ok": True, "attachments": attachments})
+
+# handle inline image upload
+@login_required
+def attachment_image_upload_view(request):
+    draft_uuid = request.GET.get("draft_uuid") or request.POST.get("draft_uuid") or None
+
+    if not draft_uuid:
+        return HttpResponseBadRequest("campaign_id or template_id or draft_uuid is required")
+
+    # POST
+    print("no issues till here")
+    f = request.FILES.get("file")
+    print("are there files: ", f)
+    if not f:
+        return HttpResponseBadRequest("No files provided")
+
+    if f.size and f.size > MAX_ATTACHMENT_BYTES:
+        return HttpResponseBadRequest(f"File too large. Max is {MAX_ATTACHMENT_BYTES} bytes.")
+
+    content_type = (getattr(f, "content_type", "") or "").strip()
+    if content_type and content_type not in ALLOWED_CONTENT_TYPES:
+        return HttpResponseBadRequest(f"Unsupported content type: {content_type}")
+
+    print("at good files")
+    key = build_s3_key(
+        campaign_id=None,
+        template_id=None,
+        draft_uuid=draft_uuid,
+        original_filename=f.name,
+    )
+    size_bytes = upload_fileobj_to_s3(
+        fileobj=f,
+        key=key,
+        content_type=content_type,
+    )
+    att = EmailAttachments.objects.create(
+        email_campaign=None,
+        email_template=None,
+        draft_uuid=draft_uuid,
+        s3_key=key,
+        original_name=f.name,
+        content_type=content_type,
+        file_size=size_bytes or int(f.size or 0),
+        is_inline=True
+    )
+
+    messages.success(request, "Attachment uploaded.")
+
+    render_url = reverse("email_outbound:email_attachment_render", kwargs={"attachment_id": att.id})
+
+    return JsonResponse({
+        "location": render_url,   # TinyMCE expects this
+        "attachment_id": att.id
+    })
+
+# generate render view for inline attachment
+@login_required
+def attachment_render_view(request, attachment_id: int):
+    att = get_object_or_404(EmailAttachments, id=attachment_id)
+
+    raw = download_bytes_from_s3(key=att.s3_key)
+    resp = HttpResponse(raw, content_type=att.content_type or "application/octet-stream")
+    resp["Content-Disposition"] = f'inline; filename="{att.original_name}"'
+    print('render url: ', resp)
+    return resp
 
 @login_required
 def email_template_edit_process_view(request):
@@ -889,6 +966,8 @@ def email_template_edit_process_view(request):
             email_template_id = email_template.id
             if email_template is not None:
                 status += "New template created. "
+
+        # on save, process attachments, move s3 key location, and mark them to respective template id
         if draft_uuid and email_template and email_template_id:
             with transaction.atomic():
                 qs = EmailAttachments.objects.select_for_update().filter(
@@ -909,6 +988,9 @@ def email_template_edit_process_view(request):
                     att.email_template = email_template
                     att.draft_uuid = None
                     att.save(update_fields=["s3_key", "email_template", "draft_uuid"])
+
+        # clean up unused inline attachments that have been removed
+        cleanup_unused_inline_attachments(html=message, email_template=email_template)
 
     except Exception as e:
         status += f"Error saving template: {e}"
@@ -1100,6 +1182,7 @@ def email_template_list_view(request):
     google_civic_election_id = request.GET.get('google_civic_election_id',
                                                request.POST.get('google_civic_election_id', 0))
     state_code = request.GET.get('state_code', request.POST.get('state_code', ''))
+    draft_uuid = request.GET.get('draft_uuid', request.POST.get('draft_uuid', ''))
 
     # Folders
     folder_qs = EmailTemplateFolder.objects.filter(deleted=False)
@@ -1110,6 +1193,19 @@ def email_template_list_view(request):
     template_qs = EmailTemplate.objects.filter(deleted=False)
     templates_active = template_qs.filter(archived=False).order_by('email_template_name')
     templates_archived = template_qs.filter(archived=True).order_by('email_template_name')
+
+    # delete unsaved attachments temporarily stored on cancel
+    if draft_uuid:
+        attachments = list(EmailAttachments.objects.filter(draft_uuid=draft_uuid))
+        for att in attachments:
+            att_s3_key = att.s3_key
+            att_count = EmailAttachments.objects.filter(s3_key=att_s3_key).count()
+            if att_count > 1:
+                att.delete()
+            elif att_count == 1:
+                att.delete()
+                delete_from_s3(key=att.s3_key)
+            messages.success(request, "Attachment deleted")
 
     # Map active templates by folder id
     templates_by_folder = {}

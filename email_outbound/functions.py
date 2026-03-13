@@ -3,6 +3,7 @@
 # -*- coding: UTF-8 -*-
 import base64
 import uuid
+from bs4 import BeautifulSoup
 from config.base import get_environment_variable
 from .models import CAMPAIGNX_FRIEND_HAS_SUPPORTED_TEMPLATE, CAMPAIGNX_NEWS_ITEM_TEMPLATE, \
     CAMPAIGNX_SUPER_SHARE_ITEM_TEMPLATE, CAMPAIGNX_SUPPORTER_INITIAL_RESPONSE_TEMPLATE, \
@@ -228,6 +229,8 @@ def convert_html_to_plain_text(html_content):
         plain_text = re.sub(r'\s+', ' ', plain_text)
         return plain_text.strip()
 
+# S3 functions
+# create s3 bucket
 def _s3_client_bucket():
     # Works with env keys or IAM role
     AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
@@ -242,11 +245,13 @@ def _s3_client_bucket():
     s3 = session.resource(AWS_STORAGE_SERVICE)
     return s3.Bucket(AWS_STORAGE_BUCKET_NAME)
 
+# make filename safe
 def _safe_filename(name: str) -> str:
   # basic sanitize; you can harden this if needed
   name = (name or "file").replace("\\", "/").split("/")[-1]
   return "".join(ch for ch in name if ch.isalnum() or ch in (" ", ".", "_", "-", "(", ")", "[", "]")).strip() or "file"
 
+# build s3 key
 def build_s3_key(*, campaign_id: int | None, template_id: int | None, draft_uuid: None, original_filename: str) -> str:
   owner = "unknown"
   if campaign_id:
@@ -260,11 +265,9 @@ def build_s3_key(*, campaign_id: int | None, template_id: int | None, draft_uuid
   u = uuid.uuid4().hex
   return f"email/{owner}/attachments/{u}-{clean}"
 
+# Uploads a Django InMemoryUploadedFile / TemporaryUploadedFile to S3.
+#   Returns size in bytes.
 def upload_fileobj_to_s3(*, fileobj, key: str, content_type: str = "") -> int:
-  """
-  Uploads a Django InMemoryUploadedFile / TemporaryUploadedFile to S3.
-  Returns size in bytes.
-  """
   bucket = _s3_client_bucket()
 
   # Ensure we can compute size without reading into memory
@@ -276,16 +279,18 @@ def upload_fileobj_to_s3(*, fileobj, key: str, content_type: str = "") -> int:
 
   return int(size or 0)
 
-
+# stream and prepare file from s3 for download
 def download_bytes_from_s3(*, key: str) -> bytes:
   bucket = _s3_client_bucket()
   obj = bucket.Object(key).get()
   return obj["Body"]
 
+# delete file from s3
 def delete_from_s3(*, key: str) -> None:
   bucket = _s3_client_bucket()
   bucket.Object(key).delete()
 
+# move file location from old key to new key in s3
 def move_s3_object(*, old_key: str, new_key: str) -> None:
     bucket = _s3_client_bucket()
 
@@ -297,11 +302,16 @@ def move_s3_object(*, old_key: str, new_key: str) -> None:
     # Delete old key
     bucket.Object(old_key).delete()
 
-def build_prepared_campaign_attachments(email_campaign):
+# prepare attachments to send via sendgrid
+# expects: email_body (html str), email campaign object
+# need b64 encoding to send attachments via sendgrid
+# email body in html needs inline tags to be modified before send
+def build_prepared_campaign_attachments(body: str, email_campaign):
     prepared_attachments = []
-
-    attachments = EmailAttachments.objects.filter(email_campaign=email_campaign, is_inline=False)
     bucket = _s3_client_bucket()
+
+    # get non-inline attachments
+    attachments = EmailAttachments.objects.filter(email_campaign=email_campaign, is_inline=False)
     for att in attachments:
         obj = bucket.Object(att.s3_key).get()
         raw_bytes = obj["Body"].read()
@@ -312,6 +322,88 @@ def build_prepared_campaign_attachments(email_campaign):
             "original_name": att.original_name,
             "content_type": att.content_type or "application/octet-stream",
             "b64encoding": b64encoding,
+            "inline": False
         })
 
-    return prepared_attachments
+    # parse body for inline img tags
+    soup = BeautifulSoup(body, 'html.parser')
+    for img in soup.find_all('img'):
+        original_src = img.get('src')
+
+        # get attachment ids
+        try:
+            parts = original_src.split('/')
+            attachment_id = next(p for p in parts if p.isdigit())
+        except StopIteration:
+            continue
+
+        try:
+            att_obj = EmailAttachments.objects.get(id=attachment_id)
+            obj = bucket.Object(att_obj.s3_key).get()
+            raw_bytes = obj["Body"].read()
+            b64encoding = base64.b64encode(raw_bytes).decode("utf-8")
+        except EmailAttachments.DoesNotExist:
+            continue
+
+        # create and covert the img tag to a cid tag
+        cid = f"img_{attachment_id}"
+        img['src'] = f"cid:{cid}"
+
+        # prepare attachments
+        prepared_attachments.append({
+            "id": att_obj.id,
+            "original_name": att_obj.original_name,
+            "content_type": att_obj.content_type or "application/octet-stream",
+            "b64encoding": b64encoding,
+            "inline": True
+        })
+
+    # return final body and prepared attachments
+    final_body = str(soup)
+    return final_body, prepared_attachments
+
+# get inline attachment ids for cleanup
+def get_inline_attachment_ids_from_html(html: str) -> set[int]:
+    if not html:
+        return set()
+
+    matches = re.findall(r'attachments/render/(\d+)/', html)
+    return {int(x) for x in matches}
+
+# cleanup attachments that are not part of inline body anymore
+# expects html body and email campaign object or email template object related to body
+def cleanup_unused_inline_attachments(html: str, email_campaign=None, email_template=None):
+    referenced_ids = get_inline_attachment_ids_from_html(html)
+    s3_keys = list(
+        EmailAttachments.objects.filter(id__in=referenced_ids)
+        .values_list('s3_key', flat=True)
+    )
+
+    try:
+        inline_attachments = None
+        if email_campaign:
+            inline_attachments = EmailAttachments.objects.filter(
+                email_campaign=email_campaign,
+                is_inline=True,
+            )
+        elif email_template:
+            inline_attachments = EmailAttachments.objects.filter(
+                email_template=email_template,
+                is_inline=True,
+            )
+        else:
+            raise ValueError("Either campaign or template must be provided")
+
+        for att in inline_attachments:
+            if att.s3_key not in s3_keys:
+                att_s3_key = att.s3_key
+                att_count = EmailAttachments.objects.filter(s3_key=att_s3_key).count()
+                if att_count > 1:
+                    att.delete()
+                elif att_count == 1:
+                    att.delete()
+                    delete_from_s3(key=att.s3_key)
+
+
+    except ValueError as e:
+        print(f"Caught an error: {e}")
