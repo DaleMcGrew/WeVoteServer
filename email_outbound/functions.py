@@ -1,19 +1,21 @@
 # email_outbound/functions.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-
+import base64
+import uuid
+from config.base import get_environment_variable
 from .models import CAMPAIGNX_FRIEND_HAS_SUPPORTED_TEMPLATE, CAMPAIGNX_NEWS_ITEM_TEMPLATE, \
     CAMPAIGNX_SUPER_SHARE_ITEM_TEMPLATE, CAMPAIGNX_SUPPORTER_INITIAL_RESPONSE_TEMPLATE, \
     FRIEND_ACCEPTED_INVITATION_TEMPLATE, FRIEND_INVITATION_TEMPLATE, LINK_TO_SIGN_IN_TEMPLATE, \
     MESSAGE_TO_FRIEND_TEMPLATE, NOTICE_FRIEND_ENDORSEMENTS_TEMPLATE, NOTICE_VOTER_DAILY_SUMMARY_TEMPLATE, \
     REMIND_CONTACT, SEND_BALLOT_TO_SELF, SEND_BALLOT_TO_FRIENDS, SIGN_IN_CODE_EMAIL_TEMPLATE, \
-    VERIFY_EMAIL_ADDRESS_TEMPLATE
+    VERIFY_EMAIL_ADDRESS_TEMPLATE, EmailAttachments
 from django.template.loader import get_template
-from django.template import Context
 from html.parser import HTMLParser
 import re
 import json
 
+import boto3
 
 def get_template_filename(kind_of_email_template, text_or_html):
     if kind_of_email_template == VERIFY_EMAIL_ADDRESS_TEMPLATE:
@@ -225,3 +227,91 @@ def convert_html_to_plain_text(html_content):
         # Clean up whitespace
         plain_text = re.sub(r'\s+', ' ', plain_text)
         return plain_text.strip()
+
+def _s3_client_bucket():
+    # Works with env keys or IAM role
+    AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
+    AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
+    AWS_STORAGE_BUCKET_NAME = get_environment_variable("AWS_STORAGE_BUCKET_NAME")
+    AWS_STORAGE_SERVICE = "s3"
+
+    session = boto3.session.Session(region_name=AWS_REGION_NAME,
+                                  aws_access_key_id=AWS_ACCESS_KEY_ID,
+                                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+    s3 = session.resource(AWS_STORAGE_SERVICE)
+    return s3.Bucket(AWS_STORAGE_BUCKET_NAME)
+
+def _safe_filename(name: str) -> str:
+  # basic sanitize; you can harden this if needed
+  name = (name or "file").replace("\\", "/").split("/")[-1]
+  return "".join(ch for ch in name if ch.isalnum() or ch in (" ", ".", "_", "-", "(", ")", "[", "]")).strip() or "file"
+
+def build_s3_key(*, campaign_id: int | None, template_id: int | None, draft_uuid: None, original_filename: str) -> str:
+  owner = "unknown"
+  if campaign_id:
+    owner = f"campaigns/{campaign_id}"
+  elif template_id:
+    owner = f"templates/{template_id}"
+  else:
+    owner = f"drafts/{draft_uuid}"
+
+  clean = _safe_filename(original_filename)
+  u = uuid.uuid4().hex
+  return f"email/{owner}/attachments/{u}-{clean}"
+
+def upload_fileobj_to_s3(*, fileobj, key: str, content_type: str = "") -> int:
+  """
+  Uploads a Django InMemoryUploadedFile / TemporaryUploadedFile to S3.
+  Returns size in bytes.
+  """
+  bucket = _s3_client_bucket()
+
+  # Ensure we can compute size without reading into memory
+  size = getattr(fileobj, "size", None)
+  kwargs = dict(Fileobj=fileobj, Key=key)
+  if content_type:
+      kwargs["ExtraArgs"] = {"ContentType": content_type}
+  bucket.upload_fileobj(**kwargs)
+
+  return int(size or 0)
+
+
+def download_bytes_from_s3(*, key: str) -> bytes:
+  bucket = _s3_client_bucket()
+  obj = bucket.Object(key).get()
+  return obj["Body"]
+
+def delete_from_s3(*, key: str) -> None:
+  bucket = _s3_client_bucket()
+  bucket.Object(key).delete()
+
+def move_s3_object(*, old_key: str, new_key: str) -> None:
+    bucket = _s3_client_bucket()
+
+    copy_source = {"Bucket": bucket.name, "Key": old_key}
+
+    # Copy to new key
+    bucket.Object(new_key).copy(copy_source)
+
+    # Delete old key
+    bucket.Object(old_key).delete()
+
+def build_prepared_campaign_attachments(email_campaign):
+    prepared_attachments = []
+
+    attachments = EmailAttachments.objects.filter(email_campaign=email_campaign, is_inline=False)
+    bucket = _s3_client_bucket()
+    for att in attachments:
+        obj = bucket.Object(att.s3_key).get()
+        raw_bytes = obj["Body"].read()
+        b64encoding = base64.b64encode(raw_bytes).decode("utf-8")
+
+        prepared_attachments.append({
+            "id": att.id,
+            "original_name": att.original_name,
+            "content_type": att.content_type or "application/octet-stream",
+            "b64encoding": b64encoding,
+        })
+
+    return prepared_attachments

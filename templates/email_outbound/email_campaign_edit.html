@@ -101,7 +101,41 @@
         </div>
     </div>
 
-    
+    <!-- Display attachments -->
+    <ul id="existingAttachments" class="list-group">
+        {% for att in email_campaign.attachments.all %}
+          <li class="list-group-item d-flex justify-content-between align-items-center" data-att-id="{{ att.id }}">
+            <div class="d-flex flex-column">
+              <span class="fw-semibold">{{ att.original_name|default:"file" }}</span>
+              <small class="muted">{{ att.created }}</small>
+            </div>
+            <div class="d-flex gap-2">
+              <a class="btn btn-sm btn-outline-primary"
+                 href="{% url 'email_outbound:email_attachment_download' attachment_id=att.id %}">
+                Download
+              </a>
+
+              <button type="button" class="btn btn-sm btn-outline-danger"
+                      onclick="deleteCampaignAttachment({{ att.id }})">
+                Delete
+              </button>
+            </div>
+          </li>
+        {% empty %}
+          <li class="list-group-item muted">No attachments yet.</li>
+        {% endfor %}
+    </ul>
+
+    <div class="d-flex gap-2">
+      <label class="btn btn-primary mb-0">
+        Choose files
+        <input id="attachmentInput" type="file" name="attachments" multiple>
+      </label>
+      <button id="uploadBtn" type="button" class="btn btn-outline-primary">
+        Upload selected
+      </button>
+    </div>
+
 
     <!-- Recipients Section -->
     <div class="mb-3">
@@ -191,6 +225,7 @@
     <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
     <input type="hidden" name="state_code" value="{{ state_code }}">
     <input type="hidden" name="email_campaign_id" id="email_campaign_id" value="{% if email_campaign %}{{ email_campaign.id }}{% endif %}">
+    <input type="hidden" name="draft_uuid" id="draft_uuid">
     <input type="hidden" name="selected_template_id" value="{{ selected_template_id }}">
     <input type="hidden" name="send_button_clicked" id="send_button_clicked_id" value="0">
     <input type="hidden" name="send_time_option" id="send_time_option_input" value="{% if email_campaign.scheduled_send_time %}scheduled{% else %}now{% endif %}">
@@ -549,15 +584,66 @@
           }
           
           if (data.message) {
-            // Set textarea value directly
-            // document.getElementById('email_body').value = data.message;
-            if (tinymce.get('email_body')) {
-              tinymce.get('email_body').setContent(data.message);
-            } else {
-              document.getElementById('email_body').value = data.message;
-            }
-            console.log('Content set successfully');
+              // Set textarea value directly
+              // document.getElementById('email_body').value = data.message;
+              if (tinymce.get('email_body')) {
+                  tinymce.get('email_body').setContent(data.message);
+              } else {
+                  document.getElementById('email_body').value = data.message;
+              }
+              console.log('Content set successfully');
           }
+          {#console.log('type of draftUuid: ', typeof(draftUuid));#}
+          {#console.log('type of draftUuid: ', typeof(templateId));#}
+          {#console.log('type of draftUuid: ', typeof(campaign_id));#}
+          const clean = (val) => (val ? val.toString() : "null");
+
+          {#const copyUrl = draftUuid ? `{% url 'email_outbound:copy_attachments_to_campaign_draft' 111111 222222 %}`#}
+          {#    .replace("111111", templateId).replace("222222", draftUuid ?? '') :#}
+          {#    `{% url 'email_outbound:copy_attachments_to_campaign' 111111 222222 %}`#}
+          {#    .replace("111111", templateId).replace("222222", campaign_id ? campaign_id.toString() : '');#}
+          const copyUrl = `{% url 'email_outbound:copy_attachments_to_campaign' 'T_ID' 'C_ID' 'D_UUID' %}`
+              .replace("T_ID", clean(templateId))
+              .replace("C_ID", clean(campaign_id))
+              .replace("D_UUID", clean(draftUuid));
+          console.log(`copyURL: ${copyUrl}`)
+          fetch(copyUrl, {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": csrfToken,
+            },
+          }).then(res => {
+            if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+            console.log(res)
+            return res.json()
+          }).then(data => {
+              if (!data.ok) throw new Error("Upload failed");
+              (data.attachments || []).forEach(att => {
+                  // Add to existing attachments list
+                const li = document.createElement("li");
+                li.className = "list-group-item d-flex justify-content-between align-items-center";
+                li.dataset.attId = att.id;
+                const downloadUrl = "{% url 'email_outbound:email_attachment_download' attachment_id=0 %}".replace('0', att.id);
+                li.innerHTML = `
+                  <div class="d-flex flex-column">
+                    <span class="fw-semibold">${att.name}</span>
+                    <small class="muted">Just now</small>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary" href="${downloadUrl}">Download</a>
+                    <button type="button" class="btn btn-sm btn-outline-danger">Delete</button>
+                  </div>
+                `;
+
+                // event listener to call deleteCampaignAttachment
+                const deleteBtn = li.querySelector("button.btn-outline-danger");
+                deleteBtn.addEventListener("click", () => deleteCampaignAttachment(att.id));
+                // If list is empty placeholder, remove it
+                const placeholder = existingCampaignAttachments.querySelector(".list-group-item.muted");
+                if (placeholder) placeholder.remove();
+                existingCampaignAttachments.prepend(li);
+              })
+          })
         })
         .catch(error => {
           console.error('Error loading template:', error);
@@ -773,6 +859,103 @@
     window.location.href = '{% url "email_outbound:email_campaign_edit" %}?id=' + campaignId + '&google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}';
   }
 
+  // Attachment functions
+  const csrfToken = "{{ csrf_token }}";
+  const campaign_id = {% if email_campaign and email_campaign.id %}{{ email_campaign.id }}{% else %}null{% endif %};
+
+  const draftUuid = campaign_id ? null : crypto.randomUUID();
+  if (draftUuid) {
+      document.getElementById("draft_uuid").value = draftUuid;
+      console.log("DraftUuid: ", draftUuid);
+  }
+  const uploadUrl = `{% url 'email_outbound:email_attachment_upload' %}?campaign_id=${campaign_id ?? ''}&draft_uuid=${draftUuid ?? ''}`;
+  console.log(`uploadURL: ${uploadUrl}`)
+
+  const existingCampaignAttachments = document.getElementById("existingAttachments");
+  const uploadBtn = document.getElementById("uploadBtn");
+  const input = document.getElementById("attachmentInput");
+
+  async function deleteCampaignAttachment(attId) {
+    const deleteUrl = "{% url 'email_outbound:email_attachment_delete' attachment_id=999999 %}".replace("999999", attId);
+
+    const res = await fetch(deleteUrl, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfToken,
+      },
+    });
+
+    if (!res.ok) {
+      alert("Delete failed.");
+      return;
+    }
+    const data = await res.json();
+    if (data.ok) {
+      const row = existingAttachments.querySelector(`[data-att-id="${attId}"]`);
+      if (row) row.remove();
+    }
+  }
+
+  uploadBtn.addEventListener("click", async () => {
+    if (!input.files || input.files.length === 0) return;
+
+    const formData = new FormData();
+    [...input.files].forEach(f => formData.append("attachments", f));
+
+    try {
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Upload failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      if (!data.ok) {
+        throw new Error("Upload failed");
+      }
+
+      // mark each uploaded item as done + add to existing list
+      (data.attachments || []).forEach(att => {
+
+        // Add to existing attachments list
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center";
+        li.dataset.attId = att.id;
+        const downloadUrl = "{% url 'email_outbound:email_attachment_download' attachment_id=0 %}".replace('0', att.id);
+        li.innerHTML = `
+          <div class="d-flex flex-column">
+            <span class="fw-semibold">${att.name}</span>
+            <small class="muted">Just now</small>
+          </div>
+          <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="${downloadUrl}">Download</a>
+            <button type="button" class="btn btn-sm btn-outline-danger">Delete</button>
+          </div>
+        `;
+        // event listener to call deleteCampaignAttachment
+        const deleteBtn = li.querySelector("button.btn-outline-danger");
+        deleteBtn.addEventListener("click", () => deleteCampaignAttachment(att.id));
+        // If list is empty placeholder, remove it
+        const placeholder = existingCampaignAttachments.querySelector(".list-group-item.muted");
+        if (placeholder) placeholder.remove();
+        existingCampaignAttachments.prepend(li);
+      });
+
+      // reset picker
+      input.value = "";
+
+    } catch (err) {
+      // mark all as failed
+      console.error(err);
+      alert("Upload failed. Check server logs / response.");
+    }
+  });
 </script>
 
 <!-- Customization tokens copy script -->

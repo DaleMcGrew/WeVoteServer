@@ -9,7 +9,7 @@ from django.template.loader import render_to_string
 
 
 from election.models import Election
-from email_outbound.functions import convert_html_to_plain_text
+from email_outbound.functions import convert_html_to_plain_text, build_prepared_campaign_attachments
 from politician.models import Politician
 from voter.models import VoterManager
 import wevote_functions.admin
@@ -395,6 +395,7 @@ def email_campaign_send(
     emails_sent = 0
     recipient_bulk_update_list = []
     recipient_email_subscription_secret_key = ''  # Temp
+    prepared_attachments = build_prepared_campaign_attachments(email_campaign=email_campaign)
     for email_campaign_recipient in email_campaign_recipient_list:
         results = schedule_email_campaign_recipient(
             email_body_raw=email_body_raw,
@@ -411,7 +412,10 @@ def email_campaign_send(
             emails_scheduled += 1
             # Temporarily turn off sending emails when on local machine, and comment out 3 lines after  this
             # email_scheduled_sent = True  # Mock that we actually sent the email
-            send_results = email_manager.send_scheduled_email(email_scheduled)
+            send_results = email_manager.send_scheduled_email(
+                email_scheduled,
+                prepared_attachments=prepared_attachments
+            )
             email_scheduled_sent = send_results['email_scheduled_sent']
             status += send_results['status'] + " "
             if email_scheduled_sent:
