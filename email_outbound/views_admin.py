@@ -360,6 +360,7 @@ def email_campaign_edit_process_view(request):
 
         if send_results['success']:
             messages.add_message(request, messages.SUCCESS, 'Email sent!')
+            # email_campaign = send_results['email_campaign']
         else:
             messages.add_message(request, messages.ERROR, 'Error sending email: ' + send_results['status'])
         redirect_url = reverse('email_outbound:email_campaign_edit') + \
@@ -569,6 +570,12 @@ def email_recipient_list_view(request):
     email_campaign = EmailCampaign.objects.get(id=campaign_id)
 
     queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=campaign_id)
+    # Sort the recipients by "open_tracking_last_open". If that field doesn't have a date,
+    #  then sort by "recipient_last_name"
+    queryset = queryset.order_by(
+        '-open_tracking_last_open',
+        'recipient_last_name',
+    )
 
     # Opened the email
     recipient_open_list = queryset.filter(open_tracking_count__gt=0)
@@ -1589,8 +1596,9 @@ def email_recipient_view(request, email_recipient_id=0):
     email_body_assembled = email_recipient.email_body_assembled
     if email_body_assembled:
         try:
-            # We want to search for this pattern "/apis/v1/opened/hcRlYMGJCK4yLZuz/" in email_body_assembled,
-            #  where hcRlYMGJCK4yLZuz could be any random string, and then remove that final random string.
+            # We want to search for this pattern "/apis/v1/opened/hcRlYMGJCK4yZuz/" in email_body_assembled,
+            #  where hcRlYMGJCK4yZuz could be any random string, and then remove that final random string.
+            # This serves the purpose of NOT marking the email as opened when we view it in our admin tools.
             email_body_assembled = re.sub(r'/apis/v1/opened/[a-zA-Z0-9]+/', '/apis/v1/opened/DONOTTRACK/',
                                           email_body_assembled)
         except Exception as e:

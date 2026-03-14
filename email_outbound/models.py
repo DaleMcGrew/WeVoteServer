@@ -23,6 +23,7 @@ FILTER_TYPE_HAS_SIGNED_IN = 'FILTER_TYPE_HAS_SIGNED_IN'
 FILTER_TYPE_PHONE_NUMBER = 'FILTER_TYPE_PHONE_NUMBER'
 FILTER_TYPE_POLITICAL_PARTY = 'FILTER_TYPE_POLITICAL_PARTY'
 FILTER_TYPE_STATE_CODE = 'FILTER_TYPE_STATE_CODE'
+FILTER_TYPE_WAS_SENT_CAMPAIGN = 'FILTER_TYPE_WAS_SENT_CAMPAIGN'
 AUDIENCE_FILTER_TYPE_CHOICES = (
     (FILTER_TYPE_AUDIENCE_TYPE,  'Audience type'),
     (FILTER_TYPE_ELECTION_DATE, 'Election date'),
@@ -34,6 +35,7 @@ AUDIENCE_FILTER_TYPE_CHOICES = (
     (FILTER_TYPE_PHONE_NUMBER, 'Phone number'),
     (FILTER_TYPE_POLITICAL_PARTY, 'Political party'),
     (FILTER_TYPE_STATE_CODE, 'State code'),
+    (FILTER_TYPE_WAS_SENT_CAMPAIGN, 'Was sent campaign'),
 )
 AUDIENCE_TYPE_IS = 'AUDIENCE_TYPE_IS'
 AUDIENCE_TYPE_IS_NOT = 'AUDIENCE_TYPE_IS_NOT'
@@ -120,6 +122,18 @@ HAS_SIGNED_IN_MODIFIER_CHOICES = (
     (HAS_SIGNED_IN_LAST_YEAR, 'in last year'),
     (HAS_SIGNED_IN_NEVER, 'never'),
 )
+# Was Sent Campaign filters
+WAS_SENT_CAMPAIGN_ANY = 'WAS_SENT_CAMPAIGN_ANY'
+WAS_SENT_CAMPAIGN_ALL = 'WAS_SENT_CAMPAIGN_ALL'
+WAS_NOT_SENT_CAMPAIGN_ANY = 'WAS_NOT_SENT_CAMPAIGN_ANY'
+WAS_NOT_SENT_CAMPAIGN_AT_LEAST_ONE = 'WAS_NOT_SENT_CAMPAIGN_AT_LEAST_ONE'
+WAS_SENT_CAMPAIGN_MODIFIER_CHOICES = (
+    (WAS_SENT_CAMPAIGN_ANY, 'any'),
+    (WAS_SENT_CAMPAIGN_ALL, 'all'),
+    (WAS_NOT_SENT_CAMPAIGN_ANY, 'none'),
+    (WAS_NOT_SENT_CAMPAIGN_AT_LEAST_ONE, 'not all (missed at least one)'),
+)
+
 OPERATOR_AND = 'AND'
 OPERATOR_EXCLUDE = 'EXCLUDE'  # Always exclude
 OPERATOR_INCLUDE = 'INCLUDE'  # Always include
@@ -334,6 +348,9 @@ class AudienceFilter(models.Model):
     state_code_list = models.CharField(default=None, max_length=255, null=True)
     state_modifier = models.CharField(
         max_length=12, choices=STATE_MODIFIER_CHOICES, default=None, null=True)
+    was_sent_campaign_list = models.CharField(default=None, max_length=255, null=True)
+    was_sent_campaign_modifier = models.CharField(
+        max_length=34, choices=WAS_SENT_CAMPAIGN_MODIFIER_CHOICES, default=None, null=True)
 
 
 class AudienceFilterChain(models.Model):
@@ -470,7 +487,6 @@ class EmailCampaignRecipient(models.Model):
         for _ in range(5):
             email_campaign_recipient.open_tracking_code = generate_random_string(OPEN_TRACKING_CODE_LENGTH)
             try:
-                email_campaign_recipient.save(update_fields=["open_tracking_code"])
                 return email_campaign_recipient.open_tracking_code
             except IntegrityError:
                 pass
