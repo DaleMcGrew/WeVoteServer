@@ -111,7 +111,7 @@
   }
 
   .campaigns-table thead th {
-    padding: 20px 24px;
+    padding: 15px 12px;
     text-align: left;
     font-size: 1.15rem;
     font-weight: 600;
@@ -125,10 +125,14 @@
   }
 
   .campaigns-table thead th:nth-child(2),
-  .campaigns-table thead th:nth-child(3),
   .campaigns-table thead th:nth-child(4),
   .campaigns-table thead th:nth-child(5) {
     width: 120px;
+  }
+  
+  /* State column */
+  .campaigns-table thead th:nth-child(3) {
+    width: 50px;
   }
 
   .campaigns-table thead th:last-child {
@@ -143,7 +147,7 @@
   }
 
   .campaigns-table tbody td {
-    padding: 20px 24px;
+    padding: 15px 12px;
     font-size: 1.5rem;
     border-bottom: 1.5px solid #cbd5e1;
     color: #1e293b !important;
@@ -223,8 +227,8 @@
     <table class="campaigns-table">
       <thead>
         <tr>
-          <th>Recipient name</th>
-          <th>Politician Page</th>
+          <th colspan="2">Recipient name</th>
+          <th>Links</th>
           <th>State</th>
           <th>Email</th>
           <th># of times opened</th>
@@ -237,18 +241,18 @@
         {% if recipient_open_list %}
           {% for recipient in recipient_open_list %}
           <tr class="campaign-row" data-name="{{ recipient.email_address|lower }}">
+            <td style="padding-right: 0;">{{ forloop.counter }}</td>
             <td>
                 {{ recipient.recipient_full_name }}
-                <a href="{% url 'politician:politician_we_vote_id_edit' recipient.politician_we_vote_id %}?google_civic_election_id={{ google_civic_election_id }}"
-                   class="campaign-link" target="_blank">
-                  (edit)
-                </a>
             </td>
             <td>
+                <a href="{% url 'politician:politician_we_vote_id_edit' recipient.politician_we_vote_id %}?google_civic_election_id={{ google_civic_election_id }}"
+                   class="campaign-link" target="_blank">
+                  edit</a>
+                &nbsp;
                 <a href="https://quality.wevote.us/{{ recipient.politician_seo_friendly_path }}/-/?google_civic_election_id={{ google_civic_election_id }}"
                    class="campaign-link" target="_blank">
-                  view
-                </a>
+                  view</a>
             </td>
             <td>
                 {{ recipient.email_address }}
@@ -304,8 +308,8 @@
     <table class="campaigns-table">
       <thead>
         <tr>
-          <th>Recipient name</th>
-          <th>Politician Page</th>
+          <th colspan="2">Recipient name</th>
+          <th>Links</th>
           <th>State</th>
           <th>Email</th>
           <th>Message Sent</th>
@@ -316,18 +320,18 @@
         {% if recipient_not_opened_list %}
           {% for recipient in recipient_not_opened_list %}
           <tr class="campaign-row" data-name="{{ recipient.email_address|lower }}">
+            <td style="padding-right: 0;">{{ forloop.counter }}</td>
             <td>
                 {{ recipient.recipient_full_name }}
-                <a href="{% url 'politician:politician_we_vote_id_edit' recipient.politician_we_vote_id %}?google_civic_election_id={{ google_civic_election_id }}"
-                   class="campaign-link" target="_blank">
-                  (edit)
-                </a>
             </td>
             <td>
+                <a href="{% url 'politician:politician_we_vote_id_edit' recipient.politician_we_vote_id %}?google_civic_election_id={{ google_civic_election_id }}"
+                   class="campaign-link" target="_blank">
+                  edit</a>
+                &nbsp;
                 <a href="https://quality.wevote.us/{{ recipient.politician_seo_friendly_path }}/-/?google_civic_election_id={{ google_civic_election_id }}"
                    class="campaign-link" target="_blank">
-                  view
-                </a>
+                  view</a>
             </td>
             <td style="text-align: center;">
                 {{ recipient.politician_state_code|upper }}

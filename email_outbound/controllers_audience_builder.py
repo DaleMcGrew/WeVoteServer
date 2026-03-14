@@ -715,7 +715,7 @@ def retrieve_db_objects_for_audience_filter_chain(
                 Q(politician_email3_length__gt=2)
             )
         politician_list_length = queryset.count()
-        queryset = queryset.order_by('-date_last_updated')[:100]
+        queryset = queryset.order_by('-date_last_updated')
         politician_list = list(queryset)
     except Exception as e:
         status += f'PROBLEM_RETRIEVING_POLITICIANS: {e}'
