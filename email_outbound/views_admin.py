@@ -364,7 +364,8 @@ def email_campaign_edit_process_view(request):
         else:
             messages.add_message(request, messages.ERROR, 'Error sending email: ' + send_results['status'])
         redirect_url = reverse('email_outbound:email_campaign_edit') + \
-            "?google_civic_election_id=" + str(google_civic_election_id) + \
+            "?id=" + str(email_campaign_id) + \
+            "&google_civic_election_id=" + str(google_civic_election_id) + \
             "&state_code=" + str(state_code)
     else:
         # Redirect back to edit page with the campaign ID
