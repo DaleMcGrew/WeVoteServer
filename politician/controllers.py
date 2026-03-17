@@ -458,6 +458,7 @@ def find_candidates_to_link_to_this_politician(politician=None):
     if not hasattr(politician, 'we_vote_id'):
         return []
     related_candidate_list = []
+    trigram_match_set = False
     from candidate.models import CandidateCampaign
     try:
         queryset = CandidateCampaign.objects.using('readonly').all()
@@ -475,7 +476,14 @@ def find_candidates_to_link_to_this_politician(politician=None):
                 trigram_match=TrigramSimilarity('candidate_name', full_name)
             )
             # Add trigram filter with lower threshold for inclusion
-            new_filter = Q(trigram_match__gt=0.75)
+            if trigram_match_set :
+                new_filter = Q(trigram_match__gt=0.75)
+                print("Using trigram filter for candidate_name with threshold 0.75")
+            else:
+                print("Trigram match not set, using basic icontains filter for candidate_name")
+                new_filter = \
+                Q(candidate_name__icontains=politician.first_name) & \
+                Q(candidate_name__icontains=politician.last_name)
             filters.append(new_filter)
 
         if positive_value_exists(politician.politician_twitter_handle):
