@@ -17,7 +17,7 @@
       <a href="{% url 'email_outbound:email_template_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}" class="text-primary text-decoration-none">Email Templates</a> › {% if email_template %}Edit Template{% else %}New Template{% endif %}
     </h4>
     <div>
-      <a href="{% url 'email_outbound:email_template_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}" class="btn btn-outline-secondary me-2">Cancel</a>
+      <a href="{% url 'email_outbound:email_template_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&draft_uuid={{ draft_uuid }}" class="btn btn-outline-secondary me-2">Cancel</a>
       <button type="submit" form="email-template-form" class="btn btn-primary">Save</button>
     </div>
   </div>
@@ -62,28 +62,41 @@
     <h5><b>Attachments</b></h5>
     <ul id="existingAttachments" class="list-group">
         {% for att in email_template.attachments.all %}
-            <li class="list-group-item d-flex justify-content-between align-items-center" data-att-id="{{ att.id }}">
+          <li class="list-group-item d-flex justify-content-between align-items-center" data-att-id="{{ att.id }}">
+            {% if att.is_inline %}
+              <div class="d-flex flex-row align-items-center" >
+                <div class="d-flex flex-column mr-3">
+                  <span class="fw-semibold">{{ att.original_name|default:"file" }}</span>
+                  <small class="muted">{{ att.created }}</small>
+                </div>
+                <span><b>(Inline)</b></span>
+              </div>
+            {% else %}
               <div class="d-flex flex-column">
                 <span class="fw-semibold">{{ att.original_name|default:"file" }}</span>
                 <small class="muted">{{ att.created }}</small>
               </div>
-              <div class="d-flex gap-2">
-                <a class="btn btn-sm btn-outline-primary"
-                   href="{% url 'email_outbound:email_attachment_download' attachment_id=att.id %}">
-                  Download
-                </a>
+            {% endif %}
+            <div class="d-flex gap-2">
+              <a class="btn btn-sm btn-outline-primary"
+                 href="{% url 'email_outbound:email_attachment_download' attachment_id=att.id %}">
+                Download
+              </a>
 
+              {% if not att.is_inline %}
                 <button type="button" class="btn btn-sm btn-outline-danger"
                         onclick="deleteAttachment({{ att.id }})">
                   Delete
                 </button>
-              </div>
-            </li>
+              {% endif %}
+            </div>
+          </li>
         {% empty %}
           <li class="list-group-item muted">No attachments yet.</li>
         {% endfor %}
     </ul>
 
+    {# Upload buttons for attachments   #}
     <div class="d-flex flex-column gap-3">
       <div class="d-flex gap-2 align-items-center mb-2">
         <label class="btn btn-primary mb-0">
@@ -126,7 +139,7 @@
     <input type="hidden" name="state_code" value="{{ state_code }}">
     <input type="hidden" name="email_template_id" value="{% if email_template %}{{ email_template.id }}{% endif %}">
     <input type="hidden" name="selected_folder_id" value="{{ selected_folder_id }}">
-    <input type="hidden" name="draft_uuid" id="draft_uuid">
+    <input type="hidden" name="draft_uuid" id="draft_uuid" value="{{ draft_uuid }}">
   </form>
 </div>
 <style>
@@ -165,12 +178,9 @@ document.addEventListener('DOMContentLoaded', function () {
 const csrfToken = "{{ csrf_token }}";
 const template_id = {% if email_template and email_template.id %}{{ email_template.id }}{% else %}null{% endif %};
 
-const draftUuid = template_id ? null : crypto.randomUUID();
-if (draftUuid) {
-    document.getElementById("draft_uuid").value = draftUuid;
-    console.log("DraftUuid: ", draftUuid);
-}
-const uploadUrl = `{% url 'email_outbound:email_attachment_upload' %}?template_id=${template_id ?? ''}&draft_uuid=${draftUuid ?? ''}`;
+const draftUuid = "{{ draft_uuid|default:'' }}";
+if (draftUuid) console.log("DraftUuid: ", draftUuid);
+const uploadUrl = `{% url 'email_outbound:email_attachment_upload' %}?draft_uuid=${draftUuid}`;
 console.log(`uploadURL: ${uploadUrl}`)
 
 const existingAttachments = document.getElementById("existingAttachments");
@@ -201,7 +211,7 @@ async function  deleteAttachment(attId) {
   }
 }
 
-// 1. Show list of selected files
+// Show list of selected files
 input.addEventListener("change", function () {
   fileList.innerHTML = ""; // Clear existing list
   const files = Array.from(this.files);
@@ -259,7 +269,21 @@ uploadBtn.addEventListener("click", async () => {
       li.className = "list-group-item d-flex justify-content-between align-items-center";
       li.dataset.attId = att.id;
       const downloadUrl = "{% url 'email_outbound:email_attachment_download' attachment_id=0 %}".replace('0', att.id);
-      li.innerHTML = `
+      li.innerHTML = att.is_inline ?
+          `
+          <div class="d-flex flex-row align-items-center" >
+            <div class="d-flex flex-column mr-3">
+              <span class="fw-semibold">${att.name}</span>
+              <small class="muted">Just now</small>
+            </div>
+            <span><b>(Inline)</b></span>
+          </div>
+
+          <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="${downloadUrl}">Download</a>
+          </div>
+          `
+          : `
         <div class="d-flex flex-column">
           <span class="fw-semibold">${att.name}</span>
           <small class="muted">Just now</small>
@@ -271,7 +295,7 @@ uploadBtn.addEventListener("click", async () => {
       `;
       // event listener to call delete Attachment
       const deleteBtn = li.querySelector("button.btn-outline-danger");
-      deleteBtn.addEventListener("click", () => deleteAttachment(att.id));
+      if (deleteBtn) deleteBtn.addEventListener("click", () => deleteAttachment(att.id));
 
       // If list is empty placeholder, remove it
       const placeholder = existingAttachments.querySelector(".list-group-item.muted");

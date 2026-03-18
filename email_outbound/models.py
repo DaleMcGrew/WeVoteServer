@@ -1467,6 +1467,8 @@ class EmailManager(models.Manager):
         if success:
             send_via_sendgrid = True
             if send_via_sendgrid:
+
+                # pass prepared attachments here if it exists
                 return self.send_scheduled_email_via_sendgrid(
                     email_scheduled,
                     prepared_attachments=prepared_attachments
@@ -1489,18 +1491,28 @@ class EmailManager(models.Manager):
             }
             return results
 
+    # function to add attachments to email message
     @staticmethod
     def _add_attachment_from_prepared(message, prepared_attachment):
         from sendgrid.helpers.mail import (
-            Attachment, FileContent, FileName, FileType, Disposition
+            Attachment, FileContent, FileName, FileType, Disposition, ContentId
         )
 
-        att = Attachment(
-            FileContent(prepared_attachment["b64encoding"]),
-            FileName(prepared_attachment["original_name"]),
-            FileType(prepared_attachment["content_type"]),
-            Disposition("attachment")
-        )
+        # create unique identifier number for inline attachments which matches
+        # id in the img tag in email body
+        cid_str = f"img_{prepared_attachment['id']}" if prepared_attachment["inline"] else None
+
+        att = Attachment()
+        att.file_content = FileContent(prepared_attachment["b64encoding"])
+        att.file_name = FileName(prepared_attachment["original_name"])
+        att.file_type = FileType(prepared_attachment["content_type"])
+
+        if prepared_attachment["inline"]:
+            att.disposition = Disposition("inline") # this line makes attachments added as inline
+            att.content_id = ContentId(cid_str)  # Matches the <img src="cid:img_ID">
+        else:
+            att.disposition = Disposition("attachment")
+
         message.add_attachment(att)
 
     @staticmethod
@@ -1572,8 +1584,6 @@ class EmailManager(models.Manager):
                     MimeType.text,
                     email_scheduled.message_text))
             if email_scheduled.message_html:
-                print('THE HTML MESSAGE: ', email_scheduled.message_html)
-                # print("INLINE ATTACHMENTS:", prepared_attachments)
                 message.add_content(Content(
                     MimeType.html,
                     email_scheduled.message_html))
@@ -1584,8 +1594,6 @@ class EmailManager(models.Manager):
                     message=message,
                     prepared_attachment=att,
                 )
-
-            print("Here with no issues")
 
             try:
                 sendgrid_client = SendGridAPIClient(SENDGRID_API_KEY)

@@ -400,10 +400,13 @@ def email_campaign_send(
     recipient_bulk_update_list = []
     recipient_bulk_update_fields = []
     recipient_email_subscription_secret_key = ''  # Temp
-    prepared_attachments = build_prepared_campaign_attachments(email_campaign=email_campaign)
+
+    # build attachments and email body for inline attachments
+    # This process is done here to avoid reading files multiple times per recipient
+    email_body_parsed, prepared_attachments = build_prepared_campaign_attachments(body=email_body_raw, email_campaign=email_campaign)
     for email_campaign_recipient in email_campaign_recipient_list:
         results = schedule_email_campaign_recipient(
-            email_body_raw=email_body_raw,
+            email_body_raw=email_body_parsed,
             email_campaign_recipient=email_campaign_recipient,
             email_subject_raw=email_subject_raw,
             recipient_bulk_update_list=recipient_bulk_update_list,
@@ -420,6 +423,7 @@ def email_campaign_send(
             emails_scheduled += 1
             # Temporarily turn off sending emails when on local machine, and comment out 3 lines after  this
             # email_scheduled_sent = True  # Mock that we actually sent the email
+            # pass the prepared attachments here
             send_results = email_manager.send_scheduled_email(
                 email_scheduled,
                 prepared_attachments=prepared_attachments
