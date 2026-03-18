@@ -445,7 +445,7 @@ def find_campaignx_list_to_link_to_this_politician(politician=None):
     return related_list
 
 
-def find_candidates_to_link_to_this_politician(politician=None):
+def find_candidates_to_link_to_this_politician(politician=None,use_trigram_match=False):
     """
     Find Candidates to Link to this Politician
     Finding Candidates that *might* be "children" of this politician

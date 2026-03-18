@@ -1488,6 +1488,7 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
     politician_url5 = request.GET.get('politician_url5', False)
     political_party = request.GET.get('political_party', False)
     state_code = request.GET.get('state_code', False)
+    use_trigram_match = positive_value_exists(request.GET.get('use_trigram_match', False))
     vote_smart_id = request.GET.get('vote_smart_id', False)
     vote_usa_politician_id = request.GET.get('vote_usa_politician_id', False)
     youtube_url = request.GET.get('youtube_url', False)
@@ -1718,7 +1719,7 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
         related_candidate_list = []
         if positive_value_exists(find_candidates_to_link_to_this_politician_on):
             from politician.controllers import find_candidates_to_link_to_this_politician
-            related_candidate_list = find_candidates_to_link_to_this_politician(politician=politician_on_stage)
+            related_candidate_list = find_candidates_to_link_to_this_politician(politician=politician_on_stage,use_trigram_match=use_trigram_match)
             if len(related_candidate_list) == 0:
                 find_candidates_to_link_to_this_politician_on = False
                 find_candidates_to_link_none_found = True
@@ -2142,6 +2143,7 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
             'related_campaignx_list':       related_campaignx_list,
             'related_candidate_list':       related_candidate_list,
             'related_representative_list':  related_representative_list,
+            'use_trigram_match':            use_trigram_match,
             'state_code':                   state_code,
             'state_code_dict':
             {
