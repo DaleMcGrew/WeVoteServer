@@ -17,6 +17,7 @@ PIXEL_GIF_BYTES = (
     b'\x00\x00\x02\x02D\x01\x00;'
 )
 
+
 def opened_tracking_pixel_view(request, open_tracking_code):
     if not positive_value_exists(open_tracking_code):
         return HttpResponse(status=204)

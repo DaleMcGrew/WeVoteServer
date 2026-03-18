@@ -6,10 +6,10 @@ from config.base import get_environment_variable
 
 from django.db.models import Q
 from django.template.loader import render_to_string
-
+from django.utils import timezone
 
 from election.models import Election
-from email_outbound.functions import convert_html_to_plain_text
+from email_outbound.functions import convert_html_to_plain_text, build_prepared_campaign_attachments
 from politician.models import Politician
 from voter.models import VoterManager
 import wevote_functions.admin
@@ -335,6 +335,7 @@ def email_campaign_send(
     if not positive_value_exists(email_campaign_id):
         status += "EMAIL_CAMPAIGN_ID_REQUIRED "
         return {
+            'email_campaign': email_campaign,
             'status':   status,
             'success':  False,
         }
@@ -345,12 +346,14 @@ def email_campaign_send(
         except EmailCampaign.DoesNotExist:
             status += "SEND_EMAIL_CAMPAIGN_NOT_FOUND "
             return {
+                'email_campaign': email_campaign,
                 'status':   status,
                 'success':  False,
             }
         except Exception as e:
             status += f'PROBLEM_RETRIEVING_EMAIL_CAMPAIGN: {e}'
             return {
+                'email_campaign': email_campaign,
                 'status':   status,
                 'success':  False,
             }
@@ -370,6 +373,7 @@ def email_campaign_send(
     except Exception as e:
         status += f'PROBLEM_RETRIEVING_EMAIL_SCHEDULED: {e}'
         return {
+            'email_campaign': email_campaign,
             'status':   status,
             'success':  False,
         }
@@ -394,14 +398,22 @@ def email_campaign_send(
     emails_scheduled = 0
     emails_sent = 0
     recipient_bulk_update_list = []
+    recipient_bulk_update_fields = []
     recipient_email_subscription_secret_key = ''  # Temp
+
+    # build attachments and email body for inline attachments
+    # This process is done here to avoid reading files multiple times per recipient
+    email_body_parsed, prepared_attachments = build_prepared_campaign_attachments(body=email_body_raw, email_campaign=email_campaign)
     for email_campaign_recipient in email_campaign_recipient_list:
         results = schedule_email_campaign_recipient(
-            email_body_raw=email_body_raw,
+            email_body_raw=email_body_parsed,
             email_campaign_recipient=email_campaign_recipient,
             email_subject_raw=email_subject_raw,
-            recipient_bulk_update_list=recipient_bulk_update_list)
+            recipient_bulk_update_list=recipient_bulk_update_list,
+            recipient_bulk_update_fields=recipient_bulk_update_fields,
+        )
         recipient_bulk_update_list = results['recipient_bulk_update_list']
+        recipient_bulk_update_fields = results['recipient_bulk_update_fields']
         status += results['status'] + " "
         email_scheduled_saved = results['email_scheduled_saved']
         email_scheduled_id = results['email_scheduled_id']
@@ -411,7 +423,11 @@ def email_campaign_send(
             emails_scheduled += 1
             # Temporarily turn off sending emails when on local machine, and comment out 3 lines after  this
             # email_scheduled_sent = True  # Mock that we actually sent the email
-            send_results = email_manager.send_scheduled_email(email_scheduled)
+            # pass the prepared attachments here
+            send_results = email_manager.send_scheduled_email(
+                email_scheduled,
+                prepared_attachments=prepared_attachments
+            )
             email_scheduled_sent = send_results['email_scheduled_sent']
             status += send_results['status'] + " "
             if email_scheduled_sent:
@@ -426,10 +442,9 @@ def email_campaign_send(
     if positive_value_exists(len(recipient_bulk_update_list)):
         try:
             EmailCampaignRecipient.objects.bulk_update(
-                recipient_bulk_update_list, [
-                    'email_body_assembled',
-                    'email_scheduled',
-                    'email_subject_assembled'])
+                recipient_bulk_update_list,
+                recipient_bulk_update_fields,
+            )
             status += \
                 "email_campaign_send, EmailCampaignRecipient.objects.bulk_update: " \
                 "{emails_scheduled:,} emails scheduled. " \
@@ -439,6 +454,18 @@ def email_campaign_send(
                     emails_sent=emails_sent)
         except Exception as e:
             status += "ERROR_EMAIL_CAMPAIGN_RECIPIENT_BULK_UPDATE: {e} " \
+                "".format(e=e)
+            success = False
+
+    if positive_value_exists(emails_scheduled):
+        try:
+            email_campaign.emails_sent = True
+            email_campaign.date_sent = timezone.now()
+            # email_campaign.recipient_count = emails_scheduled  # Instead of here,
+            #  update recipient_count on first display in the campaign list
+            email_campaign.save()
+        except Exception as e:
+            status += "EMAIL_CAMPAIGN_FINAL_UPDATE: {e} " \
                 "".format(e=e)
             success = False
 
@@ -624,7 +651,7 @@ def save_all_audience_filter_changes(audience_filter_dict={}, request=None):
         if has_opened_modifier_key in request.POST:
             setattr(audience_filter, 'has_opened_modifier', request.POST.get(has_opened_modifier_key, None))
             any_changes_made = True
-            # Get the list of selected state codes
+            # Get the list of selected campaign ids
             has_opened_list_key = f'has_opened_{audience_filter_id}[]'
             if has_opened_list_key in request.POST:
                 has_opened_selected = request.POST.getlist(f'has_opened_{audience_filter.id}[]')
@@ -666,6 +693,22 @@ def save_all_audience_filter_changes(audience_filter_dict={}, request=None):
                 setattr(audience_filter, 'state_code_list', None)
                 any_changes_made = True
 
+        # was_sent_campaign_modifier
+        was_sent_campaign_modifier_key = f'was_sent_campaign_modifier_{audience_filter_id}'
+        if was_sent_campaign_modifier_key in request.POST:
+            setattr(audience_filter, 'was_sent_campaign_modifier', request.POST.get(was_sent_campaign_modifier_key, None))
+            any_changes_made = True
+            # Get the list of selected campaign ids
+            was_sent_campaign_list_key = f'was_sent_campaign_{audience_filter_id}[]'
+            if was_sent_campaign_list_key in request.POST:
+                was_sent_campaign_selected = request.POST.getlist(f'was_sent_campaign_{audience_filter.id}[]')
+                # This will return a list like: ['32', '44', '73']
+                # Convert the list to a comma-separated string, without any square brackets, commas or spaces
+                was_sent_campaign_selected_str = ','.join(was_sent_campaign_selected)
+                setattr(audience_filter, 'was_sent_campaign_list', was_sent_campaign_selected_str)
+            else:
+                setattr(audience_filter, 'was_sent_campaign_list', None)
+
         if any_changes_made:
             change_list.append(audience_filter)
 
@@ -688,7 +731,9 @@ def save_all_audience_filter_changes(audience_filter_dict={}, request=None):
             'has_signed_in_modifier',
             'phone_number_modifier',
             'state_code_list',
-            'state_modifier'])
+            'state_modifier',
+            'was_sent_campaign_list',
+            'was_sent_campaign_modifier'])
     except Exception as e:
         status += f"ERROR_SAVING_AUDIENCE_FILTERS: {str(e)} "
         success = False
@@ -704,14 +749,19 @@ def schedule_email_campaign_recipient(
         email_body_raw=None,
         email_subject_raw=None,
         recipient_bulk_update_list=[],
+        recipient_bulk_update_fields=[],
         template_variables_in_json=None):
     email_manager = EmailManager()
     status = ""
     template_variables_in_json = {}
 
     # Generate an open tracking code for the recipient: CONVERT TO NOT SAVE EVERY TIME
-    if email_campaign_recipient:
-        EmailCampaignRecipient.generate_open_tracking_code(email_campaign_recipient)
+    if not positive_value_exists(email_campaign_recipient.open_tracking_code):
+        email_campaign_recipient.open_tracking_code = \
+            EmailCampaignRecipient.generate_open_tracking_code(email_campaign_recipient)
+        if positive_value_exists(email_campaign_recipient.open_tracking_code):
+            if 'open_tracking_code' not in recipient_bulk_update_fields:
+                recipient_bulk_update_fields.append('open_tracking_code')
 
     email_template_results = merge_email_campaign_recipient_with_template(
         email_body_raw=email_body_raw,
@@ -738,6 +788,12 @@ def schedule_email_campaign_recipient(
             email_campaign_recipient.email_scheduled = True
             email_campaign_recipient.email_subject_assembled = subject
             recipient_bulk_update_list.append(email_campaign_recipient)
+            if 'email_body_assembled' not in recipient_bulk_update_fields:
+                recipient_bulk_update_fields.append('email_body_assembled')
+            if 'email_scheduled' not in recipient_bulk_update_fields:
+                recipient_bulk_update_fields.append('email_scheduled')
+            if 'email_subject_assembled' not in recipient_bulk_update_fields:
+                recipient_bulk_update_fields.append('email_subject_assembled')
     else:
         success = False
         status += "SCHEDULE_EMAIL_TEMPLATE_NOT_PROCESSED "
@@ -752,6 +808,7 @@ def schedule_email_campaign_recipient(
         'email_scheduled_saved': email_scheduled_saved,
         'email_scheduled_id': email_scheduled_id,
         'email_scheduled': email_scheduled,
+        'recipient_bulk_update_fields': recipient_bulk_update_fields,
         'recipient_bulk_update_list': recipient_bulk_update_list,
     }
     return results
@@ -963,6 +1020,42 @@ def merge_email_campaign_recipient_with_template(
     return results
 
 
+def refresh_email_campaign_data(email_campaign):
+    changes_made = False
+    fields_changed = []
+    status = ''
+    success = True
+    # Refresh the recipient_count, bounce_count, and open_count for all sent campaigns
+    if not positive_value_exists(email_campaign.recipient_count):
+        try:
+            queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=email_campaign.id)
+            email_campaign.recipient_count = queryset.count()
+            if 'recipient_count' not in fields_changed:
+                fields_changed.append('recipient_count')
+            changes_made = True
+        except Exception as e:
+            status += f"ERROR_RETRIEVING_RECIPIENT_COUNT: {e}"
+
+    try:
+        queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=email_campaign.id)
+        queryset = queryset.filter(open_tracking_count__gt=0)
+        email_campaign.open_count = queryset.count()
+        if 'open_count' not in fields_changed:
+            fields_changed.append('open_count')
+        changes_made = True
+    except Exception as e:
+        status += f"ERROR_RETRIEVING_OPEN_COUNT: {e}"
+
+    results = {
+        'changes_made':     changes_made,
+        'email_campaign':   email_campaign,
+        'fields_changed':   fields_changed,
+        'status':           status,
+        'success':          success,
+    }
+    return results
+
+
 def render_audience_builder_html(
         audience_builder={},
         audience_filter_chain_dict={},
@@ -1155,6 +1248,8 @@ def render_audience_filter_html(
     state_codes_selected_string = ''
     status = ''
     success = True
+    was_sent_campaign_selected = []
+    was_sent_campaign_selected_string = ''
     # If a valid audience_filter was passed in, render the audience_filter html
     if hasattr(audience_filter, 'google_civic_election_id'):
         # If any of the following audience_type_ values are true (like audience_type_candidate,
@@ -1204,6 +1299,16 @@ def render_audience_filter_html(
             state_codes_selected = state_code_list
             state_codes_selected_string = ', '.join(state_code_list)
 
+        if positive_value_exists(audience_filter.was_sent_campaign_list):
+            # Convert a comma separated list of EmailCampaign ids (ex/ "34,53") in was_sent_campaign_list,
+            #  to a python list
+            was_sent_campaign_selected = audience_filter.was_sent_campaign_list.split(',')
+            was_sent_campaign_selected_name_list = []
+            for one_campaign in campaign_list:
+                if str(one_campaign.id) in was_sent_campaign_selected:
+                    was_sent_campaign_selected_name_list.append(one_campaign.email_campaign_name)
+            was_sent_campaign_selected_string = ', '.join(was_sent_campaign_selected_name_list)
+
     context = {
         'audience_filter': audience_filter,
         'audience_filter_chain': audience_filter_chain,
@@ -1216,6 +1321,8 @@ def render_audience_filter_html(
         'state_code_map': STATE_CODE_MAP,
         'state_codes_selected': state_codes_selected,
         'state_codes_selected_string': state_codes_selected_string,
+        'was_sent_campaign_selected': was_sent_campaign_selected,
+        'was_sent_campaign_selected_string': was_sent_campaign_selected_string,
     }
     audience_filter_html = \
         render_to_string("email_outbound/audience_filter_body.html", context, request=request)
