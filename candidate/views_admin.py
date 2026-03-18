@@ -55,7 +55,7 @@ from volunteer_task.models import VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS
     VOLUNTEER_ACTION_POLITICIAN_PHOTO, VOLUNTEER_ACTION_POLITICIAN_REQUEST, VolunteerTaskManager
 from voter.models import fetch_voter_from_voter_device_link, VoterDeviceLinkManager, VoterManager, voter_has_authority
 from voter_guide.models import VoterGuide
-from wevote_functions.create_trigram_index import create_trigram_index, check_trigram_index_exists
+from wevote_functions.create_trigram_index import create_trigram_index
 from wevote_functions.functions import convert_to_int, \
     extract_instagram_handle_from_text_string, extract_twitter_handle_from_text_string, \
     get_voter_api_device_id, get_voter_device_id, list_intersection, normalize_bluesky_handle, normalize_threads_handle, normalize_tiktok_url, \
@@ -1423,7 +1423,6 @@ def candidate_list_view(request):
         'vote_usa_candidates_for_this_state':       vote_usa_candidates_for_this_state,
         'web_app_root_url':                         web_app_root_url,
         'wikipedia_urls_without_picture_urls':      wikipedia_urls_without_picture_urls,
-        'trigram_gist_idx_exists':                  check_trigram_index_exists(CandidateCampaign, 'google_civic_candidate_name'),
     }
     return render(request, 'candidate/candidate_list.html', template_values)
 

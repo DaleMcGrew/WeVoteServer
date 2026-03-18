@@ -17,15 +17,10 @@
     <a href="{% url 'candidate:candidates_data_cleaning' %}?google_civic_election_id={{ google_civic_election_id }}&show_all_elections={{ show_all_elections }}&show_this_year_of_candidates={{ show_this_year_of_candidates }}&state_code={{ state_code }}"
        target="_blank">
   Data Cleaning <span class="glyphicon glyphicon-new-window"></span></a>&nbsp;
-    {% if trigram_gist_idx_exists %}
-      <a class="disabled"
+    <a href="{% url 'candidate:create_trigram_gist_idx' %}?google_civic_election_id={{ google_civic_election_id }}&show_all_elections={{ show_all_elections }}&show_this_year_of_candidates={{ show_this_year_of_candidates }}&state_code={{ state_code }}"
          target="_blank">
   Add Trigram_Gist <span class="glyphicon glyphicon-new-window"></span></a>
-    {% else %}
-      <a href="{% url 'candidate:create_trigram_gist_idx' %}?google_civic_election_id={{ google_civic_election_id }}&show_all_elections={{ show_all_elections }}&show_this_year_of_candidates={{ show_this_year_of_candidates }}&state_code={{ state_code }}"
-         target="_blank">
-  Add Trigram_Gist <span class="glyphicon glyphicon-new-window"></span></a>
-    {% endif %}
+
 </p>
 
 % {csrf_token %}

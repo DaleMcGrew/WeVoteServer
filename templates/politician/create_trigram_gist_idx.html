@@ -7,13 +7,25 @@
 
 <h1>Create Trigram Gist Index</h1>
 
+<div style="background-color: #e7f3ff; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
+    <p><strong>Please specify field name for creating trigram gist index.</strong></p>
+</div>
+
 <form method="POST">
     {% csrf_token %}
     <label>Index Field </label>
-    <input type="text" name="index_field" value="{{ field|default:'' }}">
+    <select name="index_field" required>
+        <option value="">-- Select a field --</option>
+        <option value="politician_name">Politician Name</option>
+        <option value="first_name">First Name</option>
+        <option value="last_name">Last Name</option>
+        <option value="google_civic_candidate_name">Google Civic Candidate Name</option>
+        <option value="ballotpedia_politician_name">Ballotpedia Politician Name</option>
+        <option value="political_party">Political Party</option>
+    </select>
+
     <button type="submit">Submit</button>
 </form>
-
 
 {% if status_message %}
     <div class="alert alert-{{ status_type|default:'info' }} alert-dismissible fade in" role="alert">
