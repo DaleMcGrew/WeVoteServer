@@ -1441,7 +1441,7 @@ class EmailManager(models.Manager):
         }
         return results
 
-    def send_scheduled_email(self, email_scheduled):
+    def send_scheduled_email(self, email_scheduled, prepared_attachments=None):
         success = True
         status = ""
 
@@ -1467,7 +1467,10 @@ class EmailManager(models.Manager):
         if success:
             send_via_sendgrid = True
             if send_via_sendgrid:
-                return self.send_scheduled_email_via_sendgrid(email_scheduled)
+                return self.send_scheduled_email_via_sendgrid(
+                    email_scheduled,
+                    prepared_attachments=prepared_attachments
+                )
             else:
                 return self.send_scheduled_email_via_smtp(email_scheduled)
         else:
@@ -1487,11 +1490,28 @@ class EmailManager(models.Manager):
             return results
 
     @staticmethod
-    def send_scheduled_email_via_sendgrid(email_scheduled):
+    def _add_attachment_from_prepared(message, prepared_attachment):
+        from sendgrid.helpers.mail import (
+            Attachment, FileContent, FileName, FileType, Disposition
+        )
+
+        att = Attachment(
+            FileContent(prepared_attachment["b64encoding"]),
+            FileName(prepared_attachment["original_name"]),
+            FileType(prepared_attachment["content_type"]),
+            Disposition("attachment")
+        )
+        message.add_attachment(att)
+
+    @staticmethod
+    def send_scheduled_email_via_sendgrid(email_scheduled, prepared_attachments=None):
         """
         Send a single scheduled email
         :param email_scheduled:
         :return:
+
+        Args:
+            prepared_attachments:
         """
         from sendgrid import SendGridAPIClient
         from sendgrid.helpers.mail import Content, From, Header, Mail, MimeType, Subject, To, ReplyTo
@@ -1499,6 +1519,10 @@ class EmailManager(models.Manager):
         success = True
         email_scheduled_sent = False
         sendgrid_turned_off_for_testing = False
+
+        if prepared_attachments is None:
+            prepared_attachments = []
+
         if sendgrid_turned_off_for_testing:
             status += "ERROR_SENDGRID_TURNED_OFF_FOR_TESTING "
             print(status)
@@ -1544,13 +1568,25 @@ class EmailManager(models.Manager):
                 print(status)
             message.subject = Subject(email_scheduled.subject)
             if email_scheduled.message_text:
-                message.content = Content(
+                message.add_content(Content(
                     MimeType.text,
-                    email_scheduled.message_text)
+                    email_scheduled.message_text))
             if email_scheduled.message_html:
-                message.content = Content(
+                print('THE HTML MESSAGE: ', email_scheduled.message_html)
+                # print("INLINE ATTACHMENTS:", prepared_attachments)
+                message.add_content(Content(
                     MimeType.html,
-                    email_scheduled.message_html)
+                    email_scheduled.message_html))
+
+            # Add prepared attachments
+            for att in prepared_attachments:
+                EmailManager._add_attachment_from_prepared(
+                    message=message,
+                    prepared_attachment=att,
+                )
+
+            print("Here with no issues")
+
             try:
                 sendgrid_client = SendGridAPIClient(SENDGRID_API_KEY)
                 response = sendgrid_client.send(message)
@@ -1812,6 +1848,35 @@ class EmailTemplate(models.Model):
     email_template_name = models.CharField(db_index=True, max_length=255, null=True)
     message = models.TextField(null=True, blank=True)
     subject = models.CharField(max_length=255, null=True)
+
+class EmailAttachments(models.Model):
+    email_template = models.ForeignKey("EmailTemplate", null=True, blank=True,
+                                       related_name="attachments", on_delete=models.CASCADE, db_index=True)
+    email_campaign = models.ForeignKey("EmailCampaign", null=True, blank=True,
+                                       related_name="attachments", on_delete=models.CASCADE, db_index=True)
+    draft_uuid = models.UUIDField(null=True, blank=True, db_index=True)
+
+    s3_key = models.CharField(max_length=1024)
+
+    original_name = models.CharField(max_length=255, blank=True, default="")
+    content_type = models.CharField(max_length=100, blank=True, default="")
+    file_size = models.PositiveIntegerField(null=True, blank=True)
+
+    is_inline = models.BooleanField(default=False)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    # Enforce exactly one parent (recommended)
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    (models.Q(email_template__isnull=False) & models.Q(email_campaign__isnull=True) & models.Q(draft_uuid__isnull=True)) |
+                    (models.Q(email_template__isnull=True) & models.Q(email_campaign__isnull=False) & models.Q(draft_uuid__isnull=True)) |
+                    (models.Q(email_template__isnull=True) & models.Q(email_campaign__isnull=True) & models.Q(draft_uuid__isnull=False))
+                ),
+                name="attachment_exactly_one_owner",
+            )
+        ]
 
 
 class EmailTemplateFolder(models.Model):
