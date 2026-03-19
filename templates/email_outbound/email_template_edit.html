@@ -17,7 +17,7 @@
       <a href="{% url 'email_outbound:email_template_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}" class="text-primary text-decoration-none">Email Templates</a> › {% if email_template %}Edit Template{% else %}New Template{% endif %}
     </h4>
     <div>
-      <a href="{% url 'email_outbound:email_template_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}" class="btn btn-outline-secondary me-2">Cancel</a>
+      <a href="{% url 'email_outbound:email_template_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&draft_uuid={{ draft_uuid }}" class="btn btn-outline-secondary me-2">Cancel</a>
       <button type="submit" form="email-template-form" class="btn btn-primary">Save</button>
     </div>
   </div>
@@ -58,6 +58,62 @@
         </select>
     </div>
 
+    <!-- Display attachments -->
+    <h5><b>Attachments</b></h5>
+    <ul id="existingAttachments" class="list-group">
+        {% for att in email_template.attachments.all %}
+          <li class="list-group-item d-flex justify-content-between align-items-center" data-att-id="{{ att.id }}">
+            {% if att.is_inline %}
+              <div class="d-flex flex-row align-items-center" >
+                <div class="d-flex flex-column mr-3">
+                  <span class="fw-semibold">{{ att.original_name|default:"file" }}</span>
+                  <small class="muted">{{ att.created }}</small>
+                </div>
+                <span><b>(Inline)</b></span>
+              </div>
+            {% else %}
+              <div class="d-flex flex-column">
+                <span class="fw-semibold">{{ att.original_name|default:"file" }}</span>
+                <small class="muted">{{ att.created }}</small>
+              </div>
+            {% endif %}
+            <div class="d-flex gap-2">
+              <a class="btn btn-sm btn-outline-primary"
+                 href="{% url 'email_outbound:email_attachment_download' attachment_id=att.id %}">
+                Download
+              </a>
+
+              {% if not att.is_inline %}
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        onclick="deleteAttachment({{ att.id }})">
+                  Delete
+                </button>
+              {% endif %}
+            </div>
+          </li>
+        {% empty %}
+          <li class="list-group-item muted">No attachments yet.</li>
+        {% endfor %}
+    </ul>
+
+    {# Upload buttons for attachments   #}
+    <div class="d-flex flex-column gap-3">
+      <div class="d-flex gap-2 align-items-center mb-2">
+        <label class="btn btn-primary mb-0">
+          Choose files
+          <input id="attachmentInput" type="file" name="attachments" multiple class="d-none">
+        </label>
+
+        <button id="uploadBtn" type="button" class="btn btn-outline-primary" disabled>
+          <span id="btnText">Upload selected</span>
+          <span id="btnSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+        </button>
+      </div>
+
+      <ul id="fileList" class="list-group list-group-flush small"></ul>
+    </div>
+
+    <!-- Message Field -->
     <div class="mb-3">
         <label for="message" class="form-label">Message <span class="text-danger">*</span></label>
         <textarea id="message" name="message" class="form-control js-tinymce" rows="10">{% if email_template %}{{ email_template.message }}{% endif %}</textarea>
@@ -83,6 +139,7 @@
     <input type="hidden" name="state_code" value="{{ state_code }}">
     <input type="hidden" name="email_template_id" value="{% if email_template %}{{ email_template.id }}{% endif %}">
     <input type="hidden" name="selected_folder_id" value="{{ selected_folder_id }}">
+    <input type="hidden" name="draft_uuid" id="draft_uuid" value="{{ draft_uuid }}">
   </form>
 </div>
 <style>
@@ -115,6 +172,153 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
   });
+});
+
+// Attachment functions
+const csrfToken = "{{ csrf_token }}";
+const template_id = {% if email_template and email_template.id %}{{ email_template.id }}{% else %}null{% endif %};
+
+const draftUuid = "{{ draft_uuid|default:'' }}";
+if (draftUuid) console.log("DraftUuid: ", draftUuid);
+const uploadUrl = `{% url 'email_outbound:email_attachment_upload' %}?draft_uuid=${draftUuid}`;
+console.log(`uploadURL: ${uploadUrl}`)
+
+const existingAttachments = document.getElementById("existingAttachments");
+const uploadBtn = document.getElementById("uploadBtn");
+const input = document.getElementById("attachmentInput");
+const fileList = document.getElementById("fileList");
+const btnText = document.getElementById("btnText");
+const btnSpinner = document.getElementById("btnSpinner");
+
+async function  deleteAttachment(attId) {
+  const deleteUrl = "{% url 'email_outbound:email_attachment_delete' attachment_id=999999 %}".replace("999999", attId);
+
+  const res = await fetch(deleteUrl, {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": csrfToken,
+    },
+  });
+
+  if (!res.ok) {
+    alert("Delete failed.");
+    return;
+  }
+  const data = await res.json();
+  if (data.ok) {
+    const row = existingAttachments.querySelector(`[data-att-id="${attId}"]`);
+    if (row) row.remove();
+  }
+}
+
+// Show list of selected files
+input.addEventListener("change", function () {
+  fileList.innerHTML = ""; // Clear existing list
+  const files = Array.from(this.files);
+
+  if (files.length > 0) {
+    uploadBtn.disabled = false;
+    files.forEach(file => {
+      const li = document.createElement("li");
+      li.className = "list-group-item d-flex justify-content-between align-items-center";
+      li.textContent = file.name;
+      fileList.appendChild(li);
+    });
+  } else {
+    uploadBtn.disabled = true;
+  }
+});
+
+uploadBtn.addEventListener("click", async () => {
+  if (!input.files || input.files.length === 0) return;
+
+  uploadBtn.disabled = true;
+  btnText.textContent = "Uploading...";
+  btnSpinner.classList.remove("d-none");
+
+  const formData = new FormData();
+  [...input.files].forEach(f => formData.append("attachments", f));
+
+  try {
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfToken,
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error(`Upload failed (${res.status})`);
+    }
+
+    const data = await res.json();
+    if (!data.ok) {
+      throw new Error("Upload failed");
+    }
+
+    // Clears the input
+    input.value = "";
+    fileList.innerHTML = "";
+
+    // mark each uploaded item as done + add to existing list
+    (data.attachments || []).forEach(att => {
+
+      // Add to existing attachments list
+      const li = document.createElement("li");
+      li.className = "list-group-item d-flex justify-content-between align-items-center";
+      li.dataset.attId = att.id;
+      const downloadUrl = "{% url 'email_outbound:email_attachment_download' attachment_id=0 %}".replace('0', att.id);
+      li.innerHTML = att.is_inline ?
+          `
+          <div class="d-flex flex-row align-items-center" >
+            <div class="d-flex flex-column mr-3">
+              <span class="fw-semibold">${att.name}</span>
+              <small class="muted">Just now</small>
+            </div>
+            <span><b>(Inline)</b></span>
+          </div>
+
+          <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="${downloadUrl}">Download</a>
+          </div>
+          `
+          : `
+        <div class="d-flex flex-column">
+          <span class="fw-semibold">${att.name}</span>
+          <small class="muted">Just now</small>
+        </div>
+        <div class="d-flex gap-2">
+          <a class="btn btn-sm btn-outline-primary" href="${downloadUrl}">Download</a>
+          <button type="button" class="btn btn-sm btn-outline-danger">Delete</button>
+        </div>
+      `;
+      // event listener to call delete Attachment
+      const deleteBtn = li.querySelector("button.btn-outline-danger");
+      if (deleteBtn) deleteBtn.addEventListener("click", () => deleteAttachment(att.id));
+
+      // If list is empty placeholder, remove it
+      const placeholder = existingAttachments.querySelector(".list-group-item.muted");
+      if (placeholder) placeholder.remove();
+      existingAttachments.prepend(li);
+    });
+
+    // reset picker
+    input.value = "";
+
+  } catch (err) {
+    // mark all as failed
+    console.error(err);
+    alert("Upload failed. Check server logs / response.");
+  } finally {
+    // End Loading State
+    btnText.textContent = "Upload selected";
+    btnSpinner.classList.add("d-none");
+    uploadBtn.disabled = true;
+  }
+});
+</script>
+
 });
 </script>
 {% endblock %}

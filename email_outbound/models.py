@@ -23,6 +23,7 @@ FILTER_TYPE_HAS_SIGNED_IN = 'FILTER_TYPE_HAS_SIGNED_IN'
 FILTER_TYPE_PHONE_NUMBER = 'FILTER_TYPE_PHONE_NUMBER'
 FILTER_TYPE_POLITICAL_PARTY = 'FILTER_TYPE_POLITICAL_PARTY'
 FILTER_TYPE_STATE_CODE = 'FILTER_TYPE_STATE_CODE'
+FILTER_TYPE_WAS_SENT_CAMPAIGN = 'FILTER_TYPE_WAS_SENT_CAMPAIGN'
 AUDIENCE_FILTER_TYPE_CHOICES = (
     (FILTER_TYPE_AUDIENCE_TYPE,  'Audience type'),
     (FILTER_TYPE_ELECTION_DATE, 'Election date'),
@@ -34,6 +35,7 @@ AUDIENCE_FILTER_TYPE_CHOICES = (
     (FILTER_TYPE_PHONE_NUMBER, 'Phone number'),
     (FILTER_TYPE_POLITICAL_PARTY, 'Political party'),
     (FILTER_TYPE_STATE_CODE, 'State code'),
+    (FILTER_TYPE_WAS_SENT_CAMPAIGN, 'Was sent campaign'),
 )
 AUDIENCE_TYPE_IS = 'AUDIENCE_TYPE_IS'
 AUDIENCE_TYPE_IS_NOT = 'AUDIENCE_TYPE_IS_NOT'
@@ -120,6 +122,18 @@ HAS_SIGNED_IN_MODIFIER_CHOICES = (
     (HAS_SIGNED_IN_LAST_YEAR, 'in last year'),
     (HAS_SIGNED_IN_NEVER, 'never'),
 )
+# Was Sent Campaign filters
+WAS_SENT_CAMPAIGN_ANY = 'WAS_SENT_CAMPAIGN_ANY'
+WAS_SENT_CAMPAIGN_ALL = 'WAS_SENT_CAMPAIGN_ALL'
+WAS_NOT_SENT_CAMPAIGN_ANY = 'WAS_NOT_SENT_CAMPAIGN_ANY'
+WAS_NOT_SENT_CAMPAIGN_AT_LEAST_ONE = 'WAS_NOT_SENT_CAMPAIGN_AT_LEAST_ONE'
+WAS_SENT_CAMPAIGN_MODIFIER_CHOICES = (
+    (WAS_SENT_CAMPAIGN_ANY, 'any'),
+    (WAS_SENT_CAMPAIGN_ALL, 'all'),
+    (WAS_NOT_SENT_CAMPAIGN_ANY, 'none'),
+    (WAS_NOT_SENT_CAMPAIGN_AT_LEAST_ONE, 'not all (missed at least one)'),
+)
+
 OPERATOR_AND = 'AND'
 OPERATOR_EXCLUDE = 'EXCLUDE'  # Always exclude
 OPERATOR_INCLUDE = 'INCLUDE'  # Always include
@@ -334,6 +348,9 @@ class AudienceFilter(models.Model):
     state_code_list = models.CharField(default=None, max_length=255, null=True)
     state_modifier = models.CharField(
         max_length=12, choices=STATE_MODIFIER_CHOICES, default=None, null=True)
+    was_sent_campaign_list = models.CharField(default=None, max_length=255, null=True)
+    was_sent_campaign_modifier = models.CharField(
+        max_length=34, choices=WAS_SENT_CAMPAIGN_MODIFIER_CHOICES, default=None, null=True)
 
 
 class AudienceFilterChain(models.Model):
@@ -374,7 +391,9 @@ class EmailCampaign(models.Model):
     An email campaign that we assemble, and then send
     """
     audience_builder_id = models.PositiveIntegerField(default=0, null=False)
+    bounce_count = models.PositiveIntegerField(default=0, null=False)
     date_last_updated = models.DateTimeField(auto_now=True, db_index=True)
+    date_sent = models.DateTimeField(default=None, null=True)
     deleted = models.BooleanField(default=False)
     email_body_template_raw = models.TextField(null=True, blank=True)  # We keep a copy for history
     email_campaign_name = models.CharField(db_index=True, max_length=255, null=True, unique=False)
@@ -386,6 +405,8 @@ class EmailCampaign(models.Model):
     is_for_politician = models.BooleanField(default=False)
     is_for_staff = models.BooleanField(default=False)
     is_for_voter = models.BooleanField(default=False)
+    open_count = models.PositiveIntegerField(default=0, null=False)
+    recipient_count = models.PositiveIntegerField(default=0, null=False)
     reply_to_email = models.TextField(null=True, blank=True)
     scheduled_by_voter_we_vote_id = models.CharField(max_length=255, default=None, null=True, db_index=True)
     scheduled_send_time = models.DateTimeField(null=True, blank=True)
@@ -466,7 +487,6 @@ class EmailCampaignRecipient(models.Model):
         for _ in range(5):
             email_campaign_recipient.open_tracking_code = generate_random_string(OPEN_TRACKING_CODE_LENGTH)
             try:
-                email_campaign_recipient.save(update_fields=["open_tracking_code"])
                 return email_campaign_recipient.open_tracking_code
             except IntegrityError:
                 pass
@@ -1421,7 +1441,7 @@ class EmailManager(models.Manager):
         }
         return results
 
-    def send_scheduled_email(self, email_scheduled):
+    def send_scheduled_email(self, email_scheduled, prepared_attachments=None):
         success = True
         status = ""
 
@@ -1447,7 +1467,12 @@ class EmailManager(models.Manager):
         if success:
             send_via_sendgrid = True
             if send_via_sendgrid:
-                return self.send_scheduled_email_via_sendgrid(email_scheduled)
+
+                # pass prepared attachments here if it exists
+                return self.send_scheduled_email_via_sendgrid(
+                    email_scheduled,
+                    prepared_attachments=prepared_attachments
+                )
             else:
                 return self.send_scheduled_email_via_smtp(email_scheduled)
         else:
@@ -1466,12 +1491,39 @@ class EmailManager(models.Manager):
             }
             return results
 
+    # function to add attachments to email message
     @staticmethod
-    def send_scheduled_email_via_sendgrid(email_scheduled):
+    def _add_attachment_from_prepared(message, prepared_attachment):
+        from sendgrid.helpers.mail import (
+            Attachment, FileContent, FileName, FileType, Disposition, ContentId
+        )
+
+        # create unique identifier number for inline attachments which matches
+        # id in the img tag in email body
+        cid_str = f"img_{prepared_attachment['id']}" if prepared_attachment["inline"] else None
+
+        att = Attachment()
+        att.file_content = FileContent(prepared_attachment["b64encoding"])
+        att.file_name = FileName(prepared_attachment["original_name"])
+        att.file_type = FileType(prepared_attachment["content_type"])
+
+        if prepared_attachment["inline"]:
+            att.disposition = Disposition("inline") # this line makes attachments added as inline
+            att.content_id = ContentId(cid_str)  # Matches the <img src="cid:img_ID">
+        else:
+            att.disposition = Disposition("attachment")
+
+        message.add_attachment(att)
+
+    @staticmethod
+    def send_scheduled_email_via_sendgrid(email_scheduled, prepared_attachments=None):
         """
         Send a single scheduled email
         :param email_scheduled:
         :return:
+
+        Args:
+            prepared_attachments:
         """
         from sendgrid import SendGridAPIClient
         from sendgrid.helpers.mail import Content, From, Header, Mail, MimeType, Subject, To, ReplyTo
@@ -1479,6 +1531,10 @@ class EmailManager(models.Manager):
         success = True
         email_scheduled_sent = False
         sendgrid_turned_off_for_testing = False
+
+        if prepared_attachments is None:
+            prepared_attachments = []
+
         if sendgrid_turned_off_for_testing:
             status += "ERROR_SENDGRID_TURNED_OFF_FOR_TESTING "
             print(status)
@@ -1524,13 +1580,21 @@ class EmailManager(models.Manager):
                 print(status)
             message.subject = Subject(email_scheduled.subject)
             if email_scheduled.message_text:
-                message.content = Content(
+                message.add_content(Content(
                     MimeType.text,
-                    email_scheduled.message_text)
+                    email_scheduled.message_text))
             if email_scheduled.message_html:
-                message.content = Content(
+                message.add_content(Content(
                     MimeType.html,
-                    email_scheduled.message_html)
+                    email_scheduled.message_html))
+
+            # Add prepared attachments
+            for att in prepared_attachments:
+                EmailManager._add_attachment_from_prepared(
+                    message=message,
+                    prepared_attachment=att,
+                )
+
             try:
                 sendgrid_client = SendGridAPIClient(SENDGRID_API_KEY)
                 response = sendgrid_client.send(message)
@@ -1792,6 +1856,35 @@ class EmailTemplate(models.Model):
     email_template_name = models.CharField(db_index=True, max_length=255, null=True)
     message = models.TextField(null=True, blank=True)
     subject = models.CharField(max_length=255, null=True)
+
+class EmailAttachments(models.Model):
+    email_template = models.ForeignKey("EmailTemplate", null=True, blank=True,
+                                       related_name="attachments", on_delete=models.CASCADE, db_index=True)
+    email_campaign = models.ForeignKey("EmailCampaign", null=True, blank=True,
+                                       related_name="attachments", on_delete=models.CASCADE, db_index=True)
+    draft_uuid = models.UUIDField(null=True, blank=True, db_index=True)
+
+    s3_key = models.CharField(max_length=1024)
+
+    original_name = models.CharField(max_length=255, blank=True, default="")
+    content_type = models.CharField(max_length=100, blank=True, default="")
+    file_size = models.PositiveIntegerField(null=True, blank=True)
+
+    is_inline = models.BooleanField(default=False)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    # Enforce exactly one parent (recommended)
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    (models.Q(email_template__isnull=False) & models.Q(email_campaign__isnull=True) & models.Q(draft_uuid__isnull=True)) |
+                    (models.Q(email_template__isnull=True) & models.Q(email_campaign__isnull=False) & models.Q(draft_uuid__isnull=True)) |
+                    (models.Q(email_template__isnull=True) & models.Q(email_campaign__isnull=True) & models.Q(draft_uuid__isnull=False))
+                ),
+                name="attachment_exactly_one_owner",
+            )
+        ]
 
 
 class EmailTemplateFolder(models.Model):

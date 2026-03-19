@@ -25,6 +25,8 @@
                 <option value="FILTER_TYPE_HAS_BEEN_CONTACTED" {% if audience_filter.audience_filter_type == "FILTER_TYPE_HAS_BEEN_CONTACTED" %}selected{% endif %}
                         disabled
                 >Has been contacted</option>
+                <option value="FILTER_TYPE_WAS_SENT_CAMPAIGN" {% if audience_filter.audience_filter_type == "FILTER_TYPE_WAS_SENT_CAMPAIGN" %}selected{% endif %}
+                >Was sent campaign(s)</option>
                 <option value="FILTER_TYPE_HAS_OPENED" {% if audience_filter.audience_filter_type == "FILTER_TYPE_HAS_OPENED" %}selected{% endif %}
                         disabled
                 >Has opened message</option>
@@ -267,6 +269,69 @@
         </div>
     </div>
 
+{# FILTER_TYPE_WAS_SENT_CAMPAIGN #}
+    <div id="was-sent-campaign-options-{{ audience_filter.id }}"
+         style="margin-left: 8px;
+                 display: {% if audience_filter.audience_filter_type == 'FILTER_TYPE_WAS_SENT_CAMPAIGN' %}block{% else %}none{% endif %};"
+    >
+        <select class="form-select" name="was_sent_campaign_modifier_{{ audience_filter.id }}">
+            <option value="WAS_SENT_CAMPAIGN_ANY"
+                    {% if audience_filter.was_sent_campaign_modifier == "WAS_SENT_CAMPAIGN_ANY" %}selected{% endif %}
+            >any</option>
+            <option value="WAS_SENT_CAMPAIGN_ALL"
+                    {% if audience_filter.was_sent_campaign_modifier == "WAS_SENT_CAMPAIGN_ALL" %}selected{% endif %}
+            >all</option>
+            <option value="WAS_NOT_SENT_CAMPAIGN_ANY"
+                    {% if audience_filter.was_sent_campaign_modifier == "WAS_NOT_SENT_CAMPAIGN_ANY" %}selected{% endif %}
+            >none</option>
+{#            <option value="WAS_NOT_SENT_CAMPAIGN_AT_LEAST_ONE"#}
+{#                    {% if audience_filter.was_sent_campaign_modifier == "WAS_NOT_SENT_CAMPAIGN_AT_LEAST_ONE" %}selected{% endif %}#}
+{#            >not all (missed at least one)</option>#}
+        </select>
+
+        <div class="audience-filter-dropdown">
+            <button type="button" 
+                    class="audience-filter-dropdown-button" 
+                    id="was-sent-campaign-button-{{ audience_filter.id }}"
+                    onclick="toggleDropdown('{{ audience_filter.id }}', 'was-sent-campaign-dropdown-')">
+                {% if was_sent_campaign_selected_string %}
+                    {{ was_sent_campaign_selected_string }}
+                {% else %}
+                -- Select campaign(s) --
+                {% endif %}
+            </button>
+            <div class="audience-filter-dropdown-content" id="was-sent-campaign-dropdown-{{ audience_filter.id }}">
+                <a href="javascript:void(0)" 
+                   class="audience-filter-clear-all-link" 
+                   onclick="clearAllWasSentCampaign('{{ audience_filter.id }}')">
+                    Clear all
+                </a>
+                <div style="clear: both;"></div>
+            {% for email_campaign in campaign_list %}
+                <div class="audience-filter-audience-type-option">
+                    <input type="checkbox" 
+                           id="was-sent-campaign-{{ audience_filter.id }}-{{ email_campaign.id }}" 
+                           name="was_sent_campaign_{{ audience_filter.id }}[]" 
+                           value="{{ email_campaign.id }}"
+                           {% if email_campaign.id|stringformat:"s" in was_sent_campaign_selected %}checked{% endif %}
+                           onchange="updateWasSentCampaignButtonText('{{ audience_filter.id }}')">
+                    <label for="was-sent-campaign-{{ audience_filter.id }}-{{ email_campaign.id }}"
+                            id="was-sent-campaign-label-{{ audience_filter.id }}-{{ email_campaign.id }}" 
+                            style="cursor: pointer;
+                            font-weight: {% if email_campaign.id|stringformat:"s" in was_sent_campaign_selected %}600{% else %}normal{% endif %};
+                            "
+                    >
+                        {{ email_campaign.email_campaign_name }}
+                    {% if email_campaign.date_sent %}
+                        (sent)
+                    {% endif %}
+                    </label>
+                </div>
+            {% endfor %}
+            </div>
+        </div>
+    </div>
+
 {# FILTER_TYPE_HAS_OPENED #}
     <div id="has-opened-options-{{ audience_filter.id }}"
          style="margin-left: 8px;
@@ -320,7 +385,7 @@
                             "
                     >
                         {{ email_campaign.email_campaign_name }}
-                    {% if email_campaign.scheduled_send_time %}
+                    {% if email_campaign.date_sent %}
                         (sent)
                     {% endif %}
                     </label>

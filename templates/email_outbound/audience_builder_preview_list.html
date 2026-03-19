@@ -175,6 +175,7 @@
       <thead>
         <tr>
           <th>Recipient name</th>
+          <th></th>
           <th>Phone</th>
           <th>Email</th>
           <th>Type</th>
@@ -186,7 +187,18 @@
         {% if preview_list %}
           {% for recipient in preview_list %}
           <tr class="recipient-row" data-name="{{ recipient.email_recipient_name|lower }}">
-            <td>{{ recipient.name }}</td>
+            <td>{{ recipient.full_name }}</td>
+            <td>
+                <a href="{% url 'politician:politician_we_vote_id_edit' recipient.politician_we_vote_id %}?google_civic_election_id={{ google_civic_election_id }}"
+                   class="campaign-link" target="_blank">
+                  edit
+                </a>
+                &nbsp;
+                <a href="https://quality.wevote.us/{{ recipient.politician_seo_friendly_path }}/-/?google_civic_election_id={{ google_civic_election_id }}"
+                   class="campaign-link" target="_blank">
+                  view
+                </a>
+            </td>
             <td>{{ recipient.phone }}</td>
             <td>{{ recipient.email }}</td>
             <td>{{ recipient.type }}</td>
