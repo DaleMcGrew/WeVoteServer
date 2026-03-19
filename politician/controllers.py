@@ -446,7 +446,7 @@ def find_campaignx_list_to_link_to_this_politician(politician=None):
     return related_list
 
 
-def find_candidates_to_link_to_this_politician(politician=None):
+def find_candidates_to_link_to_this_politician(politician=None,use_trigram_match=False):
     """
     Find Candidates to Link to this Politician
     Finding Candidates that *might* be "children" of this politician
@@ -458,7 +458,6 @@ def find_candidates_to_link_to_this_politician(politician=None):
     if not hasattr(politician, 'we_vote_id'):
         return []
     related_candidate_list = []
-    trigram_match_set = False
     from candidate.models import CandidateCampaign
     try:
         queryset = CandidateCampaign.objects.using('readonly').all()
@@ -468,19 +467,19 @@ def find_candidates_to_link_to_this_politician(politician=None):
         filters = []
         
         # Use trigram similarity for fuzzy name matching on full politician name
-        # This is much faster than multiple LIKE conditions (~7s -> ~200ms)
+        
         if positive_value_exists(politician.first_name) and positive_value_exists(politician.last_name):
             full_name = politician.first_name + ' ' + politician.last_name
             # Annotate with trigram similarity score
-            queryset = queryset.annotate(
-                trigram_match=TrigramSimilarity('candidate_name', full_name)
-            )
-            # Add trigram filter with lower threshold for inclusion
-            if trigram_match_set :
-                new_filter = Q(trigram_match__gt=0.75)
-                print("Using trigram filter for candidate_name with threshold 0.75")
+            if use_trigram_match :
+                queryset = queryset.annotate(
+                    trigram_match=TrigramSimilarity('candidate_name', full_name)
+                )
+            # Add trigram filter with high threshold for strict matching
+                new_filter = Q(trigram_match__gt=0.45)
+                
             else:
-                print("Trigram match not set, using basic icontains filter for candidate_name")
+                
                 new_filter = \
                 Q(candidate_name__icontains=politician.first_name) & \
                 Q(candidate_name__icontains=politician.last_name)
