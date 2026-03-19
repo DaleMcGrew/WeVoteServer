@@ -38,6 +38,16 @@ function clearAllStateCodes(filterId) {
     updateStateCodeButtonText(filterId);
 }
 
+function clearAllWasSentCampaign(filterId) {
+    const checkboxes = document.querySelectorAll(`
+        input[name="was_sent_campaign_${filterId}[]"]:checked
+    `);
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateWasSentCampaignButtonText(filterId);
+}
+
 function updateAudienceTypeButtonText(filterId) {
     const checkboxes = document.querySelectorAll(`
         input[name="audience_type_candidate_${filterId}"]:checked,
@@ -56,7 +66,7 @@ function updateAudienceTypeButtonText(filterId) {
 }
 
 function updateHasOpenedButtonText(filterId) {
-    // Get all the checked state codes in has_opened_{filterId}[] and update the button text to include all of the
+    // Get all the checked state codes in has_opened_{filterId}[] and update the button text to include all the
     // selected campaigns
     const checkboxes = document.querySelectorAll(`
         input[name="has_opened_${filterId}[]"]:checked
@@ -88,6 +98,26 @@ function updateStateCodeButtonText(filterId) {
     } else {
         const state_codes = Array.from(checkboxes).map(checkbox => checkbox.value);
         button.textContent = state_codes.join(', ');
+    }
+}
+
+function updateWasSentCampaignButtonText(filterId) {
+    // Get all the checked state codes in was_sent_campaign_{filterId}[] and update the button text to include all the
+    // selected campaigns
+    const checkboxes = document.querySelectorAll(`
+        input[name="was_sent_campaign_${filterId}[]"]:checked
+    `);
+    const button = document.getElementById('was-sent-campaign-button-' + filterId);
+
+    if (checkboxes.length === 0) {
+        button.textContent = '-- Select campaign(s) --';
+    } else {
+        const campaign_names = Array.from(checkboxes).map(checkbox => {
+            // Find the associated label using the checkbox's id
+            const label = document.querySelector(`label[for="${checkbox.id}"]`);
+            return label ? label.textContent.trim() : checkbox.value;
+        });
+        button.textContent = campaign_names.join(', ');
     }
 }
 
@@ -435,6 +465,7 @@ function toggleAudienceFilterType(selectElement, filterId) {
     const phoneNumberOptions = document.getElementById('phone-number-options-' + filterId);
     const politicalPartyOptions = document.getElementById('political-party-options-' + filterId);
     const stateCodeOptions = document.getElementById('state-code-options-' + filterId);
+    const wasSentCampaignOptions = document.getElementById('was-sent-campaign-options-' + filterId);
 
     // Hide all options first
     if (audienceTypeOptions) audienceTypeOptions.style.display = 'none';
@@ -447,6 +478,7 @@ function toggleAudienceFilterType(selectElement, filterId) {
     if (phoneNumberOptions) phoneNumberOptions.style.display = 'none';
     if (politicalPartyOptions) politicalPartyOptions.style.display = 'none';
     if (stateCodeOptions) stateCodeOptions.style.display = 'none';
+    if (wasSentCampaignOptions) wasSentCampaignOptions.style.display = 'none';
 
     // Show the selected option
     if (selectElement.value === 'FILTER_TYPE_AUDIENCE_TYPE') {
@@ -469,6 +501,8 @@ function toggleAudienceFilterType(selectElement, filterId) {
         if (politicalPartyOptions) politicalPartyOptions.style.display = 'flex';
     } else if (selectElement.value === 'FILTER_TYPE_STATE_CODE') {
         if (stateCodeOptions) stateCodeOptions.style.display = 'flex';
+    } else if (selectElement.value === 'FILTER_TYPE_WAS_SENT_CAMPAIGN') {
+        if (wasSentCampaignOptions) wasSentCampaignOptions.style.display = 'flex';
     }
 }
 

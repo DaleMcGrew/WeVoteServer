@@ -5,6 +5,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   console.log("TinyMCE loaded from WebApp.");
+  {# get uuid from api #}
+  const draftUuid = "{{ draft_uuid|default:'' }}" || crypto.randomUUID();
 
   // Remove existing editors if re-rendered
   tinymce.remove(".js-tinymce");
@@ -37,15 +39,35 @@ document.addEventListener("DOMContentLoaded", function () {
     extended_valid_elements: "*[*]",
     valid_children: "+body[style]",
 
-    images_upload_handler: function (blobInfo, success, failure) {
-      var reader = new FileReader();
-      reader.onload = function () {
-        success(reader.result);
-      };
-      reader.onerror = function () {
-        failure("Image upload failed");
-      };
-      reader.readAsDataURL(blobInfo.blob());
+    {#  process image, store it, and display it in TinyMCE #}
+    images_upload_handler: async (blobInfo, progress) => {
+      const formData = new FormData();
+      const file = blobInfo.blob()
+
+      const timestamp = new Date().getTime();
+
+      // prepare file name so it is identifiable
+      const filename = (file.name && !file.name.includes('blobid'))
+                 ? file.name
+                 : `upload_${timestamp}.${extension}`;
+
+      formData.append("file", file, filename);
+      if (draftUuid) formData.append("draft_uuid", draftUuid);
+
+      const res = await fetch("{% url 'email_outbound:email_attachment_image_upload' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Image upload failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      return data.location;   // TinyMCE inserts this into <img src="...">
     },
 
     file_picker_types: "image",
@@ -58,7 +80,16 @@ document.addEventListener("DOMContentLoaded", function () {
           var file = this.files[0];
           var reader = new FileReader();
           reader.onload = function () {
-            callback(reader.result, { alt: file.name });
+
+            // We convert the base64 back to a blob
+            // but manually attach the original name to it.
+
+            const blobCache =  tinymce.activeEditor.editorUpload.blobCache;
+            const base64 = reader.result.split(',')[1];
+            const blobInfo = blobCache.create(file.name, file, base64);
+            blobCache.add(blobInfo);
+
+            callback(blobInfo.blobUri(), { title: file.name });
           };
           reader.readAsDataURL(file);
         };
