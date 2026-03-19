@@ -1185,6 +1185,17 @@
 
 {% if duplicate_politician_list %}
     <h4>Possible Duplicate Politicians</h4>
+        <div style="margin-bottom: 15px;">
+            <label for="use_trigram_match_duplicates_id">
+                <input type="checkbox" name="use_trigram_match_duplicates" id="use_trigram_match_duplicates_id" value="1" />
+                <strong>Use Trigram-Based Fuzzy Matching</strong> (finds duplicate politicians with similar names even with spelling variations)
+            </label>
+            {% if use_trigram_match %}
+                <span style="color: #0066cc; margin-left: 20px;">✓ Currently viewing fuzzy matching results</span>
+            {% else %}
+                <span style="color: #6c757d; margin-left: 20px;">Currently viewing exact matching results</span>
+            {% endif %}
+        </div>
     <table class="table">
         <tr>
             <td>&nbsp;</td>
@@ -1486,6 +1497,26 @@
      // Handle trigram fuzzy matching checkbox change
     $(function() {
         $('#use_trigram_match_id').change(function() {
+        // Get the current URL
+        let url = new URL(window.location.href);
+      
+        if (this.checked) {
+            // Add or update the use_trigram_match parameter
+            url.searchParams.set('use_trigram_match', '1');
+        } else {
+            // Remove the use_trigram_match parameter
+            url.searchParams.delete('use_trigram_match');
+        }
+      
+        // Open in a new popup window
+        window.open(url.toString(), '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+      
+        // Uncheck the checkbox after opening the popup
+        this.checked = false;
+    });
+
+    // Handle trigram fuzzy matching checkbox change for duplicate politicians
+    $('#use_trigram_match_duplicates_id').change(function() {
         // Get the current URL
         let url = new URL(window.location.href);
       
