@@ -3091,7 +3091,7 @@ def find_organization_endorsements_of_candidates_on_one_web_page(site_url, endor
     return results
 
 
-def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=None):
+def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=None, use_trigram_match=False):
     """
     Find Candidates that might be duplicates to see if we want to merge them with this Candidate
     
@@ -3116,8 +3116,8 @@ def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=No
     candidates_are_not_duplicates_list_we_vote_ids = results['candidates_are_not_duplicates_list_we_vote_ids']
     candidates_are_not_duplicates_list_we_vote_ids.append(candidate.we_vote_id)
     # Local variables for query control
-    use_trigram_match = False
-    threshold = 0.3  # Standard fuzzy matching threshold (0.0-1.0 scale)
+    #use_trigram_match = False
+    threshold = 0.5  # Standard fuzzy matching threshold (0.0-1.0 scale)
     try:
         queryset = CandidateCampaign.objects.using('readonly').all()
         queryset = queryset.exclude(we_vote_id__in=candidates_are_not_duplicates_list_we_vote_ids)
