@@ -466,20 +466,16 @@ def find_candidates_to_link_to_this_politician(politician=None,use_trigram_match
 
         filters = []
         
-        # Use trigram similarity for fuzzy name matching on full politician name
-        
+        # Use trigram similarity for fuzzy name matching on full name
         if positive_value_exists(politician.first_name) and positive_value_exists(politician.last_name):
-            full_name = politician.first_name + ' ' + politician.last_name
             # Annotate with trigram similarity score
-            if use_trigram_match :
+            if use_trigram_match:
                 queryset = queryset.annotate(
-                    trigram_match=TrigramSimilarity('candidate_name', full_name)
+                    trigram_match=TrigramSimilarity('candidate_name', politician.politician_name)
                 )
-            # Add trigram filter with high threshold for strict matching
-                new_filter = Q(trigram_match__gt=0.45)
-                
+                # Add trigram filter with high threshold for strict matching
+                new_filter = Q(trigram_match__gt=0.75)
             else:
-                
                 new_filter = \
                 Q(candidate_name__icontains=politician.first_name) & \
                 Q(candidate_name__icontains=politician.last_name)
@@ -548,7 +544,6 @@ def find_candidates_to_link_to_this_politician(politician=None,use_trigram_match
             queryset = queryset.order_by('-trigram_match', 'candidate_name')
         else:
             queryset = queryset.order_by('candidate_name')
-        
         queryset = queryset[:20]
         related_candidate_list = list(queryset)
     except Exception as e:
