@@ -957,6 +957,7 @@ def update_is_claimed_profile_fields_in_bulk(
     """
 
     """
+    politician_list_to_update = []
     politician_update_list = []
     politician_dict_by_candidate_we_vote_id = {}
     politician_we_vote_id_list = []
@@ -974,8 +975,13 @@ def update_is_claimed_profile_fields_in_bulk(
         total_to_convert = politician_query.count()
         total_to_convert_after = total_to_convert - number_to_update if total_to_convert > number_to_update else 0
         politician_list_to_update = list(politician_query[:number_to_update])
+    except Exception as e:
+        status += "ERROR_POLITICIAN_QUERY_update_is_claimed_profile_fields_in_bulk: {e} ".format(e=e)
+        success = False
 
+    if politician_list_to_update:
         results = retrieve_db_objects_for_claimed_profile_analysis(politician_list=politician_list_to_update)
+        status += results['status']
         voter_date_last_changed_by_email = results['voter_date_last_changed_by_email']
         voter_dict = results['voter_dict']
         voter_has_signed_in_with_email_dict = results['voter_has_signed_in_with_email_dict']
@@ -986,7 +992,10 @@ def update_is_claimed_profile_fields_in_bulk(
             status += "NO_VOTERS_FOUND_AS_CAMPAIGNX_OWNERS "
 
         # Has this politician been claimed?
+        politician_we_vote_id = None
         for one_politician in politician_list_to_update:
+            # try:
+            # politician_we_vote_id = one_politician.we_vote_id
             results = has_politician_been_claimed_by_voter_email(
                 one_politician,
                 voter_date_last_changed_by_email,
@@ -1005,6 +1014,7 @@ def update_is_claimed_profile_fields_in_bulk(
                     )
                     date_last_changed = results['date_last_changed']
                     is_claimed_profile = results['is_claimed_profile']
+                    status += results['status'] + " "
                 else:
                     date_last_changed = None
                     is_claimed_profile = False
@@ -1017,25 +1027,28 @@ def update_is_claimed_profile_fields_in_bulk(
             politician_update_list.append(one_politician)
             updates_needed = True
             updates_made += 1
+            # except Exception as e:
+            #     status += "FAILED_CHECKING_ONE_POLITICIAN_FOR_CLAIMED_STATUS for {politician_we_vote_id}: {e} " \
+            #               "".format(
+            #                         e=e,
+            #                         politician_we_vote_id=politician_we_vote_id)
 
-        # Retrieve all relevant CandidateCampaign entries in a single query so we can mark them as claimed
-        #  if the linked politician was claimed.
-        queryset = CandidateCampaign.objects.all()
-        queryset = queryset.filter(politician_we_vote_id__in=politician_we_vote_id_list)
-        candidate_list = list(queryset)
-        candidate_with_politician_we_vote_id_count = 0
-        for one_candidate in candidate_list:
-            if one_candidate.we_vote_id in politician_dict_by_candidate_we_vote_id:
-                one_politician = politician_dict_by_candidate_we_vote_id[one_candidate.we_vote_id]
-                if positive_value_exists(one_politician.is_claimed_profile):
-                    pass
-
-            candidate_with_politician_we_vote_id_count += 1
-    except Exception as e:
-        status += "ERROR_POLITICIAN_QUERY_update_is_claimed_profile_fields_in_bulk: {e} ".format(e=e)
-        success = False
+        # # Retrieve all relevant CandidateCampaign entries in a single query so we can mark them as claimed
+        # #  if the linked politician was claimed.
+        # queryset = CandidateCampaign.objects.all()
+        # queryset = queryset.filter(politician_we_vote_id__in=politician_we_vote_id_list)
+        # candidate_list = list(queryset)
+        # candidate_with_politician_we_vote_id_count = 0
+        # for one_candidate in candidate_list:
+        #     if one_candidate.we_vote_id in politician_dict_by_candidate_we_vote_id:
+        #         one_politician = politician_dict_by_candidate_we_vote_id[one_candidate.we_vote_id]
+        #         if positive_value_exists(one_politician.is_claimed_profile):
+        #             pass
+        #
+        #     candidate_with_politician_we_vote_id_count += 1
 
     if updates_needed:
+        status += "ABOUT_TO_BULK_UPDATE_POLITICIANS "
         try:
             Politician.objects.bulk_update(
                 politician_update_list,
