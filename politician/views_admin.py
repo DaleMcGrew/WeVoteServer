@@ -61,6 +61,7 @@ from .controllers import add_alternate_names_to_next_spot, add_twitter_handle_to
     generate_campaignx_for_politician, politician_save_photo_from_file_reader, \
     update_politician_details_from_candidate, \
     merge_these_two_politicians, politicians_import_from_master_server
+from .controllers_data_cleaning import calculate_if_is_claimed_profile
 from .models import Politician, PoliticianChangeLog, PoliticianManager, POLITICIAN_UNIQUE_ATTRIBUTES_TO_BE_CLEARED, \
     POLITICIAN_UNIQUE_IDENTIFIERS, PoliticiansArePossibleDuplicates, POLITICAL_DATA_MANAGER, UNKNOWN, \
     RecommendedPoliticianLinkByPolitician
@@ -89,7 +90,7 @@ def politician_url_test_view(request):
     except Politician.MultipleObjectsReturned as e:
         handle_record_found_more_than_one_exception(e, logger=logger)
         messages.add_message(request, messages.ERROR, "Multiple records found for this politician.")
-        return HttpResponseRedirect(reverse('politician:politician_list'))  # Redirect to a list page
+        return HttpResponseRedirect(reverse('politician:politicians_data_cleaning'))  # Redirect to a list page
     except Politician.DoesNotExist:
         messages.add_message(request, messages.ERROR, "Politician not found.")
         return HttpResponseRedirect(
@@ -97,7 +98,7 @@ def politician_url_test_view(request):
         )
     except Exception as e:
         messages.add_message(request, messages.ERROR, f"Unexpected error: {str(e)}")
-        return HttpResponseRedirect(reverse('politician:politician_list'))
+        return HttpResponseRedirect(reverse('politician:politicians_data_cleaning'))
     
     # Collect all URLs that exist
     urls_to_test = []
@@ -377,7 +378,7 @@ def match_politicians_to_organizations_view(request):
                             str(politician_we_vote_id_update_list) + " "
     messages.add_message(request, messages.INFO, message_to_print)
 
-    return HttpResponseRedirect(reverse('politician:politician_list', args=()) +
+    return HttpResponseRedirect(reverse('politician:politicians_data_cleaning', args=()) +
                                 "?state_code={state_code}"
                                 "".format(state_code=state_code))
 
@@ -3341,6 +3342,12 @@ def politician_edit_process_view(request):
             })
 
             # #################################################
+            if not politician_on_stage.is_claimed_profile:
+                results = calculate_if_is_claimed_profile(politician=politician_on_stage)
+                if results['success']:
+                    politician_on_stage = results['politician']
+
+            # #################################################
             t0 = time()
             # Save politician object
             politician_on_stage.save()
@@ -4282,7 +4289,7 @@ def repair_ocd_id_mismatch_damage_view(request):
                              states_to_be_fixed_count=states_to_be_fixed_count,
                              status=status))
 
-    return HttpResponseRedirect(reverse('politician:politician_list', args=()) +
+    return HttpResponseRedirect(reverse('politician:politicians_data_cleaning', args=()) +
                                 "?google_civic_election_id={google_civic_election_id}"
                                 "&state_code={state_code}"
                                 "&show_ocd_id_state_mismatch=1"
@@ -4299,7 +4306,7 @@ def update_politician_from_candidate_view(request):
     if not positive_value_exists(politician_id) and not positive_value_exists(politician_we_vote_id):
         message = "Unable to update politician from candidate. Missing politician_id and we_vote_id."
         messages.add_message(request, messages.INFO, message)
-        return HttpResponseRedirect(reverse('politician:politician_list', args=()))
+        return HttpResponseRedirect(reverse('politician:politicians_data_cleaning', args=()))
 
     if positive_value_exists(politician_we_vote_id):
         politician = Politician.objects.get(we_vote_id=politician_we_vote_id)
@@ -4425,7 +4432,7 @@ def update_politicians_from_candidates_view(request):
 
     messages.add_message(request, messages.INFO, message)
 
-    return HttpResponseRedirect(reverse('politician:politician_list', args=()) +
+    return HttpResponseRedirect(reverse('politician:politicians_data_cleaning', args=()) +
                                 "?state_code={state_code}"
                                 "".format(
                                     state_code=state_code))
@@ -4466,7 +4473,7 @@ def update_politician_ultimate_election_date_from_candidates_view(request):
 
     messages.add_message(request, messages.INFO, message)
 
-    return HttpResponseRedirect(reverse('politician:politician_list', args=()) +
+    return HttpResponseRedirect(reverse('politician:politicians_data_cleaning', args=()) +
                                 "?state_code={state_code}"
                                 "".format(
                                     state_code=state_code))
@@ -4584,7 +4591,7 @@ def update_profile_image_background_color_view_for_politicians(request):
         else:
             messages.add_message(request, messages.ERROR, results['status'])
 
-    return HttpResponseRedirect(reverse('politician:politician_list', args=()))
+    return HttpResponseRedirect(reverse('politician:politicians_data_cleaning', args=()))
 
 
 def update_recommended_politicians_view(request):
