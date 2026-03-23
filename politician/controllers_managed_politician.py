@@ -74,7 +74,7 @@ def has_politician_been_claimed_by_campaignx_owner(
     if isinstance(politician, Politician) and \
             positive_value_exists(politician.linked_campaignx_we_vote_id):
         voter_we_vote_id_list = voter_we_vote_id_lists_by_campaignx_we_vote_id.get(
-            politician.linked_campaignx_we_vote_id)
+            politician.linked_campaignx_we_vote_id, [])
         for voter_we_vote_id in voter_we_vote_id_list:
             if voter_we_vote_id in voter_dict:
                 voter = voter_dict[voter_we_vote_id]
