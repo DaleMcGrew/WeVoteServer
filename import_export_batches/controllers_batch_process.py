@@ -725,7 +725,7 @@ def process_next_general_maintenance():
                 run_every_n_minutes = RUN_MAINTENANCE_SCRIPTS_EVERY_N_MINUTES  # Normally set to every 10 minutes
                 if current_minute % run_every_n_minutes != 0:
                     status += \
-                        "{kind_of_process}-ONLY_RUNS_EVERY-{run_every_x_minutes}-MINUTES " \
+                        "{kind_of_process}-MAINTENANCE_ONLY_RUNS_EVERY-{run_every_x_minutes}-MINUTES " \
                         "".format(
                             kind_of_process=maintenance_script_item['kind_of_process'],
                             run_every_x_minutes=run_every_n_minutes)
@@ -810,7 +810,7 @@ def process_next_general_maintenance():
                 run_every_n_minutes = RUN_DEDUPLICATION_SCRIPTS_EVERY_N_MINUTES  # Normally set to every 12 minutes
                 if current_minute % run_every_n_minutes != 0:
                     status += \
-                        "{kind_of_process}-ONLY_RUNS_EVERY-{run_every_x_minutes}-MINUTES " \
+                        "{kind_of_process}-DEDUPLICATION_ONLY_RUNS_EVERY-{run_every_x_minutes}-MINUTES " \
                         "".format(
                             kind_of_process=deduplication_script_item['kind_of_process'],
                             run_every_x_minutes=run_every_n_minutes)

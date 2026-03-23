@@ -47,6 +47,7 @@
             Create FollowOrganization Entries for Politicians{% if politicians_need_followers_count %} ({{ politicians_need_followers_count|intcomma }}){% endif %} <span class="glyphicon glyphicon-new-window"></span></a></li>
     {% endif %}
         <li><a href="{% url 'politician:update_profile_image_background_color' %}" >Update 5,000 Politicians' background colors &#40;may take 10 minutes&#41;</a></li>
+        <li><a href="{% url 'politician:update_is_claimed_profile_for_politicians' %}" >Update 5,000 Politicians' 'is_claimed_profile'</a></li>
     </ul>
 
 <form name="state_code_form" method="get" action="{% url 'politician:politician_list' %}">
