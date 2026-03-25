@@ -71,8 +71,8 @@ def has_politician_been_claimed_by_campaignx_owner(
         return results
 
     # Start with the politician.linked_campaignx_we_vote_id and use that to find list of voters who are CampaignX owners
-    if isinstance(politician, Politician) and \
-            positive_value_exists(politician.linked_campaignx_we_vote_id):
+    if positive_value_exists(politician.linked_campaignx_we_vote_id) and \
+            isinstance(voter_we_vote_id_lists_by_campaignx_we_vote_id, dict):
         voter_we_vote_id_list = voter_we_vote_id_lists_by_campaignx_we_vote_id.get(
             politician.linked_campaignx_we_vote_id, [])
         for voter_we_vote_id in voter_we_vote_id_list:
@@ -83,6 +83,12 @@ def has_politician_been_claimed_by_campaignx_owner(
                     is_claimed_profile = True
                     status += "VOTER_OWNER_IS_SIGNED_IN "
                     break
+    else:
+        if not positive_value_exists(politician.linked_campaignx_we_vote_id):
+            status += "MISSING_LINKED_CAMPAIGNX_WE_VOTE_ID "
+        if not isinstance(voter_we_vote_id_lists_by_campaignx_we_vote_id, dict):
+            status += "NOT_DICT_voter_we_vote_id_lists_by_campaignx_we_vote_id "
+            success = False
 
     results = {
         'date_last_changed':    date_last_changed,
