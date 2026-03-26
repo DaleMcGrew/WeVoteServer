@@ -465,20 +465,12 @@ def find_candidates_to_link_to_this_politician(politician=None,use_trigram_match
             politician_we_vote_id=politician.we_vote_id)
 
         filters = []
-        
-        # Use trigram similarity for fuzzy name matching on full name
+               
+        # Use icontains for FILTERING (fast B-tree index), trigram only for ORDERING if requested
         if positive_value_exists(politician.first_name) and positive_value_exists(politician.last_name):
-            # Annotate with trigram similarity score
-            if use_trigram_match:
-                queryset = queryset.annotate(
-                    trigram_match=TrigramSimilarity('candidate_name', politician.politician_name)
-                )
-                # Add trigram filter with high threshold for strict matching
-                new_filter = Q(trigram_match__gt=0.75)
-            else:
-                new_filter = \
-                Q(candidate_name__icontains=politician.first_name) & \
-                Q(candidate_name__icontains=politician.last_name)
+            new_filter = \
+            Q(candidate_name__icontains=politician.first_name) & \
+            Q(candidate_name__icontains=politician.last_name)
             filters.append(new_filter)
 
         if positive_value_exists(politician.politician_twitter_handle):
@@ -539,8 +531,11 @@ def find_candidates_to_link_to_this_politician(politician=None,use_trigram_match
 
             queryset = queryset.filter(final_filters)
 
-        # Order by trigram match score if available, otherwise by name
-        if 'trigram_match' in queryset.query.annotations:
+        # Apply trigram ordering ONLY for ranking (not filtering) on already filtered results
+        if use_trigram_match:
+            queryset = queryset.annotate(
+                trigram_match=TrigramSimilarity('candidate_name', politician.politician_name)
+            )
             queryset = queryset.order_by('-trigram_match', 'candidate_name')
         else:
             queryset = queryset.order_by('candidate_name')
