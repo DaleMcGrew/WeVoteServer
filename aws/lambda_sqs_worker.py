@@ -2,16 +2,31 @@ import json
 import logging
 import os
 
+logger = logging.getLogger(__name__)
+
+import boto3
+from botocore.exceptions import ClientError
+
+# Load config from Secrets Manager before Django initializes — mirrors what
+# docker/prod/entrypoint does for the ECS task.  Runs once per cold start.
+_secret_arn = os.environ.get('CONFIG_SECRET_ARN')
+_region = os.environ.get('AWS_DEFAULT_REGION') or os.environ.get('AWS_REGION')
+if _secret_arn and _region:
+    try:
+        _client = boto3.session.Session().client('secretsmanager', region_name=_region)
+        _secret = json.loads(_client.get_secret_value(SecretId=_secret_arn)['SecretString'])
+        for _key, _val in _secret.items():
+            if _key not in os.environ:
+                os.environ[_key] = _val
+    except ClientError as e:
+        raise RuntimeError(f"Failed to load config secret {_secret_arn}") from e
+
 # Django must be initialized at module level so it runs once per cold start
 # and is reused across warm Lambda invocations.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 import django
 django.setup()
-
-import wevote_functions.admin
-
-logger = wevote_functions.admin.get_logger(__name__)
 
 
 def handler(event, context):
