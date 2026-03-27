@@ -17,5 +17,9 @@ RUN pip install -r ${LAMBDA_TASK_ROOT}/requirements.txt --no-cache-dir
 # Copy the full WeVoteServer codebase — all Django apps must be importable
 COPY . ${LAMBDA_TASK_ROOT}/
 
-# Handler: aws/lambda_sqs_worker.py → module aws.lambda_sqs_worker, function handler
-CMD ["aws.lambda_sqs_worker.handler"]
+# Handler module.function — must be supplied at build time, e.g.:
+#   --build-arg LAMBDA_HANDLER=aws.lambda_sqs_worker.handler
+ARG LAMBDA_HANDLER
+RUN test -n "$LAMBDA_HANDLER" || (echo "ERROR: LAMBDA_HANDLER build arg is required" && exit 1)
+ENV LAMBDA_HANDLER=${LAMBDA_HANDLER}
+CMD ["sh", "-c", "exec /lambda-entrypoint.sh \"$LAMBDA_HANDLER\""]
