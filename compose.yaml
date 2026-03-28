@@ -26,8 +26,15 @@ services:
       - wevote
     volumes:
       - localstack:/var/lib/localstack
+      - ./docker/dev/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
     environment:
       PERSISTENCE: 1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
   
   api:
     build:
@@ -50,6 +57,11 @@ services:
       - DATABASE_PORT_READONLY=${DATABASE_PORT:-5432}
       - DJANGO_SUPERUSER_EMAIL
       - DJANGO_SUPERUSER_PASSWORD
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_SQS_WEB_QUEUE_URL=http://localstack:4566/000000000000/job-queue.fifo
     volumes:
       - .:/wevote/code
     networks:

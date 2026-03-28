@@ -76,14 +76,7 @@ def process_request(function, body, message):
 
 
 def worker_run(queue_url):
-    if queue_url.startswith('http://localhost'):
-        try:
-            import localstack_client.session as boto3
-        except:
-            import boto3
-    else:
-        import boto3
-
+    import boto3
     sqs = boto3.client('sqs')
     # print("sqs.receive_message startup--------------------")
 

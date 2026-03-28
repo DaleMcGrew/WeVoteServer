@@ -10,14 +10,7 @@ sqs_client = None
 def _init_client(queue_url):
     global sqs_client
     if sqs_client is None:
-        if queue_url.startswith('http://localhost'):
-            try:
-                import localstack_client.session as boto3
-            except:
-                import boto3
-        else:
-            import boto3
-
+        import boto3
         sqs_client = boto3.client('sqs')
     return sqs_client
 
