@@ -2130,10 +2130,8 @@ class WeVoteImageManager(models.Manager):
             converted_image_name = f"{original_image_stem}.{converted_image_format}"
             converted_image_local_path += converted_image_name
         else:
-            converted_image_format = deepcopy(original_image_format)
             converted_image_local_path = deepcopy(original_image_local_path)
-            
-        
+
         try:
             image = Image.open(original_image_local_path)
             media_type = image.get_format_mimetype()
@@ -2273,7 +2271,7 @@ class WeVoteImageManager(models.Manager):
             image_stored_to_aws = False
             exception_message = "store_image_file_to_aws failed"
             handle_exception(e, logger=logger, exception_message=exception_message)
-        
+
         return image_stored_to_aws
 
     @staticmethod
