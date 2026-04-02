@@ -170,6 +170,11 @@
                 {% if politician.political_party %}
                     <span style="color: #999;">({{ politician.political_party }})</span>
                 {% endif %}
+                {% if politician.is_claimed_profile %}
+                    <span> 
+                        <i class="material-icons" style="color: #6B6B6B; font-size: 18px;" title="Claimed on {{ politician.is_claimed_profile_date_time|date:'F j, Y' }}">verified</i>
+                    </span> 
+                {% endif %}
                 {% if politician.seo_friendly_path %}
                     <br />
                     <a href="{{ web_app_root_url }}/{{ politician.seo_friendly_path }}/-"
