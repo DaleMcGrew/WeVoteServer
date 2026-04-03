@@ -24,7 +24,8 @@
         <div style="border: 2px solid black; display: flex; flex-direction: column; align-self: center; align-items: flex-start; padding-top: 30px; padding-left: 30px; padding-right: 30px; padding-bottom: 30px; width: 80%;">
         <!-- <div style="display: flex; flex-direction: column; align-self: center;  justify-content: center; align-items: center; text-align: center; padding-top: 30px; padding-bottom: 30px; width: 80%;"> -->
             <h2>Retrieve Fast Load Authentication</h2>
-            <p> If you do not sign in with WeVote credentials, you will not be authorized to sync data with the master servers.</p>
+            <p>Please use the email/password you use to sign into the live server: https://api.wevoteusa.org/
+                These credentials should have been sent to you during onboarding.</p>
             {% include "admin_tools/email_login_form.html" %}
             {% if fast_load_start_token_error %}
                 <p style="color: red;">{{ fast_load_start_token_error }}</p>
