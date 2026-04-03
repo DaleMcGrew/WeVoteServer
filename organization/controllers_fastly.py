@@ -213,6 +213,20 @@ def activate_new_fastly_config_version(new_fastly_version_number):
     return json_results
 
 
+def route53_record_exists(domain_name):
+    client = boto3.client('route53')
+    response = client.list_resource_record_sets(
+        HostedZoneId=AWS_HOSTED_ZONE_ID,
+        StartRecordName=domain_name,
+        StartRecordType='CNAME',
+        MaxItems='1',
+    )
+    for record in response.get('ResourceRecordSets', []):
+        if record['Name'].rstrip('.') == domain_name and record['Type'] == 'CNAME':
+            return True
+    return False
+
+
 def route53_request(new_domain, action):
     status = ""
     success = True
@@ -254,6 +268,9 @@ def route53_request(new_domain, action):
 def add_subdomain_route53_record(new_subdomain):
     new_full_domain = "{new_subdomain}.wevote.us".format(new_subdomain=new_subdomain)
     logging.info("Adding DNS record for domain [%s]", new_full_domain)
+    if route53_record_exists(new_full_domain):
+        logging.warning("DNS record already exists for domain [%s]", new_full_domain)
+        return {'status': "ROUTE53_RECORD_ALREADY_EXISTS ", 'success': False}
     results = route53_request(new_full_domain, 'CREATE')
     logging.info(results['status'])
     json_status = {
