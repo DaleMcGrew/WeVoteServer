@@ -218,11 +218,10 @@ def route53_record_exists(domain_name):
     response = client.list_resource_record_sets(
         HostedZoneId=AWS_HOSTED_ZONE_ID,
         StartRecordName=domain_name,
-        StartRecordType='CNAME',
         MaxItems='1',
     )
     for record in response.get('ResourceRecordSets', []):
-        if record['Name'].rstrip('.') == domain_name and record['Type'] == 'CNAME':
+        if record['Name'].rstrip('.') == domain_name:
             return True
     return False
 
