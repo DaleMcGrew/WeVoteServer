@@ -17,11 +17,8 @@ from config.base import get_environment_variable, get_environment_variable_defau
 from exception.models import handle_exception
 from wevote_functions.functions import positive_value_exists
 
-AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
 AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
 AWS_STORAGE_BUCKET_NAME = "wevote-temporary"
-AWS_STORAGE_SERVICE = "s3"
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -247,10 +244,8 @@ def store_temporary_html_file_to_aws(temp_file_name):
     try:
         head, tail = os.path.split(temp_file_name)
         date_in_a_year = datetime.datetime.now() + + datetime.timedelta(days=365)
-        session = boto3.session.Session(region_name=AWS_REGION_NAME,
-                                        aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                        aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-        s3 = session.resource(AWS_STORAGE_SERVICE)
+        session = boto3.session.Session(region_name=AWS_REGION_NAME)
+        s3 = session.resource("s3")
         logger.info('store_temporary_html_file_to_aws upload temp_file: ' + temp_file_name)
         s3.Bucket(AWS_STORAGE_BUCKET_NAME).upload_file(
             temp_file_name, tail, ExtraArgs={'Expires': date_in_a_year, 'ContentType': 'text/html'})
