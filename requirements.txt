@@ -65,7 +65,7 @@ robot-detection==0.4
 rsa==4.7.2
 ruff==0.3.5
 sendgrid==6.9.7
-simplejson==3.17.2
+simplejson>=3.17.2
 six==1.16.0
 # setuptools==70.0.0    Removed in Py 3.12, but still needed by some slow to update packages)
 social-auth-app-django==5.4.1
