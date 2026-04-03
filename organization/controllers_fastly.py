@@ -8,9 +8,7 @@ import logging
 import requests
 from wevote_functions.functions import positive_value_exists
 
-AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
 AWS_HOSTED_ZONE_ID = get_environment_variable("AWS_HOSTED_ZONE_ID")
-AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
 AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
 FASTLY_API_HOSTNAME = get_environment_variable("FASTLY_API_HOSTNAME")
 FASTLY_API_SERVICE_ID = get_environment_variable("FASTLY_API_SERVICE_ID")
@@ -220,8 +218,7 @@ def route53_request(new_domain, action):
     success = True
     status += "ADDING_ROUTE53_FOR_DOMAIN: " + str(new_domain) + " " + str(action) + " "
     try:
-        client = boto3.client('route53',
-                              aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+        client = boto3.client('route53')
         response = client.change_resource_record_sets(
             HostedZoneId=AWS_HOSTED_ZONE_ID,
             ChangeBatch={
