@@ -17,6 +17,7 @@ from django.db import connection, transaction
 from django.db.models import CharField, TextField
 from django.conf import settings
 from django.apps import apps
+from psycopg2 import sql
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -63,7 +64,13 @@ def create_trigram_index(model, fields, logger_func=print):
                         indexes_already_existed.append(index_name)
                         continue
                     
-                    create_index_sql = f"""CREATE INDEX IF NOT EXISTS {index_name} ON {table_name} USING gist ({field.column} gist_trgm_ops);"""
+                    create_index_sql = sql.SQL(
+                        "CREATE INDEX IF NOT EXISTS {index_name} ON {table_name} USING gist ({column_name} gist_trgm_ops);"
+                    ).format(
+                        index_name=sql.Identifier(index_name),
+                        table_name=sql.Identifier(table_name),
+                        column_name=sql.Identifier(field.column)
+                    )
                     msg = f"Creating trigram index | index={index_name} | table={table_name} | column={field.column}"
                     logger_func(msg)
 
