@@ -9,14 +9,15 @@
 <h1>Fast Load Data From We Vote Master Servers</h1>
 <div style="padding: 10px 0 75px 25px; font-size: 18px; display: flex; flex-direction: column;">
     To load the election data to your local postgres server, press the FAST LOAD button below, and in about
-    20 minutes (on a fast Mac), it will have overwritten your local database with all the tables we need for running
+    25 minutes (on a fast Mac), it will have overwritten your local database with all the tables we need for running
     a local development WeVoteServer server.
     <br>
-    <span style="font-size: 16px; padding: 15px">
-    Could be improved: The last two files are huge -- candidate_candidatecampain takes about 17% of the time (roughly 3 minutes) and
-    ballot_ballotitem takes about 55% of the time (roughly 9 minutes) and during that time the progress bar only advances
-    about the last 4% of the way.  The progress bar could be improved, and ballot_ballotitem could cleaned out.
-    </span>
+    <div style="font-size: 16px; padding: 15px">
+        Wait for it!  <br>
+        <span style="padding: 30px">The last two files are huge -- </span><br>
+        <span style="padding: 45px">candidate_candidatecampaign (100MB) takes about 17% of the time (roughly 3 minutes)</span><br>
+        <span style="padding: 45px">ballot_ballotitem takes about 55% of the time (roughly 9 minutes).</span><br>
+    </div>
     The Python logging screen (and this page!) shows progress as the tables are loaded.
     <br><br>
 
@@ -357,13 +358,15 @@ These imports are best run in order from top-to-bottom.
     const currentDate = new Date();
     const t0 = currentDate.getTime();
     let saveOffDBComplete = false;
+    let currentPercentFloat = 0.0;
 
     let counter = 0;
     const regex = /(.*?)\/admin/gm;
     const localOrigin = regex.exec(window.location.href);
     const apiURL = localOrigin[1] + '/retrieve_tables/import/status/?';
+    let t1 = 0;
 
-    updateRealTime();
+
 
 
       let prevWordyTableName = '';
@@ -377,16 +380,36 @@ These imports are best run in order from top-to-bottom.
           url: apiURL,
           params: {},
           success: function (data) {
-            {#console.log(data);#}
-            let percent =  Math.trunc((data.step/(data.num_tables * 2)) * 100);
-            // console.log(`status data: data.elapsed: ${data.elapsed} table: ${data.table_name} percent: ${percent}`);
+            // console.log(data);
+             const isBigTable = ['ballot_ballotreturned', 'organization_organization', 'candidate_candidatecampaign', 'ballot_ballotitem'].includes(data.table_name);
+             const seconds = Math.trunc((performance.now() - t1)/1000);
+             updateDisplayedDuration(seconds);
+
+             if (prevWordyTableName !== data.table_name_text || isBigTable) {
+               prevWordyTableName = data.table_name_text;   // once per file step, unless on the isBigTable list of huge files
+               if (!isBigTable) {
+                // 32 tables takes 219 seconds out of 1486 total (on my machine, look at the Python log to figure out the timing for yours)
+                // so the first 32 tables take 91 seconds out of 1486, or 0.06123822%, so each takes 0.00191369%
+                currentPercentFloat += 0.00191369;
+            } else if (data.table_name === 'ballot_ballotreturned') {
+                // organization_organization takes 84 seconds out of 1486 seconds, so each update takes
+              currentPercentFloat += 0.03162853/84;  // Divided by the approximate number of seconds, so the progress bar increments nicely
+            } else if (data.table_name === 'organization_organization') {
+                // organization_organization takes 106 seconds out of 1486 seconds, so each update takes
+              currentPercentFloat += 0.07133244/72;
+            } else if (data.table_name === 'candidate_candidatecampaign') {
+              // candidate_candidatecampaign takes 186 seconds out of 1486 seconds, so each update takes
+              currentPercentFloat += 0.16890983/112;
+            } else if (data.table_name === 'ballot_ballotitem') {
+              // ballot_ballotitem takes 925 seconds out of 1486 seconds, so each update takes
+              currentPercentFloat += 0.63010899/925;   // Take 50 little increments for this one since it takes 15 min
+            }
+           }
+           let percent =  Math.trunc(currentPercentFloat * 100);
+             // Remember that these log lines end up in your browser's javascript console
+            console.log(`status data: data.elapsed: ${data.elapsed} table: ${data.table_name} percent: ${percent}`);
             if (typeof percent === "number") {
               progress.css({'display': 'flex', 'align-self': 'center', 'font-size': '38px'}).val(percent);
-            }
-            if (prevWordyTableName !== data.table_name_text) {
-                elapsed_seconds.val(data.elapsed);
-                prevWordyTableName = data.table_name_text;   // once per file step, unless on the updateRealTime list of huge files
-                updateDisplayedDuration(data.elapsed);
             }
 
             current_table_wordy.html(`Current table: ${data.table_name_text}`);
@@ -403,6 +426,7 @@ These imports are best run in order from top-to-bottom.
     }, 1000);
 
     function updateDisplayedDuration(secs) {
+        // console.log('updateDisplayedDuration, ', secs );
         if (secs < 60) {
             total_time.text(`Elapsed time: ${secs} seconds`);
         } else {
@@ -426,18 +450,13 @@ These imports are best run in order from top-to-bottom.
         let origin = new URL('{{request.build_absolute_uri}}').origin;
         const apiURL = origin + '/retrieve_tables/import/files/?';
 
-        const t1 = performance.now();
+        t1 = performance.now();
         $.ajax({
           type: "GET",
           url: apiURL,
           timeout: 14400000,              // 4 hours
           headers: { 'voterApiDeviceId': getApiDeviceId() },
           success: function (data) {
-            // let status = data.text;
-            // console.log(status);
-            const seconds = Math.trunc((performance.now() - t1)/1000);
-            updateDisplayedDuration(seconds);
-            // Elapsed time: 10:33 minutes
             fastLoadButton.html("DONE: Successfully loaded election data from the master server").css('background-color', 'MEDIUMSPRINGGREEN');
             comp = table_count.text().replace('Table: ', '').replace('of', 'out of the');
             compTxt = `Completed loading ${comp} tables in `
@@ -457,24 +476,6 @@ These imports are best run in order from top-to-bottom.
          console.log("fastLoadButton clicked while loading");
       }
     }
-
-    function updateRealTime() {
-        let intervalId = setInterval(function () {
-            if (startedFastUpdate.val() === "true") {
-                const tab = current_table.text()
-                if(['ballot_ballotitem', 'ballot_ballotreturned','organization_organization', 'candidate_candidatecampaign'].includes(tab))
-                {
-                    let secs = elapsed_seconds.val() || '0';
-                    secs = parseInt(secs);
-                    secs++;
-                    updateDisplayedDuration(secs);
-                    secs = secs.toString();
-                    elapsed_seconds.val(secs);
-                }
-            }
-        }, 1000);
-    }
-
 </script>
 
 {%  endblock %}
