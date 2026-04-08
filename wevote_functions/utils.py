@@ -54,7 +54,7 @@ def get_git_params():
     sha = 'Not found'
     try:
         hash_payload = requests.get(hash_url).json()
-        print(hash_payload)
+        # print(hash_payload)
         dateISO = hash_payload['commit']['author']['date'];
         d = datetime.fromisoformat(dateISO).replace(tzinfo=pytz.utc)
         date = d.astimezone(pytz.timezone('America/Los_Angeles')).strftime('%d-%m-%Y %I:%M %p')
