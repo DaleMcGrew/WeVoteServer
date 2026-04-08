@@ -107,6 +107,8 @@ def email_campaign_edit_process_view(request):
     email_body = request.POST.get('email_body', '')
     email_campaign_id = request.POST.get('email_campaign_id', '')
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
+    include_footer = request.POST.get('include_footer', False)
+    include_footer = positive_value_exists(include_footer)
     recipient_ids = request.POST.get('recipient_ids', '')
     state_code = request.POST.get('state_code', '')
     send_button_clicked = request.POST.get('send_button_clicked', '')
@@ -133,6 +135,7 @@ def email_campaign_edit_process_view(request):
             email_campaign.email_template_id = email_template_id
             email_campaign.email_subject_template_raw = email_subject
             email_campaign.email_body_template_raw = email_body
+            email_campaign.include_footer = include_footer
             email_campaign.scheduled_send_time = scheduled_send_time
             email_campaign.save()
             

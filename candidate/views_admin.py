@@ -1369,7 +1369,7 @@ def candidate_list_view(request):
             VOTE_USA_CANDIDATE_QUERY_URL + \
             "?accessKey={access_key}&electionDay={election_day}&state={state_code}".format(
                 access_key=VOTE_USA_API_KEY,
-                election_day='2022-11-08',
+                election_day='2026-03-17',
                 state_code=state_code,
             )
     else:
