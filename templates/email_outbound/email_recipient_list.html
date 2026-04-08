@@ -325,13 +325,17 @@
                 {{ recipient.recipient_full_name }}
             </td>
             <td>
+            {% if recipient.politician_we_vote_id %}
                 <a href="{% url 'politician:politician_we_vote_id_edit' recipient.politician_we_vote_id %}?google_civic_election_id={{ google_civic_election_id }}"
                    class="campaign-link" target="_blank">
                   edit</a>
                 &nbsp;
+            {% endif %}
+            {% if recipient.politician_seo_friendly_path %}
                 <a href="https://quality.wevote.us/{{ recipient.politician_seo_friendly_path }}/-/?google_civic_election_id={{ google_civic_election_id }}"
                    class="campaign-link" target="_blank">
                   view</a>
+            {% endif %}
             </td>
             <td style="text-align: center;">
                 {{ recipient.politician_state_code|upper }}

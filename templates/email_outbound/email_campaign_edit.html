@@ -217,6 +217,20 @@
              value="{% if email_campaign %}{{ email_campaign.email_subject_template_raw|default_if_none:"" }}{% endif %}"
              placeholder="Enter email subject"
              required>
+    <!-- Include footer checkbox -->
+      <div class="d-flex align-items-center gap-2" style="margin-left: 12px; white-space: nowrap;">
+        <input type="checkbox" 
+               class="form-control" 
+               id="include_footer_id" 
+               name="include_footer" 
+               value="1"
+               {% if not email_campaign or email_campaign.include_footer %}checked{% endif %}>
+      &nbsp;
+        <label for="include_footer_id" class="form-label mb-0 d-flex align-items-center gap-2">
+          Include Footer
+        </label>
+        <small class="text-muted" style="margin-left: 4px;">Includes open tracking and unsubscribe link</small>
+      </div>
     </div>
 
     <!-- Email Preview/Editor -->

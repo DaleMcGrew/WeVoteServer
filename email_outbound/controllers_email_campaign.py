@@ -407,6 +407,7 @@ def email_campaign_send(
     for email_campaign_recipient in email_campaign_recipient_list:
         results = schedule_email_campaign_recipient(
             email_body_raw=email_body_parsed,
+            email_campaign=email_campaign,
             email_campaign_recipient=email_campaign_recipient,
             email_subject_raw=email_subject_raw,
             recipient_bulk_update_list=recipient_bulk_update_list,
@@ -745,6 +746,7 @@ def save_all_audience_filter_changes(audience_filter_dict={}, request=None):
 
 
 def schedule_email_campaign_recipient(
+        email_campaign=None,
         email_campaign_recipient=None,
         email_body_raw=None,
         email_subject_raw=None,
@@ -765,6 +767,7 @@ def schedule_email_campaign_recipient(
 
     email_template_results = merge_email_campaign_recipient_with_template(
         email_body_raw=email_body_raw,
+        email_campaign=email_campaign,
         email_campaign_recipient=email_campaign_recipient,
         email_subject_raw=email_subject_raw,
         template_variables_in_json=template_variables_in_json)
@@ -816,10 +819,10 @@ def schedule_email_campaign_recipient(
 
 def merge_email_campaign_recipient_with_template(
         email_body_raw=None,
+        email_campaign=None,
         email_campaign_recipient=None,
         email_subject_raw=None,
         template_variables_in_json={}):
-    email_manager = EmailManager()
     success = True
     status = ''
 
@@ -890,15 +893,13 @@ def merge_email_campaign_recipient_with_template(
                 f'{open_tracking_code}/" width="1" height="1" alt="" />'
             )  # WV-2447 "Open Tracking for Email Campaign System" should go here
             email_footer_html = \
-                "<br /><br />This email uses tracking to understand whether messages are opened " \
-                "so we can improve our communications. Learn more: " \
+                "<br /><br />We use open tracking to better understand engagement. Learn more: " \
                 "<a href='https://wevote.us/privacy'>Privacy Policy</a>." \
                 "{open_tracking_pixel_html}<br />".format(
                     open_tracking_pixel_html=open_tracking_pixel_html,
                 )
         else:
             email_footer_html = ""
-        token_replacements['[email_footer]'] = email_footer_html
 
         # Add link to subscription key
 
@@ -990,7 +991,7 @@ def merge_email_campaign_recipient_with_template(
 
         # Sender name parts
 
-        # Unsubscribe link
+        # Unsubscribe link is included in email_footer_html
 
     # Override with values from template_variables_in_json if provided
     if template_variables_in_json:
@@ -1006,6 +1007,9 @@ def merge_email_campaign_recipient_with_template(
             subject = subject.replace(token, str(replacement_value))
         if token in message_html:
             message_html = message_html.replace(token, str(replacement_value))
+
+    if email_campaign.include_footer:
+        message_html += email_footer_html
 
     # Convert HTML to plain text for the text version of the email
     message_text = convert_html_to_plain_text(message_html)
