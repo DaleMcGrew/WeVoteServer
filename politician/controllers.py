@@ -39,7 +39,8 @@ from wevote_functions.functions import candidate_party_display, convert_to_int, 
     convert_to_political_party_constant, extract_instagram_handle_from_text_string, \
     generate_random_string, positive_value_exists, \
     process_request_from_master, remove_middle_initial_from_name
-from wevote_functions.functions_date import convert_we_vote_date_string_to_date_as_integer, generate_date_as_integer, \
+from wevote_functions.functions_date import convert_date_to_we_vote_date_string, \
+    convert_we_vote_date_string_to_date_as_integer, generate_date_as_integer, \
     generate_localized_datetime_from_obj, DATE_FORMAT_YMD_HMS
 
 logger = wevote_functions.admin.get_logger(__name__)
@@ -849,6 +850,9 @@ def generate_politician_dict_from_politician_object(politician=None):
     else:
         politician_description = ''
     instagram_handle = extract_instagram_handle_from_text_string(politician.instagram_handle)
+    is_claimed_profile_date_time = ''
+    if positive_value_exists(politician.is_claimed_profile_date_time):
+        is_claimed_profile_date_time = politician.is_claimed_profile_date_time.strftime(DATE_FORMAT_YMD_HMS)
     politician_dict = {
         'ballot_guide_official_statement':  politician.ballot_guide_official_statement,
         'ballotpedia_politician_url':       politician.ballotpedia_politician_url,
@@ -856,6 +860,7 @@ def generate_politician_dict_from_politician_object(politician=None):
         'final_election_date_in_past':      final_election_date_in_past,
         'instagram_handle':                 instagram_handle,
         'is_claimed_profile':               positive_value_exists(politician.is_claimed_profile),
+        'is_claimed_profile_date_time':     is_claimed_profile_date_time,
         'linked_campaignx_we_vote_id':      politician.linked_campaignx_we_vote_id,
         'opposers_count':                   politician.opposers_count,
         'political_party':                  candidate_party_display(politician.political_party),
