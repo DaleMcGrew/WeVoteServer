@@ -57,7 +57,7 @@ def get_git_params():
         # print(hash_payload)
         dateISO = hash_payload['commit']['author']['date'];
         d = datetime.fromisoformat(dateISO).replace(tzinfo=pytz.utc)
-        date = d.astimezone(pytz.timezone('America/Los_Angeles')).strftime('%d-%m-%Y %I:%M %p')
+        date = d.astimezone(pytz.timezone('America/Los_Angeles')).strftime('%m-%d-%Y %I:%M %p')
 
         link = hash_payload['html_url']
         sha = hash_payload['sha']
