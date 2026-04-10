@@ -5,6 +5,8 @@ import datetime as the_other_datetime
 import json
 import urllib.request
 from socket import timeout
+
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.timezone import now
@@ -1511,6 +1513,12 @@ def candidates_query_for_api(  # candidatesQuery
             success = results['success']
             status = results['status']
             candidate_list = results['candidate_list_objects']
+            # update candidate support and oppose counts in bulk
+            refresh_candidate_results = refresh_candidate_supporters_count_from_politician(candidate_list)
+            if not refresh_candidate_results['success']:
+                print('refresh_candidate_results did not work in candidates_query_for_api ')
+                status += refresh_candidate_results['status']
+
         except Exception as e:
             status = 'FAILED retrieve_all_candidates_for_upcoming_election. ' \
                      '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
@@ -1861,6 +1869,7 @@ def generate_candidate_dict_from_candidate_object(
         'seo_friendly_path':                candidate.seo_friendly_path,
         'state_code':                       candidate.state_code,
         'supporters_count':                 candidate.supporters_count,
+        'opposers_count':                   candidate.opposers_count,
         'twitter_url':                      candidate.twitter_url,
         'twitter_handle':                   candidate.fetch_twitter_handle(),
         'twitter_description':              candidate.twitter_description
@@ -1880,6 +1889,77 @@ def generate_candidate_dict_from_candidate_object(
     }
     return results
 
+
+def refresh_candidate_supporters_count_from_politician(candidate_list=[]):
+    error_message_to_print = ''
+    status = ''
+    success = True
+    update_message = ''
+    candidate_bulk_update_list = []
+    candidate_updates_made = 0
+
+    politician_manager = PoliticianManager()
+
+    if not candidate_list:
+        return {
+            'error_message_to_print': "No candidates provided.",
+            'status': "NO_CANDIDATES_PROVIDED",
+            'success': True,
+            'update_message': "",
+        }
+
+    try:
+        with transaction.atomic():
+            for one_candidate in candidate_list:
+                if positive_value_exists(one_candidate.politician_we_vote_id):
+                    # We use for_update=True here.
+                    # Inside the manager, this should trigger .select_for_update()
+                    pol_results = politician_manager.retrieve_politician(
+                        politician_we_vote_id=one_candidate.politician_we_vote_id,
+                        read_only=False,
+                        for_update=True)
+
+                    if pol_results['politician_found']:
+                        politician = pol_results['politician']
+                        supporters_count = politician.supporters_count
+                        opposers_count = politician.opposers_count
+
+                        changes_found = False
+                        # Check if counts differ
+                        if opposers_count != one_candidate.opposers_count:
+                            one_candidate.opposers_count = opposers_count
+                            changes_found = True
+                        if supporters_count != one_candidate.supporters_count:
+                            one_candidate.supporters_count = supporters_count
+                            changes_found = True
+
+                        if changes_found:
+                            candidate_bulk_update_list.append(one_candidate)
+                            candidate_updates_made += 1
+                    else:
+                        status += "POLITICIAN_NOT_FOUND_FOR: " + str(one_candidate.we_vote_id) + " "
+                else:
+                    status += "NO_POLITICIAN_LINK_EXISTS : "
+
+            # Perform the bulk update
+            if candidate_bulk_update_list:
+                CandidateCampaign.objects.bulk_update(
+                    candidate_bulk_update_list, ['opposers_count', 'supporters_count'])
+
+                update_message += \
+                    "{candidate_updates_made:,} Candidate entries updated from Politician counts. " \
+                    "".format(candidate_updates_made=candidate_updates_made)
+
+    except Exception as e:
+        status += "ERROR_IN_REFRESH_ATOMIC_BLOCK: {e} ".format(e=e)
+        success = False
+
+    return {
+        'error_message_to_print': error_message_to_print,
+        'status': status,
+        'success': success,
+        'update_message': update_message,
+    }
 
 def refresh_candidate_data_from_master_tables(candidate_we_vote_id):
     # Pull from ContestOffice and TwitterUser tables and update CandidateCampaign table

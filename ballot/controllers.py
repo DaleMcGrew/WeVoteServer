@@ -2915,17 +2915,23 @@ def generate_ballot_item_list_from_object_list(
                 candidates_to_display = []
                 if results['candidate_list_found']:
                     candidate_list = results['candidate_list']
-                    for candidate in candidate_list:
-                        candidate_dict_results = generate_candidate_dict_from_candidate_object(
-                            candidate=candidate,
-                            google_civic_election_id=google_civic_election_id,
-                            office_id=office_id,
-                            office_name=office_name,
-                            office_we_vote_id=office_we_vote_id,
-                        )
-                        if candidate_dict_results['success']:
-                            candidate_dict = candidate_dict_results['candidate_dict']
-                            candidates_to_display.append(candidate_dict)
+                    # update candidate support and oppose counts in bulk
+                    from candidate.controllers import refresh_candidate_supporters_count_from_politician
+                    refresh_candidate_results = refresh_candidate_supporters_count_from_politician(candidate_list)
+                    if refresh_candidate_results['success']:
+                        for candidate in candidate_list:
+                            candidate_dict_results = generate_candidate_dict_from_candidate_object(
+                                candidate=candidate,
+                                google_civic_election_id=google_civic_election_id,
+                                office_id=office_id,
+                                office_name=office_name,
+                                office_we_vote_id=office_we_vote_id,
+                            )
+                            if candidate_dict_results['success']:
+                                candidate_dict = candidate_dict_results['candidate_dict']
+                                candidates_to_display.append(candidate_dict)
+                    else:
+                         status += refresh_candidate_results['status']
             except Exception as e:
                 status += 'FAILED retrieve_all_candidates_for_office. ' + str(e) + " "
                 candidates_to_display = []
