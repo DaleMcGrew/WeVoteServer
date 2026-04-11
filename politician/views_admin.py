@@ -2440,7 +2440,7 @@ def politician_edit_process_view(request):
     maplight_id = request.POST.get('maplight_id', False)
     politician_analysis_comment = request.POST.get('politician_analysis_comment', '')
     if positive_value_exists(politician_analysis_comment):
-        change_description += "ANALYSIS_COMMENT: " + politician_analysis_comment + " "
+        change_description += "ADDED [Politician Analysis]: " + politician_analysis_comment + " "
         change_description_changed = True
     politician_analysis_done = positive_value_exists(request.POST.get('politician_analysis_done', False))
     politician_email = request.POST.get('politician_email', False)
@@ -2701,7 +2701,7 @@ def politician_edit_process_view(request):
                                          "Error converting politician photo to binary: {error}".format(error=e))
             if politician_photo_file_found and politician_photo_converted_to_binary:
                 changes_found_dict['is_photo_added'] = True
-                change_description += "Photo ADDED "
+                change_description += "ADDED [Photo] "
                 change_description_changed = True
                 photo_results = politician_save_photo_from_file_reader(
                     politician_we_vote_id=politician_we_vote_id,
@@ -2733,7 +2733,7 @@ def politician_edit_process_view(request):
                         politician_on_stage.profile_image_type_currently_active = profile_image_type_currently_active
             elif politician_photo_file_delete:
                 changes_found_dict['is_photo_removed'] = True
-                change_description += "Photo REMOVED "
+                change_description += "CLEARED [Photo] "
                 change_description_changed = True
 
                 politician_on_stage.we_vote_hosted_profile_uploaded_image_url_large = None

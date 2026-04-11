@@ -2891,7 +2891,7 @@ def candidate_edit_process_view(request):
             messages.add_message(request, messages.INFO, 'Deleted Candidate-to-Office Link.')
             # Now give volunteer credit
             changes_found_dict['is_link_to_office_removed'] = True
-            change_description += "REMOVED: Link to Office " + candidate_to_office_link.contest_office_we_vote_id + " "
+            change_description += "CLEARED [Link to Office]: " + candidate_to_office_link.contest_office_we_vote_id + " "
             change_description_changed = True
     t1 = time()
     performance_snapshot = {
