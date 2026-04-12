@@ -23,7 +23,7 @@
 
 </p>
 
-% {csrf_token %}
+{% csrf_token %}
 
 <form name="candidate_choose_election" id="candidate_choose_election_id" method="get" action="{% url 'candidate:candidate_list' %}">
     {# These are input checkboxes from a form further down this page #}
