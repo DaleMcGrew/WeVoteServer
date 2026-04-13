@@ -23,7 +23,7 @@ from import_export_vote_smart.controllers import retrieve_and_match_candidate_fr
     retrieve_candidate_photo_from_vote_smart
 from office.models import ContestOfficeListManager, ContestOfficeManager
 from organization.models import ORGANIZATION_WEBSITES_TO_EXCLUDE_FROM_SCRAPER
-from politician.models import PoliticianManager
+from politician.models import Politician, PoliticianManager
 from position.controllers import move_positions_to_another_candidate, update_all_position_details_from_candidate
 from twitter.models import TwitterUserManager
 from wevote_functions.functions import add_period_to_middle_name_initial, add_period_to_name_prefix_and_suffix, \
@@ -1442,6 +1442,8 @@ def candidates_query_for_api(  # candidatesQuery
     candidates_returned_count = 0
     candidates_total_count = 0
     candidate_dict_list = []
+    politician_dict = {}
+    politician_we_vote_id_list = []
     required_variables_missing = False
     retrieve_mode = ''
     status = ''
@@ -1513,11 +1515,6 @@ def candidates_query_for_api(  # candidatesQuery
             success = results['success']
             status = results['status']
             candidate_list = results['candidate_list_objects']
-            # update candidate support and oppose counts in bulk
-            refresh_candidate_results = refresh_candidate_supporters_count_from_politician(candidate_list)
-            if not refresh_candidate_results['success']:
-                print('refresh_candidate_results did not work in candidates_query_for_api ')
-                status += refresh_candidate_results['status']
 
         except Exception as e:
             status = 'FAILED retrieve_all_candidates_for_upcoming_election. ' \
@@ -1527,6 +1524,33 @@ def candidates_query_for_api(  # candidatesQuery
 
     # If we need to do a single query to get data used by entire candidate list
     #  (like candidate_to_office_link_list), then do it here before generating dicts from candidate_list
+
+    if len(candidate_list) > 0:
+        # update candidate support and oppose counts in bulk
+        for candidate in candidate_list:
+            if positive_value_exists(candidate.politician_we_vote_id) and \
+                    candidate.politician_we_vote_id not in politician_dict:
+                politician_we_vote_id_list.append(candidate.politician_we_vote_id)
+        # Get Politician values
+        if len(politician_we_vote_id_list) > 0:
+            try:
+                queryset = Politician.objects.filter(we_vote_id__in=politician_we_vote_id_list)
+                politician_list = list(queryset)
+                if len(politician_list) > 0:
+                    for one_politician in politician_list:
+                        politician_dict[one_politician.we_vote_id] = one_politician
+            except Exception as e:
+                status += "PROBLEM_RETRIEVING_POLITICIANS: " + str(e) + " "
+                pass
+        refresh_candidate_results = refresh_candidate_supporters_count_from_politician(
+            candidate_list=candidate_list,
+            politician_dict=politician_dict,
+        )
+        if refresh_candidate_results['success']:
+            candidate_list = refresh_candidate_results['candidate_list_updated']
+        else:
+            print('refresh_candidate_results did not work in candidates_query_for_api ')
+            status += refresh_candidate_results['status']
 
     if success:
         # Moved to an update script on the WeVoteServer Candidates admin listing page
@@ -1890,37 +1914,52 @@ def generate_candidate_dict_from_candidate_object(
     return results
 
 
-def refresh_candidate_supporters_count_from_politician(candidate_list=[]):
+def refresh_candidate_supporters_count_from_politician(candidate_list=[], politician_dict={}):
     error_message_to_print = ''
     status = ''
     success = True
     update_message = ''
     candidate_bulk_update_list = []
+    candidate_list_updated = []
     candidate_updates_made = 0
 
     politician_manager = PoliticianManager()
 
     if not candidate_list:
         return {
+            'candidate_list_updated': [],
             'error_message_to_print': "No candidates provided.",
             'status': "NO_CANDIDATES_PROVIDED",
             'success': True,
             'update_message': "",
         }
 
+    # TODO Re: WV-2304 If a politician_dict with all of the politicians did not come into this function,
+    #  we should retrieve all politicians with a single query, instead of calling "retrieve_politician" multiple times
+    #  within the below loop.
+
     try:
         with transaction.atomic():
             for one_candidate in candidate_list:
                 if positive_value_exists(one_candidate.politician_we_vote_id):
-                    # We use for_update=True here.
-                    # Inside the manager, this should trigger .select_for_update()
-                    pol_results = politician_manager.retrieve_politician(
-                        politician_we_vote_id=one_candidate.politician_we_vote_id,
-                        read_only=False,
-                        for_update=True)
+                    politician_found = False
+                    if one_candidate.politician_we_vote_id in politician_dict:
+                        politician = politician_dict[one_candidate.politician_we_vote_id]
+                        politician_found = True
+                    else:
+                        # TODO See note above about retrieving all politicians with a single query
+                        # We use for_update=True here.
+                        # Inside the manager, this should trigger .select_for_update()
+                        pol_results = politician_manager.retrieve_politician(
+                            politician_we_vote_id=one_candidate.politician_we_vote_id,
+                            read_only=False,
+                            for_update=True,  # TODO: Why is this necessary?
+                        )
 
-                    if pol_results['politician_found']:
-                        politician = pol_results['politician']
+                        if pol_results['politician_found']:
+                            politician = pol_results['politician']
+                            politician_found = True
+                    if politician_found:
                         supporters_count = politician.supporters_count
                         opposers_count = politician.opposers_count
 
@@ -1940,9 +1979,11 @@ def refresh_candidate_supporters_count_from_politician(candidate_list=[]):
                         status += "POLITICIAN_NOT_FOUND_FOR: " + str(one_candidate.we_vote_id) + " "
                 else:
                     status += "NO_POLITICIAN_LINK_EXISTS : "
+                # Build up a new list with the updates
+                candidate_list_updated.append(one_candidate)
 
             # Perform the bulk update
-            if candidate_bulk_update_list:
+            if len(candidate_bulk_update_list) > 0:
                 CandidateCampaign.objects.bulk_update(
                     candidate_bulk_update_list, ['opposers_count', 'supporters_count'])
 
@@ -1955,11 +1996,13 @@ def refresh_candidate_supporters_count_from_politician(candidate_list=[]):
         success = False
 
     return {
+        'candidate_list_updated': candidate_list_updated,
         'error_message_to_print': error_message_to_print,
         'status': status,
         'success': success,
         'update_message': update_message,
     }
+
 
 def refresh_candidate_data_from_master_tables(candidate_we_vote_id):
     # Pull from ContestOffice and TwitterUser tables and update CandidateCampaign table
