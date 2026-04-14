@@ -8,6 +8,9 @@
 
 {% block content %}
 
+<h1>Edit Office Explanation</h1>
+<hr />
+
 <form action="{% url 'office:office_explanation_edit_process' %}" method="post" class="form-horizontal">
 {% csrf_token %}
 
@@ -117,6 +120,7 @@
 <br />
 {% endif %}
 
+<hr />
 
 {# Optional list table, following your Measure template pattern #}
 {% if office_explanation_list %}
@@ -138,11 +142,11 @@
         </tr>
     {% endfor %}
     </table>
-    <br /><br />
+    <br />
 {% endif %}
 
 {# --- Video Preview (defaults to horizontal) --- #}
-<div class="form-group">
+<div class="form-group clearfix">
   <label class="col-sm-3 control-label">Video Preview</label>
   <div class="col-sm-8">
     <div style="border:1px solid #ddd; padding:10px; border-radius:4px;">
@@ -172,6 +176,121 @@
     </div>
   </div>
 </div>
+<!--    Link ContestOffice(s) to this OfficeExplanation  -->
+<hr /><br />
+<form name="contest_office_search_form"
+      method="get"
+      action="{% url 'office:office_explanation_edit' office_explanation.we_vote_id %}"
+      class="form-horizontal"
+      style="margin-bottom: 12px;">
+    <div class="form-group">
+        <label class="col-sm-3 control-label">Link to Contest Office(s)</label>
+        <div class="col-sm-8">
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input
+                        type="text"
+                        name="contest_office_search"
+                        id="contest_office_search_id"
+                        class="form-control"
+                        value="{{ contest_office_search|default_if_none:'' }}"
+                        placeholder="Search by office name, state, or We Vote ID"
+                />
+                <button type="submit" class="btn btn-default" name="contest_office_search_submit" value="1">
+                    Search
+                </button>
+                {% if contest_office_search %}
+                <a class="btn btn-link"
+                   href="{% url 'office:office_explanation_edit' office_explanation.we_vote_id %}">
+                    clear
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</form>
+
+<form name="contest_office_link_form"
+      method="post"
+      action="{% url 'office:office_explanation_edit_process' %}"
+      class="form-horizontal">
+
+    {% csrf_token %}
+
+    {# Identify which OfficeExplanation we’re linking to #}
+    <input type="hidden" name="we_vote_id" value="{{ office_explanation.we_vote_id }}">
+
+    {# Optional: preserve the search term so after POST you can redirect back with it #}
+    <input type="hidden" name="contest_office_search" value="{{ contest_office_search|default_if_none:'' }}">
+
+    <div class="form-group">
+        <label class="col-sm-3 control-label">&nbsp;</label>
+        <div class="col-sm-8">
+
+            {% if contest_office_search %}
+            {% if contest_office_list %}
+            <table class="table table-sm table-hover" style="margin-top: 10px;">
+                <thead>
+                <tr>
+                    <th style="width: 36px;">Select</th>
+                    <th>Contest Office Name</th>
+                    <th>State</th>
+                    <th>We Vote ID</th>
+                    <th>Current Linked OfficeExplanation</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for contest_office in contest_office_list %}
+                <tr>
+                    <td>
+                        <input
+                                type="checkbox"
+                                name="selected_contest_office_we_vote_ids"
+                                value="{{ contest_office.we_vote_id }}"
+                                aria-label="Select {{ contest_office.office_name }}"
+                        />
+                    </td>
+                    <td>{{ contest_office.office_name|default:"(no name)" }}</td>
+                    <td>{{ contest_office.state_code|default:"" }}</td>
+                    <td>{{ contest_office.we_vote_id|default:"" }}</td>
+                    <td>{{ contest_office.office_explanation_we_vote_id|default:"(none)" }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            <div style="margin-top: 12px; display:flex; align-items:center; gap:12px;">
+                <div>
+                    <strong>Link to Office Explanation</strong>
+                    <div style="font-size: .9em; opacity: .85;">
+                        Selected contest offices will be updated so their
+                        <code>office_explanation_we_vote_id</code> equals this OfficeExplanation’s <code>we_vote_id</code>.
+                    </div>
+                </div>
+
+                <div style="margin-left:auto;">
+                    <button type="submit"
+                            class="btn btn-primary"
+                            name="link_contest_offices_submit"
+                            value="1">
+                        Save
+                    </button>
+                </div>
+            </div>
+
+            {% else %}
+            <div class="alert alert-warning" style="margin-top: 8px;">
+                No results found. Try a different search term.
+            </div>
+            {% endif %}
+            {% else %}
+            <div style="margin-top: 8px; font-size: .95em;">
+                <em>(Search to find contest offices to link)</em>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</form>
 
 <script>
   (function() {
