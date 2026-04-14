@@ -23,47 +23,60 @@
     {% else %}
     Create New Office{% endif %}</h1>
 
-<form action="{% url "office:office_edit_process" %}" method="post" class="form-horizontal">
+<form id="office_edit_post_form" action="{% url "office:office_edit_process" %}" method="post" class="form-horizontal">
 {% csrf_token %}
 
 <input type="hidden" name="office_id" value="{% if office %}{{ office.id }}{% else %}0{% endif %}">
+<input type="hidden" name="contest_office_we_vote_id" value="{{ office.we_vote_id|default_if_none:'' }}">
+<input type="hidden" name="office_explanation_search" value="{{ office_explanation_search|default_if_none:'' }}">
+<input type="hidden" name="linked_office_explanation" value="{{ office.linked_office_explanation|default_if_none:'' }}">
 <input type="hidden" name="redirect_to_contest_office_list" value="0">
 
 <div class="row">
-<div class="col">
-<div class="row form-group">
-    <label for="office_name_id" class="pl-4 control-label">Office Name</label>
     <div class="col">
-        <input type="text" name="office_name" id="office_name_id" class="form-control"
-               value="{% if office %}{{ office.office_name|default_if_none:"" }}{% else %}{{ office_name|default_if_none:"" }}{% endif %}" />
-        {% if office %}{{ office.we_vote_id }}{% else %}{{ we_vote_id }}{% endif %}
-        {% if office.contest_office_merge_possibility_found %}
-            (<a href="{% url 'office:find_duplicate_office' office.id %}?google_civic_election_id={{ office.google_civic_election_id }}"
-                target="_blank">check for duplicate contest offices</a> - in new window)
-        {% endif %}
+    <div class="row form-group">
+        <label for="office_name_id" class="pl-4 control-label">Office Name</label>
+        <div class="col">
+            <input type="text" name="office_name" id="office_name_id" class="form-control"
+                   value="{% if office %}{{ office.office_name|default_if_none:"" }}{% else %}{{ office_name|default_if_none:"" }}{% endif %}" />
+            {% if office %}{{ office.we_vote_id }}{% else %}{{ we_vote_id }}{% endif %}
+            {% if office.contest_office_merge_possibility_found %}
+                (<a href="{% url 'office:find_duplicate_office' office.id %}?google_civic_election_id={{ office.google_civic_election_id }}"
+                    target="_blank">check for duplicate contest offices</a> - in new window)
+            {% endif %}
+        </div>
     </div>
-</div>
-</div>
+    </div>
 
-<div class="col-sm-2">
-<input type="hidden" name="google_civic_election_id" value="{% if office %}{{ office.google_civic_election_id }}{% else %}{{ google_civic_election_id }}{% endif %}">
-<div class="row form-group">
-    <label for="google_civic_election_id_id" class="control-label">Google Civic Id</label>
-    <div class="col d-flex align-items-end">
-        {% if office %}{{ office.google_civic_election_id }}{% else %}{{ google_civic_election_id }}{% endif %}
+    <div class="col-sm-2">
+    <input type="hidden" name="google_civic_election_id" value="{% if office %}{{ office.google_civic_election_id }}{% else %}{{ google_civic_election_id }}{% endif %}">
+    <div class="row form-group">
+        <label for="google_civic_election_id_id" class="control-label">Google Civic Id</label>
+        <div class="col d-flex align-items-end">
+            {% if office %}{{ office.google_civic_election_id }}{% else %}{{ google_civic_election_id }}{% endif %}
+        </div>
     </div>
-</div>
-</div>
+    </div>
 
-<div class="col">
-<input type="hidden" name="ballotpedia_election_id" value="{% if office %}{{ office.ballotpedia_election_id }}{% else %}{{ ballotpedia_election_id }}{% endif %}">
-<div class="row form-group">
-    <label for="ballotpedia_election_id_id" class="control-label">Ballotpedia Election Id</label>
-    <div class="col d-flex align-items-end">
-        {% if office %}{{ office.ballotpedia_election_id|default_if_none:"" }}{% else %}{{ ballotpedia_election_id|default_if_none:"" }}{% endif %}
+    <div class="col">
+    <input type="hidden" name="ballotpedia_election_id" value="{% if office %}{{ office.ballotpedia_election_id }}{% else %}{{ ballotpedia_election_id }}{% endif %}">
+    <div class="row form-group">
+        <label for="ballotpedia_election_id_id" class="control-label">Ballotpedia Election Id</label>
+        <div class="col d-flex align-items-end">
+            {% if office %}{{ office.ballotpedia_election_id|default_if_none:"" }}{% else %}{{ ballotpedia_election_id|default_if_none:"" }}{% endif %}
+        </div>
     </div>
-</div>
-</div>
+    </div>
+
+    <div class="col">
+        <input type="hidden" name="linked_office_explanation_id" value="{% if office %}{{ office.office_explanation_we_vote_id }}{% else %}{{ office_explanation_we_vote_id }}{% endif %}">
+        <div class="row form-group">
+            <label for="linked_office_explanation_id_id" class="control-label">Office Explanation Id</label>
+            <div class="col d-flex align-items-end">
+                {% if office %}{{ office.office_explanation_we_vote_id|default_if_none:"" }}{% else %}{{ office_explanation_we_vote_id|default_if_none:"" }}{% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 {% include "../form_inputs/five_form_groups_stacked.html" with field_dict_1=google_civic_office_name_dict field_dict_2=google_civic_office_name2_dict field_dict_3=google_civic_office_name3_dict field_dict_4=google_civic_office_name4_dict field_dict_5=google_civic_office_name5_dict %}
@@ -172,7 +185,129 @@
 
 </form>
 
+{# --- Link to Office Explanation(s): GET search + results --- #}
+<hr />
+<form name="office_explanation_search_form"
+      method="get"
+      action="{% url 'office:office_edit' office.id %}"
+      class="form-horizontal"
+      style="margin-top: 10px; margin-bottom: 18px;">
 
+  {# Preserve existing query params so they don’t get lost on search #}
+  {% if google_civic_election_id %}<input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">{% endif %}
+  {% if ballotpedia_office_id_dict.value %}<input type="hidden" name="ballotpedia_office_id" value="{{ ballotpedia_office_id_dict.value }}">{% endif %}
+  {% if ballotpedia_office_name_dict.value %}<input type="hidden" name="ballotpedia_office_name" value="{{ ballotpedia_office_name_dict.value }}">{% endif %}
+  {% if ballotpedia_race_id_dict.value %}<input type="hidden" name="ballotpedia_race_id" value="{{ ballotpedia_race_id_dict.value }}">{% endif %}
+  {% if ctcl_uuid_dict.value %}<input type="hidden" name="ctcl_uuid" value="{{ ctcl_uuid_dict.value }}">{% endif %}
+  {% if district_id_dict.value %}<input type="hidden" name="district_id" value="{{ district_id_dict.value }}">{% endif %}
+  {% if ocd_division_id_dict.value %}<input type="hidden" name="ocd_division_id" value="{{ ocd_division_id_dict.value }}">{% endif %}
+
+  <div class="form-group">
+    <label for="office_explanation_search_id" class="col-sm-3 control-label">
+      Link to Office Explanation(s)
+    </label>
+
+    <div class="col-sm-8">
+      <div style="display:flex; gap:12px; align-items:center;">
+        <input
+          type="text"
+          name="office_explanation_search"
+          id="office_explanation_search_id"
+          class="form-control"
+          value="{{ office_explanation_search|default_if_none:office.office_explanation_we_vote_id }}"
+          placeholder="Search by explanation name, state, or We Vote ID"
+        />
+        <button type="submit" class="btn btn-default">Search</button>
+      </div>
+
+      {# Results block #}
+      {% if office_explanation_search or office.office_explanation_we_vote_id %}
+        <div style="margin-top:8px;">
+          <a href="{% url 'office:office_edit' office.id %}">clear search</a>
+        </div>
+
+        {% if office_explanation_list or office.office_explanation_we_vote_id %}
+          <table class="table table-sm table-hover" style="margin-top: 12px;">
+            <thead>
+              <tr>
+                <th style="width: 36px;">Select</th>
+                <th>Office Explanation Name</th>
+                <th>State</th>
+                <th>We Vote ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for oe in office_explanation_list %}
+                <tr>
+                  <td>
+                    <input
+                      type="radio"
+                      name="selected_office_explanation_we_vote_id"
+                      value="{{ oe.we_vote_id }}"
+                      form="office_edit_post_form"
+                      aria-label="Select {{ oe.office_explanation_name }}"
+                      {% if office.office_explanation_we_vote_id == oe.we_vote_id %}checked{% endif %}
+                    />
+                  </td>
+                  <td>
+                    <a href="{% url 'office:office_explanation_summary' oe.we_vote_id %}">
+                      {{ oe.office_explanation_name|default:"(no name)" }}
+                    </a>
+                  </td>
+                  <td>{{ oe.state_code|default:"" }}</td>
+                  <td>{{ oe.we_vote_id|default:"" }}</td>
+                </tr>
+              {% endfor %}
+            <tr>
+              <td>
+                <input
+                  type="radio"
+                  name="selected_office_explanation_we_vote_id"
+                  value=""
+                  form="office_edit_post_form"
+                  aria-label="No linked office explanation"
+                  {% if not office.office_explanation_we_vote_id %}checked{% endif %}
+                />
+              </td>
+              <td><em>No office explanation linked</em></td>
+              <td></td>
+              <td></td>
+            </tr>
+            </tbody>
+          </table>
+
+          <div style="margin-top: 10px; display:flex; align-items:center; gap:12px;">
+            <div>
+              <strong>Link to Contest Office</strong>
+              <div style="font-size:.9em; opacity:.85;">
+                On save, the above contest office will be updated so the
+                <code>office_explanation_we_vote_id</code> equals the selected OfficeExplanations’s <code>we_vote_id</code>s.
+              </div>
+            </div>
+            <div style="margin-left:auto;">
+              {# This button submits the POST form below (not this GET form) #}
+              <button type="submit"
+                      class="btn btn-primary"
+                      form="office_edit_post_form"
+                      name="link_office_explanation_submit"
+                      value="1">
+                Save
+              </button>
+            </div>
+          </div>
+        {% else %}
+          <div class="alert alert-warning" style="margin-top: 12px;">
+            No results found. Try a different search term.
+          </div>
+        {% endif %}
+      {% else %}
+        <div style="margin-top: 8px; font-style: italic;">
+          (Search to find office explanations to link)
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</form>
 
 {% if office_list %}
     <br />
