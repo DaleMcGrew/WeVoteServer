@@ -2323,6 +2323,7 @@ def all_ballot_items_retrieve_for_one_election_for_api(google_civic_election_id,
                 ballot_item_display_name = contest_office.office_name
                 office_id = contest_office.id
                 office_we_vote_id = contest_office.we_vote_id
+                primary_party = contest_office.primary_party
                 race_office_level = contest_office.ballotpedia_race_office_level
                 state_code = contest_office.state_code
                 if positive_value_exists(state_code):
@@ -2410,6 +2411,7 @@ def all_ballot_items_retrieve_for_one_election_for_api(google_civic_election_id,
                         'google_civic_election_id':     google_civic_election_id,
                         # 'id':                           office_id,
                         'kind_of_ballot_item':          kind_of_ballot_item,
+                        'primary_party':                primary_party,
                         'race_office_level':            race_office_level,
                         'state_code':                   state_code_lower_case,
                         'we_vote_id':                   office_we_vote_id,
