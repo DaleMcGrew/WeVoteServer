@@ -1944,6 +1944,7 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
 
     politician_found = False
     politician_owner_list = []
+    save_politician = False
     seo_friendly_path_list = []
     voter_is_politician_owner = False
     voter_signed_in_with_email = False
@@ -1967,7 +1968,7 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
                 politician_we_vote_id=politician_we_vote_id,
                 seo_friendly_path=seo_friendly_path,
                 voter_we_vote_id=voter_we_vote_id,
-                read_only=True,
+                read_only=False,
             )
             if not results['success']:
                 status += "POLITICIAN_RETRIEVE_ERROR1: "
@@ -1977,6 +1978,10 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
             voter_is_politician_owner = True
             politician = results['politician']
             # politician_owner_list = results['politician_owner_list']
+            if voter_is_politician_owner and not politician.is_claimed_profile:
+                politician.is_claimed_profile = True
+                politician.is_claimed_profile_date = datetime.now()
+                save_politician = True
     else:
         results = politician_manager.retrieve_politician(
             politician_we_vote_id=politician_we_vote_id,
@@ -2303,6 +2308,9 @@ def politician_retrieve_for_api(  # politicianRetrieve & politicianRetrieveAsOwn
                 one_seo_friendly_path_object.final_pathname_string not in seo_friendly_path_list:
             seo_friendly_path_list.append(one_seo_friendly_path_object.final_pathname_string)
 
+    if save_politician:
+        politician.save()
+
     generate_results = generate_politician_dict_from_politician_object(politician=politician)
     results = generate_results['politician_dict']
     results.update({
@@ -2510,7 +2518,13 @@ def politician_save_for_api(  # politicianSave
                 politician.profile_image_background_color = generate_background(politician)
                 politician_changed = True
 
-        # Now we want to resize to a large version
+        # If we are saving the politician from an API call, then it means the voter has claimed the profile.
+        if not positive_value_exists(politician.is_claimed_profile):
+            # Updates data like calculate_if_is_claimed_profile
+            politician.is_claimed_profile = True
+            politician.is_claimed_profile_date_time = datetime.now()
+            politician_changed = True
+
         if politician_changed:
             try:
                 politician.save()
