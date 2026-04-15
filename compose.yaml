@@ -1,4 +1,4 @@
-name: wevote
+name: wevoteserver
 
 services:
   db:
