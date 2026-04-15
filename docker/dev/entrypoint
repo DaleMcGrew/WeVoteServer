@@ -22,9 +22,9 @@ def load_environment_file(file: str) -> bool:
                 if key not in os.environ:
                     os.environ[key] = str(value)
     except json.JSONDecodeError:
-        print(f"Error decoding JSON from {file}")
+        log(f"Error decoding JSON from {file}")
     except Exception as e:
-        print(f"An error occurred while loading config variables: {e}")
+        log(f"An error occurred while loading config variables: {e}")
     return True
 
 
