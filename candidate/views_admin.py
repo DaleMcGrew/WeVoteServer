@@ -55,6 +55,7 @@ from volunteer_task.models import VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS
     VOLUNTEER_ACTION_POLITICIAN_PHOTO, VOLUNTEER_ACTION_POLITICIAN_REQUEST, VolunteerTaskManager
 from voter.models import fetch_voter_from_voter_device_link, VoterDeviceLinkManager, VoterManager, voter_has_authority
 from voter_guide.models import VoterGuide
+from wevote_functions.create_trigram_index import create_trigram_index
 from wevote_functions.functions import convert_to_int, \
     extract_instagram_handle_from_text_string, extract_twitter_handle_from_text_string, \
     get_voter_api_device_id, get_voter_device_id, list_intersection, normalize_bluesky_handle, normalize_threads_handle, normalize_tiktok_url, \
@@ -1422,7 +1423,6 @@ def candidate_list_view(request):
         'vote_usa_candidates_for_this_state':       vote_usa_candidates_for_this_state,
         'web_app_root_url':                         web_app_root_url,
         'wikipedia_urls_without_picture_urls':      wikipedia_urls_without_picture_urls,
-
     }
     return render(request, 'candidate/candidate_list.html', template_values)
 
@@ -5701,3 +5701,46 @@ def update_profile_image_background_color_view_for_candidates(request):
     return HttpResponseRedirect(reverse('candidate:candidate_list', args=())
                                 + "?show_this_year_of_candidates=" + str(candidate_year)
                                 + "&state_code=" + str(state_code))
+
+
+@login_required
+def create_trigram_gist_idx_view(request):
+    """
+    Create a trigram index on the CandidateCampaign table to speed up searches.
+    """
+    authority_required = {'admin'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    status_message = None
+    status_type = None
+    indexes_created = []
+    indexes_already_existed = []
+
+    try:
+        # In the future, we might want to allow the user to specify the model and fields
+        if request.method == "POST":
+            # field value coming from form input
+            field_name = request.POST.get("index_field")
+            model = CandidateCampaign
+            fields = [field_name] if field_name else []
+
+            if not fields:
+                raise Exception("No field provided for index creation.")
+            results = create_trigram_index(model, fields)
+        
+            status_message = results['status']
+            status_type = results.get('status_level', 'error' if not results['success'] else 'success')
+            indexes_created = results.get('indexes_created', [])
+            indexes_already_existed = results.get('indexes_already_existed', [])
+    except Exception as e:
+        status_message = f"Failed to create trigram index: {e}"
+        status_type = "error"
+
+    template_variables = {
+        'status_message': status_message,
+        'status_type': status_type,
+        'indexes_created': indexes_created,
+        'indexes_already_existed': indexes_already_existed,
+    }
+    return render(request, 'candidate/create_trigram_gist_idx.html', template_variables)

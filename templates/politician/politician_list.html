@@ -18,6 +18,9 @@
             <a href="{% url 'politician:duplicates_list' %}?state_code={{ state_code }}"
                         target="_blank" >
             Possible Duplicate Politicians <span class="glyphicon glyphicon-new-window"></span></a>
+            <a href="{% url 'politician:create_trigram_gist_idx' %}?state_code={{ state_code }}"
+                        target="_blank" >
+            Add Trigram_Gist <span class="glyphicon glyphicon-new-window"></span></a>
         </li>
     </ul>
 
