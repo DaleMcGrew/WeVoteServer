@@ -10,6 +10,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.timezone import now
+from django.contrib.postgres.search import TrigramSimilarity
 import wevote_functions.admin
 from apis_v1.views.views_extension import process_pdf_to_html
 from ballot.models import CANDIDATE
@@ -3216,9 +3217,19 @@ def find_organization_endorsements_of_candidates_on_one_web_page(site_url, endor
 def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=None, use_trigram_match=False):
     """
     Find Candidates that might be duplicates to see if we want to merge them with this Candidate
+    
+    Supports two query methods:
+    - Trigram-based fuzzy matching on names with similarity threshold (use_trigram_match=True)
+    - Exact matching logic (use_trigram_match=False) - default method
+    
+    Threshold values for trigram similarity:
+    - 0.1: Very loose matching (high recall, low precision)
+    - 0.3: Standard fuzzy matching (balanced)
+    - 0.5: Stricter matching (lower recall, higher precision)
+    - 0.7: Very strict matching (high precision, low recall)
 
-    :param candidate:
-    :return:
+    :param candidate: Candidate object to find duplicates for
+    :return: List of up to 20 potential duplicate candidates
     """
     if not hasattr(candidate, 'we_vote_id'):
         return []
@@ -3227,6 +3238,9 @@ def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=No
     results = candidate_manager.retrieve_candidates_are_not_duplicates_list(candidate.we_vote_id, read_only=True)
     candidates_are_not_duplicates_list_we_vote_ids = results['candidates_are_not_duplicates_list_we_vote_ids']
     candidates_are_not_duplicates_list_we_vote_ids.append(candidate.we_vote_id)
+    # Local variables for query control
+    #use_trigram_match = False
+    threshold = 0.5  # Standard fuzzy matching threshold (0.0-1.0 scale)
     try:
         queryset = CandidateCampaign.objects.using('readonly').all()
         queryset = queryset.exclude(we_vote_id__in=candidates_are_not_duplicates_list_we_vote_ids)
@@ -3254,54 +3268,47 @@ def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=No
         # "OR" filters below
         filters = []
 
-        new_filter = \
-            Q(candidate_name__iexact=last_name) | \
-            Q(ballotpedia_candidate_name__iexact=last_name)
+        if positive_value_exists(last_name):
+            new_filter = (
+                Q(candidate_name__iexact=last_name) |
+                Q(ballotpedia_candidate_name__iexact=last_name)
+            )
         filters.append(new_filter)
 
-        # new_filter = \
-        #     Q(candidate_name__icontains=first_name) & \
-        #     Q(candidate_name__icontains=last_name)
-        # filters.append(new_filter)
-
-        # new_filter = \
-        #     Q(ballotpedia_candidate_name__icontains=first_name) & \
-        #     Q(ballotpedia_candidate_name__icontains=last_name)
-        # filters.append(new_filter)
-
-        new_filter = (
+        if positive_value_exists(candidate.candidate_name):
+            new_filter = (
                 Q(candidate_name__iexact=candidate.candidate_name) |
                 Q(ballotpedia_candidate_name__iexact=candidate.candidate_name) |
                 Q(google_civic_candidate_name__iexact=candidate.candidate_name) |
                 Q(google_civic_candidate_name2__iexact=candidate.candidate_name) |
                 Q(google_civic_candidate_name3__iexact=candidate.candidate_name)
-        )
+            )
         filters.append(new_filter)
 
         if positive_value_exists(candidate.google_civic_candidate_name):
             new_filter = (
-                    Q(candidate_name__iexact=candidate.google_civic_candidate_name) |
-                    Q(google_civic_candidate_name__iexact=candidate.google_civic_candidate_name) |
-                    Q(google_civic_candidate_name2__iexact=candidate.google_civic_candidate_name) |
-                    Q(google_civic_candidate_name3__iexact=candidate.google_civic_candidate_name)
+                Q(candidate_name__iexact=candidate.google_civic_candidate_name) |
+                Q(google_civic_candidate_name__iexact=candidate.google_civic_candidate_name) |
+                Q(google_civic_candidate_name2__iexact=candidate.google_civic_candidate_name) |
+                Q(google_civic_candidate_name3__iexact=candidate.google_civic_candidate_name)
             )
             filters.append(new_filter)
 
         if positive_value_exists(candidate.google_civic_candidate_name2):
             new_filter = (
-                    Q(candidate_name__iexact=candidate.google_civic_candidate_name2) |
-                    Q(google_civic_candidate_name__iexact=candidate.google_civic_candidate_name2) |
-                    Q(google_civic_candidate_name2__iexact=candidate.google_civic_candidate_name2) |
-                    Q(google_civic_candidate_name3__iexact=candidate.google_civic_candidate_name2)
+                Q(candidate_name__iexact=candidate.google_civic_candidate_name2) |
+                Q(google_civic_candidate_name__iexact=candidate.google_civic_candidate_name2) |
+                Q(google_civic_candidate_name2__iexact=candidate.google_civic_candidate_name2) |
+                Q(google_civic_candidate_name3__iexact=candidate.google_civic_candidate_name2)
             )
             filters.append(new_filter)
 
         if positive_value_exists(candidate.google_civic_candidate_name3):
             new_filter = (
-                    Q(candidate_name__iexact=candidate.google_civic_candidate_name3) |
-                    Q(google_civic_candidate_name__iexact=candidate.google_civic_candidate_name3) |
-                    Q(google_civic_candidate_name2__iexact=candidate.google_civic_candidate_name3) |
-                    Q(google_civic_candidate_name3__iexact=candidate.google_civic_candidate_name3)
+                Q(candidate_name__iexact=candidate.google_civic_candidate_name3) |
+                Q(google_civic_candidate_name__iexact=candidate.google_civic_candidate_name3) |
+                Q(google_civic_candidate_name2__iexact=candidate.google_civic_candidate_name3) |
+                Q(google_civic_candidate_name3__iexact=candidate.google_civic_candidate_name3)
             )
             filters.append(new_filter)
 
@@ -3347,7 +3354,16 @@ def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=No
 
             queryset = queryset.filter(final_filters)
 
-        queryset = queryset.order_by('candidate_name')[:20]
+        # Apply trigram ordering ONLY for ranking (not filtering) on already filtered results
+        if use_trigram_match:
+            # Annotate with trigram similarity AFTER filtering for better performance
+            queryset = queryset.annotate(
+                combined_similarity=TrigramSimilarity('candidate_name', candidate.candidate_name)
+            )
+            queryset = queryset.order_by('-combined_similarity', 'candidate_name')
+        else:
+            queryset = queryset.order_by('candidate_name')
+        queryset = queryset[:20]
         related_candidate_list = list(queryset)
     except Exception as e:
         related_candidate_list = []
