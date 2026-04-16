@@ -3213,7 +3213,7 @@ def find_organization_endorsements_of_candidates_on_one_web_page(site_url, endor
     return results
 
 
-def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=None):
+def find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=None, use_trigram_match=False):
     """
     Find Candidates that might be duplicates to see if we want to merge them with this Candidate
 

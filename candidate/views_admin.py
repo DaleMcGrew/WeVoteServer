@@ -2105,6 +2105,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
     state_code = request.GET.get('state_code', "")
     show_all_google_search_users = request.GET.get('show_all_google_search_users', False)
     show_all_twitter_search_results = request.GET.get('show_all_twitter_search_results', False)
+    use_trigram_match = positive_value_exists(request.GET.get('use_trigram_match', False))
     withdrawal_date = request.GET.get('withdrawal_date', False)
     withdrawn_from_election = positive_value_exists(request.GET.get('withdrawn_from_election', False))
     do_not_display_on_ballot = positive_value_exists(request.GET.get('do_not_display_on_ballot', False))
@@ -2346,7 +2347,9 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
         from candidate.controllers import find_possible_duplicate_candidates_to_merge_with_this_candidate
         t0 = time()
         related_candidate_list = \
-            find_possible_duplicate_candidates_to_merge_with_this_candidate(candidate=candidate_on_stage)
+            find_possible_duplicate_candidates_to_merge_with_this_candidate(
+                candidate=candidate_on_stage,
+                use_trigram_match=use_trigram_match)
         t1 = time()
 
         performance_snapshot = {
@@ -2506,6 +2509,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
             'performance_process_dict':         performance_process_dict,
             'rating_list':                      rating_list,
             'related_candidate_list':           related_candidate_list,
+            'use_trigram_match':                use_trigram_match,
             'state_code':                       state_code,
             'state_code_dict':              
             {
