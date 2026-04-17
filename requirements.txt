@@ -49,11 +49,11 @@ protobuf>=3.18.3        # not directly required, pinned by Snyk to avoid a vulne
 psycopg2-binary==2.9.10
 py3dns==4.0.1
 pyarrow                 # recommend engine - comment out if initial installation is failing
-pyasn1==0.4.8
+pyasn1==0.6.3
 pyasn1-modules==0.2.8
 pygeoip==0.3.2
 pyjwkest==1.4.2
-pyjwt==2.8.0
+pyjwt==2.12.0
 pyparsing==2.4.7
 python-dateutil~=2.8.2
 python-magic==0.4.24     # Requires "brew install libmagic" or "brew upgrade libmagic" or "pip install libmagic"
