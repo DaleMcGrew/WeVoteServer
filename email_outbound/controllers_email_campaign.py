@@ -329,6 +329,8 @@ def delete_audience_filter_chain_and_children(audience_builder, audience_filter_
 def email_campaign_send(
         email_campaign={},
         email_campaign_id=''):
+    emails_scheduled = 0
+    emails_sent = 0
     status = ""
     success = True
 
@@ -336,6 +338,8 @@ def email_campaign_send(
         status += "EMAIL_CAMPAIGN_ID_REQUIRED "
         return {
             'email_campaign': email_campaign,
+            'emails_scheduled': emails_scheduled,
+            'emails_sent': emails_sent,
             'status':   status,
             'success':  False,
         }
@@ -347,6 +351,8 @@ def email_campaign_send(
             status += "SEND_EMAIL_CAMPAIGN_NOT_FOUND "
             return {
                 'email_campaign': email_campaign,
+                'emails_scheduled': emails_scheduled,
+                'emails_sent': emails_sent,
                 'status':   status,
                 'success':  False,
             }
@@ -354,6 +360,8 @@ def email_campaign_send(
             status += f'PROBLEM_RETRIEVING_EMAIL_CAMPAIGN: {e}'
             return {
                 'email_campaign': email_campaign,
+                'emails_scheduled': emails_scheduled,
+                'emails_sent': emails_sent,
                 'status':   status,
                 'success':  False,
             }
@@ -370,10 +378,13 @@ def email_campaign_send(
             email_campaign_id=email_campaign_id)
         queryset = queryset.values_list('email_campaign_recipient_id', flat=True)
         already_scheduled_recipient_ids = list(queryset)
+        status += f'ALREADY_SCHEDULED_RECIPIENTS: {len(already_scheduled_recipient_ids)} '
     except Exception as e:
         status += f'PROBLEM_RETRIEVING_EMAIL_SCHEDULED: {e}'
         return {
             'email_campaign': email_campaign,
+            'emails_scheduled': emails_scheduled,
+            'emails_sent': emails_sent,
             'status':   status,
             'success':  False,
         }
@@ -384,26 +395,27 @@ def email_campaign_send(
         queryset = EmailCampaignRecipient.objects.filter(
             email_campaign_id=email_campaign_id)
         # Filter out recipient entries that have already been sent
-        queryset = queryset.exclude(id__in=already_scheduled_recipient_ids)
+        if len(already_scheduled_recipient_ids) > 0:
+            queryset = queryset.exclude(id__in=already_scheduled_recipient_ids)
         email_campaign_recipient_list = list(queryset)
+        status += f'EMAIL_CAMPAIGN_RECIPIENTS: {len(email_campaign_recipient_list)} '
     except Exception as e:
         status += f'PROBLEM_RETRIEVING_EMAIL_CAMPAIGN_RECIPIENT: {e}'
         return {
+            'emails_scheduled': emails_scheduled,
+            'emails_sent': emails_sent,
             'status':   status,
             'success':  False,
         }
 
-    email_manager = EmailManager()
-
-    emails_scheduled = 0
-    emails_sent = 0
     recipient_bulk_update_list = []
     recipient_bulk_update_fields = []
     recipient_email_subscription_secret_key = ''  # Temp
 
     # build attachments and email body for inline attachments
     # This process is done here to avoid reading files multiple times per recipient
-    email_body_parsed, prepared_attachments = build_prepared_campaign_attachments(body=email_body_raw, email_campaign=email_campaign)
+    email_body_parsed, prepared_attachments = build_prepared_campaign_attachments(
+        body=email_body_raw, email_campaign=email_campaign)
     for email_campaign_recipient in email_campaign_recipient_list:
         results = schedule_email_campaign_recipient(
             email_body_raw=email_body_parsed,
@@ -422,15 +434,18 @@ def email_campaign_send(
 
         if email_scheduled_saved:
             emails_scheduled += 1
-            # Temporarily turn off sending emails when on local machine, and comment out 3 lines after  this
+            # UNCOMMENT WHEN TESTING ON LOCAL MACHINE
             # email_scheduled_sent = True  # Mock that we actually sent the email
-            # pass the prepared attachments here
+
+            # TURN OFF WHEN TESTING ON LOCAL MACHINE
+            email_manager = EmailManager()
             send_results = email_manager.send_scheduled_email(
                 email_scheduled,
                 prepared_attachments=prepared_attachments
             )
             email_scheduled_sent = send_results['email_scheduled_sent']
             status += send_results['status'] + " "
+
             if email_scheduled_sent:
                 emails_sent += 1
             else:
@@ -471,6 +486,8 @@ def email_campaign_send(
             success = False
 
     results = {
+        'emails_scheduled': emails_scheduled,
+        'emails_sent': emails_sent,
         'success':  success,
         'status':   status,
     }
@@ -753,7 +770,6 @@ def schedule_email_campaign_recipient(
         recipient_bulk_update_list=[],
         recipient_bulk_update_fields=[],
         template_variables_in_json=None):
-    email_manager = EmailManager()
     status = ""
     template_variables_in_json = {}
 
@@ -775,6 +791,7 @@ def schedule_email_campaign_recipient(
         subject = email_template_results['subject']
         message_text = email_template_results['message_text']
         message_html = email_template_results['message_html']
+        email_manager = EmailManager()
         schedule_email_results = email_manager.schedule_email_from_email_campaign_recipient(
             email_campaign_recipient=email_campaign_recipient,
             subject=subject,
