@@ -45,6 +45,7 @@ def audience_builder_data_retrieve(audience_builder_id):
 
     try:
         audience_builder = AudienceBuilder.objects.get(id=audience_builder_id)
+        status += f"AUDIENCE_BUILDER_RETRIEVED: {audience_builder.audience_builder_name} "
     except Exception as e:
         status += f"ERROR_RETRIEVING_AUDIENCE_BUILDER: {e} "
         success = False
@@ -63,6 +64,7 @@ def audience_builder_data_retrieve(audience_builder_id):
         try:
             queryset = AudienceFilterChain.objects.filter(audience_builder_id=audience_builder_id)
             audience_filter_chain_list = list(queryset)
+            status += f"AUDIENCE_FILTER_CHAIN_RETRIEVED: {len(audience_filter_chain_list)} chains "
             for audience_filter_chain in audience_filter_chain_list:
                 audience_filter_chain_dict[audience_filter_chain.id] = audience_filter_chain
         except Exception as e:
@@ -159,7 +161,7 @@ def generate_email_campaign_recipients_from_audience_builder(audience_builder_id
             'success':  False,
         }
     except Exception as e:
-        status += f'GENERATE_RECIPIENTS_PROBLEM_RETRIEVING_EMAIL_CAMPAIGN: {e}'
+        status += f'GENERATE_RECIPIENTS_PROBLEM_RETRIEVING_EMAIL_CAMPAIGN: {e} '
         return {
             'status':   status,
             'success':  False,
@@ -179,8 +181,9 @@ def generate_email_campaign_recipients_from_audience_builder(audience_builder_id
         # and store the email_address value in prior_recipient_email_address_simple_list in lower case
         for email_campaign_recipient in email_campaign_recipient_list:
             prior_recipient_email_address_simple_list.append(email_campaign_recipient.email_address.lower())
+        status += f'PRIOR_RECIPIENT_EMAIL_ADDRESS_SIMPLE_LIST: {prior_recipient_email_address_simple_list} '
     except Exception as e:
-        status += f'Problem retrieving email campaign recipients. {e}'
+        status += f'PROBLEM_RETRIEVING_PRIOR_EMAIL_CAMPAIGN_RECIPIENTS: {e} '
         return {
             'status': status,
             'success': False,
@@ -200,8 +203,10 @@ def generate_email_campaign_recipients_from_audience_builder(audience_builder_id
         audience_builder_name = audience_builder.audience_builder_name
         audience_filter_chain_dict = results['audience_filter_chain_dict']
         audience_filter_dict = results['audience_filter_dict']
+        status += f'AUDIENCE_BUILDER_NAME: {audience_builder_name} '
     else:
         audience_builder_id = None
+        status += "AUDIENCE_BUILDER_DATA_RETRIEVE_FAILED "
         success = False
         return {
             'status': status,
@@ -318,10 +323,11 @@ def generate_preview_list_from_politician_list(politician_list=[], max_list_leng
             'type': 'POLITICIAN',
             'state_code': state_code_upper,
         }
-        if preview_count == max_list_length:
-            status += "MAX_PREVIEW_LIST_LENGTH_REACHED: " + str(max_list_length) + " "
-        if preview_count > max_list_length:
-            break
+        if max_list_length > 0:
+            if preview_count == max_list_length:
+                status += "MAX_PREVIEW_LIST_LENGTH_REACHED: " + str(max_list_length) + " "
+            if preview_count > max_list_length:
+                break
         preview_list.append(preview_dict)
         # In addition to these values, we also add additional values from other data types,
         #  including office_we_vote_id, and politician_passkey
@@ -467,6 +473,7 @@ def generate_preview_list_from_audience_builder(
     politician_list_length = results['politician_list_length']
     # candidate_ids_by_audience_filter_dict = results['candidate_ids_by_audience_filter_dict']
     # politician_ids_by_audience_filter_dict = results['politician_ids_by_audience_filter_dict']
+    status += results['status']
 
     # We will need to pay attention to which rules come in under a single filter chain
     # For now, we treat all filters as if they are all part of the same filter chain
@@ -475,6 +482,7 @@ def generate_preview_list_from_audience_builder(
         politician_list=politician_list,
         max_list_length=max_list_length)
     preview_list = results['preview_list']
+    status += results['status']
 
     results = augment_preview_list_with_candidate_info(
         campaignx_dict=campaignx_dict,
@@ -483,6 +491,7 @@ def generate_preview_list_from_audience_builder(
         google_civic_election_id=google_civic_election_id,  # Not set up to deal with an election list yet
         preview_list=preview_list)
     preview_list = results['preview_list']
+    status += results['status']
 
     return {
         'preview_list': preview_list,
