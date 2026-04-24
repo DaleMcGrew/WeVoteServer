@@ -35,6 +35,10 @@
   "DATABASE_HOST_ANALYTICS":        "",
   "DATABASE_PORT_ANALYTICS":        "",
 
+  "_comment":                       "profile for pgadmin",
+  "PG_ADMIN_EMAIL":                 "fake_email@wevoteeducation.org",
+  "PG_ADMIN_PASSWORD":              "admin",
+  
   "_comment":                       "The connection string for Elastic Search database",
   "ELASTIC_SEARCH_CONNECTION_STRING": "",
 

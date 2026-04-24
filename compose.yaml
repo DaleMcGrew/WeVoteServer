@@ -69,6 +69,18 @@ services:
     ports:
       - "127.0.0.1:8000:8000" # this allows access to the WeVote API at localhost:8000
 
+  pgadmin:
+    image: dpage/pgadmin4:8.4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PG_ADMIN_EMAIL:-fake_email@wevoteeducation.org}
+      PGADMIN_DEFAULT_PASSWORD: ${PG_ADMIN_PASSWORD:-admin}
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "8080:80"
+    networks:
+      - wevote
+
 networks:
   wevote:
     name: wevote
@@ -78,3 +90,4 @@ networks:
 volumes:
   localstack:
   postgres_data:
+  pgadmin_data:
