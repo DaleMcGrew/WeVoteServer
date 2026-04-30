@@ -3502,12 +3502,8 @@ def candidate_edit_process_view(request):
             elif profile_image_background_color is not False:
                 if profile_image_background_color == '':
                     candidate_on_stage.profile_image_background_color = None
-                    if not candidate_on_stage.profile_image_background_color_needed:
-                        candidate_on_stage.profile_image_background_color_needed = False
                 elif validate_hex(profile_image_background_color):
                     candidate_on_stage.profile_image_background_color = profile_image_background_color
-                    if not candidate_on_stage.profile_image_background_color_needed:
-                        candidate_on_stage.profile_image_background_color_needed = False
                 else:
                     messages.add_message(request, messages.ERROR,
                                          'Enter hex as \'#\' followed by six hexadecimal characters 0-9a-f')

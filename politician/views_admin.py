@@ -2897,12 +2897,8 @@ def politician_edit_process_view(request):
             elif profile_image_background_color is not False:
                 if profile_image_background_color == '':
                     politician_on_stage.profile_image_background_color = None
-                    if not politician_on_stage.profile_image_background_color_needed:
-                        politician_on_stage.profile_image_background_color_needed = False
                 elif validate_hex(profile_image_background_color):
                     politician_on_stage.profile_image_background_color = profile_image_background_color
-                    if not politician_on_stage.profile_image_background_color_needed:
-                        politician_on_stage.profile_image_background_color_needed = False
                 else:
                     messages.add_message(request, messages.ERROR,
                                          'Enter hex as \'#\' followed by six hexadecimal characters 0-9a-f')
