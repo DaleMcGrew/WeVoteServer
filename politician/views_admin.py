@@ -2755,7 +2755,7 @@ def politician_edit_process_view(request):
                     politician_on_stage.we_vote_hosted_profile_image_url_large = None
                     politician_on_stage.we_vote_hosted_profile_image_url_medium = None
                     politician_on_stage.we_vote_hosted_profile_image_url_tiny = None
-                    politician_on_stage.profile_image_background_color_needed = True  # ← ADD THIS
+                    politician_on_stage.profile_image_background_color_needed = True
             if profile_image_type_currently_active is not False:
                 results = organize_object_photo_fields_based_on_image_type_currently_active(
                     object_with_photo_fields=politician_on_stage,
