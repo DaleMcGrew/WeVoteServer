@@ -2364,6 +2364,12 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
         queryset = queryset.filter(candidate_we_vote_id=candidate_we_vote_id)
         queryset = queryset.order_by('-log_datetime')
         change_log_list = list(queryset)
+        if positive_value_exists(candidate_on_stage.we_vote_hosted_profile_image_url_large):
+            if candidate_on_stage.profile_image_background_color_needed is not False:
+                candidate_on_stage.profile_image_background_color = generate_background(candidate_on_stage)
+                candidate_on_stage.profile_image_background_color_needed = False
+                candidate_on_stage.save()
+                messages.add_message(request, messages.INFO, "Background color generated")
         t1 = time()
 
         performance_snapshot = {
@@ -2781,7 +2787,7 @@ def candidate_edit_process_view(request):
     profile_image_type_currently_active = request.POST.get('profile_image_type_currently_active', False)
     redirect_to_candidate_list = positive_value_exists(request.POST.get('redirect_to_candidate_list', False))
     refresh_from_twitter = request.POST.get('refresh_from_twitter', False)
-    regenerate_color = request.POST.get('regenerate_color', False)
+    regenerate_color = positive_value_exists(request.POST.get('regenerate_color', False))
     reject_twitter_link_possibility_id = convert_to_int(request.POST.get('reject_twitter_link_possibility_id', 0))
     remove_duplicate_process = request.POST.get('remove_duplicate_process', False)
     select_for_marking_twitter_link_possibility_ids = request.POST.getlist('select_for_marking_checks[]')
@@ -3337,6 +3343,7 @@ def candidate_edit_process_view(request):
                         candidate_on_stage.we_vote_hosted_profile_image_url_large = None
                         candidate_on_stage.we_vote_hosted_profile_image_url_medium = None
                         candidate_on_stage.we_vote_hosted_profile_image_url_tiny = None
+                        candidate_on_stage.profile_image_background_color_needed = True
                         results = organize_object_photo_fields_based_on_image_type_currently_active(
                             object_with_photo_fields=candidate_on_stage)
                         if results['success']:
@@ -3495,10 +3502,12 @@ def candidate_edit_process_view(request):
             elif profile_image_background_color is not False:
                 if profile_image_background_color == '':
                     candidate_on_stage.profile_image_background_color = None
-                    candidate_on_stage.profile_image_background_color_needed = False
+                    if not candidate_on_stage.profile_image_background_color_needed:
+                        candidate_on_stage.profile_image_background_color_needed = False
                 elif validate_hex(profile_image_background_color):
                     candidate_on_stage.profile_image_background_color = profile_image_background_color
-                    candidate_on_stage.profile_image_background_color_needed = False
+                    if not candidate_on_stage.profile_image_background_color_needed:
+                        candidate_on_stage.profile_image_background_color_needed = False
                 else:
                     messages.add_message(request, messages.ERROR,
                                          'Enter hex as \'#\' followed by six hexadecimal characters 0-9a-f')
@@ -3646,6 +3655,7 @@ def candidate_edit_process_view(request):
                     candidate_on_stage.we_vote_hosted_profile_image_url_large = None
                     candidate_on_stage.we_vote_hosted_profile_image_url_medium = None
                     candidate_on_stage.we_vote_hosted_profile_image_url_tiny = None
+                    candidate_on_stage.profile_image_background_color_needed = True
             if profile_image_type_currently_active is not False:
                 results = organize_object_photo_fields_based_on_image_type_currently_active(
                     object_with_photo_fields=candidate_on_stage,
@@ -3654,9 +3664,7 @@ def candidate_edit_process_view(request):
                 if results['success']:
                     candidate_on_stage = results['object_with_photo_fields']
                     if results['profile_image_default_updated']:
-                        # regenerate_color = True
-                        candidate_on_stage.profile_image_background_color = generate_background(candidate_on_stage)
-                        candidate_on_stage.profile_image_background_color_needed = False
+                        candidate_on_stage.profile_image_background_color_needed = True
                     if positive_value_exists(results['save_changes']):
                         changes_found_dict['is_photo_added'] = True
 
