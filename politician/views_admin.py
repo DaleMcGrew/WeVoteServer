@@ -2427,7 +2427,7 @@ def politician_edit_process_view(request):
     middle_name = request.POST.get('middle_name', False)
     last_name = request.POST.get('last_name', False)
     profile_image_background_color = request.POST.get('profile_image_background_color', False)
-    regenerate_color = request.POST.get('regenerate_color', False)
+    regenerate_color = positive_value_exists(request.POST.get('regenerate_color', False))
     facebook_url = request.POST.get('facebook_url', False)
     facebook_url2 = request.POST.get('facebook_url2', False)
     facebook_url3 = request.POST.get('facebook_url3', False)
@@ -2755,6 +2755,7 @@ def politician_edit_process_view(request):
                     politician_on_stage.we_vote_hosted_profile_image_url_large = None
                     politician_on_stage.we_vote_hosted_profile_image_url_medium = None
                     politician_on_stage.we_vote_hosted_profile_image_url_tiny = None
+                    politician_on_stage.profile_image_background_color_needed = True
             if profile_image_type_currently_active is not False:
                 results = organize_object_photo_fields_based_on_image_type_currently_active(
                     object_with_photo_fields=politician_on_stage,
@@ -2763,7 +2764,7 @@ def politician_edit_process_view(request):
                 if results['success']:
                     politician_on_stage = results['object_with_photo_fields']
                     if results['profile_image_default_updated']:
-                        regenerate_color = True
+                        politician_on_stage.profile_image_background_color_needed = True
                         # politician_on_stage.profile_image_background_color = generate_background(politician_on_stage)
                         # politician_on_stage.profile_image_background_color_needed = False
 
@@ -2819,6 +2820,7 @@ def politician_edit_process_view(request):
                         politician_on_stage.we_vote_hosted_profile_image_url_large = None
                         politician_on_stage.we_vote_hosted_profile_image_url_medium = None
                         politician_on_stage.we_vote_hosted_profile_image_url_tiny = None
+                        politician_on_stage.profile_image_background_color_needed = True
                         results = organize_object_photo_fields_based_on_image_type_currently_active(
                             object_with_photo_fields=politician_on_stage)
                         if results['success']:
@@ -2895,10 +2897,8 @@ def politician_edit_process_view(request):
             elif profile_image_background_color is not False:
                 if profile_image_background_color == '':
                     politician_on_stage.profile_image_background_color = None
-                    politician_on_stage.profile_image_background_color_needed = False
                 elif validate_hex(profile_image_background_color):
                     politician_on_stage.profile_image_background_color = profile_image_background_color
-                    politician_on_stage.profile_image_background_color_needed = False
                 else:
                     messages.add_message(request, messages.ERROR,
                                          'Enter hex as \'#\' followed by six hexadecimal characters 0-9a-f')
@@ -3358,7 +3358,6 @@ def politician_edit_process_view(request):
 
             # #################################################
             t0 = time()
-            # Save politician object
             politician_on_stage.save()
             politician_we_vote_id = politician_on_stage.we_vote_id
             vote_usa_politician_id = politician_on_stage.vote_usa_politician_id
