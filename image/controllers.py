@@ -2296,9 +2296,6 @@ def cache_voter_master_uploaded_image(
     :param voter_we_vote_id:
     :return:
     """
-    # TEMP DEBUG
-    print("DEBUG frames at entry:", getattr(python_image_library_image, 'n_frames', 1))
-    print("DEBUG format at entry:", python_image_library_image.format)
     time0 = log_and_time_cache_action(True, 0, 'cache_voter_master_uploaded_image')
     we_vote_parent_image_id = None
     success = False
@@ -2335,7 +2332,6 @@ def cache_voter_master_uploaded_image(
 
     # image file validation and get source image properties
     analyze_source_images_results = analyze_image_in_memory(python_image_library_image)
-    print("DEBUG frames in analyze:", getattr(python_image_library_image, 'n_frames', 1))
 
     if not analyze_source_images_results['image_url_valid']:
         error_results = {
