@@ -3374,7 +3374,19 @@ def politician_edit_process_view(request):
             t0 = time()
             update_ballotpedia_politician_url = ballotpedia_politician_url_changed or \
                 not positive_value_exists(politician_on_stage.ballotpedia_photo_url)
-            if update_ballotpedia_politician_url and positive_value_exists(ballotpedia_politician_url):
+            
+            is_valid_photo = (
+                    not politician_on_stage.ballotpedia_photo_url_is_broken
+                    and not politician_on_stage.ballotpedia_photo_url_is_placeholder)
+            
+            fetch_photo_url = (
+                positive_value_exists(ballotpedia_politician_url)
+                and (
+                    ballotpedia_politician_url_changed
+                    or (update_ballotpedia_politician_url and is_valid_photo)
+                )
+            )
+            if fetch_photo_url:
                 results = get_photo_url_from_ballotpedia(
                     incoming_object=politician_on_stage,
                     save_to_database=True,
