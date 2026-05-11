@@ -114,9 +114,8 @@
         {% if not is_national_election %}
             <th>Date</th>
         {% endif %}
-            <th>Live?</th>
-            <th>{% if is_national_election %}Notes{% else %}Election Name{% endif %}</th>
             <th>State(s)</th>
+            <th>{% if is_national_election %}Notes{% else %}Election Name{% endif %}</th>
         {% if is_national_election or show_election_statistics %}
             <th>Last Retrieve Completed</th>
             <th>Retrieve Added to Queue</th>
@@ -132,6 +131,7 @@
             <th align="middle">Opinions / Positions</th>
             <th>Ballot Locations<br />(To Process)</th>
         {% endif %}
+            <th>Live?</th>
         {% if not is_national_election %}
             <td>&nbsp;</td>
         {% endif %}
@@ -150,9 +150,24 @@
             </td>
         {% endif %}
             <td align="middle">
-              {% if election.include_in_list_for_voters %}<span class="font-weight-bold">Visible</span>{% endif %}
-              {% if election.election_preparation_finished %}<span class="font-weight-bold text-success">DATA</span>{% endif %}
-              {% if election.candidate_photos_finished %}<span class="font-weight-bold text-success">PHOTOS</span>{% endif %}
+              {% if election.is_national_election and not is_national_election %}
+                <div style="overflow-wrap: anywhere;">
+                  <a href="{% url 'election:nationwide_election_list' %}?google_civic_election_id={{ election.google_civic_election_id }}"
+                      target="_blank">
+                      {% if election.state_code_list_raw %}
+                        {{ election.state_code_list_raw }}
+                      {% else %}
+                        see all states
+                      {% endif %}
+                      <span class="glyphicon glyphicon-new-window"></span>
+                  </a>
+                </div>
+              {% else %}
+                  <a href="{% url 'election:election_summary' election.id %}?state_code={{ election.state_code }}{% if show_all_elections_this_year %}&show_all_elections_this_year=1{% elif show_all_elections %}&show_all_elections=1{% endif %}"
+                     target="_blank">
+                      {{ election.state_code|default_if_none:"" }}&nbsp;&nbsp;&nbsp;<span class="glyphicon glyphicon-new-window"></span>
+                  </a>
+              {% endif %}
             </td>
             <td>
                 {% if not is_national_election %}
@@ -173,26 +188,6 @@
                 {% if election.internal_notes %}
                 <br /><span style="color: darkgray">{{ election.internal_notes|default_if_none:""|truncatechars:50 }}</span>
                 {% endif %}
-            </td>
-            <td align="middle">
-              {% if election.is_national_election and not is_national_election %}
-                <div style="overflow-wrap: anywhere;">
-                  <a href="{% url 'election:nationwide_election_list' %}?google_civic_election_id={{ election.google_civic_election_id }}"
-                      target="_blank">
-                      {% if election.state_code_list_raw %}
-                        {{ election.state_code_list_raw }}
-                      {% else %}
-                        see all states
-                      {% endif %}
-                      <span class="glyphicon glyphicon-new-window"></span>
-                  </a>
-                </div>
-              {% else %}
-                  <a href="{% url 'election:election_summary' election.id %}?state_code={{ election.state_code }}{% if show_all_elections_this_year %}&show_all_elections_this_year=1{% elif show_all_elections %}&show_all_elections=1{% endif %}"
-                     target="_blank">
-                      {{ election.state_code|default_if_none:"" }}&nbsp;&nbsp;&nbsp;<span class="glyphicon glyphicon-new-window"></span>
-                  </a>
-              {% endif %}
             </td>
         {% if is_national_election or show_election_statistics %} {# Last Retrieve / Refresh #}
             <td>
@@ -395,6 +390,11 @@
                 {% endif %}
             </td>
         {% endif %}
+            <td align="middle">
+              {% if election.include_in_list_for_voters %}<span class="font-weight-bold">Visible</span>{% endif %}
+              {% if election.election_preparation_finished %}<span class="font-weight-bold text-success">DATA</span>{% endif %}
+              {% if election.candidate_photos_finished %}<span class="font-weight-bold text-success">PHOTOS</span>{% endif %}
+            </td>
         {% if not is_national_election %}
             <td><a href="{% url 'election:election_edit' election.id %}" style="font-size: .65em">(edit)</a></td>
         {% endif %}
