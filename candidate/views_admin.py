@@ -1364,17 +1364,25 @@ def candidate_list_view(request):
         }
         performance_list.append(performance_snapshot)
 
-    if positive_value_exists(google_civic_election_id) and positive_value_exists(state_code):
+    if positive_value_exists(google_civic_election_id) and \
+        positive_value_exists(state_code) and \
+        election and \
+        positive_value_exists(election.election_day_text):
         from import_export_vote_usa.controllers import VOTE_USA_API_KEY, VOTE_USA_CANDIDATE_QUERY_URL
         vote_usa_candidates_for_this_state = \
             VOTE_USA_CANDIDATE_QUERY_URL + \
             "?accessKey={access_key}&electionDay={election_day}&state={state_code}".format(
                 access_key=VOTE_USA_API_KEY,
-                election_day='2026-03-17',
+                election_day=election.election_day_text,
                 state_code=state_code,
             )
     else:
         vote_usa_candidates_for_this_state = ''
+        if positive_value_exists(google_civic_election_id) and election and not positive_value_exists(election.election_day_text):
+            logger.error(
+                "Election day missing for election_id: %s",
+                google_civic_election_id
+        )
 
     if 'localhost' in WEB_APP_ROOT_URL:
         web_app_root_url = 'https://localhost:3000'
