@@ -20,7 +20,7 @@ allowable_tables = [
     'election_ballotpediaelection',
     'election_election',
     'electoral_district_electoraldistrict',
-    'follow_followorganization',
+    # 'follow_followorganization',
     'issue_issue',
     'issue_organizationlinktoissue',
     'measure_contestmeasure',
