@@ -1,7 +1,7 @@
 # email_outbound/models.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-
+import logging
 from datetime import date, timedelta
 from django.apps import apps
 from django.db import IntegrityError, models
@@ -11,6 +11,7 @@ from wevote_functions.functions import convert_to_int, extract_email_addresses_f
     positive_value_exists
 from wevote_settings.models import fetch_next_we_vote_id_email_integer, fetch_site_unique_id_prefix
 
+logger = logging.getLogger(__name__)
 
 FILTER_TYPE_AUDIENCE_TYPE = 'FILTER_TYPE_AUDIENCE_TYPE'
 # We are not implementing "Election Type" at this time
