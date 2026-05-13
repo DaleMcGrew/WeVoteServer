@@ -888,9 +888,19 @@ class OrganizationLinkToIssueList(models.Manager):
 
         try:
             if positive_value_exists(issue_we_vote_id):
+                # Import Organization model to verify organizations exist
+                from organization.models import Organization
+                
+                # Get list of valid organization we_vote_ids from Organization table
+                valid_organization_ids = Organization.objects.using('readonly').values_list(
+                    'we_vote_id', flat=True
+                )
+                
+                # Count only links where organization exists in Organization table
                 organization_link_to_issue_query = OrganizationLinkToIssue.objects.using('readonly').filter(
                     issue_we_vote_id=issue_we_vote_id,  # 2024-09-01 Removed __iexact
-                    link_active=True
+                    link_active=True,
+                    organization_we_vote_id__in=valid_organization_ids
                 )
                 number_of_organizations_following_this_issue = organization_link_to_issue_query.count()
         except Exception as e:
