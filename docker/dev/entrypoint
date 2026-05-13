@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import debugpy
 
 def log(line: str):
     print(line, flush=True)
@@ -38,7 +39,13 @@ os.system("python manage.py migrate")
 log("Running 'manage.py createsuperuser'")
 os.system("python manage.py createsuperuser --noinput")
 
+# Start debugpy listener
+try:
+    log("Starting debugpy on 0.0.0.0:5678")
+    debugpy.listen(("0.0.0.0", 5678))
+    log("Debugger is ready and waiting for VS Code or PyCharm to attach...")
+except Exception as e:
+    log(f"Error starting debugpy: {e}")
 
 sys.exit(subprocess.call(sys.argv[1:]))
-
 
