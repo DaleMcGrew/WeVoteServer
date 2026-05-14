@@ -64,6 +64,29 @@ You can also remove the wevote docker network:
 docker network rm wevote
 ```
 
+## PgAdmin
+#### 1. Access PgAdmin Container
+Go to `localhost:8080` in your local web browser to access the `PgAdmin` container UI.
+### 2. Register New Server
+1. Select `Add New Server` on the homepage.  
+<img width="692" height="135" alt="582966431-c6ad5816-26dc-4b5d-a745-c2bbcb0cefbc" src="https://github.com/user-attachments/assets/c0772396-ac83-4537-9a10-8bcfcf5a7c7c" />
+
+3. Server name is `environment_variables.json` value for `DATABASE_NAME`
+<img width="696" height="547" alt="582966836-f78e03dc-4a91-4a70-a0c8-740fd57a9bbd" src="https://github.com/user-attachments/assets/579b6665-60c2-4fa3-b727-3b885e95366a" />
+
+5. Set up server connection
+* Host name/address: `db` _(or the contianer name set here: https://github.com/mjacquot1/WeVoteServer/blob/61ccbd45ba9c87960269ea65dc0e8eeca6f0bf03/compose.yaml#L4_
+* Port: `5432` 
+* Maintenance database: `postgres`
+* Username: `environment_variables.json` value for `DATABASE_USER`
+* Password: Whatever password was used when setup up your postgres superuser as in these instructions: https://github.com/mjacquot1/WeVoteServer/blob/develop/docs/README_API_INSTALL_POSTGRES_MAC.md
+<img width="704" height="560" alt="image" src="https://github.com/user-attachments/assets/b94a3349-2bb7-40c4-b38c-994223dd93c7" />
+
+_If necessary, run `ALTER USER  postgres  WITH PASSWORD '<your-password-here>';` for a password change_
+
+6. Click Save
+
+
 ## Resources
 
 1. Docker Compose
