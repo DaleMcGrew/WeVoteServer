@@ -1935,32 +1935,30 @@ def refresh_candidate_supporters_count_from_politician(candidate_list=[], politi
             'update_message': "",
         }
 
-    # TODO Re: WV-2304 If a politician_dict with all of the politicians did not come into this function,
-    #  we should retrieve all politicians with a single query, instead of calling "retrieve_politician" multiple times
-    #  within the below loop.
-
     try:
         with transaction.atomic():
+            # Check if we need to fetch politicians in bulk
+            if not politician_dict:
+                politician_dict = {}
+                # Collect all unique politician IDs needed for this candidate list
+                politician_we_vote_ids = [
+                    c.politician_we_vote_id for c in candidate_list
+                    if positive_value_exists(c.politician_we_vote_id)
+                ]
+
+                if politician_we_vote_ids:
+                    politician_query = Politician.objects.filter(
+                        we_vote_id__in=politician_we_vote_ids
+                    )
+                    for politician in politician_query:
+                        politician_dict[politician.we_vote_id] = politician
+
+            # Iterate through candidates and update counts from the dict
             for one_candidate in candidate_list:
                 if positive_value_exists(one_candidate.politician_we_vote_id):
-                    politician_found = False
                     if one_candidate.politician_we_vote_id in politician_dict:
                         politician = politician_dict[one_candidate.politician_we_vote_id]
-                        politician_found = True
-                    else:
-                        # TODO See note above about retrieving all politicians with a single query
-                        # We use for_update=True here.
-                        # Inside the manager, this should trigger .select_for_update()
-                        pol_results = politician_manager.retrieve_politician(
-                            politician_we_vote_id=one_candidate.politician_we_vote_id,
-                            read_only=False,
-                            for_update=True,  # TODO: Why is this necessary?
-                        )
 
-                        if pol_results['politician_found']:
-                            politician = pol_results['politician']
-                            politician_found = True
-                    if politician_found:
                         supporters_count = politician.supporters_count
                         opposers_count = politician.opposers_count
 
@@ -1980,10 +1978,11 @@ def refresh_candidate_supporters_count_from_politician(candidate_list=[], politi
                         status += "POLITICIAN_NOT_FOUND_FOR: " + str(one_candidate.we_vote_id) + " "
                 else:
                     status += "NO_POLITICIAN_LINK_EXISTS : "
-                # Build up a new list with the updates
+
+                # Build up the return list
                 candidate_list_updated.append(one_candidate)
 
-            # Perform the bulk update
+            # Perform the bulk update for candidates
             if len(candidate_bulk_update_list) > 0:
                 CandidateCampaign.objects.bulk_update(
                     candidate_bulk_update_list, ['opposers_count', 'supporters_count'])

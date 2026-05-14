@@ -1139,7 +1139,6 @@ class PoliticianManager(models.Manager):
             politician_id=0,
             politician_we_vote_id='',
             read_only=False,
-            for_update=False,
             seo_friendly_path='',
             voter_we_vote_id=None):
         error_result = False
@@ -1153,8 +1152,6 @@ class PoliticianManager(models.Manager):
             if positive_value_exists(politician_id):
                 if positive_value_exists(read_only):
                     politician = Politician.objects.using('readonly').get(id=politician_id)
-                elif positive_value_exists(for_update):
-                    politician = Politician.objects.select_for_update().get(id=politician_id)
                 else:
                     politician = Politician.objects.get(id=politician_id)
                 politician_id = politician.id
@@ -1163,8 +1160,6 @@ class PoliticianManager(models.Manager):
             elif positive_value_exists(politician_we_vote_id):
                 if positive_value_exists(read_only):
                     politician = Politician.objects.using('readonly').get(we_vote_id=politician_we_vote_id)
-                elif positive_value_exists(for_update):
-                    politician = Politician.objects.select_for_update().get(we_vote_id=politician_we_vote_id)
                 else:
                     politician = Politician.objects.get(we_vote_id=politician_we_vote_id)
                 politician_id = politician.id
@@ -1173,8 +1168,6 @@ class PoliticianManager(models.Manager):
             elif positive_value_exists(seo_friendly_path):
                 if positive_value_exists(read_only):
                     politician = Politician.objects.using('readonly').get(seo_friendly_path__iexact=seo_friendly_path)
-                elif positive_value_exists(for_update):
-                    politician = Politician.objects.select_for_update().get(seo_friendly_path__iexact=seo_friendly_path)
                 else:
                     politician = Politician.objects.get(seo_friendly_path__iexact=seo_friendly_path)
                 politician_id = politician.id
