@@ -19,10 +19,10 @@ from candidate.controllers import add_name_to_next_spot, copy_field_value_from_o
     generate_candidate_dict_list_from_candidate_object_list, move_candidates_to_another_politician
 from candidate.models import CandidateListManager, CandidateManager, PROFILE_IMAGE_TYPE_FACEBOOK, \
     PROFILE_IMAGE_TYPE_UNKNOWN, \
-    PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_VOTE_USA
+    PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_VOTE_USA, CandidateCampaign
 from email_outbound.models import EmailAddress
 from image.controllers import cache_image_object_to_aws, create_resized_images
-from office.models import ContestOfficeManager, ContestOfficeListManager
+from office.models import ContestOfficeManager, ContestOfficeListManager, ContestOffice
 from office_held.controllers import generate_office_held_dict_list_from_office_held_we_vote_id_list
 from organization.models import Organization, OrganizationManager
 from politician.controllers_generate_seo_friendly_path import generate_campaign_title_from_politician
@@ -3528,13 +3528,13 @@ def update_parallel_fields_with_years_in_related_objects(
                     is_battleground_race = None
                 if is_battleground_race is not None:
                     office_we_vote_id_list = []
+                    candidates_to_update = []  # List for bulk update
                     for candidate in candidate_list:
                         if positive_value_exists(update_candidate):
-                            try:
-                                candidate.is_battleground_race = is_battleground_race
-                                candidate.save()
-                            except Exception as e:
-                                status += "COULD_NOT_SAVE_CANDIDATE2: " + str(e) + " "
+                            # Modify object in memory
+                            candidate.is_battleground_race = is_battleground_race
+                            candidates_to_update.append(candidate)
+
                         # For each Candidate we update, update the last ContestOffice for that year
                         link_results = candidate_manager.retrieve_candidate_to_office_link(
                             candidate_we_vote_id=candidate.we_vote_id)
@@ -3545,6 +3545,14 @@ def update_parallel_fields_with_years_in_related_objects(
                             candidate_to_office_link_list = link_results['candidate_to_office_link_list']
                             for candidate_to_office_link in candidate_to_office_link_list:
                                 office_we_vote_id_list.append(candidate_to_office_link.contest_office_we_vote_id)
+
+                    # Perform Candidate Bulk Save
+                    if len(candidates_to_update) > 0:
+                        try:
+                            CandidateCampaign.objects.bulk_update(candidates_to_update, ['is_battleground_race'])
+                        except Exception as e:
+                            status += "BULK_COULD_NOT_SAVE_CANDIDATES: " + str(e) + " "
+
                     # Now update all related offices for this candidate in this year
                     if len(office_we_vote_id_list) > 0 and update_office:
                         office_results = office_list_manager.retrieve_offices(
@@ -3552,31 +3560,31 @@ def update_parallel_fields_with_years_in_related_objects(
                             return_list_of_objects=True)
                         if office_results['success']:
                             office_list = office_results['office_list_objects']
+                            offices_to_update = []  # List for bulk update
                             latest_election_day_text_as_integer = 0
                             if len(office_list) > 0:
-                                # Just pick one to start with in case "get_election_day_text()" returns nothing
                                 latest_office_we_vote_id = office_list[0].we_vote_id
                             else:
                                 latest_office_we_vote_id = ''
-                            # Filter out primary office races
+
+                            # Filter out primary office races to find the latest office
                             for office in office_list:
                                 election_day_text = office.get_election_day_text()
                                 if positive_value_exists(election_day_text):
-                                    date_as_integer = \
-                                        convert_we_vote_date_string_to_date_as_integer(election_day_text)
+                                    date_as_integer = convert_we_vote_date_string_to_date_as_integer(election_day_text)
                                     if date_as_integer > latest_election_day_text_as_integer:
                                         latest_election_day_text_as_integer = date_as_integer
                                         latest_office_we_vote_id = office.we_vote_id
+
+                            # Prepare offices for bulk update
                             for office in office_list:
-                                if office.we_vote_id is latest_office_we_vote_id:
+                                if office.we_vote_id == latest_office_we_vote_id:
                                     if update_office:
-                                        try:
-                                            office.is_battleground_race = is_battleground_race
-                                            office.save()
-                                        except Exception as e:
-                                            status += "COULD_NOT_SAVE_OFFICE: " + str(e) + " "
+                                        office.is_battleground_race = is_battleground_race
+                                        offices_to_update.append(office)
+
                                     if positive_value_exists(office.office_held_we_vote_id) and \
-                                            office.office_held_we_vote_id not in office_held_we_vote_id_list:
+                                        office.office_held_we_vote_id not in office_held_we_vote_id_list:
                                         office_held_we_vote_id_list.append(office.office_held_we_vote_id)
                                     under_results = update_candidates_under_this_office(
                                         field_key_root=field_key_root,
@@ -3584,9 +3592,16 @@ def update_parallel_fields_with_years_in_related_objects(
                                         years_false_list=years_false_list,
                                         years_true_list=years_true_list)
                                     if under_results['success']:
-                                        office_held_we_vote_id_list = \
-                                            list(set(office_held_we_vote_id_list +
-                                                     under_results['office_held_we_vote_id_list']))
+                                        office_held_we_vote_id_list = list(set(office_held_we_vote_id_list +
+                                                                               under_results[
+                                                                                   'office_held_we_vote_id_list']))
+
+                            # Perform Office Bulk Save
+                            if len(offices_to_update) > 0:
+                                try:
+                                    ContestOffice.objects.bulk_update(offices_to_update, ['is_battleground_race'])
+                                except Exception as e:
+                                    status += "BULK_COULD_NOT_SAVE_OFFICE: " + str(e) + " "
 
     # For each Representative we dealt with, update OfficeHeld
     if success and positive_value_exists(office_held_we_vote_id_list) and update_office_held:
