@@ -53,7 +53,7 @@ Once the containers are running, you can now access the API at [http://localhost
 
 ### 5. Remove containers and data
 
-To stop and remove all containers and saved data (including database data), run the following command. Only do this if you want to completely remove your development environment or start over from scratch.  You may need to do this if you manually dropped tables or the database, because Docker will not recreate parts, only the whole.
+To stop and remove all containers and saved data (including all of your database data), run the following command. Only do this if you want to completely remove your development environment or start over from scratch.  You may need to do this if you manually dropped tables or the database, because Docker will not recreate parts, only the whole.
 ```
 docker compose down -v
 ```
