@@ -14,16 +14,14 @@ Only [Docker Desktop](https://docs.docker.com/get-docker/) is required.
   cd WeVoteServer
   ```
 
-### 2. Create an environment file called `.env` to provide required settings. Example:
+### 2. Create an environment file called `.env` to provide required settings. Suggested initial values:
 
   ```
-  DATABASE_PASSWORD=MyDBpassword
-  DJANGO_SUPERUSER_EMAIL=email@test.com
-  DJANGO_SUPERUSER_PASSWORD=MyAdminPassword
-
-  # You can optionally override the default values for database user and name
-  # DATABASE_USER=postgres
-  # DATABASE_NAME=wevoteserverdb
+DATABASE_PASSWORD=admin
+DJANGO_SUPERUSER_EMAIL=anyone@wevoteeducation.org
+DJANGO_SUPERUSER_PASSWORD=admin
+DATABASE_USER=postgres
+DATABASE_NAME=wevoteserverdb
   ```
 
 ### 3. Create Docker network

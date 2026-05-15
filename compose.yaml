@@ -3,13 +3,9 @@ name: wevoteserver
 services:
   db:
     environment:
-      - DATABASE_NAME=db
       - POSTGRES_USER=${DATABASE_USER:-postgres}
-      - POSTGRES_DB=${DATABASE_NAME:-db}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-admin}
-      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-postgres}
-      - DJANGO_SUPERUSER_PASSWORD
-      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@example.com}
+      - POSTGRES_DB=${DATABASE_NAME:-wevoteserverdb}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 10s
@@ -53,17 +49,17 @@ services:
     # Note: DATABASE_HOST=db does not indicate the name of the host, it is used to associate the api service with the db service
     # Note: DEV_SERVER_TYPE should be 'runserver' for HTTP, and 'runsslserver' for HTTPS
     environment:
-      - DATABASE_NAME=db
-      - DATABASE_NAME_READONLY=db
+      - DATABASE_NAME=${DATABASE_NAME:-wevoteserverdb}
+      - DATABASE_NAME_READONLY=${DATABASE_NAME:-wevoteserverdb}
       - DATABASE_HOST=db
       - DATABASE_HOST_READONLY=db
       - DATABASE_USER=${DATABASE_USER:-postgres}
-      - DATABASE_USER_READONLY=${DATABASE_USER_READONLY:-postgres}
+      - DATABASE_USER_READONLY=${DATABASE_USER:-postgres}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD:-admin}
-      - DATABASE_PASSWORD_READONLY=${DATABASE_PASSWORD_READONLY:-admin}
+      - DATABASE_PASSWORD_READONLY=${DATABASE_PASSWORD:-admin}
       - DATABASE_PORT=${DATABASE_PORT:-5432}
-      - DATABASE_PORT_READONLY=${DATABASE_PORT_READONLY:-5432}
-      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@example.com}
+      - DATABASE_PORT_READONLY=${DATABASE_PORT:-5432}
+      - DJANGO_SUPERUSER_EMAIL
       - DJANGO_SUPERUSER_PASSWORD
       - AWS_ENDPOINT_URL=http://localstack:4566
       - AWS_ACCESS_KEY_ID=test
