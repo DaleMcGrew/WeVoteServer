@@ -13,8 +13,11 @@ RUN pip install -r /tmp/requirements.txt --no-cache-dir && \
 # copy entrypoint script
 COPY docker/dev/entrypoint /usr/local/bin/docker-entrypoint
 
+# COPY docker/dev/init-user-db.sh /docker-entrypoint-initdb.d/init-user-db.sh
+
 # setup user and create required directories
 RUN useradd wevote && mkdir -p /var/log/wevote /wevote && chown wevote:wevote /var/log/wevote /wevote
+
 
 # define docker runtime
 WORKDIR /wevote/code
