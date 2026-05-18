@@ -3498,6 +3498,8 @@ def politician_edit_process_view(request):
     except Exception as e:
         messages.add_message(request, messages.ERROR, 'LINKED_CANDIDATE_PROBLEM: ' + str(e))
         linked_candidate_list = []
+    candidates_to_update = []
+    total_positions_changed = 0
     for candidate in linked_candidate_list:
         if positive_value_exists(candidate.id):
             variable_name = "unlink_candidate_" + str(candidate.id) + "_from_politician"
@@ -3506,18 +3508,33 @@ def politician_edit_process_view(request):
                 candidate.politician_we_vote_id = None
                 candidate.politician_id = None
                 candidate.seo_friendly_path = None
-                candidate.save()
-                # Now update positions
+
+                # Add to list for bulk saving later
+                candidates_to_update.append(candidate)
+
+                # Update positions (Internal logic usually requires individual processing)
                 results = position_list_manager.update_politician_we_vote_id_in_all_positions(
                     candidate_we_vote_id=candidate.we_vote_id,
                     new_politician_id=None,
                     new_politician_we_vote_id=None)
 
-                messages.add_message(request, messages.INFO,
-                                     'Candidate unlinked, number of positions changed: {number_changed}'
-                                     ''.format(number_changed=results['number_changed']))
-            else:
-                pass
+                if 'number_changed' in results:
+                    total_positions_changed += results['number_changed']
+
+    # Perform the bulk save
+    if candidates_to_update:
+        try:
+            CandidateCampaign.objects.bulk_update(
+                candidates_to_update,
+                ['politician_we_vote_id', 'politician_id', 'seo_friendly_path']
+            )
+            messages.add_message(
+                request, messages.INFO,
+                'Unlinked {count} candidate(s). Total positions updated: {total}'
+                ''.format(count=len(candidates_to_update), total=total_positions_changed)
+            )
+        except Exception as e:
+            messages.add_message(request, messages.ERROR, 'BULK_CANDIDATE_UNLINK_FAILED: ' + str(e))
 
     performance_list.append({
         'enum_key': 'UNLNK_CANDIDATES',
@@ -3537,19 +3554,34 @@ def politician_edit_process_view(request):
     except Exception as e:
         messages.add_message(request, messages.ERROR, 'LINKED_REPRESENTATIVE_PROBLEM: ' + str(e))
         linked_representative_list = []
+    representatives_to_update = []
+    # Create a list to hold objects destined for the bulk update
     for representative in linked_representative_list:
         if positive_value_exists(representative.id):
             variable_name = "unlink_representative_" + str(representative.id) + "_from_politician"
             unlink_representative = positive_value_exists(request.POST.get(variable_name, False))
             if positive_value_exists(unlink_representative) and positive_value_exists(politician_we_vote_id):
+                # Modify the object attributes in memory
                 representative.politician_we_vote_id = None
                 representative.politician_id = None
                 representative.seo_friendly_path = None
-                representative.save()
 
-                messages.add_message(request, messages.INFO, 'Representative unlinked.')
-            else:
-                pass
+                # Add to our update list instead of calling .save()
+                representatives_to_update.append(representative)
+
+    # Perform the single database call for all modified representatives
+    if representatives_to_update:
+        try:
+            Representative.objects.bulk_update(
+                representatives_to_update,
+                ['politician_we_vote_id', 'politician_id', 'seo_friendly_path']
+            )
+            messages.add_message(
+                request, messages.INFO,
+                f'{len(representatives_to_update)} Representative(s) unlinked.'
+            )
+        except Exception as e:
+            messages.add_message(request, messages.ERROR, 'BULK_UNLINK_REPRESENTATIVE_PROBLEM: ' + str(e))
 
     performance_list.append({
         'enum_key': 'UNLNK_REPS',
@@ -3576,6 +3608,8 @@ def politician_edit_process_view(request):
     # ##################################
     # Link Candidates to this Politician
     t0 = time()
+    candidates_to_update = []
+    total_positions_changed = 0
     # Transaction ensures all candidate saves and position_list_manager updates are committed together
     with transaction.atomic():
         for candidate in related_candidate_list:
@@ -3587,20 +3621,38 @@ def politician_edit_process_view(request):
                     candidate.politician_we_vote_id = politician_we_vote_id
                     candidate.seo_friendly_path = politician_on_stage.seo_friendly_path
                     if not positive_value_exists(candidate.vote_usa_politician_id) and \
-                            positive_value_exists(vote_usa_politician_id):
+                        positive_value_exists(vote_usa_politician_id):
                         candidate.vote_usa_politician_id = vote_usa_politician_id
-                    candidate.save()
+
+                    # Add to bulk list instead of individual .save()
+                    candidates_to_update.append(candidate)
+
                     # Now update positions
                     results = position_list_manager.update_politician_we_vote_id_in_all_positions(
                         candidate_we_vote_id=candidate.we_vote_id,
                         new_politician_id=politician_id,
                         new_politician_we_vote_id=politician_we_vote_id)
 
-                    messages.add_message(request, messages.INFO,
-                                         'Candidate linked, number of positions changed: {number_changed}'
-                                         ''.format(number_changed=results['number_changed']))
+                    if 'number_changed' in results:
+                        total_positions_changed += results['number_changed']
                 else:
                     pass
+
+        # Perform the single bulk update for all linked candidates
+        if candidates_to_update:
+            fields_to_update = [
+                'politician_id',
+                'politician_we_vote_id',
+                'seo_friendly_path',
+                'vote_usa_politician_id'
+            ]
+            CandidateCampaign.objects.bulk_update(candidates_to_update, fields_to_update)
+
+            messages.add_message(
+                request, messages.INFO,
+                'Linked {count} candidate(s). Total positions updated: {total}'
+                ''.format(count=len(candidates_to_update), total=total_positions_changed)
+            )
 
     performance_list.append({
         'enum_key': 'LINK_CANDIDATES',
@@ -3622,6 +3674,7 @@ def politician_edit_process_view(request):
     # ##################################
     # Link Representatives to this Politician
     t0 = time()
+    representatives_to_update = []
     for representative in related_representative_list:
         if positive_value_exists(representative.id):
             variable_name = "link_representative_" + str(representative.id) + "_to_politician"
@@ -3631,9 +3684,29 @@ def politician_edit_process_view(request):
                 representative.politician_we_vote_id = politician_we_vote_id
                 representative.seo_friendly_path = politician_on_stage.seo_friendly_path
                 if not positive_value_exists(representative.vote_usa_politician_id) and \
-                        positive_value_exists(vote_usa_politician_id):
+                    positive_value_exists(vote_usa_politician_id):
                     representative.vote_usa_politician_id = vote_usa_politician_id
-                representative.save()
+
+                # Add to list for bulk update instead of saving now
+                representatives_to_update.append(representative)
+
+    # Perform the bulk save
+    if representatives_to_update:
+        try:
+            fields_to_update = [
+                'politician_id',
+                'politician_we_vote_id',
+                'seo_friendly_path',
+                'vote_usa_politician_id'
+            ]
+            Representative.objects.bulk_update(representatives_to_update, fields_to_update)
+
+            messages.add_message(
+                request, messages.INFO,
+                'Linked {count} representative(s).'.format(count=len(representatives_to_update))
+            )
+        except Exception as e:
+            messages.add_message(request, messages.ERROR, 'BULK_REPRESENTATIVE_LINK_FAILED: ' + str(e))
     
     performance_list.append({
         'enum_key': 'LINK_REPS',
