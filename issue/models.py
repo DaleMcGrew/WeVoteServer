@@ -888,7 +888,6 @@ class OrganizationLinkToIssueList(models.Manager):
 
         try:
             if positive_value_exists(issue_we_vote_id):
-                # Count only links where organization exists in Organization table
                 organization_link_to_issue_query = OrganizationLinkToIssue.objects.using('readonly').filter(
                     issue_we_vote_id=issue_we_vote_id,  # 2024-09-01 Removed __iexact
                     link_active=True
