@@ -157,11 +157,9 @@ the following command:
     
 23. Create a new (or the first) virtual environment
 
-   "PyCharm makes it possible to use the virtualenv tool to create a project-specific isolated virtual environment. The main purpose of virtual environments is to manage settings and dependencies of a particular project regardless of other Python projects. virtualenv tool comes bundled with PyCharm, so the user does not need to install it."
+> "PyCharm makes it possible to use the virtualenv tool to create a project-specific isolated virtual environment. The main purpose of virtual environments is to manage settings and dependencies of a particular project regardless of other Python projects. virtualenv tool comes bundled with PyCharm, so the user does not need to install it."
 
-Follow the Pycharm instructions for creating a virtual environment, then come back to these instructions to finish your installation.
-
-https://www.jetbrains.com/help/pycharm/creating-virtual-environment.html
+Follow the Pycharm instructions [here](https://www.jetbrains.com/help/pycharm/creating-virtual-environment.html) for creating a virtual environment - set the "Base Python" version to **3.13** otherwise there will be errors in later steps, then come back to these instructions to finish your installation.
 
 24. Test that the newly installed Python is in the path.  Open a new terminal window in the
 PyCharm IDE, and your new vitural environment should show in the beginning of the prompt.
