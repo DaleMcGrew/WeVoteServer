@@ -25,4 +25,7 @@ djlint templates --lint
 
 # formatting
 djlint templates --check
+
+# to run a check without modifying files
+djlint templates --check --indent
 ```
