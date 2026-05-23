@@ -175,7 +175,7 @@ def issue_list_view(request):
     issue_search = request.GET.get('issue_search', '')
     show_hidden_issues = request.GET.get('show_hidden_issues', False)
     show_all_elections = positive_value_exists(request.GET.get('show_all_elections', False))
-    cleanup_links = True
+    cleanup_links = False  # WV-4519 Solution related to: Endorsement count at bottom of Topic details page does not match the count on the Ready page list of Topics
     if cleanup_links :
         results = cleanup_organization_links()
         if results['total_remaining'] ==0:
