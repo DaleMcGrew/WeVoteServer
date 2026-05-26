@@ -43,6 +43,7 @@ from import_export_ballotpedia.controllers import groom_ballotpedia_data_for_pro
 from import_export_ctcl.controllers import CTCL_VOTER_INFO_URL
 from import_export_google_civic.controllers import REPRESENTATIVES_BY_ADDRESS_URL
 from import_export_vote_usa.controllers import VOTE_USA_VOTER_INFO_URL
+from import_export_vote_usa.controllers_candidates import update_existing_candidates_from_candidates_api
 import json
 import math
 from polling_location.models import KIND_OF_LOG_ENTRY_BALLOT_RECEIVED, KIND_OF_LOG_ENTRY_REPRESENTATIVES_RECEIVED, \
@@ -3451,6 +3452,14 @@ def retrieve_ballots_for_polling_locations_api_v4_view(request):
         status += 'FAILED_TO_CREATE_VOLUNTEER_TASK_COMPLETED: ' \
                   '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
 
+    if positive_value_exists(google_civic_election_id) and positive_value_exists(state_code):
+        update_candidates_results = update_existing_candidates_from_candidates_api(
+            google_civic_election_id=google_civic_election_id, 
+            state_code=state_code)
+        if not update_candidates_results['success']:
+            status += 'UPDATE_EXISTING_CANDIDATES_FROM_CANDIDATES_API_FAILED: '
+            status += update_candidates_results.get('status', '')
+            
     if positive_value_exists(use_batch_process):
         from import_export_batches.controllers_batch_process import \
             schedule_retrieve_ballots_for_polling_locations_api_v4

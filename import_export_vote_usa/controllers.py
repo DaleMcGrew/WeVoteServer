@@ -25,6 +25,7 @@ VOTE_USA_CANDIDATE_QUERY_URL = "https://vote-usa.org/api/v1.asmx/candidatesQuery
 VOTE_USA_ELECTION_QUERY_URL = "https://vote-usa.org/api/v1.asmx/electionQuery"
 VOTE_USA_VOTER_INFO_URL = "https://vote-usa.org/api/v1.asmx/voterInfoQuery"
 VOTE_USA_VOTER_INFO_QUERY_TYPE = "voterinfo"
+VOTE_USA_CANDIDATE_QUERY_TYPE = "candidatequery"
 
 HEADERS_FOR_VOTE_USA_API_CALL = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
