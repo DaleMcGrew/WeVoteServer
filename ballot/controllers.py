@@ -1432,16 +1432,18 @@ def choose_election_and_prepare_ballot_data(
         results['status'] = status
         return results
 
-    from ballot.controllers_ballot_from_offices_held import generate_ballot_data_from_offices_held
-    results = generate_ballot_data_from_offices_held(
-        voter_device_link=voter_device_link,
-        google_civic_election_id=google_civic_election_id,
-        voter_address=voter_address)
-    status += results['status']
-    if results['use_office_held_ballot'] and positive_value_exists(results['offices_held_for_location_id']):
-        results['status'] = status
-        results['status'] += 'USING_OFFICES_HELD_BALLOT '
-        return results
+    # The following code is commented out because it was used to show ballot data from a previous election
+    #  We no longer want to do this.
+    # from ballot.controllers_ballot_from_offices_held import generate_ballot_data_from_offices_held
+    # results = generate_ballot_data_from_offices_held(
+    #     voter_device_link=voter_device_link,
+    #     google_civic_election_id=google_civic_election_id,
+    #     voter_address=voter_address)
+    # status += results['status']
+    # if results['use_office_held_ballot'] and positive_value_exists(results['offices_held_for_location_id']):
+    #     results['status'] = status
+    #     results['status'] += 'USING_OFFICES_HELD_BALLOT '
+    #     return results
 
     from ballot.controllers_upcoming_empty_election import retrieve_next_election_from_this_state
     results = retrieve_next_election_from_this_state(
