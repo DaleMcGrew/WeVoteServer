@@ -1080,9 +1080,10 @@ def voter_ballot_items_retrieve_for_api(  # voterBallotItemsRetrieve
     voter_ballot_saved_found = results['voter_ballot_saved_found']
     if not positive_value_exists(text_for_map_search):
         text_for_map_search = results['text_for_map_search']
-    if results['use_election_without_ballot_data']:
+    if 'use_election_without_ballot_data' in results:
+        use_election_without_ballot_data = results['use_election_without_ballot_data']
+    if positive_value_exists(use_election_without_ballot_data):
         text_for_map_search_too_short = results['text_for_map_search_too_short']
-        use_election_without_ballot_data = True
     elif results['use_office_held_ballot']:
         offices_held_for_location_id = results['offices_held_for_location_id']
         if voter_address and hasattr(voter_address, 'text_for_map_search'):
