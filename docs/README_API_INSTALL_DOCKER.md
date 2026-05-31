@@ -15,16 +15,16 @@ Only [Docker Desktop](https://docs.docker.com/get-docker/) is required.
   ```
 
 ### 2. Create an environment file called `.env` to provide required settings. Example:
+In the root directory (in the same directory as the requirements.txt file), create a new .env file with these values:
 
-  ```
-  DATABASE_PASSWORD=MyDBpassword
-  DJANGO_SUPERUSER_EMAIL=email@test.com
-  DJANGO_SUPERUSER_PASSWORD=MyAdminPassword
-
-  # You can optionally override the default values for database user and name
-  # DATABASE_USER=postgres
-  # DATABASE_NAME=wevoteserverdb
-  ```
+```
+WE_VOTE_SERVER_PROTOCOL=https
+DATABASE_USER=postgres
+DATABASE_PASSWORD=admin
+DATABASE_NAME=wevoteserverdb
+DJANGO_SUPERUSER_EMAIL=anyone@wevoteeducation.org
+DJANGO_SUPERUSER_PASSWORD=admin
+```
 
 ### 3. Create Docker network
 We will run all WeVote docker containers in an isolated docker network. Since the backend (WeVoteServer) and frontend (WebApp) both use docker compose (which typically manages docker networks for us), we must manually create this shared network to avoid conflicts. Even if you are not planning on running your own frontend, this step must still be completed.
@@ -53,9 +53,27 @@ docker compose down
 
 Once the containers are running, you can now access the API at [http://localhost:8000/](http://localhost:8000/)
 
-### 5. Remove containers and data
+### 5. Extra step to make changes to Docker startup files take effect
 
-To stop and remove all containers and saved data (including database data), run the following command. Only do this if you want to completely remove your development environment or start over from scratch.
+The `StatReloader` will automatically reload changes you make to project files as you save them, except for these startup files:
+```
+   docker/Dockerfile.dev
+   docker/dev/entrypoint
+   compose.yaml
+   config/environment_variables.json
+```
+Most of the time you won't be changing these files, but if you do, you will need to run the following command to get the changes into the Docker 'layers'.
+```
+docker compose build --no-cache
+```
+
+### 6. Remove containers and data
+
+**Do not run these commands as part of the installation steps, but if you  them they are documented here.**
+
+The postgres database is stored persistently on your local computer outside of the Docker container.  This allows the database to be accessed between and in subsequent docker sessions.
+
+To stop and remove all containers and saved data (including completely deleting the database and all its data), run the following command. Only do this if you want to completely remove your development environment or start over from scratch.  
 ```
 docker compose down -v
 ```
@@ -65,27 +83,177 @@ docker network rm wevote
 ```
 
 ## PgAdmin
-#### 1. Access PgAdmin Container
-Go to `localhost:8080` in your local web browser to access the `PgAdmin` container UI.
+### 1. Access PgAdmin Container
+Go to `localhost:8080` in your local web browser to access the `PgAdmin` container UI.  If you used all the default environment_variables: on PgAdmin login screen, your "Email Address/Username" will be `fake_email@wevoteeducation.org` and your password will be `admin`.
 ### 2. Register New Server
-1. Select `Add New Server` on the homepage.  
-<img width="692" height="135" alt="582966431-c6ad5816-26dc-4b5d-a745-c2bbcb0cefbc" src="https://github.com/user-attachments/assets/c0772396-ac83-4537-9a10-8bcfcf5a7c7c" />
+1. Right-click on 'Servers' in the left pane, and select Register/Server.
 
-3. Server name is `environment_variables.json` value for `DATABASE_NAME`
-<img width="696" height="547" alt="582966836-f78e03dc-4a91-4a70-a0c8-740fd57a9bbd" src="https://github.com/user-attachments/assets/579b6665-60c2-4fa3-b727-3b885e95366a" />
+[//]: # (<img width="692" height="135" alt="582966431-c6ad5816-26dc-4b5d-a745-c2bbcb0cefbc" src="https://github.com/user-attachments/assets/c0772396-ac83-4537-9a10-8bcfcf5a7c7c" />)
 
-5. Set up server connection
-* Host name/address: `db` _(or the contianer name set here: https://github.com/mjacquot1/WeVoteServer/blob/61ccbd45ba9c87960269ea65dc0e8eeca6f0bf03/compose.yaml#L4_
+3. Server name is the `environment_variables.json` value for `DATABASE_NAME` (If you used all the default environment_variables and suggested .env file settings, the server name will be `wevoteserverdb`)
+
+![ScreenShot](images/RegisterServerGeneral.png)
+[//]: # (This will be changed to a GitHub reference once it is merged)
+
+5. Set up the server connection (click the second tab 'Connection')
+* Host name/address: `db` _(or the container name set here: https://github.com/wevote/WeVoteServer/blob/61ccbd45ba9c87960269ea65dc0e8eeca6f0bf03/compose.yaml#L4_
 * Port: `5432` 
 * Maintenance database: `postgres`
-* Username: `environment_variables.json` value for `DATABASE_USER`
-* Password: Whatever password was used when setup up your postgres superuser as in these instructions: https://github.com/mjacquot1/WeVoteServer/blob/develop/docs/README_API_INSTALL_POSTGRES_MAC.md
-<img width="704" height="560" alt="image" src="https://github.com/user-attachments/assets/b94a3349-2bb7-40c4-b38c-994223dd93c7" />
+* Username: `environment_variables.json` value for `DATABASE_USER` (The default value is 'postgres')
+* Password: Whatever password was used when setup up your postgres superuser as in these instructions (The default value is 'admin'):
 
-_If necessary, run `ALTER USER  postgres  WITH PASSWORD '<your-password-here>';` for a password change_
+[//]: # (https://github.com/wevote/WeVoteServer/blob/develop/docs/README_API_INSTALL_POSTGRES_MAC.md)
+
+[//]: # (<img width="704" height="560" alt="image" src="https://github.com/user-attachments/assets/b94a3349-2bb7-40c4-b38c-994223dd93c7" />)
+
+![ScreenShot](images/RegisterServerConnection.png)
+
+6. **Only if pgadmin does not recognize your password for 'Register New Server'**, see the following section titled <ins>If 'Add New Server' does not accept the password for your postgres user</ins>, to do a password reset for the maintenance database user 'postgres'.
 
 6. Click Save
 
+## If 'Add New Server' does not accept the password for your postgres user
+
+In the Docker Desktop app, on the "Containers" tab on the vertical left tab menu, click the `db-1`  container.
+
+Then the `wevoteserver-db-1` panel will be displayed to the right.
+
+Click the 'Exec' tab choice on the horizontal tab menu.
+
+![ScreenShot](images/DockerDesktopSetPostgresPwd.png)
+
+[//]: # (This will be changed to a scalable image in the github cdomain after the PR that adds this file goes live)
+
+In the terminal
+1. Enter the bash shell, by entering 'bash'
+2. Start the PSQL command line app, by entering 'psql'
+3. Enter the SQL command to change the password by entering `ALTER USER postgres WITH PASSWORD 'admin';`
+4. Then exit PSQL by entering 'exit'
+
+## Running your WeVoteServer in HTTPS mode
+
+You can run your WeVoteServer in HTTP mode, and it will work perfectly well for many uses.  Some extra steps are required to run your server in HTTPS mode, which will
+handle more use cases:
+1. 'Sign in with Apple' will not redirect to localhost during OAUTH, same for Facebook.  
+2. Both OAUTH services will not allow a redirect to localhost and both require HTTPS, so these changes are necessary for many testing scenarios.  
+3. There are other external APIs that require HTTPS and a real commercial cert, but I forget which ones.
+
+It is up to you, but HTTPS will allow you to avoid some edge case problems.  If you go forward with HTTP and you decided a later point you want HTTPS, these changes can be made at any time.
+
+### First step toward running in HTTPS:  Make a small necessary change to your /etc/hosts
+
+To make the change:
+
+Make a second alias for 127.0.0.1 with this domain: `wevotedeveloper.com`
+
+Explanation from the python-social-auth docs: "[If you define a redirect URL in an OAuth setup page, be sure to use http, or localhost because it won’t work](https://python-social-auth.readthedocs.io/en/latest/backends/facebook.html)"
+
+First we have to make a small change to /etc/hosts.  This is the before:
+```
+    WeVoteServer % cat /etc/hosts
+    ##
+    # Host Database
+    #
+    # localhost is used to configure the loopback interface
+    # when the system is booting.  Do not change this entry.
+    ##
+    127.0.0.1       localhost
+    255.255.255.255 broadcasthost
+    ::1             localhost
+    WeVoteServer % 
+```
+Add a local domain alias `wevotedeveloper.com` for the OAuth Redirect URIs. 
+To do this you need to add `wevotedeveloper.com` to your `127.0.0.1` line in /etc/hosts.  After the change:
+```
+    WeVoteServer % cat /etc/hosts
+    ##
+    # Host Database
+    #
+    # localhost is used to configure the loopback interface
+    # when the system is booting.  Do not change this entry.
+    ##
+    127.0.0.1       localhost wevotedeveloper.com
+    255.255.255.255 broadcasthost
+    ::1             localhost
+    WeVoteServer % 
+```
+
+To open etc/hosts Linux/macOS: you will need to elevate your privileges with sudo to make this edit to this system file ... ` % sudo vi /etc/hosts` You can do with any editor that you would prefer, as long as it can be run with sudo.
+
+To open etc/hosts in Windows: 
+
+1. Open the Start menu.
+2. In the Run box, type Notepad.exe and right-click on Notepad, so that you can Run as administrator.  Do not press Enter here, or you won't have sufficient privileges to edit this system file.
+3. In Notepad, select File then Open.
+4. Navigate to C:\Windows\System32\drivers\etc
+5. Change the file type to open from Text Documents (*.txt) to All Files (*.*).
+6. Open the hosts file.
+
+### Install the SSL Certificates
+We have real commercial SSL certs from 'Sectigo' for wevovtedeveloper.com -- ask Dale for a copy of them.
+
+The two files are `wevotedeveloper.com_key.txt` and `wevotedeveloper.com.crt`
+
+Copy them to your cert directory for example ... `WeVoteServer/cert/wevotedeveloper.com_key.txt`
+
+### Changes to your environment_variables.json file
+If you are setting up SSL, you probably will be doing the same for the WebApp, so make the both of the following changes to `environment_variables.json`.
+
+In the first section of `environment_variables.json`, change the value of `WE_VOTE_SERVER_PROTOCOL` from http to https.  
+You are probably going to set up the WebApp to run in https also, so change the value of `WEB_APP_ROOT_URL` to `https://wevotedeveloper.com:3000`
+
+After these changes the file should look like this:
+```
+  "_comment":                       "Set WE_VOTE_SERVER_PROTOCOL to http or https, always http for production",
+  "WE_VOTE_SERVER_PROTOCOL":        "https",
+  "WE_VOTE_SERVER_DOMAIN_HTTP":     "localhost",
+  "WE_VOTE_SERVER_DOMAIN_HTTPS":    "wevotedeveloper.com",
+  "_comment":                       "Note that WE_VOTE_SERVER_PORT can be undefined if not needed",
+  "WE_VOTE_SERVER_PORT":            "8000",
+
+  "WEB_APP_ROOT_URL":               "https://wevotedeveloper.com:3000",
+  "CAMPAIGNS_ROOT_URL":             "http://localhost:3000",
+  "CHALLENGES_ROOT_URL":            "http://localhost:3000",
+```
+
+### Changes to your .env file
+In your root .env file change
+```
+WE_VOTE_SERVER_PROTOCOL=http
+```
+to
+```
+WE_VOTE_SERVER_PROTOCOL=https
+```
+
+### Final steps for Docker (for both http and https setups)
+
+Add the changes to the Docker container
+```
+   docker compose build --no-cache
+```
+Restart the Docker container
+```
+   docker compose up
+```
+
+## Import some ballot data from the live production API Server
+
+From the startup page at 'http://localhost:8000/apis/v1/docs/' or 'https://wevotedeveloper.com:8000/apis/v1/docs/' , click the `admin tools.` link.
+
+`Sign with email` in to the local admin page with your default user (probably 'samuel@adams.com' and password 'ale')
+
+If you get a  `Your account doesn't have access to this page.` notice -- you can safely ignore this, it is due to a very old issue.
+
+Click on the WeVote icon on the top to take you to the 'We Vote Admin Menu', scroll down and click `Fast Load (or Sync) Data with Master We Vote Servers`
+
+Now you will get a 'Retrieve Fast Load Authentication' -- You must use the credentials that you use to access `https://api.wevoteusa.org` -- 
+this allows you to download the developer data set for your local postgres server.  (These credentials are NOT `samuel@adams.com/ale`). 
+
+You should see the "You are authenticated" indicator in green.  Then press the `FAST LOAD ALL THE ELECTION DATA, TO YOUR LOCAL POSTGRES` button.  You will see on screen progress as the 
+tables are loaded, this takes about 30 minutes to complete on a fast Mac with a fast internet connection.  It will be slower if you are using a virtual machine.
+
+That's it!
 
 ## Resources
 

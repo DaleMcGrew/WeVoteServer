@@ -1,11 +1,17 @@
 {
   "_comment":                       "Please see Password and Access key document for details about how to reset.",
 
-  "_comment":                       "Note that WE_VOTE_SERVER_ROOT_URL should end without slash",
-  "WE_VOTE_SERVER_ROOT_URL":        "http://localhost:8000",
+  "_comment":                       "Set WE_VOTE_SERVER_PROTOCOL to http or https, always http for production",
+  "WE_VOTE_SERVER_PROTOCOL":        "http",
+  "WE_VOTE_SERVER_DOMAIN_HTTP":     "localhost",
+  "WE_VOTE_SERVER_DOMAIN_HTTPS":    "wevotedeveloper.com",
+  "_comment":                       "Note that WE_VOTE_SERVER_PORT can be undefined if not needed",
+  "WE_VOTE_SERVER_PORT":            "8000",
+
   "WEB_APP_ROOT_URL":               "http://localhost:3000",
   "CAMPAIGNS_ROOT_URL":             "http://localhost:3000",
   "CHALLENGES_ROOT_URL":            "http://localhost:3000",
+
   "_comment":                       "Valid timezone options include: US/Eastern (EST), US/Pacific, etc.",
   "TIME_ZONE":                      "US/Pacific",
   "SERVER_IS_SOURCE_OF_TRUTH":      false,
@@ -27,6 +33,11 @@
   "DATABASE_HOST_READONLY":         "",
   "DATABASE_PORT_READONLY":         "5678",
 
+  "_comment":                       "Docker Developer Settings",
+  "DEV_SERVER_SSL_CERT":            "cert/wevotedeveloper.com.crt",
+  "DEV_SERVER_SSL_KEY":             "cert/wevotedeveloper.com_key.txt",
+  "DEV_VOTER_INITIAL_USER":         "Samuel Adams samuel@adams.com ale",
+
   "_comment":                       "analytics database settings for local.py",
   "DATABASE_ENGINE_ANALYTICS":      "django.db.backends.postgresql_psycopg2",
   "DATABASE_NAME_ANALYTICS":        "wevoteserverdb",
@@ -40,7 +51,6 @@
   "PG_ADMIN_PASSWORD":              "admin",
 
   "_comment":                       "Docker Settings",
-  "DEV_SERVER_TYPE":                "runsslserver",
   "DEV_SERVER_DOMAIN":              "wevotedeveloper.com",
   "DEV_SERVER_PORT":                "8000",
   "DEV_SERVER_SSL_CERT":            "cert/wevotedeveloper.com.crt",
