@@ -8,7 +8,7 @@ Only [Docker Desktop](https://docs.docker.com/get-docker/) is required.
 ## Installation
 
 ### 1. Clone your WeVoteServer fork (replace wevote with your github username)
-
+There is need to do this step if you already have been working with the WeVoteServer.
   ```
   git clone https://github.com/wevote/WeVoteServer.git
   cd WeVoteServer
@@ -254,6 +254,48 @@ You should see the "You are authenticated" indicator in green.  Then press the `
 tables are loaded, this takes about 30 minutes to complete on a fast Mac with a fast internet connection.  It will be slower if you are using a virtual machine.
 
 That's it!
+
+## Running and Debugging in PyCharm
+
+### You need to get PyCharm Pro to order to run Docker from PyCharm
+
+But you don't have to pay for it!  Start with the free trial, and ask someone on your team how to get the free license that is available for students and non-profit developers.
+
+Download PyCharm Pro at https://www.jetbrains.com/pycharm/
+
+### Configure a PyCharm interpreter using Docker
+
+These are JetBrains' instructions in case something goes wrong with the following steps:
+https://www.jetbrains.com/help/pycharm/using-docker-compose-as-a-remote-interpreter.html
+
+You don't need a virtual environment (even though the JetBrains instructions say to do it, because Docker itself is a virtual environment.)
+
+1) In Settings/Plugins
+Make sure the Docker plugin is installed and enabled.
+![PyCharmDockerPlugin.png](images/PyCharmDockerPlugin.png)
+2) In Settings/Python/Interpreter
+Press 'Add Interpreter' and select 'On Docker Compose...'
+![PyCharmInterpreter.png](images/PyCharmInterpreter.png)
+3) Then on the "New Target: Docker Compose" page one, set the service to 'api', and press 'Next'
+![PyCharmInterpreterPg1.png](images/PyCharmInterpreterPg1.png)
+4) Then on the "New Target: Docker Compose" page two, wait for it to do its magic, and when the spinning icon disappears, press 'Next'.
+5) Then on the "New Target: Docker Compose" page three, the "Type" is "Python" -- select the highest version of Python you have installed from the list.  I'm not sure how important the Python version is, since the Docker contains its own Python from this project's configured Docker image.
+![PyCharmInterpreterPg3.png](images/PyCharmInterpreterPg3.png)
+6) Then press 'Create', to save the Docker Compose Python Interpreter.
+
+### Create a Django Server Run configuration
+
+![ScreenShot](images/PyCharmDockerRunConfiguration.png)
+* The Name can be "WeVoterServer Run Docker", or anything else you would like.
+* The Run (Interpreter) field should be pre-populated with the 'Docker Compose Python Interpreter' that you just set up.
+* The (unlabeled) host field must be '0.0.0.0' (localhost will not work here).
+* The (unlabeled) port field must be '8000' (unless you are doing something out of the ordinary).
+* The 'Working directory' should be your project root directory, something like '/Users/stevepodell/PycharmProjects/WeVoteServer'
+* The Environment Variables field must contain "PYTHONUNBUFFERED=1;DJANGO_SETTINGS_MODULE=config.settings"
+* All other fields can be left with their default values.
+Press Apply to save the changes, and OK to close the dialog.
+
+You should now be able to run and debug as you did before we changed our preferred installation method to Docker.
 
 ## Resources
 

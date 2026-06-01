@@ -58,12 +58,13 @@ if os.environ.get('WE_VOTE_SERVER_PROTOCOL', '') == 'https':
                 '--certificate', os.environ.get('DEV_SERVER_SSL_CERT', 'cert/wevotedeveloper.com.crt'),
                 '--key', os.environ.get('DEV_SERVER_SSL_KEY', 'cert/wevotedeveloper.com_key.txt')]
     startup = f"https://{os.environ.get('WE_VOTE_SERVER_DOMAIN_HTTPS', 'localhost')}:{os.environ.get('WE_VOTE_SERVER_PORT', '8000')}"
-    log(f"Starting on: {startup} ")
+    log(f"Starting development server at {startup} ")
 else:
     new_args = sys.argv[1:]
+    # log(f"Startup args : {new_args}")
     if len(new_args) == 4:
-        startup = f"{new_args[3]} -- {'http://localhost:8000' if new_args[3] == '0.0.0.0:8000' else 'unknown'}"
-        log(f"Starting on: {startup} ")
+        startup = f"{'http://localhost:8000' if new_args[3] == '0.0.0.0:8000' else 'unknown'}"
+        log(f"Starting development server at {startup} ")
     else:
         log(f"Starting on: {new_args}")
 

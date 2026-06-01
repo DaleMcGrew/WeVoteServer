@@ -78,7 +78,8 @@ services:
     networks:
       - wevote
     ports:
-      - "127.0.0.1:8000:8000" # WeVote API at http://localhost:8000 or https://wevotedeveloper.com:8000
+      - "0.0.0.0:8000:8000"   # Needed by Pycharm
+#      - "127.0.0.1:8000:8000" # WeVote API at http://localhost:8000 or https://wevotedeveloper.com:8000
       - "127.0.0.1:5678:5678" # debugpy port for remote debugging
 
   pgadmin:
