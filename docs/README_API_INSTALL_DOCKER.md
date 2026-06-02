@@ -71,7 +71,7 @@ docker compose build --no-cache
 
 **Do not run these commands as part of the installation steps, but if you  them they are documented here.**
 
-The postgres database is stored persistently on your local computer outside of the Docker container.  This allows the database to be accessed between and in subsequent docker sessions.
+The postgres database is stored persistently on your local computer outside the Docker container.  This allows the database to be accessed between and in subsequent docker sessions.
 
 To stop and remove all containers and saved data (including completely deleting the database and all its data), run the following command. Only do this if you want to completely remove your development environment or start over from scratch.  
 ```
@@ -92,11 +92,10 @@ Go to `localhost:8080` in your local web browser to access the `PgAdmin` contain
 
 3. Server name is the `environment_variables.json` value for `DATABASE_NAME` (If you used all the default environment_variables and suggested .env file settings, the server name will be `wevoteserverdb`)
 
-![ScreenShot](images/RegisterServerGeneral.png)
-[//]: # (This will be changed to a GitHub reference once it is merged)
+<img src="./images/RegisterServerGeneral.png" alt="Register Server General Screenshot" width="600" style="padding-left: 10%">
 
 5. Set up the server connection (click the second tab 'Connection')
-* Host name/address: `db` _(or the container name set here: https://github.com/wevote/WeVoteServer/blob/61ccbd45ba9c87960269ea65dc0e8eeca6f0bf03/compose.yaml#L4_
+* Host name/address: `db` _(or the container name set here: https://github.com/wevote/WeVoteServer/blob/61ccbd45ba9c87960269ea65dc0e8eeca6f0bf03/compose.yaml#L4_)
 * Port: `5432` 
 * Maintenance database: `postgres`
 * Username: `environment_variables.json` value for `DATABASE_USER` (The default value is 'postgres')
@@ -106,7 +105,8 @@ Go to `localhost:8080` in your local web browser to access the `PgAdmin` contain
 
 [//]: # (<img width="704" height="560" alt="image" src="https://github.com/user-attachments/assets/b94a3349-2bb7-40c4-b38c-994223dd93c7" />)
 
-![ScreenShot](images/RegisterServerConnection.png)
+<img src="./images/RegisterServerConnection.png" alt="Register Server General Screenshot" width="600" style="margin-left: 10%">
+
 
 6. **Only if pgadmin does not recognize your password for 'Register New Server'**, see the following section titled <ins>If 'Add New Server' does not accept the password for your postgres user</ins>, to do a password reset for the maintenance database user 'postgres'.
 
@@ -120,7 +120,8 @@ Then the `wevoteserver-db-1` panel will be displayed to the right.
 
 Click the 'Exec' tab choice on the horizontal tab menu.
 
-![ScreenShot](images/DockerDesktopSetPostgresPwd.png)
+<img src="./images/DockerDesktopSetPostgresPwd.png" alt="Docker Desktop Set Postgres Password" width="1000" style="padding-left: 5%">
+
 
 [//]: # (This will be changed to a scalable image in the github cdomain after the PR that adds this file goes live)
 
@@ -272,30 +273,43 @@ You don't need a virtual environment (even though the JetBrains instructions say
 
 1) In Settings/Plugins
 Make sure the Docker plugin is installed and enabled.
-![PyCharmDockerPlugin.png](images/PyCharmDockerPlugin.png)
-2) In Settings/Python/Interpreter
+
+<img src="./images/PyCharmDockerPlugin.png" alt="PyCharm Docker plugin" width="800" style="padding-left: 10%">
+
+3) In Settings/Python/Interpreter
 Press 'Add Interpreter' and select 'On Docker Compose...'
-![PyCharmInterpreter.png](images/PyCharmInterpreter.png)
+
+<img src="./images/PyCharmInterpreter.png" alt="PyCharm interpreter Compose" width="800" style="padding-left: 10%">
+
 3) Then on the "New Target: Docker Compose" page one, set the service to 'api', and press 'Next'
-![PyCharmInterpreterPg1.png](images/PyCharmInterpreterPg1.png)
-4) Then on the "New Target: Docker Compose" page two, wait for it to do its magic, and when the spinning icon disappears, press 'Next'.
-5) Then on the "New Target: Docker Compose" page three, the "Type" is "Python" -- select the highest version of Python you have installed from the list.  I'm not sure how important the Python version is, since the Docker contains its own Python from this project's configured Docker image.
-![PyCharmInterpreterPg3.png](images/PyCharmInterpreterPg3.png)
-6) Then press 'Create', to save the Docker Compose Python Interpreter.
+
+<img src="./images/PyCharmInterpreterPg1.png" alt="PyCharm interpreter page 1" width="600" style="padding-left: 10%">
+
+5) Then on the "New Target: Docker Compose" page two, wait for it to do its magic, and when the spinning icon disappears, press 'Next'.
+6) Then on the "New Target: Docker Compose" page three, the "Type" is "Python" -- select the highest version of Python you have installed from the list.  I'm not sure how important the Python version is, since the Docker contains its own Python from this project's configured Docker image.
+
+<img src="./images/PyCharmInterpreterPg3.png" alt="PyCharm interpreter page 3" width="900" style="padding-left: 10%">
+
+7) Then press 'Create', to save the Docker Compose Python Interpreter.
 
 ### Create a Django Server Run configuration
 
-![ScreenShot](images/PyCharmDockerRunConfiguration.png)
+<img src="./images/PyCharmDockerRunConfiguration.png" alt="PyCharm run configuration for Docker" width="1300">
+
 * The Name can be "WeVoterServer Run Docker", or anything else you would like.
-* The Run (Interpreter) field should be pre-populated with the 'Docker Compose Python Interpreter' that you just set up.
+* The Run (Interpreter) field should be pre-populated with the 'Docker Compose (API)' Python interpreter that you just set up.
 * The (unlabeled) host field must be '0.0.0.0' (localhost will not work here).
-* The (unlabeled) port field must be '8000' (unless you are doing something out of the ordinary).
+* The (unlabeled) port field must be '8000'
 * The 'Working directory' should be your project root directory, something like '/Users/stevepodell/PycharmProjects/WeVoteServer'
 * The Environment Variables field must contain "PYTHONUNBUFFERED=1;DJANGO_SETTINGS_MODULE=config.settings"
 * All other fields can be left with their default values.
 Press Apply to save the changes, and OK to close the dialog.
 
-You should now be able to run and debug as you did before we changed our preferred installation method to Docker.
+You should now be able to run and debug using PyCharm. If you already, were a PyCharm user, this new run config should allow you to work in PyCharm just as before changing to Docker.
+
+Press the green run icon to run, and the green bug icon to debug.
+
+<img src="./images/PycharmRunDebug.png" alt="PyCharm run or debug configuration" width="600" style="padding-left: 10%; box-shadow: 10px 5px 5px gray; border: 1px solid gray;">
 
 ## Resources
 
