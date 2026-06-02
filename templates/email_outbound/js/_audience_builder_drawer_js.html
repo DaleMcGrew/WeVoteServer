@@ -325,6 +325,29 @@ function closeSavedAudiencesDrawer() {
     }
 }
 
+// Expand the preview section so it slides up and fills the drawer.
+function slidePreviewToTop() {
+    const previewSection = document.getElementById('previewSection');
+    if (!previewSection) return;
+    if (previewSection.classList.contains('expanded-to-top')) return;
+
+    previewSection.dataset.previousHeight = previewSection.style.height || '250px';
+    previewSection.classList.add('expanded-to-top');
+    previewSection.style.height = '';
+}
+
+// Collapse the preview section back down to its previous (or default) height.
+function collapsePreviewToBottom() {
+    const previewSection = document.getElementById('previewSection');
+    if (!previewSection) return;
+
+    previewSection.classList.remove('expanded-to-top');
+    previewSection.style.height = previewSection.dataset.previousHeight || '250px';
+}
+
+window.slidePreviewToTop = slidePreviewToTop;
+window.collapsePreviewToBottom = collapsePreviewToBottom;
+
 // Handle form submission within the drawer
 function setupDrawerFormSubmission() {
     const form = document.getElementById('audience-builder-form');
