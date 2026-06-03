@@ -191,7 +191,11 @@ To open etc/hosts in Windows:
 6. Open the hosts file.
 
 ### Install the SSL Certificates
-We have real commercial SSL certs from 'Sectigo' for wevovtedeveloper.com -- ask Dale for a copy of them.
+We have real commercial SSL certs from 'Sectigo' for wevovtedeveloper.com
+
+You can download them from https://drive.google.com/drive/folders/1q0KB2B8HB-AGTMLXrYq7x96McaEJ9_od?usp=drive_link
+
+If you don't have access to this drive, talk to you team leader.
 
 The two files are `wevotedeveloper.com_key.txt` and `wevotedeveloper.com.crt`
 
@@ -309,7 +313,7 @@ You should now be able to run and debug using PyCharm. If you already, were a Py
 
 Press the green run icon to run, and the green bug icon to debug.
 
-<img src="./images/PycharmRunDebug.png" alt="PyCharm run or debug configuration" width="600" style="padding-left: 10%; box-shadow: 10px 5px 5px gray; border: 1px solid gray;">
+<img src="./images/PycharmRunDebug.png" alt="PyCharm run or debug configuration" height="200" style="padding-left: 10%; box-shadow: 10px 5px 5px gray; border: 1px solid gray;">
 
 ## Resources
 
