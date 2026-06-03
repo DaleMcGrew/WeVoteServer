@@ -309,11 +309,10 @@ Press 'Add Interpreter' and select 'On Docker Compose...'
 * All other fields can be left with their default values.
 Press Apply to save the changes, and OK to close the dialog.
 
-You should now be able to run and debug using PyCharm. If you already, were a PyCharm user, this new run config should allow you to work in PyCharm just as before changing to Docker.
+You should now be able to run and debug using PyCharm. If you already are a PyCharm user, this new run config should allow you to work just the same way you did before changing to Docker.
+Press the green run icon to run, or the green bug icon to debug:
 
-Press the green run icon to run, and the green bug icon to debug.
-
-<img src="./images/PycharmRunDebug.png" alt="PyCharm run or debug configuration" height="200" style="padding-left: 10%; box-shadow: 10px 5px 5px gray; border: 1px solid gray;">
+<img src="./images/PycharmRunDebug.png" alt="PyCharm run or debug configuration" height="125" style="padding-left: 10%; box-shadow: 10px 5px 5px gray; border: 1px solid gray; clip-path: inset(0px 0px 0px 120px);">
 
 ## Resources
 
