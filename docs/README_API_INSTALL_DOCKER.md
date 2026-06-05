@@ -191,7 +191,7 @@ To open etc/hosts in Windows:
 6. Open the hosts file.
 
 ### Install the SSL Certificates
-We have real commercial SSL certs from 'Sectigo' for wevovtedeveloper.com
+We have real commercial SSL certs from 'Sectigo' for wevotedeveloper.com
 
 You can download them from https://drive.google.com/drive/folders/1q0KB2B8HB-AGTMLXrYq7x96McaEJ9_od?usp=drive_link
 
