@@ -3,6 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 import json
+import hmac
 from datetime import datetime, timezone
 from time import time
 from sendgrid import sendgrid
@@ -58,13 +59,23 @@ from voter.models import BALLOT_ADDRESS, fetch_voter_we_vote_id_from_voter_devic
     VoterAddressManager, VoterDeviceLink, VoterDeviceLinkManager, VoterManager, Voter, \
     voter_has_authority, APP_REVIEW_NEGATIVE
 from voter_guide.controllers import voter_follow_all_organizations_followed_by_organization_for_api
-from wevote_functions.functions import convert_to_int, get_maximum_number_to_retrieve_from_request, \
-    get_voter_device_id, is_voter_device_id_valid, positive_value_exists
+from wevote_functions.functions import convert_to_int, generate_random_string, get_maximum_number_to_retrieve_from_request, \
+    get_voter_device_id, is_voter_device_id_valid, positive_value_exists, normalize_sms_phone_number_for_voter_update
 from wevote_functions.functions import extract_first_name_from_full_name, extract_last_name_from_full_name
 from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
 logger = wevote_functions.admin.get_logger(__name__)
 
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
+MANAGEMENT_API_KEY = get_environment_variable("MANAGEMENT_API_KEY", no_exception=True)
+
+STAFF_ACCESS_TO_VOTER_FIELD = {
+    'ANALYTICS_ADMIN': 'is_analytics_admin',
+    'VOTER_MANAGER': 'is_voter_manager',
+    'PARTNER_ORGANIZATION': 'is_partner_organization',
+    'POLITICAL_DATA_MANAGER': 'is_political_data_manager',
+    'POLITICAL_DATA_VIEWER': 'is_political_data_viewer',
+    'VERIFIED_VOLUNTEER': 'is_verified_volunteer',
+}
 
 
 def get_politician_data_results(candidate_id, candidate_we_vote_id, politician_id, politician_we_vote_id):
@@ -2646,6 +2657,218 @@ def return_string_value_and_changed_boolean_from_get(request, variable_name):
     return value, value_changed
 
 
+def get_voter_update_request_value(request, variable_name, default=False):
+    if request.method == 'POST':
+        return request.POST.get(variable_name, default)
+    return request.GET.get(variable_name, default)
+
+
+def get_voter_update_request_list(request, variable_name):
+    data = request.POST if request.method == 'POST' else request.GET
+    values = data.getlist(variable_name)
+    values += data.getlist(variable_name + '[]')
+
+    if not values:
+        raw_value = data.get(variable_name, '')
+        if positive_value_exists(raw_value):
+            values = [raw_value]
+
+    normalized_values = []
+    for value in values:
+        for split_value in str(value).split(','):
+            if positive_value_exists(split_value):
+                normalized_values.append(split_value.strip().upper())
+
+    return normalized_values
+
+def voter_update_staff_access_for_api(request):
+    status = ""
+    voter_updated = False
+    voter_created = False
+    voter_found = False
+    voter = None
+
+    management_api_key = get_voter_update_request_value(request, 'management_api_key', '')
+    if not positive_value_exists(MANAGEMENT_API_KEY) or \
+            not hmac.compare_digest(str(management_api_key), str(MANAGEMENT_API_KEY)):
+        return {
+            'success': False,
+            'status': "MANAGEMENT_API_KEY_NOT_ACCEPTED ",
+            'voter_found': False,
+            'voter_created': False,
+            'voter_updated': False,
+        }
+
+    email_address = get_voter_update_request_value(request, 'email_address', '')
+    phone_number = get_voter_update_request_value(request, 'phone_number', '')
+    create_account = positive_value_exists(get_voter_update_request_value(request, 'create_account', False))
+    remove_all_staff_access = positive_value_exists(
+        get_voter_update_request_value(request, 'remove_all_staff_access', False))
+    add_staff_access_list = get_voter_update_request_list(request, 'add_staff_access')
+    remove_staff_access_list = get_voter_update_request_list(request, 'remove_staff_access')
+
+    invalid_access_list = [
+        access for access in add_staff_access_list + remove_staff_access_list
+        if access not in STAFF_ACCESS_TO_VOTER_FIELD
+    ]
+    if invalid_access_list:
+        return {
+            'success': False,
+            'status': "INVALID_STAFF_ACCESS: " + ",".join(invalid_access_list) + " ",
+            'voter_found': False,
+            'voter_created': False,
+            'voter_updated': False,
+        }
+
+    if not positive_value_exists(email_address) and not positive_value_exists(phone_number):
+        return {
+            'success': False,
+            'status': "EMAIL_ADDRESS_OR_PHONE_NUMBER_REQUIRED ",
+            'voter_found': False,
+            'voter_created': False,
+            'voter_updated': False,
+        }
+
+    if positive_value_exists(email_address):
+        email_address = email_address.strip().lower()
+
+    normalized_sms_phone_number = ''
+    if positive_value_exists(phone_number):
+        normalize_results = normalize_sms_phone_number_for_voter_update(phone_number)
+        status += normalize_results['status']
+        if not normalize_results['success']:
+            return {
+                'success': False,
+                'status': status,
+                'voter_found': False,
+                'voter_created': False,
+                'voter_updated': False,
+            }
+        normalized_sms_phone_number = normalize_results['normalized_sms_phone_number']
+
+    voter_manager = VoterManager()
+
+    if positive_value_exists(email_address):
+        email_manager = EmailManager()
+        email_results = email_manager.retrieve_primary_email_with_ownership_verified(
+            normalized_email_address=email_address,
+            read_only=False,
+        )
+        status += email_results['status']
+        if email_results['email_address_object_found']:
+            email_address_object = email_results['email_address_object']
+            voter_results = voter_manager.retrieve_voter_by_we_vote_id(
+                email_address_object.voter_we_vote_id,
+                read_only=False,
+            )
+            status += voter_results['status']
+            if voter_results['voter_found']:
+                voter = voter_results['voter']
+                voter_found = True
+                status += "VOTER_FOUND_BY_VERIFIED_EMAIL "
+
+    if not voter_found and positive_value_exists(normalized_sms_phone_number):
+        voter_results = voter_manager.retrieve_voter_by_sms(normalized_sms_phone_number, read_only=False)
+        status += voter_results['status']
+        if voter_results['voter_found']:
+            voter = voter_results['voter']
+            voter_found = True
+            status += "VOTER_FOUND_BY_VERIFIED_PHONE "
+
+    if not voter_found and create_account:
+        if positive_value_exists(email_address):
+            create_results = Voter.objects.create_new_voter_account(
+                '',
+                '',
+                email_address,
+                generate_random_string(20),
+            )
+            status += create_results['status']
+            if create_results['success']:
+                voter = create_results['voter']
+                voter_found = True
+                voter_created = True
+                status += "VOTER_CREATED_BY_EMAIL "
+            else:
+                status += "VOTER_NOT_CREATED_BY_EMAIL "
+        else:
+            create_results = voter_manager.create_voter()
+            if create_results['voter_created']:
+                voter = create_results['voter']
+                voter_found = True
+                voter_created = True
+                status += "VOTER_CREATED_BY_PHONE "
+            else:
+                status += "VOTER_NOT_CREATED_BY_PHONE "
+
+        if voter_found and positive_value_exists(normalized_sms_phone_number):
+            sms_manager = SMSManager()
+            sms_results = sms_manager.create_sms_phone_number(
+                normalized_sms_phone_number,
+                voter.we_vote_id,
+                sms_ownership_is_verified=True,
+            )
+            status += sms_results['status']
+            if sms_results['sms_phone_number_saved']:
+                ownership_results = voter_manager.update_voter_sms_ownership_verified(
+                    voter,
+                    sms_results['sms_phone_number'],
+                )
+                status += ownership_results['status']
+                voter = ownership_results['voter']
+
+    if not voter_found:
+        return {
+            'success': False,
+            'status': status + "VOTER_NOT_FOUND ",
+            'voter_found': False,
+            'voter_created': voter_created,
+            'voter_updated': False,
+        }
+
+    changed = False
+
+    if remove_all_staff_access:
+        for voter_field in STAFF_ACCESS_TO_VOTER_FIELD.values():
+            if getattr(voter, voter_field):
+                setattr(voter, voter_field, False)
+                changed = True
+
+    for access in remove_staff_access_list:
+        voter_field = STAFF_ACCESS_TO_VOTER_FIELD[access]
+        if getattr(voter, voter_field):
+            setattr(voter, voter_field, False)
+            changed = True
+
+    for access in add_staff_access_list:
+        voter_field = STAFF_ACCESS_TO_VOTER_FIELD[access]
+        if not getattr(voter, voter_field):
+            setattr(voter, voter_field, True)
+            changed = True
+
+    if changed:
+        voter.save()
+        voter_updated = True
+        status += "VOTER_STAFF_ACCESS_UPDATED "
+    else:
+        status += "NO_STAFF_ACCESS_CHANGES_NEEDED "
+
+    return {
+        'success': True,
+        'status': status,
+        'voter_found': voter_found,
+        'voter_created': voter_created,
+        'voter_updated': voter_updated,
+        'voter_we_vote_id': voter.we_vote_id,
+        'is_analytics_admin': voter.is_analytics_admin,
+        'is_voter_manager': voter.is_voter_manager,
+        'is_partner_organization': voter.is_partner_organization,
+        'is_political_data_manager': voter.is_political_data_manager,
+        'is_political_data_viewer': voter.is_political_data_viewer,
+        'is_verified_volunteer': voter.is_verified_volunteer,
+    }
+
+
 @csrf_exempt
 def voter_update_view(request):  # voterUpdate
     """
@@ -2658,6 +2881,14 @@ def voter_update_view(request):  # voterUpdate
     status = ""
     voter_updated = False
     voter_name_needs_to_be_updated_in_activity = False
+
+    is_post = True if request.method == 'POST' else False
+    management_api_key = request.POST.get('management_api_key', '') if is_post \
+        else request.GET.get('management_api_key', '')
+    if positive_value_exists(management_api_key):
+        results = voter_update_staff_access_for_api(request)
+        response = HttpResponse(json.dumps(results), content_type='application/json')
+        return response
 
     try:
         voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
@@ -2692,8 +2923,6 @@ def voter_update_view(request):  # voterUpdate
 
         response = HttpResponse(json.dumps(json_data), content_type='application/json')
         return response
-
-    is_post = True if request.method == 'POST' else False
 
     if is_post:
         delete_voter_account = positive_value_exists(request.POST.get('delete_voter_account', False))

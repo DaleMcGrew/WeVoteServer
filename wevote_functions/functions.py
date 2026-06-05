@@ -7,6 +7,7 @@ import json
 import random
 import re
 import string
+import phonenumbers
 from math import log10
 import django.utils.html
 import requests
@@ -2138,3 +2139,37 @@ def server_is_source_of_truth():
     # If 'SERVER_IS_SOURCE_OF_TRUTH' is not False
     # then the default value has been modified in the environment_variables.json file.
     return get_environment_variable('SERVER_IS_SOURCE_OF_TRUTH') is not False
+
+def normalize_sms_phone_number_for_voter_update(phone_number):
+    status = ""
+    normalized_sms_phone_number = ""
+
+    if not positive_value_exists(phone_number):
+        return {
+            'success': False,
+            'status': "PHONE_NUMBER_MISSING ",
+            'normalized_sms_phone_number': '',
+        }
+
+    try:
+        parsed_sms_phone_number = phonenumbers.parse(phone_number, "US")
+        if phonenumbers.is_valid_number(parsed_sms_phone_number):
+            normalized_sms_phone_number = phonenumbers.format_number(
+                parsed_sms_phone_number,
+                phonenumbers.PhoneNumberFormat.INTERNATIONAL,
+            )
+            status += "PHONE_NUMBER_NORMALIZED "
+            success = True
+        else:
+            status += "PHONE_NUMBER_NOT_VALID "
+            success = False
+    except Exception as e:
+        status += "PHONE_NUMBER_NORMALIZATION_FAILED: " + str(e) + " "
+        success = False
+
+    return {
+        'success': success,
+        'status': status,
+        'normalized_sms_phone_number': normalized_sms_phone_number,
+    }
+
