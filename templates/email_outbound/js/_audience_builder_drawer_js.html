@@ -168,6 +168,18 @@ function initializeResizeHandle() {
     // Mouse down on resize handle
     newResizeHandle.addEventListener('mousedown', function(e) {
         isResizing = true;
+
+        // If the preview is expanded to fill the drawer, exit that mode before
+        // dragging. The expanded-to-top class sets `height: auto !important`,
+        // which overrides the inline height the drag applies and otherwise locks
+        // the handle in place. Pin the current rendered height so the drag
+        // continues smoothly from where the preview currently sits.
+        if (previewSection.classList.contains('expanded-to-top')) {
+            const currentHeight = previewSection.offsetHeight;
+            previewSection.classList.remove('expanded-to-top');
+            previewSection.style.height = currentHeight + 'px';
+        }
+
         startY = e.clientY;
         startHeight = previewSection.offsetHeight;
 
@@ -194,6 +206,10 @@ function initializeResizeHandle() {
 
         // Apply the new height
         previewSection.style.height = constrainedHeight + 'px';
+
+        // Keep the builder's bottom edge pinned to the top of the preview so any
+        // content the preview now covers becomes scrollable instead of hidden.
+        syncBuilderBottomToPreview();
     };
 
     // Mouse up - stop resizing
@@ -208,6 +224,22 @@ function initializeResizeHandle() {
 
     document.addEventListener('mousemove', mouseMoveHandler);
     document.addEventListener('mouseup', mouseUpHandler);
+
+    // Pin the builder's bottom to the preview's starting height (default 250px).
+    syncBuilderBottomToPreview();
+}
+
+// Pin the bottom edge of the builder content to the top of the preview slider, so
+// whenever the preview grows and covers part of the form, that content stays inside
+// the builder's scroll region (a scrollbar appears) rather than being hidden behind
+// the preview. Skipped while the preview is a full overlay (expanded-to-top).
+function syncBuilderBottomToPreview() {
+    const previewSection = document.getElementById('previewSection');
+    const drawerContent = document.getElementById('drawerContent');
+    if (!previewSection || !drawerContent) return;
+    if (previewSection.classList.contains('expanded-to-top')) return;
+
+    drawerContent.style.bottom = previewSection.offsetHeight + 'px';
 }
 
 // Open the drawer
@@ -325,11 +357,47 @@ function closeSavedAudiencesDrawer() {
     }
 }
 
+// Returns true if the element can still scroll further in the given wheel direction.
+function previewContentCanScroll(el, deltaY) {
+    if (!el || el.scrollHeight <= el.clientHeight) return false;
+    const atTop = el.scrollTop <= 0;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+    if (deltaY < 0 && atTop) return false;     // scrolling up, already at top
+    if (deltaY > 0 && atBottom) return false;  // scrolling down, already at bottom
+    return true;
+}
+
+// While the preview overlays the builder (expanded-to-top), let wheel scrolling
+// "pass through" to the audience builder content behind it, so the obscured form
+// stays scrollable. Scrolling inside the preview's own content still scrolls the
+// preview first, falling through to the builder only at its scroll edges.
+function forwardWheelToBuilder(event) {
+    const previewSection = document.getElementById('previewSection');
+    if (!previewSection || !previewSection.classList.contains('expanded-to-top')) return;
+
+    const previewContent = previewSection.querySelector('.preview-content');
+    if (previewContent && previewContent.contains(event.target) &&
+        previewContentCanScroll(previewContent, event.deltaY)) {
+        return; // preview content absorbs this scroll
+    }
+
+    const drawerContent = document.getElementById('drawerContent');
+    if (!drawerContent) return;
+    drawerContent.scrollTop += event.deltaY;
+    event.preventDefault();
+}
+
 // Expand the preview section so it slides up and fills the drawer.
 function slidePreviewToTop() {
     const previewSection = document.getElementById('previewSection');
     if (!previewSection) return;
     if (previewSection.classList.contains('expanded-to-top')) return;
+
+    // Wire the scroll-through handler once, the first time the preview is expanded.
+    if (!previewSection.dataset.wheelForwardingWired) {
+        previewSection.addEventListener('wheel', forwardWheelToBuilder, { passive: false });
+        previewSection.dataset.wheelForwardingWired = 'true';
+    }
 
     previewSection.dataset.previousHeight = previewSection.style.height || '250px';
     previewSection.classList.add('expanded-to-top');
@@ -342,7 +410,12 @@ function collapsePreviewToBottom() {
     if (!previewSection) return;
 
     previewSection.classList.remove('expanded-to-top');
-    previewSection.style.height = previewSection.dataset.previousHeight || '250px';
+    // Always collapse to a fixed 100px height (100px above the bottom of the screen),
+    // regardless of where the user last dragged the divider to.
+    previewSection.style.height = '250px';
+
+    // Re-pin the builder bottom now that the preview is a fixed-height slider again.
+    syncBuilderBottomToPreview();
 }
 
 window.slidePreviewToTop = slidePreviewToTop;
@@ -603,6 +676,42 @@ document.addEventListener('click', function(event) {
             dropdown.classList.remove('show');
         }
     });
+});
+
+// ######## Recipients preview search ########
+// The preview list (audience_builder_preview_list.html) is injected into the drawer
+// via innerHTML, so any inline script inside it never runs. Wire the search box up
+// here with event delegation on document, which survives re-injection of the preview.
+document.addEventListener('input', function(event) {
+    if (event.target.id !== 'search-recipients') return;
+
+    const searchTerm = event.target.value.trim().toLowerCase();
+    // Only filter rows within the currently visible tab.
+    const activeTab = document.querySelector('.tab-content.active') || document;
+    activeTab.querySelectorAll('.recipient-row').forEach(row => {
+        // Match against the whole row's text (name, email, phone, type, state)
+        // so the search works regardless of which column the term appears in.
+        const haystack = row.textContent.toLowerCase();
+        row.style.display = haystack.includes(searchTerm) ? '' : 'none';
+    });
+});
+
+// Toggle the per-row kebab (•••) dropdown menu in the preview list. Delegated here
+// for the same reason as the search box above (preview HTML is injected, not scripted).
+document.addEventListener('click', function(event) {
+    const kebab = event.target.closest('.js-dd');
+    const openDropdowns = document.querySelectorAll('.wv-dropdown.open');
+
+    if (kebab) {
+        event.stopPropagation();
+        const wrap = kebab.closest('.wv-dropdown');
+        openDropdowns.forEach(d => { if (d !== wrap) d.classList.remove('open'); });
+        wrap.classList.toggle('open');
+        return;
+    }
+
+    // Click anywhere else closes any open kebab menu.
+    openDropdowns.forEach(d => d.classList.remove('open'));
 });
 
 // Expose functions globally

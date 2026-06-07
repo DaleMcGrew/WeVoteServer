@@ -177,15 +177,36 @@
     font-size: 14px;
 }
 
-/* Main content area */
 .drawer-content {
     padding: 2px 15px;
     position: absolute;
     top: 110px;
     left: 0;
     right: 0;
-    bottom: 72px; /* Stop above collapsed preview (60px + 12px divider) */
+    bottom: 250px;
     overflow-y: auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;            
+    scrollbar-color: #b0b8c1 #f1f3f5;  
+}
+
+.drawer-content::-webkit-scrollbar {
+    width: 10px;
+}
+
+.drawer-content::-webkit-scrollbar-track {
+    background: #f1f3f5;
+    border-radius: 5px;
+}
+
+.drawer-content::-webkit-scrollbar-thumb {
+    background-color: #b0b8c1;
+    border-radius: 5px;
+    border: 2px solid #f1f3f5; 
+}
+
+.drawer-content::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
 }
 
 .drawer-content-placeholder {
