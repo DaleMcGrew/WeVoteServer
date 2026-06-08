@@ -38,7 +38,7 @@ services:
   
   api:
     extra_hosts:
-      - ${DEV_SERVER_DOMAIN:-wevotedeveloper.com}:0.0.0.0
+      - ${WE_VOTE_SERVER_DOMAIN_HTTPS:-wevotedeveloper.com}:0.0.0.0
     build:
       dockerfile: docker/Dockerfile.dev
     depends_on:
@@ -67,9 +67,10 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_SQS_WEB_QUEUE_URL=http://localstack:4566/000000000000/job-queue.fifo
       - PYDEVD_DISABLE_FILE_VALIDATION=1
-      - DEV_SERVER_TYPE=${DEV_SERVER:-runsslserver}
-      - DEV_SERVER_DOMAIN=${DEV_SERVER_DOMAIN:-wevotedeveloper.com}
-      - DEV_SERVER_PORT=${DEV_SERVER_PORT:-8000}
+      - WE_VOTE_SERVER_PROTOCOL=${WE_VOTE_SERVER_PROTOCOL:-http}
+      - WE_VOTE_SERVER_DOMAIN_HTTP=${WE_VOTE_SERVER_DOMAIN_HTTP:-localhost}
+      - WE_VOTE_SERVER_DOMAIN_HTTPS=${WE_VOTE_SERVER_DOMAIN_HTTPS:-wevotedeveloper.com}
+      - WE_VOTE_SERVER_PORT=${WE_VOTE_SERVER_PORT:-8000}
       - DEV_SERVER_SSL_CERT=${DEV_SERVER_SSL_CERT:-cert/wevotedeveloper.com.crt}
       - DEV_SERVER_SSL_KEY=${DEV_SERVER_SSL_KEY:-cert/wevotedeveloper.com_key.txt}
     volumes:
@@ -77,7 +78,8 @@ services:
     networks:
       - wevote
     ports:
-      - "127.0.0.1:8000:8000" # WeVote API at http://localhost:8000 or https://wevotedeveloper.com:8000
+      - "0.0.0.0:8000:8000"   # Needed by Pycharm
+#      - "127.0.0.1:8000:8000" # WeVote API at http://localhost:8000 or https://wevotedeveloper.com:8000
       - "127.0.0.1:5678:5678" # debugpy port for remote debugging
 
   pgadmin:
@@ -85,6 +87,8 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PG_ADMIN_EMAIL:-fake_email@wevoteeducation.org}
       PGADMIN_DEFAULT_PASSWORD: ${PG_ADMIN_PASSWORD:-admin}
+      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-admin}
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     ports:
