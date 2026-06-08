@@ -314,6 +314,51 @@ Press the green run icon to run, or the green bug icon to debug:
 
 <img src="./images/PycharmRunDebug.png" alt="PyCharm run or debug configuration" height="125" style="padding-left: 10%; box-shadow: 10px 5px 5px gray; border: 1px solid gray; clip-path: inset(0px 0px 0px 120px);">
 
+
+## Running and Debugging the docker image with VS Code 
+
+[//]: # (**Prerequisite**)
+[//]: # (* debugpy must be installed in the Docker container. Comment out note: This is not installed automatically in docker/dev/entrypoint and does not require the developer to do anything)
+[//]: # (* Port 5678 must be exposed and accessible so that VS Code can attach to the debugger.  Comment out note:  This is standard in compose.yaml and does not require the developer to do anything)
+
+Add the following configuration to your .vscode/launch.json file in **WevoteServer** repository:
+```{
+  "version": "0.2.0",
+  "configurations": [
+       {
+      "name": "Attach to Docker",
+      "type": "python",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/wevote/code"
+        }
+      ],
+      "justMyCode": false,
+      "django": true
+    }
+  ]
+}
+```
+**Note:** If the .vscode/launch.json file does not exist, create the .vscode directory and the launch.json file, then add the configuration shown above.
+
+<img src="./images/DockerDesktopSnippetForVsCode.png"  height="80" alt="image" style="padding-left: 10%; box-shadow: 10px 5px 5px gray;">
+
+**Attaching the Debugger**
+- Open the project in VS Code.
+- Navigate to Run and Debug from the left-hand sidebar.
+- From the debug configuration dropdown, select Attach to Docker.
+- Click Start Debugging (or press F5) to attach VS Code to the Docker container.
+- Set breakpoints in the desired source files.
+- Trigger the application flow or API request you want to debug. Execution will pause at the configured breakpoints, allowing you to inspect variables, evaluate expressions, and step through the code.
+
+<img src="./images/VsCodeBrakepointExample.png"  height="383" alt="image" style="padding-left: 1%; box-shadow: 10px 5px 5px gray;">
+
 ## Resources
 
 1. Docker Compose
