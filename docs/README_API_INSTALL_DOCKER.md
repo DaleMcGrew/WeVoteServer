@@ -112,24 +112,21 @@ Go to `localhost:8080` in your local web browser to access the `PgAdmin` contain
 
 6. Click Save
 
-## If 'Add New Server' does not accept the password for your postgres user
 
-In the Docker Desktop app, on the "Containers" tab on the vertical left tab menu, click the `db-1`  container.
+### If 'Add New Server' does not accept the password for your postgres user
 
-Then the `wevoteserver-db-1` panel will be displayed to the right.
+Open a terminal in the `db` container:
 
-Click the 'Exec' tab choice on the horizontal tab menu.
-
-<img src="./images/DockerDesktopSetPostgresPwd.png" alt="Docker Desktop Set Postgres Password" width="1000" style="padding-left: 5%">
-
-
-[//]: # (This will be changed to a scalable image in the github cdomain after the PR that adds this file goes live)
+```sh
+docker compose exec db sh
+```
 
 In the terminal
 1. Enter the bash shell, by entering 'bash'
 2. Start the PSQL command line app, by entering 'psql'
 3. Enter the SQL command to change the password by entering `ALTER USER postgres WITH PASSWORD 'admin';`
 4. Then exit PSQL by entering 'exit'
+
 
 ## Running your WeVoteServer in HTTPS mode
 
