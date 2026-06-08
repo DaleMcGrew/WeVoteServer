@@ -54,8 +54,8 @@ See [Instructions for Scheduled Tasks](docs/README_SCHEDULED_TASKS.md)
 
 [How to run the WeVoteServer Locust Load Tests](loadtest/README.md)
 
+Maintaining clean code: [Linting and Formatting](docs/README_LINTING_AND_FORMATTING.md)
+
 ## Join Us
 
 We meet weekly on Google hangouts, and on a team Slack. Please contact Dale.McGrew@WeVote.US for more information.
-
-
