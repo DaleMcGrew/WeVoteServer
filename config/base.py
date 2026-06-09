@@ -4,6 +4,7 @@
 
 import json
 import os
+import re
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -82,6 +83,17 @@ def get_environment_variable_default(var_name, default_value):
         return os.environ[var_name]
     except KeyError:
         return default_value
+
+def get_we_vote_server_root_url():
+    protocol = get_environment_variable_default("WE_VOTE_SERVER_PROTOCOL", "http")
+    domain = get_environment_variable_default("WE_VOTE_SERVER_DOMAIN_HTTP" if protocol == "http" else "WE_VOTE_SERVER_DOMAIN_HTTPS", "http")
+    port = get_environment_variable_default("WE_VOTE_SERVER_PORT", "8000")
+    if len(port):
+        url = f"{protocol}://{domain}:{port}"
+    else:
+        url = f"{protocol}://{domain}"
+    return url
+
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -385,14 +397,39 @@ SOCIAL_AUTH_FACEBOOK_SCOPE = ['email']  # , 'user_friends'
 SOCIAL_AUTH_TWITTER_KEY = get_environment_variable("SOCIAL_AUTH_TWITTER_KEY")
 SOCIAL_AUTH_TWITTER_SECRET = get_environment_variable("SOCIAL_AUTH_TWITTER_SECRET")
 
-SOCIAL_AUTH_LOGIN_ERROR_URL = get_environment_variable("SOCIAL_AUTH_LOGIN_ERROR_URL")
-SOCIAL_AUTH_LOGIN_REDIRECT_URL = get_environment_variable("SOCIAL_AUTH_LOGIN_REDIRECT_URL")
-SOCIAL_AUTH_LOGIN_URL = get_environment_variable("SOCIAL_AUTH_LOGIN_URL")
+def convert_to_https_dev_url_if_configured(env_var_value):
+    if get_environment_variable('WE_VOTE_SERVER_PROTOCOL', '') == 'https' and not env_var_value.startswith('https'):
+        pattern = r"http:\/\/localhost:\d*(.*?)$"
+        match = re.search(pattern, env_var_value)
+        if match:
+            path = match.group(1)
+            url_new = f"{get_we_vote_server_root_url()}{path}"
+            # print(url_new)
+            return url_new
+        else:
+            print('Error parsing ' + env_var_value)
+            return env_var_value
+    # print('HTTP Passing  on  ' + env_var_value)
+    return env_var_value
+
+
+os.environ["WE_VOTE_SERVER_ROOT_URL"] = get_we_vote_server_root_url()
+
+SOCIAL_AUTH_LOGIN_ERROR_URL = convert_to_https_dev_url_if_configured(get_environment_variable("SOCIAL_AUTH_LOGIN_ERROR_URL"))
+os.environ["SOCIAL_AUTH_LOGIN_ERROR_URL"] = SOCIAL_AUTH_LOGIN_ERROR_URL
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = convert_to_https_dev_url_if_configured(get_environment_variable("SOCIAL_AUTH_LOGIN_REDIRECT_URL"))
+os.environ["SOCIAL_AUTH_LOGIN_REDIRECT_URL"] = SOCIAL_AUTH_LOGIN_REDIRECT_URL
+SOCIAL_AUTH_LOGIN_URL = convert_to_https_dev_url_if_configured(get_environment_variable("SOCIAL_AUTH_LOGIN_URL"))
+os.environ["SOCIAL_AUTH_LOGIN_URL"] = SOCIAL_AUTH_LOGIN_URL
 SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
 
-LOGIN_REDIRECT_URL = get_environment_variable("LOGIN_REDIRECT_URL")
-LOGIN_ERROR_URL = get_environment_variable("LOGIN_ERROR_URL")
-LOGIN_URL = get_environment_variable("LOGIN_URL")
+LOGIN_REDIRECT_URL = convert_to_https_dev_url_if_configured(get_environment_variable("LOGIN_REDIRECT_URL"))
+os.environ["LOGIN_REDIRECT_URL"] = LOGIN_REDIRECT_URL
+LOGIN_ERROR_URL = convert_to_https_dev_url_if_configured(get_environment_variable("LOGIN_ERROR_URL"))
+os.environ["LOGIN_ERROR_URL"] = LOGIN_ERROR_URL
+LOGIN_URL = convert_to_https_dev_url_if_configured(get_environment_variable("LOGIN_URL"))
+os.environ["LOGIN_URL"] = LOGIN_URL
+
 
 SOCIAL_AUTH_URL_NAMESPACE = 'social'
 

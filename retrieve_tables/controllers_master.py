@@ -315,7 +315,7 @@ def fast_load_table_statistics(request):
                 '<head>'
                     '<title>Postgres DB Row Counts</title>'
                     '<style>'
-                        'table { border-collapse: collapse; width: 50%; margin-left: 20px  }'
+                        'table { border-collapse: collapse; width: 34%; margin-left: 20px }'
                         'th, td { border: 1px solid black; padding: 2px; text-align: left; }'
                         ':link, :visited { color: #039be5; outline: 0; text-decoration: none; padding-left: 20px; }'
                     '</style>'
@@ -326,10 +326,11 @@ def fast_load_table_statistics(request):
                     '<table>'
                         '<tr>'
                             '<th>Table</th>'
-                            '<th>Row Count</th>'
+                            '<th style="text-align: right;">Row Count</th>'
                         '</tr>')
             for row in rows:
-                html += '<tr><td>%s</td><td>%s</td></tr>' %  (row[1], row[2])
+                number = f"{row[2]:,}"
+                html += '<tr><td>%s</td><td style="text-align: right;">%s</td></tr>' %  (row[1], number)
             html += '</table></body></html>'
         except Exception as e:
             html = e

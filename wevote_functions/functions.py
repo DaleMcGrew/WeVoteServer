@@ -1217,7 +1217,6 @@ def extract_nickname_from_full_name(full_name):
 def extract_vote_usa_measure_id(raw_vote_usa_measure_id):
     return extract_vote_usa_office_id(raw_vote_usa_measure_id)
 
-
 def extract_vote_usa_office_id(raw_vote_usa_office_id):
     if positive_value_exists(raw_vote_usa_office_id):
         raw_vote_usa_office_id = raw_vote_usa_office_id.strip()
@@ -1234,8 +1233,14 @@ def extract_vote_usa_office_id(raw_vote_usa_office_id):
     else:
         return ''
 
-
 def augment_vote_usa_office_id(vote_usa_office_id, primary_party=''):
+    """
+    Appends a party suffix to a VoteUSA office ID (as extracted by extract_vote_usa_office_id)
+    for primary elections. Accepts the full party name (e.g. 'Democratic Party', 'Republican Party').
+    For general elections, special elections, and runoffs, returns the ID unchanged.
+    Valid primary parties: Conservative Party, Democratic Party, Green Party,
+    Independent Party, Libertarian Party, Republican Party.
+    """
     if positive_value_exists(primary_party):
         primary_party_suffix = ""
         if primary_party.lower() == 'conservative party':
@@ -1252,6 +1257,18 @@ def augment_vote_usa_office_id(vote_usa_office_id, primary_party=''):
             primary_party_suffix = 'PR'
         if positive_value_exists(primary_party_suffix):
             return vote_usa_office_id + '|' + primary_party_suffix
+    return vote_usa_office_id
+
+def augment_vote_usa_office_id_with_suffix(vote_usa_office_id, primary_party_suffix=''):
+    """
+    Appends a party suffix to a VoteUSA office ID (as extracted by extract_vote_usa_office_id)
+    for primary elections. Accepts the 2-letter suffix directly (e.g. 'PD', 'PR').
+    For general elections, special elections, and runoffs, returns the ID unchanged.
+    Valid primary suffixes: PC, PD, PG, PI, PL, PR.
+    """
+    PRIMARY_SUFFIXES = {'PC', 'PD', 'PG', 'PI', 'PL', 'PR'}
+    if primary_party_suffix in PRIMARY_SUFFIXES:
+        return vote_usa_office_id + '|' + primary_party_suffix
     return vote_usa_office_id
 
 
