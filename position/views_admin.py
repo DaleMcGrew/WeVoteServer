@@ -25,7 +25,7 @@ from exception.models import handle_record_found_more_than_one_exception,\
 from measure.controllers import push_contest_measure_data_to_other_table_caches
 from office.controllers import push_contest_office_data_to_other_table_caches
 from organization.models import OrganizationManager
-from politician.models import PoliticianManager
+from politician.models import Politician, PoliticianManager
 from voter.models import voter_has_authority
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, \
@@ -110,6 +110,57 @@ def positions_sync_out_view(request):  # positionsSyncOut
 
         if position_list_dict:
             position_list_json = list(position_list_dict)
+
+            politician_we_vote_id_set = set()
+            candidate_we_vote_id_set = set()
+
+            for one_position in position_list_json:
+                politician_we_vote_id = one_position.get('politician_we_vote_id', '')
+                candidate_we_vote_id = one_position.get('candidate_campaign_we_vote_id', '')
+
+                if positive_value_exists(politician_we_vote_id):
+                    politician_we_vote_id_set.add(politician_we_vote_id)
+                if positive_value_exists(candidate_we_vote_id):
+                    candidate_we_vote_id_set.add(candidate_we_vote_id)
+
+            vote_usa_politician_id_by_politician_we_vote_id = {}
+            if len(politician_we_vote_id_set) > 0:
+                politician_dict_list = Politician.objects.using('readonly').filter(
+                    we_vote_id__in=list(politician_we_vote_id_set)
+                ).values('we_vote_id', 'vote_usa_politician_id')
+
+                vote_usa_politician_id_by_politician_we_vote_id = {
+                    politician['we_vote_id']: politician['vote_usa_politician_id']
+                    for politician in politician_dict_list
+                }
+
+            vote_usa_politician_id_by_candidate_we_vote_id = {}
+            if len(candidate_we_vote_id_set) > 0:
+                candidate_dict_list = CandidateCampaign.objects.using('readonly').filter(
+                    we_vote_id__in=list(candidate_we_vote_id_set)
+                ).values('we_vote_id', 'vote_usa_politician_id')
+
+                vote_usa_politician_id_by_candidate_we_vote_id = {
+                    candidate['we_vote_id']: candidate['vote_usa_politician_id']
+                    for candidate in candidate_dict_list
+                }
+
+            for one_position in position_list_json:
+                politician_we_vote_id = one_position.get('politician_we_vote_id', '')
+                candidate_we_vote_id = one_position.get('candidate_campaign_we_vote_id', '')
+
+                vote_usa_politician_id = ''
+                if positive_value_exists(politician_we_vote_id):
+                    vote_usa_politician_id = \
+                        vote_usa_politician_id_by_politician_we_vote_id.get(politician_we_vote_id, '')
+
+                if not positive_value_exists(vote_usa_politician_id) and positive_value_exists(candidate_we_vote_id):
+                    vote_usa_politician_id = \
+                        vote_usa_politician_id_by_candidate_we_vote_id.get(candidate_we_vote_id, '')
+
+                one_position['vote_usa_politician_id'] = \
+                    vote_usa_politician_id if positive_value_exists(vote_usa_politician_id) else ''
+
             return HttpResponse(json.dumps(position_list_json), content_type='application/json')
     except Exception as e:
         handle_record_not_found_exception(e, logger=logger)
