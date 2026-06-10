@@ -162,6 +162,18 @@
                                     <input type="radio" name="{{ query_parameter.name }}" {% if query_parameter.default|lower == 'false' %}checked{% endif %} value="false" > False
                                 </td>
                             </tr>
+                        {% elif query_parameter.value == 'checkboxlist' %}
+                            <tr>
+                                <td>{{ query_parameter.name }}: </td>
+                                <td colspan="2">
+                                    {% for choice in query_parameter.choices %}
+                                        <label>
+                                            <input type="checkbox" name="{{ query_parameter.name }}" value="{{ choice }}">
+                                            {{ choice }}
+                                        </label><br />
+                                    {% endfor %}
+                                </td>
+                            </tr>
                         {% endif %}
                     {% endif %}
                 {% endfor %}
@@ -197,6 +209,18 @@
                                 <td colspan="2">
                                     <input type="radio" name="{{ query_parameter.name }}" {% if query_parameter.default|lower == 'true' %}checked{% endif %} value="true" > True<br />
                                     <input type="radio" name="{{ query_parameter.name }}" {% if query_parameter.default|lower == 'false' %}checked{% endif %} value="false" > False
+                                </td>
+                            </tr>
+                        {% elif query_parameter.value == 'checkboxlist' %}
+                            <tr>
+                                <td>{{ query_parameter.name }}: </td>
+                                <td colspan="2">
+                                    {% for choice in query_parameter.choices %}
+                                        <label>
+                                            <input type="checkbox" name="{{ query_parameter.name }}" value="{{ choice }}">
+                                            {{ choice }}
+                                        </label><br />
+                                    {% endfor %}
                                 </td>
                             </tr>
                         {% elif query_parameter.value == 'text' %}
