@@ -22,4 +22,4 @@ COPY . ${LAMBDA_TASK_ROOT}/
 ARG LAMBDA_HANDLER
 RUN test -n "$LAMBDA_HANDLER" || (echo "ERROR: LAMBDA_HANDLER build arg is required" && exit 1)
 ENV LAMBDA_HANDLER=${LAMBDA_HANDLER}
-CMD ["sh", "-c", "exec /lambda-entrypoint.sh \"$LAMBDA_HANDLER\""]
+CMD ["$LAMBDA_HANDLER"]
