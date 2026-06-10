@@ -1,10 +1,9 @@
-# Lambda image for the SQS worker (async Facebook image caching jobs).
+# Lambda image for the batch worker.
 # Uses the AWS-managed Lambda base image which includes the Lambda Runtime
 # Interface Client, so no separate entrypoint wrapper is needed.
 #
 # The AWS Lambda Python 3.12 base uses Amazon Linux 2023.
 # System packages use dnf instead of apt.
-
 FROM public.ecr.aws/lambda/python:3.12
 
 # libmagic is required by the python-magic package used in WeVoteServer
@@ -17,9 +16,4 @@ RUN pip install -r ${LAMBDA_TASK_ROOT}/requirements.txt --no-cache-dir
 # Copy the full WeVoteServer codebase — all Django apps must be importable
 COPY . ${LAMBDA_TASK_ROOT}/
 
-# Handler module.function — must be supplied at build time, e.g.:
-#   --build-arg LAMBDA_HANDLER=aws.lambda_sqs_worker.handler
-ARG LAMBDA_HANDLER
-RUN test -n "$LAMBDA_HANDLER" || (echo "ERROR: LAMBDA_HANDLER build arg is required" && exit 1)
-ENV LAMBDA_HANDLER=${LAMBDA_HANDLER}
-CMD ["$LAMBDA_HANDLER"]
+CMD ["aws.lambda_batch_processor.handler"]
