@@ -724,9 +724,12 @@ class FollowIssueList(models.Model):
 
     @staticmethod
     def fetch_follow_issue_count_by_issue_we_vote_id(issue_we_vote_id):
+        # Query the primary DB (not 'readonly') because this is invoked immediately after a write
+        # in voter_issue_follow_view; the readonly replica can lag and return a pre-write count,
+        # which then gets saved back to Issue.issue_followers_count and effectively loses the update.
         follow_issue_list_length = 0
         try:
-            follow_issue_list_query = FollowIssue.objects.using('readonly').all()
+            follow_issue_list_query = FollowIssue.objects.using('default').all()
             follow_issue_list_query = follow_issue_list_query.filter(issue_we_vote_id=issue_we_vote_id)
             follow_issue_list_query = follow_issue_list_query.filter(following_status=FOLLOWING)
             follow_issue_list_length = follow_issue_list_query.count()
