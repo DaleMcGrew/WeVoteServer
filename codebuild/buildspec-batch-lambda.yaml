@@ -21,7 +21,7 @@ phases:
     on-failure: ABORT
     commands:
       - echo Build started at $(date)
-      - docker build -f docker/Dockerfile.lambda --build-arg LAMBDA_HANDLER=aws.lambda_batch_processor.handler -t wevote-batch-processor:latest .
+      - docker build -f docker/Dockerfile.lambda-batch -t wevote-batch-processor:latest .
   post_build:
     on-failure: ABORT
     commands:
