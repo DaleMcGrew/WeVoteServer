@@ -3113,13 +3113,13 @@ def process_contest_referendum_from_structured_json(
         'referendumTitle' in one_contest_referendum_structured_json else ''
     referendum_subtitle = one_contest_referendum_structured_json['referendumSubtitle'] if \
         'referendumSubtitle' in one_contest_referendum_structured_json else ''
-    if not positive_value_exists(referendum_subtitle):
-        referendum_subtitle = one_contest_referendum_structured_json['referendumBrief'] if \
-            'referendumBrief' in one_contest_referendum_structured_json else ''
     referendum_url = one_contest_referendum_structured_json['referendumUrl'] if \
         'referendumUrl' in one_contest_referendum_structured_json else ''
     referendum_text = one_contest_referendum_structured_json['referendumText'] if \
         'referendumText' in one_contest_referendum_structured_json else ''
+    if not positive_value_exists(referendum_text):
+        referendum_text = one_contest_referendum_structured_json['referendumBrief'] if \
+            'referendumBrief' in one_contest_referendum_structured_json else ''
     no_vote_description = one_contest_referendum_structured_json['noVoteDescription'] if \
         'noVoteDescription' in one_contest_referendum_structured_json else ''
     yes_vote_description = one_contest_referendum_structured_json['yesVoteDescription'] if \
@@ -3272,16 +3272,35 @@ def groom_and_store_google_civic_measure_json_2021(
     elif positive_value_exists(use_vote_usa):
         raw_vote_usa_measure_id = one_contest_json['id']
         vote_usa_measure_id = extract_vote_usa_measure_id(raw_vote_usa_measure_id)
+        # These are the current Vote-USA columns of data we have on Referendums DB.
+        # Everything marked with * is what gets outputted in JSON currently.
+        # Id 							int AI PK
+        # ElectionKey 					varchar(18)
+        # ReferendumKey 				varchar(150) *
+        # ElectionKeyState 				varchar(12)
+        # StateCode 					char(2)
+        # CountyCode 					varchar(3)
+        # LocalKey 					varchar(5)
+        # OrderOnBallot 				int
+        # ReferendumTitle 				longtext *
+        # ReferendumDesc 				longtext *
+        # ReferendumDetail 				longtext *
+        # ReferendumDetailUrl 			longtext *
+        # ReferendumFullText 			longtext *
+        # ReferendumFullTextUrl 			longtext *
+        # IsReferendumTagForDeletion 	tinyint(1)
+        # IsPassed 					tinyint(1)
+        # IsResultRecorded 				tinyint(1)
 
     referendum_subtitle = one_contest_json['referendumSubtitle'] if \
         'referendumSubtitle' in one_contest_json else ''
-    if not positive_value_exists(referendum_subtitle):
-        referendum_subtitle = one_contest_json['referendumBrief'] if \
-            'referendumBrief' in one_contest_json else ''
     referendum_url = one_contest_json['referendumUrl'] if \
         'referendumUrl' in one_contest_json else ''
     referendum_text = one_contest_json['referendumText'] if \
         'referendumText' in one_contest_json else ''
+    if not positive_value_exists(referendum_text):
+        referendum_text = one_contest_json['referendumBrief'] if \
+            'referendumBrief' in one_contest_json else ''
     no_vote_description = one_contest_json['noVoteDescription'] if \
         'noVoteDescription' in one_contest_json else ''
     yes_vote_description = one_contest_json['yesVoteDescription'] if \

@@ -97,11 +97,13 @@ def retrieve_from_vote_usa_api_election_query():
         }
         return results
 
+    include_pre_release_elections = 'Y'
     response = requests.get(
         VOTE_USA_ELECTION_QUERY_URL,
         headers=HEADERS_FOR_VOTE_USA_API_CALL,
         params={
             "accessKey": VOTE_USA_API_KEY,
+            "preRelease": include_pre_release_elections,
         })
 
     # Use API call counter to track the number of queries we are doing each day
