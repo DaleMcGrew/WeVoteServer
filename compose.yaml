@@ -47,7 +47,6 @@ services:
       localstack:
         condition: service_healthy
     # Note: DATABASE_HOST=db does not indicate the name of the host, it is used to associate the api service with the db service
-    # Note: DEV_SERVER_TYPE should be 'runserver' for HTTP, and 'runsslserver' for HTTPS
     environment:
       - DATABASE_NAME=${DATABASE_NAME:-wevoteserverdb}
       - DATABASE_NAME_READONLY=${DATABASE_NAME:-wevoteserverdb}
@@ -93,7 +92,6 @@ services:
       - pgadmin_data:/var/lib/pgadmin
     ports:
       - "8080:80"
-#      - "127.0.0.1:9000:80" # pgadmin4 at http://localhost:9000  (80, 8080, and 443 should be left free for developer experiments)
     networks:
       - wevote
 
