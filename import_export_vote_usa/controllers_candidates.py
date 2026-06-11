@@ -4,11 +4,8 @@ import requests
 from election.models import ElectionManager
 from exception.models import handle_exception
 from office.models import ContestOffice
-from wevote_functions.functions import (
-    positive_value_exists,
-    extract_vote_usa_office_id,
-    augment_vote_usa_office_id_with_suffix,
-)
+from wevote_functions.functions import augment_vote_usa_office_id_with_suffix, extract_vote_usa_office_id, \
+    extract_vote_usa_office_id_with_suffix, positive_value_exists
 import wevote_functions.admin
 
 from .models import VoteUSAApiCounterManager
@@ -117,9 +114,8 @@ def update_existing_candidates_from_candidates_api(google_civic_election_id=0, s
         # or we use base ID as-is for general elections, special elections, and runoffs. 
         vote_usa_to_wevote_office_id = {}
         for raw_vote_usa_office_id in vote_usa_candidates_by_office.keys():
-            base_id = extract_vote_usa_office_id(raw_vote_usa_office_id)
-            suffix = raw_vote_usa_office_id.split('|')[0][-2:]
-            vote_usa_to_wevote_office_id[raw_vote_usa_office_id] = augment_vote_usa_office_id_with_suffix(base_id, suffix)
+            vote_usa_office_id = extract_vote_usa_office_id_with_suffix(raw_vote_usa_office_id)
+            vote_usa_to_wevote_office_id[raw_vote_usa_office_id] = vote_usa_office_id
             
         contest_offices = ContestOffice.objects.filter(
             google_civic_election_id=google_civic_election_id,
@@ -135,6 +131,8 @@ def update_existing_candidates_from_candidates_api(google_civic_election_id=0, s
                 status += 'CONTEST_OFFICE_NOT_FOUND_FOR_VOTE_USA_OFFICE_ID: ' + str(raw_vote_usa_office_id) + \
                     ' (' + str(len(office_candidates)) + ' candidates skipped) '
                 continue
+            # Create a different office for each political party primary race
+            vote_usa_office_id = extract_vote_usa_office_id_with_suffix(raw_vote_usa_office_id)
             groom_results = groom_and_store_google_civic_candidates_json_2021(
                 candidates_structured_json=office_candidates,
                 google_civic_election_id=google_civic_election_id,
@@ -148,11 +146,11 @@ def update_existing_candidates_from_candidates_api(google_civic_election_id=0, s
                     'update_candidates': True,   # do full update on found ones
                 },
                 use_vote_usa=True,
-                vote_usa_office_id=raw_vote_usa_office_id,
+                vote_usa_office_id=vote_usa_office_id,
             )
             if not groom_results['success']:
                 success = False
-                status += 'GROOM_CANDIDATES_FAILED_FOR_OFFICE: ' + str(raw_vote_usa_office_id) + ' '
+                status += 'GROOM_CANDIDATES_FAILED_FOR_OFFICE: ' + str(vote_usa_office_id) + ' '
                 status += groom_results['status']
     except Exception as e:
         success = False
