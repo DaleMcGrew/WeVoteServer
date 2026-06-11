@@ -397,18 +397,22 @@ SOCIAL_AUTH_FACEBOOK_SCOPE = ['email']  # , 'user_friends'
 SOCIAL_AUTH_TWITTER_KEY = get_environment_variable("SOCIAL_AUTH_TWITTER_KEY")
 SOCIAL_AUTH_TWITTER_SECRET = get_environment_variable("SOCIAL_AUTH_TWITTER_SECRET")
 
+
 def convert_to_https_dev_url_if_configured(env_var_value):
-    if get_environment_variable('WE_VOTE_SERVER_PROTOCOL', '') == 'https' and not env_var_value.startswith('https'):
-        pattern = r"http:\/\/localhost:\d*(.*?)$"
-        match = re.search(pattern, env_var_value)
-        if match:
-            path = match.group(1)
-            url_new = f"{get_we_vote_server_root_url()}{path}"
-            # print(url_new)
-            return url_new
-        else:
-            print('Error parsing ' + env_var_value)
-            return env_var_value
+    try:
+        if get_environment_variable('WE_VOTE_SERVER_PROTOCOL', '') == 'https' and not env_var_value.startswith('https'):
+            pattern = r"http:\/\/localhost:\d*(.*?)$"
+            match = re.search(pattern, env_var_value)
+            if match:
+                path = match.group(1)
+                url_new = f"{get_we_vote_server_root_url()}{path}"
+                # print(url_new)
+                return url_new
+            else:
+                print('Error parsing ' + env_var_value)
+                return env_var_value
+    except Exception as e:
+        print('Error in convert_to_https_dev_url_if_configured: ', e)
     # print('HTTP Passing  on  ' + env_var_value)
     return env_var_value
 

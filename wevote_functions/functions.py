@@ -39,6 +39,7 @@ VOTER = 'V'
 
 logger = wevote_functions.admin.get_logger(__name__)
 
+PRIMARY_SUFFIXES = {'PC', 'PD', 'PG', 'PI', 'PL', 'PR'}
 
 STATE_CODE_MAP = {
     'AK': 'Alaska',
@@ -1218,6 +1219,7 @@ def extract_nickname_from_full_name(full_name):
 def extract_vote_usa_measure_id(raw_vote_usa_measure_id):
     return extract_vote_usa_office_id(raw_vote_usa_measure_id)
 
+
 def extract_vote_usa_office_id(raw_vote_usa_office_id):
     if positive_value_exists(raw_vote_usa_office_id):
         raw_vote_usa_office_id = raw_vote_usa_office_id.strip()
@@ -1233,6 +1235,36 @@ def extract_vote_usa_office_id(raw_vote_usa_office_id):
         return vote_usa_office_id
     else:
         return ''
+
+
+def extract_vote_usa_office_id_with_suffix(raw_vote_usa_office_id):
+    if positive_value_exists(raw_vote_usa_office_id):
+        raw_vote_usa_office_id = raw_vote_usa_office_id.strip()
+        if '|' in raw_vote_usa_office_id:
+            parts = raw_vote_usa_office_id.split("|")
+            vote_usa_office_id = parts[1]
+            chunk_with_election_type = parts[0]
+            # If chunk_with_election_type has any of the values in PRIMARY_SUFFIXES as the last two characters,
+            # capture them in suffix
+            suffix = chunk_with_election_type[-2:] if chunk_with_election_type[-2:] in PRIMARY_SUFFIXES else ''
+            if suffix:
+                vote_usa_office_id += '|' + suffix
+        elif '}' in raw_vote_usa_office_id:
+            # A typo has been found in incoming data from Vote USA
+            parts = raw_vote_usa_office_id.split("}")
+            vote_usa_office_id = parts[1]
+            chunk_with_election_type = parts[0]
+            # If chunk_with_election_type has any of the values in PRIMARY_SUFFIXES as the last two characters,
+            # capture them in suffix
+            suffix = chunk_with_election_type[-2:] if chunk_with_election_type[-2:] in PRIMARY_SUFFIXES else ''
+            if suffix:
+                vote_usa_office_id += '|' + suffix
+        else:
+            vote_usa_office_id = raw_vote_usa_office_id
+        return vote_usa_office_id
+    else:
+        return ''
+
 
 def augment_vote_usa_office_id(vote_usa_office_id, primary_party=''):
     """
@@ -1260,6 +1292,7 @@ def augment_vote_usa_office_id(vote_usa_office_id, primary_party=''):
             return vote_usa_office_id + '|' + primary_party_suffix
     return vote_usa_office_id
 
+
 def augment_vote_usa_office_id_with_suffix(vote_usa_office_id, primary_party_suffix=''):
     """
     Appends a party suffix to a VoteUSA office ID (as extracted by extract_vote_usa_office_id)
@@ -1267,7 +1300,6 @@ def augment_vote_usa_office_id_with_suffix(vote_usa_office_id, primary_party_suf
     For general elections, special elections, and runoffs, returns the ID unchanged.
     Valid primary suffixes: PC, PD, PG, PI, PL, PR.
     """
-    PRIMARY_SUFFIXES = {'PC', 'PD', 'PG', 'PI', 'PL', 'PR'}
     if primary_party_suffix in PRIMARY_SUFFIXES:
         return vote_usa_office_id + '|' + primary_party_suffix
     return vote_usa_office_id
