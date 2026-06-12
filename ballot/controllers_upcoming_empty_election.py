@@ -26,7 +26,7 @@ def retrieve_next_election_from_this_state(
         voter_address and hasattr(voter_address, 'voter_id') and positive_value_exists(voter_address.voter_id)
     if not voter_address_exists:
         # Get the voter_id from the voter_device_link
-        voter_id = voter_device_link.voter_id if 'voter_id' in voter_device_link else 0
+        voter_id = voter_device_link.voter_id if hasattr(voter_device_link, 'voter_id') else 0
         if positive_value_exists(voter_id):
             voter_address_results = voter_address_manager.retrieve_ballot_address_from_voter_id(voter_id)
             if voter_address_results['voter_address_found']:
