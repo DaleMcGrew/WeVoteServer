@@ -1078,7 +1078,7 @@ def voter_ballot_items_retrieve_for_api(  # voterBallotItemsRetrieve
         ballot_location_shortcut)
     status += " " + results['status']
     voter_ballot_saved_found = results['voter_ballot_saved_found']
-    if not positive_value_exists(text_for_map_search):
+    if not positive_value_exists(text_for_map_search) and hasattr(results, 'text_for_map_search'):
         text_for_map_search = results['text_for_map_search']
     if 'use_election_without_ballot_data' in results:
         use_election_without_ballot_data = results['use_election_without_ballot_data']
