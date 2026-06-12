@@ -51,6 +51,20 @@ DATABASES = {
     }
 }
 
+if DEBUG:
+    cache_backend_name = get_environment_variable_default('DATABASE_ENGINE_CACHE', 'django.core.cache.backends.db.DatabaseCache')
+    cache_table_name = 'cache_table_debug_' + get_environment_variable_default('DATABASE_CACHE_LOCATION', 'dev_wevote_server')
+else:
+    cache_backend_name = get_environment_variable('DATABASE_ENGINE_CACHE')
+    cache_table_name = get_environment_variable('DATABASE_CACHE_LOCATION')
+
+CACHES = {
+    "default": {
+        "BACKEND": cache_backend_name,
+        "LOCATION": cache_table_name,
+    }
+}
+
 ALLOWED_HOSTS = ['*']
 
 # ########## Logging configurations ###########

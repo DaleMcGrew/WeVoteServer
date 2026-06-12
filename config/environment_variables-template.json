@@ -45,6 +45,10 @@
   "DATABASE_PASSWORD_ANALYTICS":    "admin",
   "DATABASE_HOST_ANALYTICS":        "",
   "DATABASE_PORT_ANALYTICS":        "5678",
+  
+  "_comment":                       "cache database settings for local.py",
+  "DATABASE_ENGINE_CACHE":          "django.core.cache.backends.db.DatabaseCache",
+  "DATABASE_CACHE_LOCATION":        "dev_wevote_server",
 
   "_comment":                       "profile for pgadmin",
   "PG_ADMIN_EMAIL":                 "fake_email@wevoteeducation.org",
