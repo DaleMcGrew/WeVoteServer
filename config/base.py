@@ -85,8 +85,13 @@ def get_environment_variable_default(var_name, default_value):
         return default_value
 
 def get_we_vote_server_root_url():
-    protocol = get_environment_variable_default("WE_VOTE_SERVER_PROTOCOL", "http")
-    domain = get_environment_variable_default("WE_VOTE_SERVER_DOMAIN_HTTP" if protocol == "http" else "WE_VOTE_SERVER_DOMAIN_HTTPS", "http")
+    if get_environment_variable_default("RUNNING_IN_DEVELOPER_MODE", False):
+        protocol = get_environment_variable_default("WE_VOTE_SERVER_PROTOCOL", "https")
+        domain = get_environment_variable_default("WE_VOTE_SERVER_DOMAIN_HTTP" if protocol == "http" else "WE_VOTE_SERVER_DOMAIN_HTTPS", "wevotedeveloper.com")
+    else:
+        protocol = get_environment_variable_default("WE_VOTE_SERVER_PROTOCOL", "http")
+        domain = get_environment_variable_default("WE_VOTE_SERVER_DOMAIN_HTTP" if protocol == "http" else "WE_VOTE_SERVER_DOMAIN_HTTPS", "localhost")
+
     port = get_environment_variable_default("WE_VOTE_SERVER_PORT", "8000")
     if len(port):
         url = f"{protocol}://{domain}:{port}"
@@ -400,19 +405,24 @@ SOCIAL_AUTH_TWITTER_SECRET = get_environment_variable("SOCIAL_AUTH_TWITTER_SECRE
 
 def convert_to_https_dev_url_if_configured(env_var_value):
     try:
-        if get_environment_variable('WE_VOTE_SERVER_PROTOCOL', '') == 'https' and not env_var_value.startswith('https'):
-            pattern = r"http:\/\/localhost:\d*(.*?)$"
-            match = re.search(pattern, env_var_value)
-            if match:
-                path = match.group(1)
-                url_new = f"{get_we_vote_server_root_url()}{path}"
-                # print(url_new)
-                return url_new
-            else:
-                print('Error parsing ' + env_var_value)
-                return env_var_value
+        # Production takes care of itself, but if running in developer mode, and the default value of a variable (probably from environment_variables-template.json)
+        # in http:// is pulled in, this converts them to https if we are running in https mode, (which is the default).
+        running_in_developer_mode = get_environment_variable_default("RUNNING_IN_DEVELOPER_MODE", False)
+        if running_in_developer_mode:
+            protocol = get_environment_variable('WE_VOTE_SERVER_PROTOCOL', 'https')
+            if protocol == 'https' and not env_var_value.startswith('https'):
+                pattern = r"http.*?0+(.*?)$"
+                match = re.search(pattern, env_var_value)
+                if match:
+                    path = match.group(1)
+                    url_new = f"{get_we_vote_server_root_url()}{path}"
+                    # print('url_new', url_new)
+                    return url_new
+                else:
+                    print('Error parsing ' + env_var_value)
+                    return env_var_value
     except Exception as e:
-        print('Error in convert_to_https_dev_url_if_configured: ', e)
+        print('Error in convert_to_https_dev_url_if_configured: ' + e)
     # print('HTTP Passing  on  ' + env_var_value)
     return env_var_value
 
