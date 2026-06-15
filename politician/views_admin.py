@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
+from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.db.models import F, Q
@@ -1426,21 +1427,28 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
 
-    performance_process_dict = (request.GET.get('performance_process_dict', {}))
     # The performance_dict variable contains list(s) of performance_snapshots.
     performance_dict = {}
     # Take in performance_process_dict from the view that saved data for this candidate. Move the lists of
     # the performance_snapshots from that view into the local performance_dict.
-    if isinstance(performance_process_dict, str):  # Only parse if it's a string
-        try:
-            performance_process_dict = json.loads(performance_process_dict)
-            try:
-                # Add the lists from performance_process_dict to the lists in performance_dict.
-                performance_dict.update(performance_process_dict)
-            except Exception as e:
-                status += "Error parsing performance_process_dict: {error}".format(error=e)
-        except json.JSONDecodeError:
-            status += "Error decoding performance_process_dict: {error}".format(error=e)
+
+    performance_process_cache_key = f"politician_edit_process_view_performance_dict_{politician_id}"
+    performance_process_dict = cache.get(performance_process_cache_key)
+    cache.delete(performance_process_cache_key) # Delete the cache key after we use it. We don't want to reuse results.
+
+    if positive_value_exists(performance_process_dict):
+        performance_dict.update(performance_process_dict)
+
+    # if isinstance(performance_cache_key, str):  # Only parse if it's a string
+    #     try:
+    #         performance_process_dict = json.loads(performance_process_dict)
+    #         try:
+    #             # Add the lists from performance_process_dict to the lists in performance_dict.
+    #             performance_dict.update(performance_process_dict)
+    #         except Exception as e:
+    #             status += "Error parsing performance_process_dict: {error}".format(error=e)
+    #     except json.JSONDecodeError:
+    #         status += "Error decoding performance_process_dict: {error}".format(error=e)
 
     # Set up performance_list for this view. A pointer to the performance_list variable is established here.
     #  Throughout the rest of this view, we add snapshots to the performance_list. Since the performance_list
@@ -4013,19 +4021,22 @@ def politician_edit_process_view(request):
     # Since a pointer to performance_list was attached to performance_dict above, the performance_list
     # data gets passed along within performance_dict. We pass this performance_dict
     # with the name 'performance_process_dict' so it is clear this is from a "process" view.
-    performance_process_dict_encoded = urlencode({
-        'performance_process_dict': json.dumps(performance_dict)
-    })
+    # performance_process_dict_encoded = urlencode({
+    #     'performance_process_dict': json.dumps(performance_dict)
+    # })
+
+    # performance_process_cache_key = generate_random_string()
+    cache.set(f"politician_edit_process_view_performance_dict_{politician_id}", performance_dict)
 
     if find_candidates_to_link_to_this_politician_on:
         url_variables += "&find_candidates_to_link_to_this_politician_on=true"
 
     if politician_id:
         return HttpResponseRedirect(reverse('politician:politician_edit', args=(politician_id,)) +
-                                    url_variables + "&" + performance_process_dict_encoded)
+                                    url_variables)
     else:
         return HttpResponseRedirect(reverse('politician:politician_new', args=()) +
-                                    url_variables + "&" + performance_process_dict_encoded)
+                                    url_variables)
 
     # if politician_id:
     #     return HttpResponseRedirect(reverse('politician:politician_edit', args=(politician_id,)))
