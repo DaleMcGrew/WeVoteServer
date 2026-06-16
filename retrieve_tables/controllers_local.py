@@ -1,11 +1,12 @@
 # retrieve_tables/controllers_local.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-
 import json
 import os
 import subprocess
 import time
+from datetime import datetime
+from pathlib import Path
 
 import psycopg2
 import requests
@@ -13,11 +14,11 @@ import sqlalchemy as sa
 from django.http import HttpResponse, HttpResponseServerError
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.base import get_environment_variable, get_environment_variable_default
 from retrieve_tables.retrieve_common import allowable_tables
 from wevote_functions.functions import get_voter_api_device_id, positive_value_exists, server_is_source_of_truth
-from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
 from wevote_tokens.enums import TokenCookies, TokenHeaders, TokenTypes
+from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
 from wevote_tokens.utils import TokensManager
 
 logger = wevote_functions.admin.get_logger(__name__)
@@ -25,6 +26,10 @@ logger = wevote_functions.admin.get_logger(__name__)
 global_stats = {}
 dummy_unique_id = 10000000
 LOCAL_TMP_PATH = '/tmp/'
+
+# EXTENDED_FASTLOAD_LOGGING is only used by developers for debugging, set it on the local, and then it is sent in
+# the API requests to the master, and the resulting logging can be monitored in CloudWatch
+EXTENDED_FASTLOAD_LOGGING = get_environment_variable_default("EXTENDED_FASTLOAD_LOGGING", False)
 
 
 def update_fast_load_db(host, voter_api_device_id, table_name, additional_records):
@@ -99,7 +104,8 @@ def retrieve_sql_files_from_master_server(request):
             global_stats['elapsed'] = int(time.time()- global_stats['global_t0'])
             print(f"{global_stats['count']} -- Retrieving table {table_name}")
             url = f'{host}/apis/v1/backupOneTableToS3/'
-            params = {'table_name': table_name, 'voter_api_device_id': voter_api_device_id}
+            params = {'table_name': table_name, 'voter_api_device_id': voter_api_device_id,
+                      'extended_fastload_logging': EXTENDED_FASTLOAD_LOGGING}
             fetch_data_response = fetch_data_from_api(url, params, token_headers, 100, 180)  # 3 min timeout for ballot_i
 
             response_headers = TokensManager.convert_headers_to_dict(fetch_data_response.headers)
@@ -148,6 +154,26 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
     }
 
     tf = tempfile.NamedTemporaryFile(mode='r+b')
+    if EXTENDED_FASTLOAD_LOGGING:
+        full_path = tf.name
+        print(f"Full Path of tempfile: {full_path}")
+        # Get system temp directory path
+        temp_path = Path(tempfile.gettempdir())
+
+        # List only files (excludes subdirectories)
+        files = [f.name for f in temp_path.iterdir() if f.is_file()]
+        print(f"files in tempdir: {files}")
+
+        with os.scandir('/tmp') as entries:
+            for entry in entries:
+                if entry.is_file():
+                    # Get statistics for each file
+                    info = entry.stat()
+                    print(f"Name: {entry.name}")
+                    print(f"  Size: {info.st_size} bytes")
+                    print(f"  Last Modified: {datetime.fromtimestamp(info.st_mtime)}")
+                    print("-" * 20)
+
     try:
         diff_t0 = int((time.time() - global_stats['global_t0']))
         print(f"About to download {table_name} from S3 at {diff_t0} seconds")
@@ -157,6 +183,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
             # Process in 1MB chunks
             for chunk in response.iter_content(chunk_size=(1024*1024)):
                 if chunk:
+                    # print(f"Chunk: {chunk}")
                     tf.write(chunk)
         # Force the python buffer to be written to the file            
         tf.flush()
@@ -164,6 +191,18 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
             raise Exception(f"Downloaded {int(tf.tell()/1024)} Kb, expected {int(global_stats['table_size']/1024)} Kb")
 
         print("Downloaded", tf.name)
+
+        if EXTENDED_FASTLOAD_LOGGING:
+            with os.scandir('/tmp') as entries:
+                for entry in entries:
+                    if entry.is_file():
+                        # Get statistics for each file
+                        info = entry.stat()
+                        print(f"Name: {entry.name}")
+                        print(f"  Size: {info.st_size} bytes")
+                        print(f"  Last Modified: {datetime.fromtimestamp(info.st_mtime)}")
+                        print("-" * 20)
+
         diff_t0 = int(time.time() - global_stats['global_t0'])
         print(f"Done with download from S3 at {diff_t0} seconds")
     except Exception as e:
@@ -220,7 +259,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         # print(*command_list)
         # Any return code other than 0 is an error
         if table_restore_result.returncode != 0:
-            raise RuntimeError(f"pg_restore failed: {table_restore_result.stderr}")
+            logger.error(f"pg_restore failed: {table_restore_result.stderr}")
 
         diff_t0 = int((time.time() - global_stats['global_t0']))
         print(f"Restore completed at {diff_t0} seconds")

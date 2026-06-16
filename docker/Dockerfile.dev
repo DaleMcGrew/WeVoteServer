@@ -24,6 +24,8 @@ EXPOSE 9000
 EXPOSE 5678
 EXPOSE 5432
 
+ENV RUNNING_IN_DEVELOPER_MODE=True
+
 ENTRYPOINT ["docker-entrypoint"]
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["python", "-u", "manage.py", "runserver", "0.0.0.0:8000"]
 

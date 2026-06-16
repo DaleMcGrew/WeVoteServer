@@ -11,6 +11,9 @@ For MAC:
 ####
     $ cd /Users/<YOUR NAME HERE>/PythonProjects/WeVoteServer/
     $ source /Users/<YOUR NAME HERE>/PythonEnvironments/WeVoteServer3.11/bin/activate
+
+And if you are not using Docker, you will need to:
+
     (WeVoteServer3.11)$ pip install -r requirements.txt
     (WeVoteServer3.11)$ python manage.py makemigrations
     (WeVoteServer3.11)$ python manage.py migrate
@@ -19,6 +22,8 @@ For Linux/WSL:
 ####
     $ cd ~/<YOUR NAME HERE>/PythonProjects/WeVoteServer/
     $ source ~/<YOUR NAME HERE>/PythonEnvironments/WeVoteServer3.11/bin/activate
+
+And if you are not using Docker, you will need to:
     (WeVoteServer3.11)$ pip install -r requirements.txt
     (WeVoteServer3.11)$ python manage.py makemigrations
     (WeVoteServer3.11)$ python manage.py migrate
@@ -27,7 +32,7 @@ Compare your local version of "config/environment_variables.json" with the maste
 "[config/environment_variables-template.json](config/environment_variables-template.json)" and add or remove entries.
 
 
-## Start up the Django server
+## Start up the Django server without Docker
 
 Here are some commands we use quite a lot:
 For MAC:
@@ -42,16 +47,16 @@ For Linux/WSL:
     $ source ~/<YOUR NAME HERE>/PythonEnvironments/WeVoteServer3.11/bin/activate
     (WeVoteServer3.11)$ python manage.py runserver
 
-Find API admin tools here [http://localhost:8000/admin](http://localhost:8000/admin)
+Find API admin tools here [https://wevotedeveloper.com:8000/admin](https://wevotedeveloper.com:8000/admin) or [http://localhost:8000/admin](http://localhost:8000/admin)
 
-Find documentation for all the APIs here [http://localhost:8000/apis/v1/docs](http://localhost:8000/apis/v1/docs)
+Find documentation for all the APIs here [https://wevotedeveloper.com:8000/apis/v1/docs](https://wevotedeveloper.com:8000/apis/v1/docs) or [http://localhost:8000/apis/v1/docs](http://localhost:8000/apis/v1/docs)
 
 ## Test Data
 
 In order to effectively work with WeVoteServer, you will need election data. We have made it easy to set up your 
-database with initial data that will help you do development. Visit the Admin Menu 
-[http://localhost:8000/admin](http://localhost:8000/admin) on your local machine and click the
-"Import Test Data" link. The first time this runs, it can take 60-120 seconds.
+database with initial data that will help you do development. Visit the Admin Menu  to run "Fast Load Data From We Vote Master Servers"
+[https://wevotedeveloper.com:8000/admin/sync_dashboard/](https://wevotedeveloper.com:8000/admin/sync_dashboard/) or [http://localhost:8000/admin/sync_dashboard/](http://localhost:8000/admin/sync_dashboard/) on your local machine and click the
+"Fast Load" button. This takes about a half hour to complete, on a fast machine on a fast network.
 
 
 ## Working with WebApp 

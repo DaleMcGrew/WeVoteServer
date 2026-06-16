@@ -55,31 +55,47 @@ Once the containers are running, you can now access the API at [http://localhost
 
 ### 5. Extra step to make changes to Docker startup files take effect
 
-The `StatReloader` will automatically reload changes you make to project files as you save them, except for these startup files:
+The `StatReloader` will automatically auto-reload changes into the Django `runsslserver` as you save them, except for these startup files:
 ```
    docker/Dockerfile.dev
    docker/dev/entrypoint
    compose.yaml
    config/environment_variables.json
+   config/base.py
 ```
-Most of the time you won't be changing these files, but if you do, you will need to run the following command to get the changes into the Docker 'layers'.
-```
+Most of the time you won't be changing these files, but if you do, you will need to run the following commands to add the changes into the Docker container.  
+If you made a change, and you find that StatReloader doesn't auto-reload that change, you will also need to run these commands.
+```sh
+#Add the changes to the Docker container
 docker compose build --no-cache
+
+#Restart the Docker container
+docker compose up
 ```
 
-### 6. Remove containers and data
+### 6. Remove containers and data (rarely needed)
 
-**Do not run these commands as part of the installation steps, but if you  them they are documented here.**
+**Do not run these commands as part of the installation steps, but if you need them they are documented here.**
 
-The postgres database is stored persistently on your local computer outside the Docker container.  This allows the database to be accessed between and in subsequent docker sessions.
+The postgres database is stored persistently on your local computer outside the Docker container.  This allows the database, with the previous data, to be accessed in subsequent docker sessions.
 
-To stop and remove all containers and saved data (including completely deleting the database and all its data), run the following command. Only do this if you want to completely remove your development environment or start over from scratch.  
+To stop and remove all containers and saved data (including completely deleting the database and all its data), run the following command. Only do this if you want to completely remove your development environment or to start Docker's data over from scratch.  
 ```
 docker compose down -v
 ```
 You can also remove the wevote docker network:
 ```
 docker network rm wevote
+```
+
+### Opening Shells
+
+```sh
+# Open a shell in the api container
+docker compose exec api sh
+
+# Open a shell in the db container (rarely needed, to run psql)
+docker compose exec db sh
 ```
 
 ## PgAdmin
