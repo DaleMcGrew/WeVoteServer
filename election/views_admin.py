@@ -1239,9 +1239,10 @@ def election_list_view(request):
         vote_usa_elections_api_url = \
             "{url}?accessKey={accessKey}&preRelease={preRelease}" \
             "".format(
-                url=VOTE_USA_ELECTION_QUERY_URL,
                 accessKey=vote_usa_api_key,
                 preRelease=include_pre_release_elections,
+                seeAll=include_pre_release_elections,
+                url=VOTE_USA_ELECTION_QUERY_URL,
             )
     except Exception as e:
         vote_usa_elections_api_url = "FAILED: " + str(e) + " "

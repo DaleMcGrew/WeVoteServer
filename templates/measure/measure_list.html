@@ -125,7 +125,11 @@
               <td>{{ measure.state_code }}</td>
               <td>{{ measure.measure_year }} / {{ measure.google_civic_election_id }}</td>
               <td>{{ measure.we_vote_id }}</td>
-              <td>{{ measure.ballotpedia_measure_id }}</td>
+              <td>
+                {% if measure.ballotpedia_measure_id %}{{ measure.ballotpedia_measure_id }}{% endif %}
+                {% if measure.ballotpedia_measure_id and measure.vote_usa_measure_id %} / {% endif %}
+                {% if measure.vote_usa_measure_id %}{{ measure.vote_usa_measure_id }}{% endif %}
+              </td>
               <td>{{ measure.ballotpedia_measure_status|default_if_none:"" }}</td>
               {% if google_civic_election_id %}
                 <td>
