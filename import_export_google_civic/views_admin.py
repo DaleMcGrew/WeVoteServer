@@ -7,7 +7,7 @@ from admin_tools.views import redirect_to_sign_in_page
 from ballot.controllers import refresh_voter_ballots_from_polling_location
 from ballot.models import BallotItemListManager, BallotReturnedListManager, BallotReturnedManager, \
     VoterBallotSavedManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages

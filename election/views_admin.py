@@ -11,7 +11,7 @@ from ballot.models import BallotItem, BallotItemListManager, \
     VoterBallotSaved, VoterBallotSavedManager
 from candidate.models import CandidateCampaign, CandidateListManager, CandidateManager, \
     CandidateToOfficeLink
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 import copy
 from datetime import datetime, timedelta
 from django.http import HttpResponseRedirect

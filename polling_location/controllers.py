@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 from .models import PollingLocationManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.contrib import messages
 import glob
 import json

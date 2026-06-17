@@ -3,7 +3,7 @@
 
 # -*- coding: UTF-8 -*-
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime, timezone
 from donate.models import DonationManager, MasterFeaturePackage
 from organization.models import OrganizationManager

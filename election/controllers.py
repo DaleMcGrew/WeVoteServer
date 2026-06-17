@@ -4,7 +4,7 @@
 
 from .models import Election, ElectionManager
 from ballot.models import BallotReturned, BallotReturnedListManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 # from import_export_google_civic.controllers import retrieve_from_google_civic_api_election_query, \
 #     store_results_from_google_civic_api_election_query
 from datetime import datetime, timedelta

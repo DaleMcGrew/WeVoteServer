@@ -4,7 +4,7 @@
 import base64
 import uuid
 from bs4 import BeautifulSoup
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from .models import CAMPAIGNX_FRIEND_HAS_SUPPORTED_TEMPLATE, CAMPAIGNX_NEWS_ITEM_TEMPLATE, \
     CAMPAIGNX_SUPER_SHARE_ITEM_TEMPLATE, CAMPAIGNX_SUPPORTER_INITIAL_RESPONSE_TEMPLATE, \
     FRIEND_ACCEPTED_INVITATION_TEMPLATE, FRIEND_INVITATION_TEMPLATE, LINK_TO_SIGN_IN_TEMPLATE, \

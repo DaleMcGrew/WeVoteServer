@@ -10,7 +10,7 @@ from .models import attach_defaults_values_to_representative_object, Representat
 from exception.models import handle_record_not_found_exception, handle_record_found_more_than_one_exception, \
     print_to_log, handle_record_not_saved_exception
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime, timedelta
 import pytz
 from django.http import HttpResponse, HttpResponseRedirect

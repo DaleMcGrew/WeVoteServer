@@ -12,7 +12,7 @@ from ballot.controllers import move_ballot_items_to_another_office
 from bookmark.models import BookmarkItemList
 from candidate.controllers import create_candidate_from_politician, move_candidates_to_another_office
 from candidate.models import CandidateCampaign, CandidateListManager, CandidateManager, fetch_candidate_count_for_office
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.text import slugify

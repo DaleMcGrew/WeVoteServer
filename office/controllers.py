@@ -7,7 +7,7 @@ from ballot.controllers import move_ballot_items_to_another_office
 from ballot.models import OFFICE
 from bookmark.models import BookmarkItemList
 from candidate.controllers import move_candidates_to_another_office
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.contrib import messages
 from django.http import HttpResponse
 import json

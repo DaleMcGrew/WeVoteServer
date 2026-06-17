@@ -1,7 +1,7 @@
 # apis_v1/views/views_election.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 from election.controllers import elections_retrieve_for_api, elections_sync_out_list_for_api
 import json

@@ -20,7 +20,7 @@ from django.utils.timezone import now
 import wevote_functions.admin
 from candidate.controllers import refresh_candidate_data_from_master_tables
 from candidate.models import CandidateCampaign, CandidateManager, CandidateListManager
-from config.base import get_environment_variable, get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from election.models import ElectionManager
 from image.controllers import TWITTER, cache_master_and_resized_image
 from image.models import WeVoteImageManager

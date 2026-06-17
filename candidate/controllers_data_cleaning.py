@@ -5,7 +5,7 @@ from datetime import datetime
 import pytz
 
 from django.db.models import Q
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.db.models.functions import Length
 from django.utils.timezone import localtime, now
 

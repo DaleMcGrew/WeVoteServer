@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from django.http import HttpResponse, HttpResponseServerError
 
 import wevote_functions.admin
-from config.base import get_environment_variable, get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from retrieve_tables.retrieve_common import allowable_tables
 from wevote_functions.functions import get_voter_api_device_id, positive_value_exists, server_is_source_of_truth
 from wevote_tokens.enums import TokenCookies, TokenHeaders, TokenTypes

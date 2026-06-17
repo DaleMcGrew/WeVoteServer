@@ -1,7 +1,7 @@
 # apis_v1/views/views_friend.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 from friend.controllers import friend_acceptance_email_should_be_sent, \
     friend_invitation_by_email_send_for_api, friend_invitation_by_email_verify_for_api, \

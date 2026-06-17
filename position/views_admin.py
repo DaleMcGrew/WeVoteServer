@@ -10,7 +10,7 @@ from .controllers import generate_position_sorting_dates_for_election, positions
 from .models import ANY_STANCE, PositionEntered, PositionForFriends, PositionListManager, PERCENT_RATING
 from admin_tools.views import redirect_to_sign_in_page
 from candidate.models import CandidateCampaign, CandidateListManager, CandidateManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required

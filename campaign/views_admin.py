@@ -15,7 +15,7 @@ import re
 
 import wevote_functions.admin
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime, timedelta
 from election.models import ElectionManager
 from follow.models import FOLLOW_DISLIKE, FOLLOWING, FollowOrganizationManager

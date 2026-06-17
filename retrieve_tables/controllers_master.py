@@ -13,7 +13,7 @@ from io import StringIO
 from django.http import HttpResponse
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from retrieve_tables.models import RetrieveTableState
 from retrieve_tables.retrieve_common import get_psycopg2_connection, allowable_tables
 from wevote_functions.functions import positive_value_exists, convert_to_int, get_voter_api_device_id

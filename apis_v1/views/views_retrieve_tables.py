@@ -6,7 +6,7 @@ import json
 from django.http import HttpResponse
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from retrieve_tables.controllers_master import fast_load_status_retrieve, get_total_row_count, get_max_id, \
    backup_one_table_to_s3_controller, fast_load_table_statistics
 from retrieve_tables.controllers_master import fast_load_status_update

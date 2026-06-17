@@ -4,7 +4,7 @@
 
 from django.db.models import Q
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from candidate.models import CandidateCampaign
 from politician.models import Politician, PoliticianManager
 import wevote_functions.admin

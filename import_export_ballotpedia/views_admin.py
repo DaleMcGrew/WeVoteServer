@@ -8,7 +8,7 @@ from .controllers import attach_ballotpedia_election_by_district_from_api, \
     retrieve_ballotpedia_candidates_by_district_from_api, retrieve_ballotpedia_measures_by_district_from_api, \
     retrieve_ballotpedia_district_id_list_for_polling_location, retrieve_ballotpedia_offices_by_district_from_api
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import date
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required

@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 from issue.models import *
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 import json
 from issue.controllers import retrieve_issues_not_linked_to_organization_for_api, \

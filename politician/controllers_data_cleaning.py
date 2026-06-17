@@ -6,7 +6,7 @@ from django.db.models import Count, Q
 from django.utils.timezone import now
 import pytz
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from candidate.models import CandidateCampaign
 from import_export_batches.controllers_data_cleaning import full_deduplication_for_next_state
 import wevote_functions.admin
