@@ -24,7 +24,7 @@ from ballot.models import BallotItemListManager, BallotReturnedManager, find_bes
     OFFICE, CANDIDATE, MEASURE, POLITICIAN, VoterBallotSavedManager
 from bookmark.controllers import voter_all_bookmarks_status_retrieve_for_api, voter_bookmark_off_save_for_api, \
     voter_bookmark_on_save_for_api, voter_bookmark_status_retrieve_for_api
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from email_outbound.controllers import voter_email_address_retrieve_for_api, voter_email_address_save_for_api, \
     voter_email_address_send_sign_in_code_email_for_api, voter_email_address_sign_in_for_api, \
     voter_email_address_verify_for_api

@@ -19,7 +19,7 @@ from geopy import get_geocoder_for_service
 
 import wevote_functions.admin
 from apple.models import AppleUser
-from config.base import get_environment_variable, get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from exception.models import handle_exception, handle_record_found_more_than_one_exception, \
     handle_record_not_saved_exception
 from import_export_facebook.models import FacebookManager

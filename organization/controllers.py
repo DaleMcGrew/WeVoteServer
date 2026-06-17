@@ -19,7 +19,7 @@ from analytics.models import ACTION_BALLOT_VISIT, ACTION_ORGANIZATION_FOLLOW_DIS
     ACTION_ORGANIZATION_STOP_FOLLOWING, ACTION_ORGANIZATION_STOP_IGNORING, AnalyticsManager
 from campaign.controllers import move_campaignx_to_another_organization, \
     refresh_campaignx_supporters_count_in_all_children
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from election.models import ElectionManager
 from exception.models import handle_record_not_found_exception
 from follow.controllers import delete_organization_followers_for_organization, \

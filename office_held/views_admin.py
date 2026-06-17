@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages

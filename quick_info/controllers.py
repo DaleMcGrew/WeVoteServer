@@ -5,7 +5,7 @@
 from .models import QuickInfo, QuickInfoManager, QuickInfoMasterManager
 from ballot.models import OFFICE, CANDIDATE, POLITICIAN, MEASURE
 from candidate.models import CandidateManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.contrib import messages
 from django.http import HttpResponse
 from exception.models import handle_record_not_found_exception, handle_record_not_saved_exception

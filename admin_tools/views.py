@@ -17,7 +17,8 @@ import wevote_functions
 from ballot.models import BallotReturned, VoterBallotSaved
 from candidate.controllers import candidates_import_from_sample_file
 from candidate.models import CandidateCampaign, CandidateManager
-from config.base import get_environment_variable, LOGIN_URL, BASE_DIR, PROJECT_PATH
+from config.base import LOGIN_URL, BASE_DIR, PROJECT_PATH
+from config.environment_variable_functions import get_environment_variable
 from election.controllers import elections_import_from_sample_file
 from election.models import Election
 from email_outbound.models import EmailAddress

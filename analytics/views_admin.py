@@ -11,7 +11,7 @@ from .models import ACTION_BALLOT_VISIT, \
     fetch_action_constant_number_from_constant_string, OrganizationDailyMetrics, OrganizationElectionMetrics, \
     SitewideDailyMetrics, SitewideElectionMetrics, SitewideVoterMetrics
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 import csv
 from datetime import date, timedelta
 from django.http import HttpResponse, HttpResponseRedirect

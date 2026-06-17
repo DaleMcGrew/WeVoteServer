@@ -13,7 +13,7 @@ import requests
 from django.http import HttpResponse
 
 import wevote_functions.admin
-from config.base import get_environment_variable, get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from exception.models import handle_exception
 from wevote_functions.functions import positive_value_exists
 

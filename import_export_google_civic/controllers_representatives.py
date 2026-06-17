@@ -4,7 +4,7 @@
 # -*- coding: UTF-8 -*-
 
 from .models import GoogleCivicApiCounterManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime
 from django.utils.timezone import localtime, now
 from exception.models import handle_exception

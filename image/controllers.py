@@ -12,7 +12,7 @@ from candidate.models import CandidateManager, PROFILE_IMAGE_TYPE_BALLOTPEDIA, P
     PROFILE_IMAGE_TYPE_LINKEDIN, \
     PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKNOWN, \
     PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_VOTE_USA, PROFILE_IMAGE_TYPE_WIKIPEDIA
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from import_export_facebook.models import FacebookManager
 from issue.models import IssueManager
 from organization.models import OrganizationManager

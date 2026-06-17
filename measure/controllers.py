@@ -5,7 +5,7 @@
 from .models import ContestMeasure, ContestMeasureListManager, ContestMeasureManager, \
     CONTEST_MEASURE_UNIQUE_IDENTIFIERS, CONTEST_MEASURE_UNIQUE_ATTRIBUTES_TO_BE_CLEARED
 from ballot.models import MEASURE
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 from election.models import ElectionManager
 from ballot.controllers import move_ballot_items_to_another_measure
