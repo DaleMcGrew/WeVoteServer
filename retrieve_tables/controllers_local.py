@@ -227,7 +227,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         results['success'] = True
     except Exception as e:
         print("!!Problem occurred 2!!", e)
-        logger.error("Problem occurred in pg_restore step: ", e)
+        logger.error(f"Problem occurred in pg_restore step: {e}")
         results['success'] = False,
         results['error string'] = str(e)
     tf.close()
