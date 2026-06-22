@@ -3,7 +3,7 @@ import logging
 
 from django.http import HttpResponse, StreamingHttpResponse
 
-from config.base import get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable_default
 from wevote_functions.functions import positive_value_exists
 from wevote_tokens.enums import TokenTypes, TokenHeaders, TokenResponse
 from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
