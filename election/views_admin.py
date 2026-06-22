@@ -1237,7 +1237,7 @@ def election_list_view(request):
         vote_usa_api_key = get_environment_variable("VOTE_USA_API_KEY", no_exception=True)
         include_pre_release_elections = 'Y'
         vote_usa_elections_api_url = \
-            "{url}?accessKey={accessKey}&preRelease={preRelease}" \
+            "{url}?accessKey={accessKey}&preRelease={preRelease}&seeAll={seeAll}" \
             "".format(
                 accessKey=vote_usa_api_key,
                 preRelease=include_pre_release_elections,
