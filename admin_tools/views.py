@@ -2,23 +2,23 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from django.shortcuts import render
+import requests
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
 from django.db.models import Q
 from django.http import HttpResponseRedirect
-from django.urls import reverse
+from django.shortcuts import render
 from django.template.response import TemplateResponse
-import requests
+from django.urls import reverse
 
 import wevote_functions
 from ballot.models import BallotReturned, VoterBallotSaved
 from candidate.controllers import candidates_import_from_sample_file
 from candidate.models import CandidateCampaign, CandidateManager
 from config.base import LOGIN_URL, BASE_DIR, PROJECT_PATH
-from config.environment_variable_functions import get_environment_variable
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from election.controllers import elections_import_from_sample_file
 from election.models import Election
 from email_outbound.models import EmailAddress
@@ -1729,7 +1729,7 @@ def login_we_vote(request):
     :param request:
     :return:
     """
-    from wevote_tokens.enums import TokenResponse, TokenHeaders, TokenTypes
+    from wevote_tokens.enums import TokenResponse
     from wevote_tokens.utils import TokensManager
     from wevote_tokens.models.single_use_tokens import Scope
 
@@ -2017,7 +2017,7 @@ def statistics_summary_view(request):
 
 def sync_data_with_master_servers_view(request):
     from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
-    from wevote_tokens.enums import TokenHeaders, TokenCookies, TokenTypes
+    from wevote_tokens.enums import TokenCookies, TokenTypes
     from wevote_tokens.utils import TokensManager
 
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
@@ -2041,7 +2041,11 @@ def sync_data_with_master_servers_view(request):
     state_list = STATE_CODE_MAP
     sorted_state_list = sorted(state_list.items())
 
-    fast_load_start_token_valid = positive_value_exists(fast_load_start_token_id) and positive_value_exists(fast_load_start_token_key)
+    DEBUG_FASTLOAD_SINGLE_SERVER = get_environment_variable_default("DEBUG_FASTLOAD_SINGLE_SERVER", False)
+    if positive_value_exists(DEBUG_FASTLOAD_SINGLE_SERVER):
+        fast_load_start_token_valid = True
+    else:
+        fast_load_start_token_valid = positive_value_exists(fast_load_start_token_id) and positive_value_exists(fast_load_start_token_key)
 
     template_values = {
         'election_list':                election_list,

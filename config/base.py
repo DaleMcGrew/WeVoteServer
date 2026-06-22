@@ -317,11 +317,11 @@ SOCIAL_AUTH_TWITTER_SECRET = get_environment_variable("SOCIAL_AUTH_TWITTER_SECRE
 
 def convert_to_https_dev_url_if_configured(env_var_value):
     try:
-        # Production takes care of itself, but if running in developer mode, and the default value of a variable
-        # (probably from environment_variables-template.json)
-        # in http:// is pulled in, this converts them to https if we are running in https mode, (which is the default).
-        running_in_developer_mode = get_environment_variable_default("RUNNING_IN_DEVELOPER_MODE", False)
-        if positive_value_exists(running_in_developer_mode):
+        # Production runs in HTTP and takes care of itself, but if running in developer mode, and the default value of a
+        # variable (probably from environment_variables-template.json) in http:// is pulled in, this converts them to
+        # https if we are running in https mode, (which is the default).
+        RUNNING_IN_DEVELOPER_MODE = get_environment_variable_default("RUNNING_IN_DEVELOPER_MODE", False)
+        if RUNNING_IN_DEVELOPER_MODE:
             protocol = get_environment_variable('WE_VOTE_SERVER_PROTOCOL', 'https')
             if protocol == 'https' and not env_var_value.startswith('https'):
                 pattern = r"http.*?0+(.*?)$"
