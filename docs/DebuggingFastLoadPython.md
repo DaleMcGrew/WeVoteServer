@@ -126,17 +126,9 @@ pg_dump: detail: server version: 16.14; pg_dump version: 15.18 (Debian 15.18-0+d
 wevote@a8d5e48e95f6:/wevote/code$ 
 ```
 
-set PGPASSWORD=admin
-psql -U postgres -h db -d wevoteserverdb -c 'SELECT count(*) FROM "voter_voter"'
+## See Listeners
 
-wevote@36d44d7c364a:/wevote/code$ PGPASSWORD=admin psql -U postgres -h db -d wevoteserverdb -c 'SELECT count(*) FROM "voter_voter"'
- count 
--------
-     3
-(1 row)
-
-wevote@36d44d7c364a:/wevote/code$ 
-
+```
 wevote@8b5c7b9adc9c:/wevote/code$ ss
 Netid            State            Recv-Q             Send-Q                         Local Address:Port                          Peer Address:Port             Process            
 tcp              ESTAB            0                  0                                  127.0.0.1:49384                            127.0.0.1:55281                               
@@ -148,3 +140,4 @@ tcp              ESTAB            0                  0                          
 tcp              ESTAB            0                  0                                  127.0.0.1:49398                            127.0.0.1:55281                               
 tcp              ESTAB            0                  0                                 172.18.0.5:8000                          192.168.65.1:65517                               
 wevote@8b5c7b9adc9c:/wevote/code$ 
+```
