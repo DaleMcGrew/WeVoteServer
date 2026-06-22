@@ -356,6 +356,7 @@ def make_filename_and_command(table_name):
 
     tmp_file_name = f"/tmp/backup-{table_name}-{time.strftime('%Y-%m-%dT%H:%M:%S')}.backup"
     pgurl = f'postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
+    print('pgurl for pg_dump:', pgurl)
 
 
     command_args = ["pg_dump",
@@ -364,6 +365,8 @@ def make_filename_and_command(table_name):
                     "--format=c",
                     f"--file={tmp_file_name}",
                     "--disable-triggers"]
+
+    print('pg_dump command:', ' '.join(command_args))
 
     return tmp_file_name, command_args
 
@@ -387,14 +390,13 @@ def dump_full_postgres_table_to_tmp(table_name, extended_fastload_logging):
                 logger.error('Ok: fastload: subprocess.run pg_dump returncode: %s', str(result.returncode))
                 logger.error('Ok: fastload: subprocess.run pg_dump stdout: %s', result.stdout)
                 logger.error('Ok: fastload: subprocess.run pg_dump stderr: %s', result.stderr)
-                with os.scandir('/tmp') as entries:
-                    for entry in entries:
-                        if entry.is_file():
-                            # Get statistics for each file
-                            info = entry.stat()
-                            logger.error(f"Ok: fastload: Name: {entry.name}")
-                            logger.error(f"Ok: fastload:   Size: {info.st_size} bytes")
-                            logger.error(f"Ok: fastload:   Last Modified: {datetime.fromtimestamp(info.st_mtime)}")
+                # with os.scandir('/tmp') as entries:
+                #     text = 'Ok: fastload Master: '
+                #     for entry in entries:
+                #         if entry.is_file():
+                #             info = entry.stat()
+                #             text += f"{entry.name} ({info.st_size}) {datetime.fromtimestamp(info.st_mtime)}, "
+                #     logger.error(text)
             print('Dump completed')
             results['pg_dump_returncode'] = result.returncode
             results['success'] = True

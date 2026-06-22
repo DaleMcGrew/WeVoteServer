@@ -6,9 +6,9 @@ import json
 from django.http import HttpResponse
 
 import wevote_functions.admin
-from config.environment_variable_functions import get_environment_variable
-from retrieve_tables.controllers_master import fast_load_status_retrieve, get_total_row_count, get_max_id, \
-   backup_one_table_to_s3_controller, fast_load_table_statistics
+from config.base import get_environment_variable
+from retrieve_tables.controllers_master import fast_load_status_retrieve, get_max_id, \
+    backup_one_table_to_s3_controller, fast_load_table_statistics
 from retrieve_tables.controllers_master import fast_load_status_update
 from wevote_functions.functions import get_voter_api_device_id
 from wevote_tokens.enums import TokenTypes
@@ -34,8 +34,9 @@ def backup_one_table_to_s3_view(request):  # backupOneTableToS3
     voter_api_device_id = get_voter_api_device_id(request)
     extended_fastload_logging = request.GET.get('EXTENDED_FASTLOAD_LOGGING', False)
 
-    logger.error("Ok: backup_one_table_to_s3 voter_api_device_id: ", voter_api_device_id)
+    logger.error(f"Ok: backup_one_table_to_s3 voter_api_device_id: {voter_api_device_id}")
     json_data = backup_one_table_to_s3_controller(voter_api_device_id, table_name, extended_fastload_logging)
+    # logger.error(f"Ok: backup_one_table_to_s3 json_data: {json_data}")
 
     return HttpResponse(json.dumps(json_data), content_type='application/json')
 
