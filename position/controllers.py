@@ -9,7 +9,7 @@ from .models import convert_position_object_to_dict, PositionEntered, PositionFo
 from ballot.models import OFFICE, CANDIDATE, MEASURE, POLITICIAN
 from candidate.models import CandidateCampaign, CandidateManager, CandidateListManager, \
     CandidateToOfficeLink
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.db.models import Q
 from django.http import HttpResponse
 from election.models import ElectionManager, fetch_election_state

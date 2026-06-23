@@ -17,7 +17,7 @@ from django.core.validators import URLValidator
 from nameparser import HumanName
 from nameparser.config import CONSTANTS
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 # from wevote_functions.functions_date import DATE_FORMAT_A_DBY_HMS_GMT
 CONSTANTS.string_format = "{title} {first} {middle} \"{nickname}\" {last} {suffix}"
 

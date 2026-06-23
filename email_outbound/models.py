@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from django.apps import apps
 from django.db import IntegrityError, models
 from django.core.mail import EmailMultiAlternatives, get_connection
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from wevote_functions.functions import convert_to_int, extract_email_addresses_from_string, generate_random_string, \
     positive_value_exists
 from wevote_settings.models import fetch_next_we_vote_id_email_integer, fetch_site_unique_id_prefix

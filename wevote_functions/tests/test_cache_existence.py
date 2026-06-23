@@ -13,7 +13,7 @@ from django.db import connection
 from django.test import TestCase
 from django.utils import timezone
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from wevote_functions.functions import positive_value_exists, generate_random_string
 SERVER_IS_SOURCE_OF_TRUTH = positive_value_exists(get_environment_variable("SERVER_IS_SOURCE_OF_TRUTH",
                                                                            no_exception=True))

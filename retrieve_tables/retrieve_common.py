@@ -1,6 +1,6 @@
 import psycopg2
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 
 # Security note: the master side of fast load will only return the data from the following table,
 # Changing this table on local side by itself will not work

@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 import boto3
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 import logging
 import requests
 from wevote_functions.functions import positive_value_exists

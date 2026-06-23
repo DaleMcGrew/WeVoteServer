@@ -17,7 +17,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from admin_tools.views import redirect_to_sign_in_page
 from candidate.models import CandidateManager, CandidateListManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from election.controllers import retrieve_this_and_next_years_election_id_list
 from election.models import ElectionManager
 from import_export_batches.models import BATCH_HEADER_MAP_FOR_POSITIONS, BatchManager, POSITION

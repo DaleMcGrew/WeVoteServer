@@ -34,7 +34,7 @@ from representative.controllers import generate_representative_dict_list_from_re
     move_representatives_to_another_politician
 from representative.models import RepresentativeManager
 from voter.models import Voter, VoterManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 import wevote_functions.admin
 from wevote_functions.functions import candidate_party_display, convert_to_int, \
     convert_to_political_party_constant, extract_instagram_handle_from_text_string, \

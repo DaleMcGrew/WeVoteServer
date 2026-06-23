@@ -14,7 +14,7 @@ from django.shortcuts import render
 import wevote_functions.admin
 from admin_tools.views import redirect_to_sign_in_page
 from ballot.models import BallotReturnedListManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from election.controllers import retrieve_election_id_list_by_year_list, retrieve_upcoming_election_id_list
 from election.models import ElectionManager
 from import_export_batches.models import BatchManager

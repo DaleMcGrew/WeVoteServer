@@ -6,7 +6,7 @@ from .controllers import *
 from .controllers_data_cleaning import cleanup_organization_links
 from .models import ALPHABETICAL_ASCENDING, Issue, OrganizationLinkToIssue
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse

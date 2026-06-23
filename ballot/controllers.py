@@ -6,7 +6,7 @@ from .models import BallotItemListManager, BallotItemManager, BallotReturnedList
     CANDIDATE, find_best_previously_stored_ballot_returned, OFFICE, MEASURE, \
     VoterBallotSaved, VoterBallotSavedManager
 from candidate.models import CandidateListManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime, timedelta
 import datetime as the_other_datetime
 from election.controllers import retrieve_upcoming_election_id_list
