@@ -8,7 +8,6 @@ import re
 import subprocess
 import time
 from datetime import datetime, timezone, timedelta
-from io import StringIO
 
 from django.http import HttpResponse
 
@@ -260,7 +259,7 @@ def fast_load_status_update(request):
     chunk = convert_to_int(request.GET.get('chunk', None))
     total_records = convert_to_int(request.GET.get('total_records', None))
     is_running = positive_value_exists(request.GET.get('is_running', True))
-    print('fast_load_status_update ENTRY table_name', table_name, chunk, 'no row yet', additional_records, flush=True)
+    print('FastLoad: fast_load_status_update ENTRY table_name: ', table_name, chunk, 'no row yet', additional_records, flush=True)
 
     success = True
     response_string = "error"
@@ -384,12 +383,12 @@ def dump_full_postgres_table_to_tmp(table_name, extended_fastload_logging):
 
         try:
             if extended_fastload_logging:
-                logger.error('Ok: fastload: subprocess.run pg_dump command_args: %s', str(command_args))
+                print('FastLoad: subprocess.run pg_dump command_args: %s', str(command_args))
             result = subprocess.run(command_args, capture_output=True)  # , shell=False
             if extended_fastload_logging:
-                logger.error('Ok: fastload: subprocess.run pg_dump returncode: %s', str(result.returncode))
-                logger.error('Ok: fastload: subprocess.run pg_dump stdout: %s', result.stdout)
-                logger.error('Ok: fastload: subprocess.run pg_dump stderr: %s', result.stderr)
+                print('FastLoad: subprocess.run pg_dump returncode: %s', str(result.returncode))
+                print('FastLoad: subprocess.run pg_dump stdout: %s', result.stdout)
+                print('FastLoad: subprocess.run pg_dump stderr: %s', result.stderr)
                 # with os.scandir('/tmp') as entries:
                 #     text = 'Ok: fastload Master: '
                 #     for entry in entries:
@@ -397,19 +396,19 @@ def dump_full_postgres_table_to_tmp(table_name, extended_fastload_logging):
                 #             info = entry.stat()
                 #             text += f"{entry.name} ({info.st_size}) {datetime.fromtimestamp(info.st_mtime)}, "
                 #     logger.error(text)
-            print(f"Dump completed for {table_name}", flush=True)
+            print(f"FastLoad: Dump completed for {table_name}", flush=True)
             results['pg_dump_returncode'] = result.returncode
             results['success'] = True
             results['temp_file_name'] = temp_file_name
             results['status'] = f"tmp file {temp_file_name} created"
             if extended_fastload_logging:
-                logger.error('Ok: fastload: subprocess.run pg_dump temp_file_name : %s', temp_file_name)
+                print('FastLoad: subprocess.run pg_dump temp_file_name : %s', temp_file_name, flush=True)
         except Exception as e:
-            logger.error('subprocess.run pg_dump error : %s', str(e))
+            logger.error('fastload: subprocess.run pg_dump error : %s', str(e))
             print("!!Problem occurred!!", e, flush=True)
             results['success'] = False,
             results['error string'] = str(e)
-    # logger.error('Ok: fastload: subprocess.run pg_dump results : %s', json.dumps(results))
+    # print('FastLoad: subprocess.run pg_dump results : %s', json.dumps(results), flush=True)
     return results
 
 
@@ -441,7 +440,7 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name, extended_
             s3 = session.resource(AWS_STORAGE_SERVICE)
 
             ts = '{:.2f} seconds'.format(time.time() - t0)
-            print(f"About to dump table at {ts} seconds", flush=True)
+            print(f"FastLoad: About to dump table at {ts} seconds", flush=True)
             results = dump_full_postgres_table_to_tmp(table_name, extended_fastload_logging)
             ts: str = '{:.2f} seconds'.format(time.time() - t0)
             results['dump_table_to_tmp_completed'] = ts
@@ -452,7 +451,7 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name, extended_
             date_tomorrow_seconds = timedelta(days=2).total_seconds()
 
             ts = '{:.2f} seconds'.format(time.time() - t0)
-            print(f"About to upload to S3 at {ts} seconds", flush=True)
+            print(f"FastLoad: About to upload to S3 at {ts} seconds", flush=True)
 
             s3.Bucket(AWS_STORAGE_BUCKET_NAME).upload_file(
                 results['temp_file_name'], tail, ExtraArgs={'Expires': date_tomorrow, 'ContentType': 'text/html'})
@@ -461,9 +460,10 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name, extended_
                 try:
                     response = s3.head_object(Bucket=AWS_STORAGE_BUCKET_NAME, Key=results['temp_file_name'])
                     file_size = response['ContentLength']
-                    logger.error(f"Ok: fastload: s3 file_name: {results['temp_file_name']} -- size: {file_size} bytes")
+                    print(f"FastLoad: s3 file_name: {results['temp_file_name']} -- size: {file_size} bytes", flush=True)
+                    logger.info(f"Test of Info, fastload: s3 file_name: {results['temp_file_name']} -- size: {file_size} bytes")
                 except Exception as e:
-                    logger.error(f"Ok: fastload: s3 file_name size check exception: {e}")
+                    logger.error(f"fastload: s3 file_name size check exception: {e}")
 
             aws_s3_file_url = s3.meta.client.generate_presigned_url(
                                 ClientMethod='get_object',
@@ -471,12 +471,12 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name, extended_
                                 ExpiresIn=date_tomorrow_seconds,
                             )
             if extended_fastload_logging:
-                logger.error(f"Ok: fastload: aws_s3_file_url: {aws_s3_file_url}")
+                print(f"FastLoad: aws_s3_file_url: {aws_s3_file_url}", flush=True)
 
             ts = '{:.2f} seconds'.format(time.time() - t0)
             results['tmp_file_to_s3_completed'] = str(ts)
 
-            print(f"Done with upload to S3 at {ts} seconds", flush=True)
+            print(f"FastLoad: Done with upload to S3 at {ts} seconds", flush=True)
             results['status'] += ', s3 upload completed'
             results['aws_s3_file_url'] = aws_s3_file_url
 

@@ -34,7 +34,7 @@ def backup_one_table_to_s3_view(request):  # backupOneTableToS3
     voter_api_device_id = get_voter_api_device_id(request)
     extended_fastload_logging = request.GET.get('EXTENDED_FASTLOAD_LOGGING', False)
 
-    logger.error(f"Ok: backup_one_table_to_s3 voter_api_device_id: {voter_api_device_id}")
+    logger.error(f"Ok: backup_one_table_to_s3 {table_name} -- voter_api_device_id: {voter_api_device_id}")
     json_data = backup_one_table_to_s3_controller(voter_api_device_id, table_name, extended_fastload_logging)
     # logger.error(f"Ok: backup_one_table_to_s3 json_data: {json_data}")
 
