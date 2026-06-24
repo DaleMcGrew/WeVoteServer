@@ -27,6 +27,7 @@ a previous step, but it doesn't hurt anything to do this twice):
 
     (WeVoteServer3.11) $ pip install psycopg2 
     (WeVoteServer3.11) $ python manage.py makemigrations
+    (WeVoteServer3.11) $ python manage.py createcachetable
     (WeVoteServer3.11) $ python manage.py migrate
 
 When prompted for a super user, enter your email address and a simple password. This admin account is only used in development.
