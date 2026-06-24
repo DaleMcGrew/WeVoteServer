@@ -13,7 +13,8 @@ from email_outbound.functions import convert_html_to_plain_text, build_prepared_
 from politician.models import Politician
 from voter.models import VoterManager
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP
+from wevote_functions.functions import convert_state_code_to_state_text, convert_to_int, positive_value_exists, \
+    STATE_CODE_MAP
 from wevote_functions.functions_date import get_current_year_as_integer
 from .models import AudienceFilter, AudienceFilterChain, \
     CUSTOMIZATION_TOKEN_CONVERSION_FROM_JAZZ_HR, \
@@ -1112,6 +1113,15 @@ def render_audience_builder_html(
             election_day_text__gte=first_day_of_year_to_show,
             election_day_text__lte=last_day_of_year_to_show)
         election_list = list(election_list_query)
+        # Build a consistent display name for each election: prepend the state name only when the stored
+        # election_name does not already start with it (avoids "California California State Primary").
+        for one_election in election_list:
+            election_name = one_election.election_name if one_election.election_name else ''
+            state_text = convert_state_code_to_state_text(one_election.state_code)
+            if positive_value_exists(state_text) and not election_name.lower().startswith(state_text.lower()):
+                one_election.election_name_display = f"{state_text} {election_name}".strip()
+            else:
+                one_election.election_name_display = election_name
     except Exception as e:
         status += f"ERROR_RETRIEVING_ELECTIONS: {e}"
         success = False
@@ -1299,7 +1309,8 @@ def render_audience_filter_html(
             for one_election in election_list:
                 one_election_id = convert_to_int(one_election.google_civic_election_id)
                 if one_election_id == audience_filter_election_id:
-                    election_name_selected = one_election.election_name
+                    election_name_selected = getattr(
+                        one_election, 'election_name_display', one_election.election_name)
                     break
 
         if positive_value_exists(audience_filter.has_opened_list):
