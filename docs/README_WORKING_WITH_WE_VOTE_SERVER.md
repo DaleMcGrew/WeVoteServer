@@ -17,6 +17,7 @@ And if you are not using Docker, you will need to:
     (WeVoteServer3.11)$ pip install -r requirements.txt
     (WeVoteServer3.11)$ python manage.py makemigrations
     (WeVoteServer3.11)$ python manage.py migrate
+    (WeVoteServer3.11)$ python manage.py createcachetable
 
 For Linux/WSL:
 ####
@@ -24,9 +25,11 @@ For Linux/WSL:
     $ source ~/<YOUR NAME HERE>/PythonEnvironments/WeVoteServer3.11/bin/activate
 
 And if you are not using Docker, you will need to:
+
     (WeVoteServer3.11)$ pip install -r requirements.txt
     (WeVoteServer3.11)$ python manage.py makemigrations
     (WeVoteServer3.11)$ python manage.py migrate
+    (WeVoteServer3.11)$ python manage.py createcachetable
     
 Compare your local version of "config/environment_variables.json" with the master template version 
 "[config/environment_variables-template.json](config/environment_variables-template.json)" and add or remove entries.
