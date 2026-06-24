@@ -1,0 +1,113 @@
+{# templates/admin_tools/speed_statistics_banner.html #}
+{% load performance_tags %}
+
+{% if speed_statistics_display %}
+<body>
+  <div class="alert alert-info"
+       role="alert"
+       id="SpeedStatisticsPopup"
+       style="display: none;
+              justify-content: space-between;
+              align-items: center;
+              position: relative;
+              width: 100%;
+              text-align: center;
+              padding: 15px">
+    <span class="close"
+          id="SpeedStatisticsClose"
+          style="position: absolute;
+                 top: 2px;
+                 right: 2px">&times;</span>
+
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Context</th>
+          <th>Time Difference (seconds)</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for scope, context in speed_statistics_display.items %}
+          <tr>
+            <td colspan="3" style="font-weight: bold; text-align: left">{{ scope }}</td>
+          </tr>
+          {% for stat in context %}
+            <tr>
+              <td>{{ stat.context }}</td>
+              <td>{{ stat.start_time|floatformat:4 }}</td>
+              <td>{{ stat.end_time|floatformat:4 }}</td>
+              <td>{{ stat.time_difference|floatformat:4 }}</td>
+              <td style="font-weight:300; color:#666; text-align:left;">{{ stat.description }}</td>
+            </tr>
+          {% endfor %}
+          <tr style="font-weight: bold; background-color: #C0DDED;">
+            <td>Total for {{ view }}</td>
+            <td>{{ stats|performance_total|floatformat:4 }}</td>
+            <td style="font-weight: bold; color: #666; text-align: left;">Sum of performance snapshots for {{ view }}</td>
+          </tr>
+        {% endfor %}
+        
+        {% comment %} comment out the load time display {% endcomment %}
+        <tr>
+          <td colspan="3" style="font-weight: bold; text-align: left">rendering</td>
+        </tr>
+
+        <tr>
+          <td>Render Time</td>
+          <td id="renderLoadTimeDisplay">Render time not available</td>
+          <td style="font-weight: 300; color: #666; text-align: left;">
+            The amount of time it took to render the page in Django.
+          </td>
+        </tr>
+
+        <tr>
+          <td>Browser Load Time</td>
+          <td id="browserLoadTimeDisplay"></td>
+          <td style="font-weight: 300; color: #666; text-align: left;">
+            The amount of time it took the browserto load static and dynamic elements of this page.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display: flex; justify-content: flex-end;">
+    <button id="SpeedStatisticsButton"
+            class="toggle_button"
+            style="padding: 10px 20px;
+                   border: 1px solid black;
+                   background-color: white;
+                   cursor: pointer">Speed Statistics</button>
+  </div>
+  
+  <script>
+    // Handle showing the Speed Statistics table on button click
+    document.querySelector('.toggle_button').addEventListener('click', function() {
+        document.getElementById('SpeedStatisticsPopup').style.display = 'flex';
+        document.getElementById('SpeedStatisticsButton').style.display = 'none';
+    });
+
+    // Handle hiding the Speed Statistics table on close button click
+    document.getElementById('SpeedStatisticsClose').addEventListener('click', function() {
+        document.getElementById('SpeedStatisticsPopup').style.display = 'none';
+        document.getElementById('SpeedStatisticsButton').style.display = 'block';
+    });
+
+    // Count how long it takes for the browser to load the page
+    const startBrowserLoadTime = performance.now();
+    window.addEventListener('load', () => {
+      const elapsed = (performance.now() - startBrowserLoadTime) / 1000;
+      document.getElementById('browserLoadTimeDisplay').textContent =
+        elapsed.toFixed(4);
+        
+        // Remove the renderLoadTimePlaceholder element and display the renderLoadTime in the renderLoadTimeDisplay element
+        const elementToRemove = document.getElementById('renderLoadTimePlaceholder');
+        if (elementToRemove) {
+            document.getElementById('renderLoadTimeDisplay').textContent = elementToRemove.textContent;
+            elementToRemove.remove();
+        }
+    });
+    </script>
+  </body>
+{% endif %}
