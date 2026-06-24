@@ -7,19 +7,19 @@ from config.environment_variable_functions import get_environment_variable
 
 # The fast load apis will only return the data from the following tables
 allowable_tables = [
-    'position_positionentered',                      # Zero rows on master server Dec 2024
-    'campaign_campaignx',                            # Zero rows on master server Dec 2024
-    'campaign_campaignxowner',                       # 92 rows on master server Dec 2024
+    'campaign_campaignxowner',                       # 116 rows on master server Dec 2024
+    'position_positionentered',                      # 212,672 rows on master server June 2026
+    'campaign_campaignx',                            # 111,907 rows on master server June 2026
     'campaign_campaignxpolitician',                  # 50 rows on master server Dec 2024
     'campaign_campaignxlistedbyorganization',        # 1 row on master server Dec 2024
     'campaign_campaignxnewsitem',                    # Zero rows on master server Dec 2024
     'campaign_campaignxseofriendlypath',             # 115,439 rows in April 2026
     'campaign_campaignxsupporter',                   # 15,766 rows in April 2026
     'candidate_candidatesarenotduplicates',          # 532 rows on master server Dec 2024
-    'candidate_candidatetoofficelink',
-    'election_ballotpediaelection',
-    'election_election',
-    'electoral_district_electoraldistrict',
+    'candidate_candidatetoofficelink',               # 232,038 rows on master server June 2026
+    'election_ballotpediaelection',                  # 468 rows on master server June 2026
+    'election_election',                             # 651 rows on master server June 2026
+    'electoral_district_electoraldistrict',          # 38,340 rows on master server June 2026
     'follow_followissue',
     'follow_followorganization',
     'issue_issue',

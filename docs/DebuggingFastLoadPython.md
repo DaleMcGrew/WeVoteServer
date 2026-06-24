@@ -1,5 +1,28 @@
 # Debugging Fast Load with the Master and the Local being the same instance
 
+## Set environment variables for this configuration
+
+Enabling EXTENDED_FASTLOAD_LOGGING environment variable in environment_varables.json adds extra log lines on the 
+Master server which can be viewed on your local server when DEBUG_FASTLOAD_SINGLE_SERVER mode and in CloudWatch when not.
+You will need access to AWS CloudWatch to confirm your changes after leaving DEBUG_FASTLOAD_SINGLE_SERVER mode, ask your team lead for access if you don't have it.
+
+Enabling DEBUG_FASTLOAD_SINGLE_SERVER forces the local to use the local database as the Master, then export each file to AWS S3,
+import them to /tmp and finally pg_restore them back into the database.  If anything goes wrong, or you restart the FastLoad midway
+through you may need to use psql to reload a fresh copy of the local database (this takes a few seconds).
+
+```
+  "EXTENDED_FASTLOAD_LOGGING":      true,
+```
+Set the environment variable that uses the local server as a master and local
+```
+  "DEBUG_FASTLOAD_SINGLE_SERVER":   true,
+```
+
+**Be sure to remove DEBUG_FASTLOAD_SINGLE_SERVER in order to test with the Master server as the source of data.**
+
+
+## Steps to get a copy of the "Master" database onto your local
+
 Start with a "Plain" database backup from the master server, if you don't have access to the Production pgAdmin 4 instance ask Steve or Dale to get you the file.
 In this example the file is named ....  `wevoteApiDbPlainJun19-230pm`  (As of June 2026, this file is 40 to 50GB -- This is the full database, including disposable cache files, FastLoad copies a subset of these tables.)
 
@@ -95,13 +118,6 @@ GRANT
 Those "CREATE ROLE" lines are only necessary the first time you import the database from pgAdmin, or if you have wiped the db with `docker compose down -v`, so otherwise you can
 skip them, or ignore the errors.
 
-Set the environment variable that uses the local server as a master and local
-```
-  "DEBUG_FASTLOAD_SINGLE_SERVER":   true,
-```
-
-
-**Be sure to undo these temporary before checkin in your code or FastLoad will not work for other developers.**
 
 Every time you want to re-run fastload with a fresh database, you will need to repeat these steps.
 

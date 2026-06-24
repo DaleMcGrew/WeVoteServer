@@ -3,6 +3,7 @@
 # -*- coding: UTF-8 -*-
 import json
 import os
+import re
 import subprocess
 import time
 from datetime import datetime
@@ -53,9 +54,9 @@ def update_fast_load_db(host, voter_api_device_id, table_name, additional_record
                                         'voter_api_device_id': voter_api_device_id,
                                         })
 
-        # print('update_fast_load_db ', response.status_code, response.url, voter_api_device_id)
-        # print(response.request.url)
-        print('update_fast_load_db ', response.status_code, response.url, voter_api_device_id)
+        # print('update_fast_load_db ', response.status_code, response.url, voter_api_device_id, flush=True)
+        # print(response.request.url, flush=True)
+        print('update_fast_load_db ', response.status_code, response.url, voter_api_device_id, flush=True)
     except Exception as e:
         logger.error('update_fast_load_db caught: ', str(e))
 
@@ -202,9 +203,9 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         db_pass = get_environment_variable('DATABASE_PASSWORD')
 
         diff_t0 = int(time.time() - global_stats['global_t0'])
-        print(f"About to TRUNCATE {table_name} at {diff_t0} seconds")
+        print(f"About to TRUNCATE {table_name} at {diff_t0} seconds", flush=True)
     except Exception as e:
-        print("!!Problem occurred getting variables for db:", str(e))
+        print("!!Problem occurred getting variables for db:", str(e), flush=True)
         results['success'] = False,
         results['error string'] = str(e)
         tf.close()
@@ -216,7 +217,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
             raise Exception(f"Truncate table {table_name} failed: {table_truncated}")
 
         diff_t0 = int((time.time() - global_stats['global_t0']))
-        print(f"About to sync data from tempfile at {diff_t0} seconds")
+        print(f"About to sync data from tempfile at {diff_t0} seconds", flush=True)
 
         # Sanity check to prove that that pg_dump can be run in controllers_local -- never need this
         # command_args = ["pg_dump",
@@ -228,22 +229,22 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         #                 "--file=/tmp/steve25",
         #                 "--disable-triggers"]
         #
-        # # logger.error('pg_dump command:', ' '.join(command_args))
-        # logger.error('pg_dump command WARMUP1:')
+        # # print('pg_dump command:', ' '.join(command_args))
+        # print('pg_dump command WARMUP1:')
         # try:
         #     result2 = subprocess.run(command_args, capture_output=True, text=True)
-        #     logger.error('pg_dump command WARMUP2 result2:' + str(result2))
+        #     print('pg_dump command WARMUP2 result2:' + str(result2))
         # except Exception as e:
-        #     logger.error("pg_dump ERROR: " + str(e))
-        # logger.error('pg_dump command WARMUP3: done')
+        #     print("pg_dump ERROR: " + str(e))
+        # print('pg_dump command WARMUP3: done')
         #
 
-        logger.error(f"Ok. Running in_docker: {in_docker}")
+        print(f"Ok. Running in_docker: {in_docker}", flush=True)
         if in_docker:
             pgurl = f'\'postgresql://{db_user}:{db_password}@{db_host}:5432/{db_name}\''
-            command_list = f"pg_restore -c -v --disable-triggers --no-password -U postgres -d {pgurl} -t voter_voteraddress < {tf.name}"
+            command_list = f"pg_restore -c -v --disable-triggers --no-password -U postgres -d {pgurl} -t {table_name} < {tf.name}"
             command = command_list
-            logger.error('Ok. command in Docker:   ' + command_list)
+            print('Ok. command in Docker:   ' + command_list, flush=True)
         else:
             command_list = ['pg_restore',
                             '-v',
@@ -256,7 +257,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
             command_list.extend(['-d', db_name,
                                  '-t', table_name,
                                  tf.name])
-            logger.error(f"Ok. Not in Docker, command: {command_list}")
+            print(f"Ok. Not running in Docker, command: {command_list}", flush=True)
 
         # Get password and set environment. If no password, don't set the environment variable.
         # Passing 'None' to the environment variable will cause the command to fail.
@@ -265,11 +266,11 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
             env['PGPASSWORD'] = db_pass
 
         # env_in_container = subprocess.run(["env"], env=env, capture_output=True, text=True)
-        # logger.error(f"pg_restore env: {env_in4_container.stdout}")
+        # print(f"pg_restore env: {env_in4_container.stdout}")
         # script_path = os.path.join("/tmp", tf.name)
-        # logger.error(f"script_path: {script_path}")
+        # print(f"script_path: {script_path}")
         # env_in_container = subprocess.run(['ls', '-la', script_path], env=env, capture_output=True, text=True)
-        # logger.error(f"ls -la {script_path}:  {env_in_container.stdout}")
+        # print(f"ls -la {script_path}:  {env_in_container.stdout}")
 
         table_restore_result = subprocess.run(command, shell=True, env=env)
 
@@ -278,18 +279,21 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
             logger.error(f"pg_restore failed: {table_restore_result.stderr}")
 
         diff_t0 = int((time.time() - global_stats['global_t0']))
-        print(f"Restore completed at {diff_t0} seconds")
+        print(f"Restore completed at {diff_t0} seconds", flush=True)
         results['success'] = True
 
         if EXTENDED_FASTLOAD_LOGGING:     # Double check
-            query = f"SELECT count(*) FROM public.\"{table_name}\""
-            command_list = ['psql', '-h', db_host, '-U', 'postgres', '-d',  db_name, '-c', query]
-            count_result = subprocess.run(command_list, env=env, capture_output=True, text=True)
-            print(f"pg_restore Count {table_name}: {count_result.stdout}")
+            try:
+                query = f"SELECT count(*) FROM public.\"{table_name}\""
+                command_list = ['psql', '-h', db_host, '-U', 'postgres', '-d',  db_name, '-c', query]
+                count_result = subprocess.run(command_list, env=env, capture_output=True, text=True)
+                numbers = re.findall(r"\d+", count_result.stdout)
+                print(f"pg_restore successfully restored {table_name} with row count: {numbers[0]}", flush=True)
+            except Exception as e:
+                logger.error("pg_restore count(*) failed" + str(e))
 
     except Exception as e:
-        print("!!Problem occurred 2!!: ", str(e))
-        logger.error("Problem occurred in pg_restore step: ", str(e))
+        logger.error("Problem occurred in pg_restore step 2: ", str(e))
         results['success'] = False,
         results['error string'] = str(e)
     tf.close()
@@ -299,7 +303,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
 
 # noinspection PyUnusedLocal
 def get_local_fast_load_status(request):
-    # print("Getting local fast load status", global_stats)
+    # print("Getting local fast load status", global_stats, flush=True)
     return HttpResponse(json.dumps(global_stats), content_type='application/json')
 
 
@@ -335,7 +339,7 @@ def truncate_table_psycopg2(table_name):
         cur = conn.cursor()
         statement = f"TRUNCATE TABLE {table_name}"
         ret = cur.execute(statement)
-        # print(f"TRUNCATE TABLE {table_name} re {str(ret)}")
+        # print(f"TRUNCATE TABLE {table_name} re {str(ret)}", flush=True)
     except Exception as e:
         logger.error(f'FAILED_TABLE_TRUNCATE: {table_name} -- {str(e)}')
         return e
@@ -352,7 +356,7 @@ def drop_table(engine, table_name):
         try:
             # Drop the table
             conn.execute(sa.text(f"DROP TABLE {table_name}"))
-            print(f"RUNNING: DROP TABLE {table_name} ")
+            print(f"RUNNING: DROP TABLE {table_name} ", flush=True)
         except Exception as e:
             logger.error(f'FAILED_TABLE_DROP: {table_name} -- {str(e)}')
 
@@ -365,7 +369,7 @@ def fetch_data_from_api(url, params, token_headers, max_retries=1000, timeout=8)
     :return:
     """
     for attempt in range(max_retries):
-        # print(f'Attempt {attempt} of {max_retries} attempts to fetch data from api')
+        # print(f'Attempt {attempt} of {max_retries} attempts to fetch data from api', flush=True)
         try:
             verify = not DEBUG_FASTLOAD_SINGLE_SERVER  # verify is True for normal operation
             response = requests.get(url, params=params, headers=token_headers, verify=verify, timeout=timeout)
