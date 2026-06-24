@@ -60,7 +60,7 @@
                id="show_all_elections_id"
                value="1"
                {% if show_all_elections %}checked{% endif %} />
-        Include Past Elections
+        Include Past Years
       </label>
 
       &nbsp;&nbsp;&nbsp;
@@ -70,7 +70,7 @@
                id="show_number_of_ballot_items_id"
                value="1"
                {% if show_number_of_ballot_items %}checked{% endif %} />
-        Show Ballot Items Count
+        Show Statistics
       </label>
       &nbsp;&nbsp;&nbsp;
       {% if voter_guide_possibility_search %}
@@ -256,7 +256,7 @@
       {# Filter the voter guides possibilities: Only show the ones owned by a particular person #}
       <div class="form-group pull-left">
         <label for="assigned_to_voter_we_vote_id_id" class="control-label">
-          <span class="u-no-break">Show your list:</span>
+          <span class="u-no-break">Assigned to:</span>
         </label>
         <select id="assigned_to_voter_we_vote_id_id"
                 name="assigned_to_voter_we_vote_id">
