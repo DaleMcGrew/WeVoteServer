@@ -1842,7 +1842,7 @@ def generate_candidate_dict_from_candidate_object(
     date_today_as_integer = get_current_date_as_integer()
     try:
         election_is_upcoming = True if positive_value_exists(candidate.candidate_ultimate_election_date) and \
-                                       candidate.candidate_ultimate_election_date > date_today_as_integer else False
+                                       candidate.candidate_ultimate_election_date >= date_today_as_integer else False
     except Exception as e:
         election_is_upcoming = False
         status += f"ERROR_DETERMINING_ELECTION_IS_UPCOMING: {e} "

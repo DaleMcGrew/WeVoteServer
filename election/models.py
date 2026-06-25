@@ -62,7 +62,7 @@ class BallotpediaElection(models.Model):
         today_date_as_integer = convert_date_to_date_as_integer(today)
         election_date_as_simple_string = self.election_day_text.replace("-", "")
         this_election_date_as_integer = convert_to_int(election_date_as_simple_string)
-        if this_election_date_as_integer > today_date_as_integer:
+        if this_election_date_as_integer >= today_date_as_integer:
             return True
         return False
 
@@ -140,7 +140,7 @@ class Election(models.Model):
         today_date_as_integer = convert_date_to_date_as_integer(today)
         election_date_as_simple_string = self.election_day_text.replace("-", "")
         this_election_date_as_integer = convert_to_int(election_date_as_simple_string)
-        if this_election_date_as_integer > today_date_as_integer:
+        if this_election_date_as_integer >= today_date_as_integer:
             return True
         return False
 
