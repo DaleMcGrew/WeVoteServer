@@ -12,7 +12,7 @@ from .models import GoogleCivicApiCounterManager
 from ballot.models import BallotItemManager, BallotItemListManager, BallotReturned, BallotReturnedManager, \
     VoterBallotSavedManager
 from candidate.models import CandidateCTCLAlternateMap, CandidateManager, CandidateListManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.utils.timezone import localtime, now
 from election.models import ElectionManager
 from geopy.geocoders import get_geocoder_for_service

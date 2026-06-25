@@ -10,7 +10,7 @@ from apple.AppleResolver import AppleResolver
 from apple.controllers import apple_sign_in_save_merge_if_needed, \
     validate_sign_in_with_apple_token_for_api  # apple_sign_in_retrieve_voter_id,
 from apple.models import AppleUser
-from config.base import get_environment_variable, get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from voter.controllers import voter_merge_two_accounts_action_schedule
 from voter.models import VoterDeviceLinkManager, VoterManager  # fetch_voter_we_vote_id_from_voter_device_link,
 from wevote_functions.functions import get_voter_device_id, positive_value_exists

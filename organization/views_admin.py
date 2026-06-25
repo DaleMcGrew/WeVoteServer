@@ -21,7 +21,7 @@ from candidate.models import CandidateCampaign, CandidateListManager, CandidateM
 from volunteer_task.models import VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS, \
     VolunteerTaskManager, VOLUNTEER_ACTION_ORGANIZATION_AUGMENTATION, \
     VOLUNTEER_ACTION_ORGANIZATION_DEDUPLICATION
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect

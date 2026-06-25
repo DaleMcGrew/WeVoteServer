@@ -14,7 +14,7 @@ from candidate.controllers import save_image_to_candidate_table, add_twitter_han
     add_to_candidate_new_links_from_ballotpedia
 from candidate.models import CandidateManager, CandidateListManager, fetch_candidate_count_for_office, \
     PROFILE_IMAGE_TYPE_BALLOTPEDIA, PROFILE_IMAGE_TYPE_UNKNOWN
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from electoral_district.models import ElectoralDistrict, ElectoralDistrictManager
 from election.models import BallotpediaElection, ElectionManager, Election
 from exception.models import handle_exception

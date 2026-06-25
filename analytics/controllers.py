@@ -5,7 +5,7 @@
 from .models import AnalyticsAction, AnalyticsCountManager, AnalyticsManager, \
     ACTIONS_THAT_REQUIRE_ORGANIZATION_IDS
 from candidate.models import CandidateManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import date, datetime, timedelta
 from django.db.models import Q
 from django.utils.timezone import localtime, now

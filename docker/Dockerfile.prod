@@ -1,16 +1,25 @@
 FROM public.ecr.aws/docker/library/python:3.12-slim-bookworm
 
 # install required software
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt update && apt install -y \
-    postgresql-client libmagic1
-# libcairo2 is failing currently, so commenting it out for now
-#    libcairo2 postgresql-client libmagic1
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y \
+    libcairo2 postgresql-client-16 libmagic1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # install python dependencies
 COPY requirements.txt /tmp
 RUN pip install -r /tmp/requirements.txt --no-cache-dir
-RUN pip install newrelic
+
+# install New Relic Python agent for application performance monitoring
+#RUN pip install newrelic
+
+# install OpenTelemetry instrumentation for Python and Django
+RUN pip install opentelemetry-distro opentelemetry-instrumentation-django opentelemetry-exporter-otlp
+RUN opentelemetry-bootstrap -a install
 
 # copy entrypoint script
 COPY docker/prod/entrypoint /usr/local/bin/docker-entrypoint
@@ -34,6 +43,9 @@ WORKDIR /wevote/code
 USER wevote
 EXPOSE 8000
 
+ENV RUNNING_IN_DOCKER=True
+
 ENTRYPOINT ["docker-entrypoint"]
-CMD ["newrelic-admin", "run-program", "gunicorn", "--workers", "3", "--worker-class", "gthread", "--timeout", "1800", "--bind", "0.0.0.0:8000", "config.wsgi"]
+CMD ["opentelemetry-instrument", "gunicorn", "--workers", "2", "--threads", "4", "--worker-class", "gthread", "--timeout", "1800", "--bind", "0.0.0.0:8000", "config.wsgi"]
+#CMD ["newrelic-admin", "run-program", "gunicorn", "--workers", "2", "--threads", "4", "--worker-class", "gthread", "--timeout", "1800", "--bind", "0.0.0.0:8000", "config.wsgi"]
 

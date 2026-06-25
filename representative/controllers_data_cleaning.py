@@ -4,7 +4,7 @@
 from datetime import datetime
 
 from django.db.models import Q
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.db.models.functions import Length
 
 from office_held.models import OfficeHeld

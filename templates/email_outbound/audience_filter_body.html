@@ -166,14 +166,14 @@
                            name="google_civic_election_id_{{ audience_filter.id }}" 
                            value="{{ election.google_civic_election_id }}"
                            style="display: none;"
-                           onchange="updateElectionDateButtonText('{{ audience_filter.id }}', '{{ election.election_name }}', '{{ election.google_civic_election_id }}')"
+                           onchange="updateElectionDateButtonText('{{ audience_filter.id }}', '{{ election.election_name_display }}', '{{ election.google_civic_election_id }}')"
                     />
                     <label for="election-date-{{ audience_filter.id }}-{{ election.google_civic_election_id }}"
                             id="election-date-label-{{ audience_filter.id }}-{{ election.google_civic_election_id }}" 
                             style="cursor: pointer;
                             font-weight: {% if audience_filter.google_civic_election_id|slugify == election.google_civic_election_id|slugify %}600{% else %}normal{% endif %};
                             "
-                    >{{ election.election_day_text }}: {{ election.election_name }}</label>
+                    >{{ election.election_day_text }}: {{ election.election_name_display }}</label>
                 </div>
             {% endfor %}
             </div>

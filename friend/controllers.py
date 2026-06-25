@@ -8,7 +8,7 @@ from django.db.models import F, Q
 from django.utils.timezone import localtime, now
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from email_outbound.controllers import schedule_email_with_email_outbound_description, schedule_verification_email
 from email_outbound.models import EmailAddress, EmailManager, EMAIL_SECRET_KEY_LENGTH, \
     FRIEND_ACCEPTED_INVITATION_TEMPLATE, \

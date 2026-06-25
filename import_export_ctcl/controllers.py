@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ElementTree
 from .models import CandidateSelection, CTCLApiCounterManager
 from ballot.models import BallotReturnedManager
 from candidate.models import CandidateCTCLAlternateMap
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime
 from electoral_district.controllers import electoral_district_import_from_xml_data
 from exception.models import handle_exception, handle_record_found_more_than_one_exception

@@ -1,9 +1,19 @@
 FROM public.ecr.aws/docker/library/python:3.12-slim-bookworm
 
 # install required software
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt update && apt install -y \
-    libcairo2 postgresql-client libmagic1
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y \
+    libcairo2 postgresql-client-16 libmagic1 iputils-ping lsof grep iproute2 libcap2-bin \
+    && rm -rf /var/lib/apt/lists/*
+
+# Grant raw network permissions directly to the added linux binary commands
+RUN setcap cap_net_raw+ep /bin/ping
+RUN setcap cap_net_raw+ep /bin/lsof
+RUN setcap cap_net_raw+ep /bin/grep
 
 # install python dependencies
 COPY requirements.txt /tmp
@@ -24,6 +34,9 @@ EXPOSE 9000
 EXPOSE 5678
 EXPOSE 5432
 
+ENV RUNNING_IN_DEVELOPER_MODE=True
+ENV RUNNING_IN_DOCKER=True
+
 ENTRYPOINT ["docker-entrypoint"]
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["python", "-u", "manage.py", "runserver", "0.0.0.0:8000"]
 

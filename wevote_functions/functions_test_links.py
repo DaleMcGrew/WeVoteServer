@@ -5,7 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from urllib.parse import urlparse
 from langdetect import detect, LangDetectException
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 # import DNS
 import tldextract
 # from ipwhois import IPWhois

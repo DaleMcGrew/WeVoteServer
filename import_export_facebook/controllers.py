@@ -6,7 +6,7 @@ from time import time
 
 import wevote_functions.admin
 from aws.controllers import submit_web_function_job
-from config.base import get_environment_variable, get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from email_outbound.models import EmailManager
 from friend.models import FriendManager
 from import_export_facebook.models import FacebookManager

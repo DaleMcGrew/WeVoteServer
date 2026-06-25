@@ -9,7 +9,7 @@ from .controllers import filter_polling_locations_structured_json_for_local_dupl
     import_and_save_all_polling_locations_data, polling_locations_import_from_structured_json
 from admin_tools.views import redirect_to_sign_in_page
 from ballot.models import BallotReturned, BallotReturnedListManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages

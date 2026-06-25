@@ -11,7 +11,7 @@ from .models import ActivityComment, ActivityNoticeSeed, ActivityManager, Activi
     NOTICE_FRIEND_ACTIVITY_POSTS, \
     NOTICE_FRIEND_ENDORSEMENTS, NOTICE_FRIEND_ENDORSEMENTS_SEED, \
     NOTICE_VOTER_DAILY_SUMMARY, NOTICE_VOTER_DAILY_SUMMARY_SEED
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.utils.timezone import now
 from friend.models import FriendManager
 import json

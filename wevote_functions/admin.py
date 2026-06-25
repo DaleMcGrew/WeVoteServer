@@ -11,7 +11,7 @@ import logging.handlers
 import os
 import socket
 import sys
-from config.base import get_environment_variable, convert_logging_level
+from config.environment_variable_functions import get_environment_variable, convert_logging_level
 
 
 _ch = None  # root stream handler.

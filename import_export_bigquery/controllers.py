@@ -4,7 +4,7 @@
 
 import json
 import requests
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from exception.models import handle_exception
 import wevote_functions.admin
 

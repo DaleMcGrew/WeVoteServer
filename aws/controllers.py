@@ -1,5 +1,5 @@
 import json
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 import wevote_functions.admin
 
 logger = wevote_functions.admin.get_logger(__name__)

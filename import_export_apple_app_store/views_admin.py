@@ -17,7 +17,7 @@ from wevote_functions.functions_date import generate_localized_datetime_from_obj
 from wevote_settings.constants import IS_BATTLEGROUND_YEARS_AVAILABLE, OFFICE_HELD_YEARS_AVAILABLE
 
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages

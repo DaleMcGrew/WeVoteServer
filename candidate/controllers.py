@@ -14,7 +14,7 @@ from django.contrib.postgres.search import TrigramSimilarity
 import wevote_functions.admin
 from apis_v1.views.views_extension import process_pdf_to_html
 from ballot.models import CANDIDATE
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from election.models import ElectionManager
 from exception.models import handle_exception
 from image.controllers import retrieve_all_images_for_one_candidate, cache_master_and_resized_image, \

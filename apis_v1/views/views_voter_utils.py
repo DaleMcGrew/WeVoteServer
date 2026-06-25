@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from voter.models import VoterDeviceLinkManager, VoterManager
 
 from voter_guide.controllers import voter_follow_all_organizations_followed_by_organization_for_api
