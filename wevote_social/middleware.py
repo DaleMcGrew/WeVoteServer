@@ -43,8 +43,8 @@ class SocialMiddleware(object):
 
             print("MIDDLEWARE: headers: " + str(request.headers))
             print("MIDDLEWARE: session: " + str(self.attributes(request.session)))
-            tok = request.GET['oauth_token'] if request.GET['oauth_token'] else ""
-            ver = request.GET['oauth_verifier'] if request.GET['oauth_verifier'] else ""
+            # tok = request.GET.get('oauth_token', "")
+            # ver = request.GET.get('oauth_verifier', "")
             # respURL = 'https://' + request.headers['Host'] + '/twittersigninprocess?oauth_token=' + tok + '&oauth_verifier=' + ver
             # respURL = request.build_absolute_uri()  loops exactly to here
             respURL = 'https://' + request.headers['Host'] + '/login_we_vote'
