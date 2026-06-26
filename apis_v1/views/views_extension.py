@@ -18,7 +18,6 @@ from wevote_functions.functions import positive_value_exists
 
 AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
 AWS_STORAGE_BUCKET_NAME = "wevote-temporary"
-AWS_STORAGE_SERVICE = "s3"
 TIKA_SERVER_ENDPOINT = get_environment_variable("TIKA_SERVER_ENDPOINT")
 
 logger = wevote_functions.admin.get_logger(__name__)
