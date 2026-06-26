@@ -29,10 +29,11 @@ RUN useradd wevote && mkdir -p /var/log/wevote /wevote && chown wevote:wevote /v
 # define docker runtime
 WORKDIR /wevote/code
 USER wevote
+# expose following ports:
+#  8000 for django api server
+#  5678 for debugpy
 EXPOSE 8000
-EXPOSE 9000
 EXPOSE 5678
-EXPOSE 5432
 
 ENV RUNNING_IN_DEVELOPER_MODE=True
 ENV RUNNING_IN_DOCKER=True
