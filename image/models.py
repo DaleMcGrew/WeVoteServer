@@ -42,11 +42,8 @@ VOTE_USA_PROFILE_IMAGE_NAME = "vote_usa_profile_image"
 VOTER_UPLOADED_IMAGE_NAME = "voter_uploaded_profile_image"
 WIKIPEDIA_IMAGE_NAME = "wikipedia_image"
 
-AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
 AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
 AWS_STORAGE_BUCKET_NAME = get_environment_variable("AWS_STORAGE_BUCKET_NAME")
-AWS_STORAGE_SERVICE = "s3"
 
 GifImagePlugin.LOADING_STRATEGY = GifImagePlugin.LoadingStrategy.RGB_ALWAYS
 
@@ -378,9 +375,7 @@ class WeVoteImageManager(models.Manager):
         """
         try:
 
-            client = boto3.client(AWS_STORAGE_SERVICE, region_name=AWS_REGION_NAME,
-                                  aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+            client = boto3.client("s3", region_name=AWS_REGION_NAME)
             client.delete_object(Bucket=AWS_STORAGE_BUCKET_NAME, Key=we_vote_image_file_location)
             image_deleted_from_aws = True
         except Exception as e:
@@ -2251,9 +2246,7 @@ class WeVoteImageManager(models.Manager):
         :return:
         """
         try:
-            client = boto3.client(AWS_STORAGE_SERVICE, region_name=AWS_REGION_NAME,
-                                  aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+            client = boto3.client("s3", region_name=AWS_REGION_NAME)
             upload_image_from_location = "/tmp/" + we_vote_image_file_name
             # print('-------------- temp file upload to aws ' +  upload_image_from_location)
             content_type = "image/{image_format}".format(image_format=image_format)
@@ -2276,10 +2269,8 @@ class WeVoteImageManager(models.Manager):
         :return:
         """
         try:
-            session = boto3.session.Session(region_name=AWS_REGION_NAME,
-                                            aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                            aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-            s3 = session.resource(AWS_STORAGE_SERVICE)
+            session = boto3.session.Session(region_name=AWS_REGION_NAME)
+            s3 = session.resource("s3")
             s3.Bucket(AWS_STORAGE_BUCKET_NAME).put_object(Key=we_vote_image_file_location,
                                                           Body=image_file)
             image_stored_to_aws = True
@@ -2298,9 +2289,7 @@ class WeVoteImageManager(models.Manager):
         :return:
         """
         try:
-            client = boto3.client(AWS_STORAGE_SERVICE, region_name=AWS_REGION_NAME,
-                                  aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+            client = boto3.client("s3", region_name=AWS_REGION_NAME)
             download_image_at_location = "/tmp/" + we_vote_image_file_location
             client.download_file(AWS_STORAGE_BUCKET_NAME, we_vote_image_file_location, download_image_at_location)
             image_retrieved_from_aws = True

@@ -233,17 +233,11 @@ def convert_html_to_plain_text(html_content):
 # S3 functions
 # create s3 bucket
 def _s3_client_bucket():
-    # Works with env keys or IAM role
-    AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
     AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
     AWS_STORAGE_BUCKET_NAME = get_environment_variable("AWS_STORAGE_BUCKET_NAME")
-    AWS_STORAGE_SERVICE = "s3"
 
-    session = boto3.session.Session(region_name=AWS_REGION_NAME,
-                                  aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-    s3 = session.resource(AWS_STORAGE_SERVICE)
+    session = boto3.session.Session(region_name=AWS_REGION_NAME)
+    s3 = session.resource("s3")
     return s3.Bucket(AWS_STORAGE_BUCKET_NAME)
 
 
