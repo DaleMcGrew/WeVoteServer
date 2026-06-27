@@ -23,6 +23,11 @@ services:
       - /tmp/docker:/tmp                 # Needed to get backup files into psql to test fastback
 
 
+  #tika:
+  #  image: apache/tika:latest-full
+  #  networks:
+  #    - wevote
+
   localstack:
     image: localstack/localstack:4.14.0
     networks:
