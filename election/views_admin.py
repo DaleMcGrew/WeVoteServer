@@ -3064,8 +3064,10 @@ def adjust_election_names_view(request):
 
     election_manager = ElectionManager()
 
-    # Retrieve all upcoming elections for the dropdown
-    upcoming_results = election_manager.retrieve_upcoming_elections(read_only=True)
+    # Retrieve all upcoming elections (also used for the dropdown)
+    upcoming_results = election_manager.retrieve_upcoming_elections(
+        read_only=False,
+        require_include_in_list_for_voters=True)
     upcoming_election_list = upcoming_results['election_list'] if upcoming_results['success'] else []
 
     if request.method == 'POST':
@@ -3084,9 +3086,7 @@ def adjust_election_names_view(request):
                 elections_to_process.append(results['election'])
         else:
             # Process all upcoming elections
-            upcoming_editable_results = election_manager.retrieve_upcoming_elections(read_only=False)
-            if upcoming_editable_results['success']:
-                elections_to_process = upcoming_editable_results['election_list']
+            elections_to_process = upcoming_election_list
 
         import re
         from wevote_functions.functions import STATE_CODE_MAP
