@@ -3054,3 +3054,98 @@ def election_ballot_location_visualize_view(request):
     }
 
     return render(request, 'election/election_ballot_location_visualize.html', template_values)
+
+@login_required
+def adjust_election_names_view(request):
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    election_manager = ElectionManager()
+
+    # Retrieve all upcoming elections (also used for the dropdown)
+    upcoming_results = election_manager.retrieve_upcoming_elections(
+        read_only=False,
+        require_include_in_list_for_voters=True)
+    upcoming_election_list = upcoming_results['election_list'] if upcoming_results['success'] else []
+
+    if request.method == 'POST':
+        remove_date = positive_value_exists(request.POST.get('remove_date', False))
+        remove_state_name = positive_value_exists(request.POST.get('remove_state_name', False))
+        remove_party = positive_value_exists(request.POST.get('remove_party', False))
+
+        target_google_civic_election_id = request.POST.get('google_civic_election_id', '')
+
+        # Determine which elections to process
+        elections_to_process = []
+        if positive_value_exists(target_google_civic_election_id):
+            # Process single election
+            results = election_manager.retrieve_election(target_google_civic_election_id, read_only=False)
+            if results['election_found']:
+                elections_to_process.append(results['election'])
+        else:
+            # Process all upcoming elections
+            elections_to_process = upcoming_election_list
+
+        import re
+        from wevote_functions.functions import STATE_CODE_MAP
+
+        changes_made = []
+        for election in elections_to_process:
+            old_name = election.election_name
+            new_name = old_name
+
+            if remove_date:
+                # Remove full dates with year: e.g., "November 5, 2024", "June 3, 2026"
+                months = r'(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
+                new_name = re.sub(rf'\b{months}\.?\s+\d{{1,2}}(?:\s*,\s*|\s+)?\d{{4}}\b', '', new_name, flags=re.IGNORECASE)
+                # Remove year: e.g., "2024" or "2020"
+                new_name = re.sub(r'\b\d{4}\b', '', new_name)
+                # Remove month and day: e.g. "November 5", "June 3"
+                new_name = re.sub(rf'\b{months}\.?\s+\d{{1,2}}\b', '', new_name, flags=re.IGNORECASE)
+                # Remove month names
+                new_name = re.sub(rf'\b{months}\b', '', new_name, flags=re.IGNORECASE)
+
+            if remove_state_name:
+                state_names = list(STATE_CODE_MAP.values())
+                state_abbreviations = list(STATE_CODE_MAP.keys())
+
+                state_names_sorted = sorted(state_names, key=len, reverse=True)
+                for name in state_names_sorted:
+                    new_name = re.sub(rf'\b{re.escape(name)}\b', '', new_name, flags=re.IGNORECASE)
+                for code in state_abbreviations:
+                    new_name = re.sub(rf'\b{re.escape(code)}\b', '', new_name, flags=re.IGNORECASE)
+                if election.state_code:
+                    new_name = re.sub(rf'\b{re.escape(election.state_code)}\b', '', new_name, flags=re.IGNORECASE)
+
+            if remove_party:
+                parties = ['Democratic Party', 'Republican Party', 'Democratic', 'Republican', 'Libertarian Party', 'Libertarian', 'Green Party', 'Green']
+                for party in parties:
+                    new_name = re.sub(rf'\b{re.escape(party)}\b', '', new_name, flags=re.IGNORECASE)
+
+            # Clean up whitespace and stray commas
+            new_name = re.sub(r',\s*,', ',', new_name)
+            new_name = re.sub(r'\s*,\s*$', '', new_name)
+            new_name = re.sub(r'^\s*,\s*', '', new_name)
+            new_name = re.sub(r'\s+', ' ', new_name).strip()
+
+            if new_name != old_name:
+                election.election_name = new_name
+                election.save()
+                changes_made.append(f"'{old_name}' -> '{new_name}'")
+
+        if len(changes_made) > 0:
+            messages.add_message(request, messages.INFO, f"Successfully adjusted {len(changes_made)} election name(s): " + ", ".join(changes_made))
+        else:
+            messages.add_message(request, messages.INFO, "No election names needed adjustment based on the selected options.")
+
+        return HttpResponseRedirect(reverse('election:election_list', args=()))
+
+    template_values = {
+        'upcoming_election_list': upcoming_election_list,
+        'remove_date': False,
+        'remove_state_name': False,
+        'remove_party': False,
+    }
+    return render(request, 'election/adjust_election_names.html', template_values)

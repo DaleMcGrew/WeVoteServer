@@ -20,8 +20,12 @@ services:
     user: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - /tmp/docker:/tmp                 # Needed to get backup files into psql to test fastback
 
+
+  #tika:
+  #  image: apache/tika:latest-full
+  #  networks:
+  #    - wevote
 
   localstack:
     image: localstack/localstack:4.14.0
@@ -78,12 +82,11 @@ services:
       - DEV_SERVER_SSL_KEY=${DEV_SERVER_SSL_KEY:-cert/wevotedeveloper.com_key.txt}
     volumes:
       - .:/wevote/code
-      - /tmp/docker:/tmp                 # Needed to get backfiles into psql to test fastback
 
     networks:
       - wevote
     ports:
-      - "0.0.0.0:8000:8000"    # WeVote API at http://localhost:8000 or https://wevotedeveloper.com:8000
+      - "127.0.0.1:8000:8000"  # WeVote API at http://localhost:8000 or https://wevotedeveloper.com:8000
       - "127.0.0.1:5678:5678"  # debugpy port for remote debugging
 
   pgadmin:
@@ -96,7 +99,7 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     ports:
-      - "0.0.0.0:8080:80"
+      - "127.0.0.1:9000:80" # expose pgadmin at http://localhost:9000/
     networks:
       - wevote
 

@@ -216,6 +216,50 @@ def politicians_managed_retrieve_for_api(  # politiciansManagedRetrieve
         return error_results
 
     # Find all verified emails associated with the voter
+    voter_verified_emails = []
+    try:
+        from email_outbound.models import EmailAddress
+        email_queryset = EmailAddress.objects.filter(
+            voter_we_vote_id=voter_we_vote_id,
+            email_ownership_is_verified=True
+        ).values_list('normalized_email_address', flat=True)
+        voter_verified_emails = list(email_queryset)
+    except Exception as e:
+        status += f"ERROR_RETRIEVING_VERIFIED_EMAILS: {e} "
+
+    # Also include the voter's primary email if verified
+    if voter.email and voter.email_ownership_is_verified:
+        voter_email_lower = voter.email.strip().lower()
+        if voter_email_lower not in voter_verified_emails:
+            voter_verified_emails.append(voter_email_lower)
+
+    # Search to find all politicians this voter can manage via email matching
+    if len(voter_verified_emails) > 0:
+        politician_manager = PoliticianManager()
+        # Build Q query to match any of the voter's verified emails against any of the 3 politician email fields
+        print('Voter Verified Emails:', voter_verified_emails)
+        email_queries = Q()
+        for email in voter_verified_emails:
+            email_queries |= Q(politician_email__iexact=email)
+            email_queries |= Q(politician_email2__iexact=email)
+            email_queries |= Q(politician_email3__iexact=email)
+        
+        try:
+            politicians_by_email = Politician.objects.filter(email_queries).distinct()
+            for politician in politicians_by_email:
+                # Check if this politician is already in the list to avoid duplicates
+                if not any(p['politician_we_vote_id'] == politician.we_vote_id for p in politicians_managed_list):
+                    politicians_managed_list.append(
+                        {
+                            'politician_we_vote_id': politician.we_vote_id,
+                            'politician_name': politician.politician_name,
+                            'we_vote_hosted_profile_image_url_large': politician.we_vote_hosted_profile_image_url_large,
+                            'we_vote_hosted_profile_image_url_medium': politician.we_vote_hosted_profile_image_url_medium,
+                            'we_vote_hosted_profile_image_url_tiny': politician.we_vote_hosted_profile_image_url_tiny,
+                        }
+                    )
+        except Exception as e:
+            status += f"ERROR_RETRIEVING_POLITICIANS_BY_EMAIL: {e} "
 
     # Search to find all politicians this voter can manage
     campaignx_manager = CampaignXManager()

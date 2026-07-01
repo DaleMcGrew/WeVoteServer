@@ -428,16 +428,11 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name, extended_
         # command_str, filename = make_filename_and_command(table_name)
         try:
             import boto3
-            AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
-            AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
             AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
             AWS_STORAGE_BUCKET_NAME = get_environment_variable("AWS_STORAGE_BUCKET_NAME")
-            AWS_STORAGE_SERVICE = "s3"
 
-            session = boto3.session.Session(region_name=AWS_REGION_NAME,
-                                            aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                            aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-            s3 = session.resource(AWS_STORAGE_SERVICE)
+            session = boto3.session.Session(region_name=AWS_REGION_NAME)
+            s3 = session.resource("s3")
 
             ts = '{:.2f} seconds'.format(time.time() - t0)
             print(f"FastLoad: About to dump table at {ts} seconds", flush=True)

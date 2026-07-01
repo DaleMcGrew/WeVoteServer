@@ -272,6 +272,9 @@
   "PATH_FOR_TEMP_FILES":            "/tmp",
   "DATA_UPLOAD_MAX_MEMORY_SIZE":    "20000000",
 
+  "_comment":                       "Apache Tika server, used to convert PDFs to HTML",
+  "TIKA_SERVER_ENDPOINT":           "http://tika:9998/tika",
+
   "_comment":                       "Settings for running Selenium tests on BrowserStack",
   "BROWSERSTACK_USERNAME":          "",
   "BROWSERSTACK_ACCESS_KEY":        "",
