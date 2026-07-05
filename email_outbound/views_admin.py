@@ -343,13 +343,13 @@ def email_campaign_edit_process_view(request):
                                 if hasattr(recipient_object, field_key):
                                     setattr(recipient_object, field_key, field_value)
                         save_recipient_object = True
-                        status += f"EmailCampaignRecipient updated. "
+                        status += "EmailCampaignRecipient updated. "
                     else:
                         # Create a new EmailCampaignRecipient object
                         recipient_object = EmailCampaignRecipient(**recipient_dict)
                         manually_added_recipients_found = True
                         save_recipient_object = True
-                        status += f"New EmailCampaignRecipient added. "
+                        status += "New EmailCampaignRecipient added. "
                 except Exception as e:
                     status += f"Error saving recipient: {str(e)}. "
 
@@ -1566,7 +1566,7 @@ def audience_builder_edit_process_view(request):
                     audience_builder_id=audience_builder_id)
                 audience_filter_dict[audience_filter.id] = audience_filter
                 # Now link the new filter to the first spot in the chain
-                audience_filter_id_attribute = f'filter1_id'
+                audience_filter_id_attribute = 'filter1_id'
                 setattr(audience_filter_chain, audience_filter_id_attribute, audience_filter.id)
                 audience_filter_chain.save()
 
