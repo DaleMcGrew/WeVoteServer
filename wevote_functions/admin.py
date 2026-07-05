@@ -45,7 +45,7 @@ def get_logger(name):
 
     if logger.level == 0:
         global _only_log_once
-        environment_variable_log_level = get_environment_variable("LOG_FILE_LEVEL");
+        environment_variable_log_level = get_environment_variable("LOG_FILE_LEVEL")
         if isinstance(environment_variable_log_level, str) and len(environment_variable_log_level):
             level = convert_logging_level(environment_variable_log_level)
             if isinstance(level, int):
