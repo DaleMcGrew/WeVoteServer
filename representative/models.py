@@ -6,9 +6,9 @@ from datetime import datetime
 from django.db import models
 from django.db.models import Q
 from exception.models import handle_exception, handle_record_found_more_than_one_exception
-from candidate.models import PROFILE_IMAGE_TYPE_FACEBOOK, PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKNOWN, \
-    PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_VOTE_USA, PROFILE_IMAGE_TYPE_CURRENTLY_ACTIVE_CHOICES
-from office_held.models import OfficeHeld, OfficeHeldManager
+from candidate.models import PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKNOWN, \
+    PROFILE_IMAGE_TYPE_CURRENTLY_ACTIVE_CHOICES
+from office_held.models import OfficeHeld
 from wevote_settings.constants import IS_BATTLEGROUND_YEARS_AVAILABLE, OFFICE_HELD_YEARS_AVAILABLE
 from wevote_settings.models import fetch_next_we_vote_id_representative_integer, fetch_site_unique_id_prefix
 import wevote_functions.admin
@@ -18,7 +18,6 @@ from wevote_functions.functions import candidate_party_display, convert_to_int, 
     extract_last_name_from_full_name, extract_suffix_from_full_name, extract_nickname_from_full_name, \
     extract_state_from_ocd_division_id, extract_twitter_handle_from_text_string, \
     positive_value_exists
-from image.models import ORGANIZATION_ENDORSEMENTS_IMAGE_NAME
 
 logger = wevote_functions.admin.get_logger(__name__)
 

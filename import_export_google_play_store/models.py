@@ -2,9 +2,6 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from django.db import models
-import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, positive_value_exists
 
 
 # SESSIONS

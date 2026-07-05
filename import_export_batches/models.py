@@ -9,7 +9,7 @@ import urllib
 import xml.etree.ElementTree as ElementTree
 from datetime import date, timedelta
 from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 
 import magic
 from django.db import models

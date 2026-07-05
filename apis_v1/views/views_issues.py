@@ -9,7 +9,7 @@ from issue.controllers import retrieve_issues_not_linked_to_organization_for_api
     retrieve_issues_linked_to_organization_for_api
 from issue.models import LINKED_BY_ORGANIZATION, BLOCKED_BY_ORGANIZATION
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, get_voter_device_id, positive_value_exists
+from wevote_functions.functions import positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 

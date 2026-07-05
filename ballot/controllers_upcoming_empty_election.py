@@ -3,10 +3,9 @@
 # -*- coding: UTF-8 -*-
 
 from election.models import ElectionManager
-from voter.models import VoterDeviceLinkManager, VoterAddressManager
+from voter.models import VoterAddressManager
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, extract_state_code_from_address_string, get_voter_device_id, \
-    positive_value_exists
+from wevote_functions.functions import extract_state_code_from_address_string, positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 

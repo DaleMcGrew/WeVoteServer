@@ -15,14 +15,14 @@ from exception.models import handle_exception
 from import_export_google_civic.controllers import \
     refresh_voter_ballot_items_from_google_civic_from_voter_ballot_saved, \
     voter_ballot_items_retrieve_from_google_civic_for_api
-from measure.models import ContestMeasureListManager, ContestMeasureManager
+from measure.models import ContestMeasureListManager
 from office.models import ContestOfficeManager, ContestOfficeListManager
 from polling_location.models import PollingLocationManager
 from politician.models import Politician
 import pytz
-from voter.models import BALLOT_ADDRESS, VoterAddress, VoterAddressManager, VoterDeviceLinkManager, VoterManager
+from voter.models import BALLOT_ADDRESS, VoterAddressManager, VoterDeviceLinkManager, VoterManager
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, extract_state_code_from_address_string, positive_value_exists, \
+from wevote_functions.functions import convert_to_int, positive_value_exists, \
     process_request_from_master, strip_html_tags
 from wevote_functions.functions_date import generate_localized_datetime_from_obj, DATE_FORMAT_YMD
 from geopy.geocoders import get_geocoder_for_service

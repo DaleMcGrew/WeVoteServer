@@ -4,8 +4,7 @@ import requests
 from election.models import ElectionManager
 from exception.models import handle_exception
 from office.models import ContestOffice
-from wevote_functions.functions import augment_vote_usa_office_id_with_suffix, extract_vote_usa_office_id, \
-    extract_vote_usa_office_id_with_suffix, positive_value_exists
+from wevote_functions.functions import extract_vote_usa_office_id_with_suffix, positive_value_exists
 import wevote_functions.admin
 
 from .models import VoteUSAApiCounterManager

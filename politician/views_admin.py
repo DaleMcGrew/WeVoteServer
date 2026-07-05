@@ -6,7 +6,6 @@ from base64 import b64encode
 import json
 import string
 from time import time
-from urllib.parse import urlencode
 from datetime import datetime, timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -14,7 +13,7 @@ from django.contrib.messages import get_messages
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import Q
 from django.db.models.functions import Length
 from django.http import HttpResponse
 from django.http import HttpResponseRedirect
@@ -27,8 +26,8 @@ from campaign.models import CampaignXManager
 from candidate.controllers import retrieve_candidate_photos
 from candidate.models import CandidateCampaign, CandidateListManager, CandidateManager, CandidateToOfficeLink, \
     KIND_OF_LOG_ENTRY_ANALYSIS_COMMENT, KIND_OF_LOG_ENTRY_LINK_ADDED, PROFILE_IMAGE_TYPE_BALLOTPEDIA, \
-    PROFILE_IMAGE_TYPE_FACEBOOK, PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKNOWN, \
-    PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_VOTE_USA, PROFILE_IMAGE_TYPE_WIKIPEDIA
+    PROFILE_IMAGE_TYPE_UNKNOWN, \
+    PROFILE_IMAGE_TYPE_UPLOADED
 from config.environment_variable_functions import get_environment_variable
 from election.models import Election
 from exception.models import handle_record_found_more_than_one_exception, \
@@ -58,8 +57,8 @@ from wevote_functions.functions import convert_to_int, convert_to_political_part
 from wevote_functions.functions_date import convert_date_to_we_vote_date_string, \
     convert_we_vote_date_string_to_date_as_integer, generate_localized_datetime_from_obj, DATE_FORMAT_YMD_HMS
 from wevote_settings.constants import IS_BATTLEGROUND_YEARS_AVAILABLE
-from .controllers import add_alternate_names_to_next_spot, add_twitter_handle_to_next_politician_spot, \
-    fetch_duplicate_politician_count, figure_out_politician_conflict_values, \
+from .controllers import add_twitter_handle_to_next_politician_spot, \
+    figure_out_politician_conflict_values, \
     generate_campaignx_for_politician, politician_save_photo_from_file_reader, \
     update_politician_details_from_candidate, \
     merge_these_two_politicians, politicians_import_from_master_server

@@ -21,7 +21,7 @@ from apis_v1.views import views_voter_utils
 from ballot.controllers import choose_election_and_prepare_ballot_data, voter_ballot_items_retrieve_for_api, \
     voter_ballot_list_retrieve_for_api
 from ballot.models import BallotItemListManager, BallotReturnedManager, find_best_previously_stored_ballot_returned, \
-    OFFICE, CANDIDATE, MEASURE, POLITICIAN, VoterBallotSavedManager
+    OFFICE, CANDIDATE, MEASURE, VoterBallotSavedManager
 from bookmark.controllers import voter_all_bookmarks_status_retrieve_for_api, voter_bookmark_off_save_for_api, \
     voter_bookmark_on_save_for_api, voter_bookmark_status_retrieve_for_api
 from config.environment_variable_functions import get_environment_variable
@@ -30,7 +30,7 @@ from email_outbound.controllers import voter_email_address_retrieve_for_api, vot
     voter_email_address_verify_for_api
 from email_outbound.models import EmailManager
 from follow.controllers import voter_issue_follow_for_api
-from follow.models import FOLLOWING, FollowIssue, FollowIssueList
+from follow.models import FOLLOWING, FollowIssue
 from geoip.controllers import voter_location_retrieve_from_ip_for_api
 from image.controllers import TWITTER, FACEBOOK, cache_master_and_resized_image, create_resized_images
 from import_export_ballotpedia.controllers import voter_ballot_items_retrieve_from_ballotpedia_for_api_v4
@@ -38,8 +38,8 @@ from import_export_facebook.controllers import voter_facebook_sign_in_retrieve_f
     voter_facebook_sign_in_save_auth_for_api, voter_facebook_save_to_current_account_for_api
 from import_export_google_civic.controllers import voter_ballot_items_retrieve_from_google_civic_for_api
 from import_export_twitter.controllers import voter_twitter_save_to_current_account_for_api
-from issue.models import Issue, IssueManager
-from organization.models import INDIVIDUAL, Organization, OrganizationManager
+from issue.models import Issue
+from organization.models import INDIVIDUAL, OrganizationManager
 from position.controllers import voter_all_positions_retrieve_for_api, \
     voter_position_retrieve_for_api, voter_position_comment_save_for_api, voter_position_visibility_save_for_api
 from sms.controllers import voter_sms_phone_number_retrieve_for_api, voter_sms_phone_number_save_for_api

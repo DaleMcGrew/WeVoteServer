@@ -7,7 +7,6 @@
 from inspect import getmembers
 from types import FunctionType
 
-from django.http import HttpResponse
 
 import wevote_functions.admin
 from wevote_social.facebook import FacebookAPI

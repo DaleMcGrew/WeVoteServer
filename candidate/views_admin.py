@@ -53,12 +53,12 @@ from volunteer_task.models import VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS
     VOLUNTEER_ACTION_MATCH_CANDIDATES_TO_POLITICIANS, \
     VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION, VOLUNTEER_ACTION_POLITICIAN_AUGMENTATION, \
     VOLUNTEER_ACTION_POLITICIAN_PHOTO, VOLUNTEER_ACTION_POLITICIAN_REQUEST, VolunteerTaskManager
-from voter.models import fetch_voter_from_voter_device_link, VoterDeviceLinkManager, VoterManager, voter_has_authority
+from voter.models import fetch_voter_from_voter_device_link, VoterManager, voter_has_authority
 from voter_guide.models import VoterGuide
 from wevote_functions.create_trigram_index import create_trigram_index
 from wevote_functions.functions import convert_to_int, \
     extract_instagram_handle_from_text_string, extract_twitter_handle_from_text_string, \
-    get_voter_api_device_id, get_voter_device_id, list_intersection, normalize_bluesky_handle, normalize_threads_handle, normalize_tiktok_url, \
+    get_voter_api_device_id, list_intersection, normalize_bluesky_handle, normalize_threads_handle, normalize_tiktok_url, \
     positive_value_exists, STATE_CODE_MAP, display_full_name_with_correct_capitalization, \
     extract_state_from_ocd_division_id
 from wevote_functions.functions_date import convert_we_vote_date_string_to_date_as_integer, \
@@ -73,13 +73,12 @@ from .controllers import add_twitter_handle_to_next_candidate_spot, analyze_cand
     merge_these_two_candidates, fetch_ballotpedia_urls_to_retrieve_for_links_count, \
     fetch_ballotpedia_urls_to_retrieve_for_photos_count, \
     retrieve_candidate_photos, retrieve_next_or_most_recent_office_for_candidate, \
-    save_google_search_link_to_candidate_table, save_image_to_candidate_table
+    save_image_to_candidate_table
 from .models import CandidateCampaign, CandidateListManager, CandidateChangeLog, CandidateCTCLAlternateMap, \
     CandidateManager, CandidatesArePossibleDuplicates, CandidateToOfficeLink, \
     CANDIDATE_UNIQUE_IDENTIFIERS, KIND_OF_LOG_ENTRY_ANALYSIS_COMMENT, KIND_OF_LOG_ENTRY_LINK_ADDED, \
-    PROFILE_IMAGE_TYPE_BALLOTPEDIA, PROFILE_IMAGE_TYPE_FACEBOOK, PROFILE_IMAGE_TYPE_LINKEDIN, \
-    PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKNOWN, \
-    PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_VOTE_USA, PROFILE_IMAGE_TYPE_WIKIPEDIA
+    PROFILE_IMAGE_TYPE_BALLOTPEDIA, PROFILE_IMAGE_TYPE_UNKNOWN, \
+    PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_WIKIPEDIA
 
 CANDIDATES_SYNC_URL = get_environment_variable("CANDIDATES_SYNC_URL")  # candidatesSyncOut
 TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))

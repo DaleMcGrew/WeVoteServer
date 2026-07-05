@@ -4,13 +4,12 @@
 
 from django.test import TestCase
 from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import pandas as pd
-from io import BytesIO
 
 from .controllers import (
     format_date, sanitize_jira_label, JiraSubTask, JiraStory, JiraEpic,
-    JiraExcelLoader, JiraApiControl, COL_EPIC_TITLE, COL_ELECTION_DATE
+    JiraExcelLoader, JiraApiControl
 )
 from .models import JiraApiCounter
 

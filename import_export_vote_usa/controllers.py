@@ -6,13 +6,12 @@ from .models import VoteUSAApiCounterManager
 from ballot.models import BallotReturnedManager
 from candidate.models import PROFILE_IMAGE_TYPE_UNKNOWN, PROFILE_IMAGE_TYPE_VOTE_USA
 from config.environment_variable_functions import get_environment_variable
-from exception.models import handle_exception, handle_record_found_more_than_one_exception
+from exception.models import handle_exception
 from image.controllers import cache_master_and_resized_image, IMAGE_SOURCE_VOTE_USA
 from import_export_batches.controllers_vote_usa import store_vote_usa_json_response_to_import_batch_system
 import json
 from polling_location.models import KIND_OF_LOG_ENTRY_ADDRESS_PARSE_ERROR, KIND_OF_LOG_ENTRY_API_END_POINT_CRASH, \
-    KIND_OF_LOG_ENTRY_BALLOT_RECEIVED, KIND_OF_LOG_ENTRY_NO_CONTESTS, KIND_OF_LOG_ENTRY_NO_BALLOT_JSON, \
-    PollingLocationManager
+    KIND_OF_LOG_ENTRY_BALLOT_RECEIVED, KIND_OF_LOG_ENTRY_NO_CONTESTS, PollingLocationManager
 import requests
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists

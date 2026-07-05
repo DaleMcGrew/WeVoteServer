@@ -17,7 +17,7 @@ import exception.models
 import json
 from office_held.models import OfficeHeld, OfficeHeldManager, OfficesHeldForLocation
 from politician.controllers import update_parallel_fields_with_years_in_related_objects
-from representative.models import Representative, RepresentativeManager
+from representative.models import Representative
 from voter.models import voter_has_authority
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP, extract_state_from_ocd_division_id

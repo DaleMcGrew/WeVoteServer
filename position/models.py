@@ -15,7 +15,6 @@ from django.utils.timezone import now
 from election.models import Election
 from exception.models import handle_exception, handle_record_found_more_than_one_exception,\
     handle_record_not_found_exception, handle_record_not_saved_exception, print_to_log
-from follow.models import FollowOrganizationManager, FollowOrganizationList
 from friend.models import FriendManager
 from measure.models import ContestMeasure, ContestMeasureManager
 from office.models import ContestOffice, ContestOfficeManager

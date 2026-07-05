@@ -4,7 +4,7 @@
 
 from .models import SnovIOApiCounterManager
 from config.environment_variable_functions import get_environment_variable
-from exception.models import handle_exception, handle_record_found_more_than_one_exception
+from exception.models import handle_exception
 import json
 import requests
 from voter.models import VoterContactEmail

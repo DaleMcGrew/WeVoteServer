@@ -19,7 +19,7 @@ from organization.models import Organization
 from volunteer_task.models import VOLUNTEER_ACTION_PHOTO_BULK_RETRIEVE, VolunteerTaskManager
 from voter.models import voter_has_authority
 from wevote_functions.functions import convert_to_int, positive_value_exists
-from wevote_settings.models import RemoteRequestHistory, RemoteRequestHistoryManager, RETRIEVE_POSSIBLE_FACEBOOK_PHOTOS
+from wevote_settings.models import RemoteRequestHistoryManager, RETRIEVE_POSSIBLE_FACEBOOK_PHOTOS
 from .controllers import get_facebook_photo_url_from_facebook_url
 
 logger = wevote_functions.admin.get_logger(__name__)

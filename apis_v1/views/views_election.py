@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from election.controllers import elections_retrieve_for_api, elections_sync_out_list_for_api
 import json
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, get_voter_device_id, positive_value_exists
+from wevote_functions.functions import get_voter_device_id
 
 logger = wevote_functions.admin.get_logger(__name__)
 
