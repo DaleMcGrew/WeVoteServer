@@ -251,8 +251,7 @@ def find_duplicate_representative_view(request, representative_id):
               "{number_of_duplicate_representatives_processed} duplicates processed, " \
               "{number_of_duplicate_representatives_failed} duplicate merges failed, " \
               "{number_of_duplicates_could_not_process} could not be processed " \
-              "".format(election_id=google_civic_election_id,
-                        number_of_duplicate_representatives_processed=number_of_duplicate_representatives_processed,
+              "".format(number_of_duplicate_representatives_processed=number_of_duplicate_representatives_processed,
                         number_of_duplicate_representatives_failed=number_of_duplicate_representatives_failed,
                         number_of_duplicates_could_not_process=number_of_duplicates_could_not_process)
 

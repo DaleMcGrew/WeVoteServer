@@ -855,7 +855,6 @@ def politician_list_view(request):
             exclude_politician_analysis_done=exclude_politician_analysis_done,
             hide_politicians_with_photos=hide_politicians_with_photos,
             organization_manual_intervention_needed=organization_manual_intervention_needed,
-            politician_search=politician_search,
             show_all=show_all,
             show_battleground=show_battleground,
             show_ocd_id_state_mismatch=show_ocd_id_state_mismatch,
