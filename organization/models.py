@@ -2906,7 +2906,7 @@ class OrganizationListManager(models.Manager):
         organization_list = []
         organization_list_found = False
 
-        if not type(organization_ids_followed_by_voter) is list:
+        if type(organization_ids_followed_by_voter) is not list:
             status += 'NO_ORGANIZATIONS_FOUND_MISSING_ORGANIZATION_LIST '
             success = False
             results = {
@@ -3301,7 +3301,7 @@ class OrganizationListManager(models.Manager):
         status = ''
         success = True
 
-        if not type(list_of_organization_we_vote_ids) is list:
+        if type(list_of_organization_we_vote_ids) is not list:
             status += 'NO_ORGANIZATIONS_FOUND_MISSING_ORGANIZATION_LIST '
             success = False
             results = {
