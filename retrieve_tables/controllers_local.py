@@ -6,8 +6,6 @@ import os
 import re
 import subprocess
 import time
-from datetime import datetime
-from pathlib import Path
 
 import psycopg2
 import requests
@@ -242,8 +240,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         print(f"Ok. Running in_docker: {in_docker}", flush=True)
         if in_docker:
             pgurl = f'\'postgresql://{db_user}:{db_password}@{db_host}:5432/{db_name}\''
-            command_list = f"pg_restore -c -v --disable-triggers --no-password -U postgres -d {pgurl} -t {table_name} < {tf.name}"
-            command = command_list
+            command_list = f"pg_restore -c -v --disable-triggers --no-password --no-owner --no-acl -U postgres -d {pgurl} -t {table_name} < {tf.name}"
             print('Ok. command in Docker:   ' + command_list, flush=True)
         else:
             command_list = ['pg_restore',
@@ -251,6 +248,8 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
                             '--data-only',
                             '--disable-triggers',
                             '--no-password',
+                            '--no-owner',
+                            '--no-acl',
                             '-U', db_user]
             command_list.extend(['-h', db_host] if positive_value_exists(db_host) else [])
             command_list.extend(['-p', db_port] if positive_value_exists(db_port) else [])
@@ -272,7 +271,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         # env_in_container = subprocess.run(['ls', '-la', script_path], env=env, capture_output=True, text=True)
         # print(f"ls -la {script_path}:  {env_in_container.stdout}")
 
-        table_restore_result = subprocess.run(command, shell=True, env=env)
+        table_restore_result = subprocess.run(command_list, shell=True, env=env)
 
         # Any return code other than 0 is an error
         if table_restore_result.returncode != 0:
