@@ -15,7 +15,8 @@ import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists
 from wevote_functions.functions_date import convert_date_to_date_as_integer, \
     convert_we_vote_date_string_to_date_as_integer, \
-    generate_localized_datetime_from_obj, get_current_year_as_integer
+    generate_localized_datetime_from_obj, get_current_date_as_integer, get_current_year_as_integer
+from wevote_settings.models import WeVoteSetting, WeVoteSettingsManager
 from .controllers import candidate_politician_match, find_duplicate_candidate, merge_if_duplicate_candidates
 from .models import CandidateCampaign, CandidateListManager, CandidateManager, CandidatesArePossibleDuplicates, \
     DeduplicationNeededForStateToday
@@ -850,10 +851,40 @@ def candidate_politician_match_this_year(candidate_year='', state_code='', limit
 
 
 def candidate_politician_match_batch_process():
-    candidate_year = get_current_year_as_integer()
     state_code = ""
     status = ""
     success = True
+
+    we_vote_settings_manager = WeVoteSettingsManager()
+    results = we_vote_settings_manager.fetch_setting_results('candidate_politician_match_states_skip_today')
+    fetch_setting_states_skip_today_success = results['success']
+    status += results['status']
+    states_skip_today_setting_value = results['setting_value']
+    # Convert text string to list of state codes, or return empty list
+    if positive_value_exists(states_skip_today_setting_value):
+        candidate_politician_match_states_skip_today = \
+            [state.strip() for state in states_skip_today_setting_value.split(',') if state.strip()]
+    else:
+        candidate_politician_match_states_skip_today = []
+
+    results = we_vote_settings_manager.fetch_setting_results('candidate_politician_match_last_reset_date')
+    fetch_setting_reset_day_success = results['success']
+    status += results['status']
+    candidate_politician_match_last_reset_date = results['setting_value']
+    if positive_value_exists(candidate_politician_match_last_reset_date):
+        candidate_politician_match_last_reset_date = convert_to_int(candidate_politician_match_last_reset_date)
+    else:
+        candidate_politician_match_last_reset_date = 0
+
+    candidate_year = get_current_year_as_integer()
+    today_as_integer = get_current_date_as_integer()
+    if candidate_politician_match_last_reset_date != today_as_integer:
+        candidate_politician_match_states_skip_today = []
+        candidate_politician_match_last_reset_date = today_as_integer
+        we_vote_settings_manager.save_setting(
+            'candidate_politician_match_last_reset_date',
+            candidate_politician_match_last_reset_date,
+            value_type=WeVoteSetting.INTEGER)
 
     candidate_query = CandidateCampaign.objects.using('readonly').all()
     candidate_query = candidate_query.filter(candidate_year=candidate_year)
@@ -867,7 +898,16 @@ def candidate_politician_match_batch_process():
         candidate_query.values_list('state_code', flat=True).distinct()
     )
     if len(state_code_list) > 0:
-        state_code = state_code_list[0]
+        for state_code in state_code_list:
+            if state_code not in candidate_politician_match_states_skip_today:
+                # If this state code is NOT in the "skip today" list,
+                #  break out of this loop and use the latest state_code below
+                break
+            else:
+                # Do not try to retrieve for this state again today because there's a problem trying to match politicians
+                # For today, move on to the next state with candidates that don't have duplicate_check_last_completed
+                state_code = ''
+                continue
 
     if positive_value_exists(state_code):
         status += f"POLITICIAN_MATCH_PROCESSING_STATE_CODE-{state_code} "
@@ -882,6 +922,17 @@ def candidate_politician_match_batch_process():
         candidate_we_vote_id_list_with_multiple_possible_politicians = \
             results['candidate_we_vote_id_list_with_multiple_possible_politicians']
         other_results = results['other_results']
+
+        if positive_value_exists(multiple_politicians_found):
+            status += results['status']
+            status += "MULTIPLE_POLITICIANS_FOUND "
+            candidate_politician_match_states_skip_today.append(state_code)
+            # Convert list to string for storage in database
+            candidate_politician_match_states_skip_today_string = ','.join(candidate_politician_match_states_skip_today)
+            we_vote_settings_manager.save_setting(
+                'candidate_politician_match_states_skip_today',
+                candidate_politician_match_states_skip_today_string,
+                value_type=WeVoteSetting.STRING)
 
         status += "[[Year: {candidate_year}, State: {state_code}: " \
                   "{num_candidates_reviewed} candidates reviewed, " \
