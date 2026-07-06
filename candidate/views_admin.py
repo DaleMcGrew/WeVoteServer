@@ -441,6 +441,7 @@ def candidate_list_view(request):
     hide_candidates_with_photos = \
         positive_value_exists(request.GET.get('hide_candidates_with_photos', False))
     migrate_to_candidate_link = positive_value_exists(request.GET.get('migrate_to_candidate_link', False))
+    missing_politician = positive_value_exists(request.GET.get('missing_politician', False))
     no_supporters = request.GET.get('no_supporters', False)
     page = convert_to_int(request.GET.get('page', 0))
     page = page if positive_value_exists(page) else 0  # Prevent negative pages
@@ -798,6 +799,11 @@ def candidate_list_view(request):
             'description': 'Build filters for link/federal/state/photos',
             'time_difference': t1_C - t0_C,
         })
+
+
+        if positive_value_exists(missing_politician):
+            candidate_query = candidate_query.filter(
+                Q(politician_we_vote_id__isnull=True) | Q(politician_we_vote_id=""))
 
         t0_D = time()
         if positive_value_exists(show_candidates_with_best_twitter_options):
@@ -1410,6 +1416,7 @@ def candidate_list_view(request):
         'hide_candidates_with_photos':              hide_candidates_with_photos,
         'hide_pagination':                          hide_pagination,
         'messages_on_stage':                        messages_on_stage,
+        'missing_politician':                       missing_politician,
         'next_page_url':                            next_page_url,
         'no_supporters':                            no_supporters,
         'previous_page_url':                        previous_page_url,
