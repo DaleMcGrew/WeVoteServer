@@ -1508,6 +1508,8 @@ def voter_guide_edit_process_view(request):  # NOTE: THIS FORM DOESN'T SAVE YET 
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
     voter_guide_url = request.POST.get('voter_guide_url', False)
     state_code = request.POST.get('state_code', False)
+    contest_office_id = request.POST.get('contest_office_id', 0)
+    contest_office_we_vote_id = request.POST.get('contest_office_we_vote_id', 0)
 
     # Check to see if this voter_guide is already being used anywhere
     voter_guide_on_stage_found = False
@@ -1577,22 +1579,14 @@ def voter_guide_edit_process_view(request):  # NOTE: THIS FORM DOESN'T SAVE YET 
                 url_variables = "?google_civic_election_id=" + str(google_civic_election_id) + \
                                 "&voter_guide_name=" + str(voter_guide_name) + \
                                 "&state_code=" + str(state_code) + \
-                                "&google_civic_voter_guide_name=" + str(google_civic_voter_guide_name) + \
                                 "&contest_office_id=" + str(contest_office_id) + \
                                 "&voter_guide_twitter_handle=" + str(voter_guide_twitter_handle) + \
-                                "&voter_guide_url=" + str(voter_guide_url) + \
-                                "&party=" + str(party) + \
-                                "&ballot_guide_official_statement=" + str(ballot_guide_official_statement) + \
-                                "&ballotpedia_voter_guide_id=" + str(ballotpedia_voter_guide_id) + \
-                                "&ballotpedia_voter_guide_name=" + str(ballotpedia_voter_guide_name) + \
-                                "&ballotpedia_voter_guide_url=" + str(ballotpedia_voter_guide_url) + \
-                                "&vote_smart_id=" + str(vote_smart_id) + \
-                                "&politician_we_vote_id=" + str(politician_we_vote_id) + \
-                                "&maplight_id=" + str(maplight_id)
+                                "&voter_guide_url=" + str(voter_guide_url)
                 if positive_value_exists(voter_guide_id):
                     return HttpResponseRedirect(reverse('voter_guide:voter_guide_edit', args=(voter_guide_id,)) +
                                                 url_variables)
                 else:
+                    # this doesn't resolve to anything..
                     return HttpResponseRedirect(reverse('voter_guide:voter_guide_new', args=()) +
                                                 url_variables)
 
@@ -2512,7 +2506,7 @@ def voter_guide_search_process_view(request):
 
     if request.method == 'POST':
         search_performed = True
-    
+
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'political_data_viewer', 'verified_volunteer'}
     if not voter_has_authority(request, authority_required):
@@ -2521,7 +2515,7 @@ def voter_guide_search_process_view(request):
     add_organization_button = request.POST.get('add_organization_button', False)
     if add_organization_button:
         return organization_edit_process_view(request)
-    
+
     organization_name = request.POST.get('organization_name', '')
     organization_twitter_handle = request.POST.get('organization_twitter_handle', '')
     organization_facebook = request.POST.get('organization_facebook', '')
@@ -2531,7 +2525,7 @@ def voter_guide_search_process_view(request):
 
     # voter_guide_search form logic
     view_form_button = request.POST.get('view_form_button') == 'true'
-    form_view = request.POST.get('form_view', 'search')  
+    form_view = request.POST.get('form_view', 'search')
 
     if view_form_button:
         form_view = 'create' if form_view == 'search' else 'search'

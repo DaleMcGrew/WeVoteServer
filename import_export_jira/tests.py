@@ -4,6 +4,7 @@
 
 from django.test import TestCase
 from datetime import datetime
+from jira import JIRAError
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
 from io import BytesIO
