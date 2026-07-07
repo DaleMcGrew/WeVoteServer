@@ -1,0 +1,25 @@
+name: djlint
+
+on:
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  djlint:
+    name: djlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install djlint
+        run: pip install djlint
+
+      - name: Lint templates
+        run: djlint templates --lint
+
+      - name: Check template formatting
+        run: djlint templates --check
