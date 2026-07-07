@@ -45,7 +45,7 @@ class ComplexTestCachePayload:
 
 
 @unittest.skipIf(
-    SERVER_IS_SOURCE_OF_TRUTH == True,
+    SERVER_IS_SOURCE_OF_TRUTH,
     "Database cache tests only run when SERVER_IS_SOURCE_OF_TRUTH is false",
 )
 class TestDatabaseCacheComplexObject(TestCase):
