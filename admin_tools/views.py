@@ -1821,7 +1821,7 @@ def login_we_vote(request):
                     if request_token_info['create_token']:
                         request_token_info['user_id'] = user.we_vote_id
                         token_manager = TokensManager(token_types=[request_token_info['token_type']], scope=Scope.BACKUP_ONE_TABLE_TO_S3.value, expiration_seconds=300)
-                        token_response['token_creation'] = token_manager.token_creation(request_token_info) 
+                        token_response['token_creation'] = token_manager.token_creation(request_token_info)
                 except Exception as e:
                     pass
 

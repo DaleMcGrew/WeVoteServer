@@ -275,7 +275,7 @@ class OrganizationManager(models.Manager):
             }
             return results
         # add required for hashtag_text similar to organization_we_vote_id
-        try:    
+        try:
             defaults = {
                 "organization_we_vote_id": organization_we_vote_id,
                 "hashtag_text": hashtag_text,

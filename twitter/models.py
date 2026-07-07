@@ -183,7 +183,7 @@ class TwitterUserManager(models.Manager):
         if "retweeted_status" in tweet_json._json:
             is_retweet_boolean = True
 
-        if not tweet_json: 
+        if not tweet_json:
             success = False
             status += 'MISSING_TWEET_JSON '
         else:

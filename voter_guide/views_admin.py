@@ -2531,7 +2531,7 @@ def voter_guide_search_process_view(request):
 
     # voter_guide_search form logic
     view_form_button = request.POST.get('view_form_button') == 'true'
-    form_view = request.POST.get('form_view', 'search')  
+    form_view = request.POST.get('form_view', 'search')
 
     if view_form_button:
         form_view = 'create' if form_view == 'search' else 'search'

@@ -25,7 +25,7 @@ class TestTokensManager(TestCase):
         cls.expiration_seconds = 1200
         cls.json_data = {'test': 'test'}
 
-        cls.request = RequestFactory().get( 
+        cls.request = RequestFactory().get(
             'https://example.com',
             {'table_name': 'table_name',
             'voter_api_device_id': ''}
@@ -66,7 +66,7 @@ class TestTokensManager(TestCase):
             'token_key': cls.validation_key,
             'new_token_key': cls.new_validation_key,
             'error_message': None
-        } 
+        }
 
         cls.response_token_info = {
             **TokenResponse.HEADERS_MAPPING.get_value(),
@@ -345,7 +345,7 @@ class TestTokensManager(TestCase):
     def test_token_authentication_first_token_not_found(self):
         request_token_info = self.request_token_info
         request_token_info['authorization'] = 'invalid_token_pk'
-        # Swapping values because were testing if a new token was created 
+        # Swapping values because were testing if a new token was created
         # with the new key on a previous call (for faulty api connection)
 
         response = self.manager.token_authentication(request_token_info)

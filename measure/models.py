@@ -992,14 +992,14 @@ class ContestMeasureManager(models.Manager):
             measure_we_vote_id,
             defaults):
         """
-            Update ContestMeasure table entry with matching we_vote_id 
-        :param measure_title: 
-        :param measure_subtitle: 
-        :param measure_text: 
-        :param state_code: 
-        :param ctcl_uuid: 
-        :param google_civic_election_id: 
-        :param measure_we_vote_id:  
+            Update ContestMeasure table entry with matching we_vote_id
+        :param measure_title:
+        :param measure_subtitle:
+        :param measure_text:
+        :param state_code:
+        :param ctcl_uuid:
+        :param google_civic_election_id:
+        :param measure_we_vote_id:
         :param defaults:
         :return:
         """

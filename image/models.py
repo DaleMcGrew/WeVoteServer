@@ -2090,7 +2090,7 @@ class WeVoteImageManager(models.Manager):
         :param image_offset_y:
         :param save_gif_as_webp:
         :return:
-        """        
+        """
         original_image_local_path = "/tmp/" + image_local_path
         converted_image_local_path = "/tmp/"
         converted_image_format = None

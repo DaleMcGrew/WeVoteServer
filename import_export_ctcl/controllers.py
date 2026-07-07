@@ -44,7 +44,7 @@ HEADERS_FOR_CTCL_API_CALL = {
 
 # HEADERS_FOR_CTCL_API_CALL = {
 #     'Accept': 'text/html,application/json,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-#     'Accept-Encoding': 'gzip, deflate, br', 
+#     'Accept-Encoding': 'gzip, deflate, br',
 #     'Accept-Language': 'en-US,en;q=0.5',
 #     'Connection': 'keep-alive',
 #     'Host': 'api.ballotinfo.org',
@@ -197,9 +197,9 @@ def import_ctcl_from_xml(request):
 def create_candidate_selection_rows(xml_root, batch_set_id=0):
     """
     Create candidate selection entries in the CandidateSelection table based on CTCL XML CandidateSelection node values
-    :param xml_root: 
-    :param batch_set_id: 
-    :return: 
+    :param xml_root:
+    :param batch_set_id:
+    :return:
     """
     success = False
     status = ''
@@ -353,9 +353,9 @@ def merge_candidate_ctcl_uuids(candidate1_ctcl_uuid='', candidate2_ctcl_uuid='',
 def retrieve_candidate_from_candidate_selection(candidate_selection_id, batch_set_id):
     """
     Given candidate_selection_id, get corresponding candidate name
-    :param candidate_selection_id: 
+    :param candidate_selection_id:
     :param batch_set_id:
-    :return: 
+    :return:
     """
     results = ''
     candidate_id = ''

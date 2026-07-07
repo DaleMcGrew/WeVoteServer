@@ -3481,11 +3481,11 @@ def import_office_held_data_from_batch_row_actions(batch_header_id, batch_row_id
     """
     Import batch_rows for office held, IMPORT_CREATE or IMPORT_ADD_TO_EXISTING
     Process batch row entries in order to create or update OfficeHeld entries
-    :param batch_header_id: 
-    :param batch_row_id: 
+    :param batch_header_id:
+    :param batch_row_id:
     :param create_entry_flag: set to True for IMPORT_CREATE
     :param update_entry_flag: set to True for IMPORT_ADD_TO_EXISTING
-    :return: 
+    :return:
     """
     success = False
     status = ""
@@ -3854,12 +3854,12 @@ def import_contest_office_data_from_batch_row_actions(
     """
     Import batch_rows for contest office, IMPORT_CREATE or IMPORT_ADD_TO_EXISTING
     Process batch row entries in order to create or update ContestOffice entries
-    :param batch_header_id: 
-    :param batch_row_id: 
+    :param batch_header_id:
+    :param batch_row_id:
     :param state_code:
     :param create_entry_flag: set to True for IMPORT_CREATE
     :param update_entry_flag: set to True for IMPORT_ADD_TO_EXISTING
-    :return: 
+    :return:
     """
     success = False
     status = ""
@@ -4072,11 +4072,11 @@ def import_measure_data_from_batch_row_actions(batch_header_id, batch_row_id,
     """
     Import batch_rows for measure, IMPORT_CREATE or IMPORT_ADD_TO_EXISTING
     Process batch row entries in order to create or update contestmeasure entries
-    :param batch_header_id: 
-    :param batch_row_id: 
+    :param batch_header_id:
+    :param batch_row_id:
     :param create_entry_flag: set to True for IMPORT_CREATE
     :param update_entry_flag: set to True for IMPORT_ADD_TO_EXISTING
-    :return: 
+    :return:
     """
     success = False
     status = ""
@@ -4274,11 +4274,11 @@ def import_candidate_data_from_batch_row_actions(batch_header_id, batch_row_id, 
     """
     Import batch_rows for candidate, IMPORT_CREATE or IMPORT_ADD_TO_EXISTING
     Process batch row entries in order to create or update CandidateCampaign entries
-    :param batch_header_id: 
-    :param batch_row_id: 
+    :param batch_header_id:
+    :param batch_row_id:
     :param create_entry_flag: set to True for IMPORT_CREATE
     :param update_entry_flag: set to True for IMPORT_ADD_TO_EXISTING
-    :return: 
+    :return:
     """
     success = False
     status = ""
@@ -4554,11 +4554,11 @@ def import_politician_data_from_batch_row_actions(batch_header_id, batch_row_id,
     """
     Import batch_rows for politician, IMPORT_CREATE or IMPORT_ADD_TO_EXISTING
     Process batch row entries in order to create or update Politician entries
-    :param batch_header_id: 
-    :param batch_row_id: 
+    :param batch_header_id:
+    :param batch_row_id:
     :param create_entry_flag: set to True for IMPORT_CREATE
     :param update_entry_flag: set to True for IMPORT_ADD_TO_EXISTING
-    :return: 
+    :return:
     """
     success = False
     status = ""
@@ -5290,11 +5290,11 @@ def import_position_data_from_batch_row_actions(
 
 def import_update_or_create_office_held_entry(batch_header_id, batch_row_id):
     """
-    Either create or update OfficeHeld table entry with batch_row office_held details 
-    
-    :param batch_header_id: 
-    :param batch_row_id: 
-    :return: 
+    Either create or update OfficeHeld table entry with batch_row office_held details
+
+    :param batch_header_id:
+    :param batch_row_id:
+    :return:
     """
     success = False
     status = ""
@@ -6037,9 +6037,9 @@ def import_data_from_batch_row_actions(
 def get_batch_header_id_from_batch_description(batch_set_id, kind_of_batch):
     """
     Look up batch_description table for a given batch_set_id and kind_of_batch
-    :param batch_set_id: 
-    :param kind_of_batch: 
-    :return: 
+    :param batch_set_id:
+    :param kind_of_batch:
+    :return:
     """
     batch_header_id = 0
     try:
@@ -6073,4 +6073,3 @@ def export_voter_list_with_emails():
     }
 
     return export_result
-

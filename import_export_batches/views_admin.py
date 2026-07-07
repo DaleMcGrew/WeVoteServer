@@ -726,7 +726,7 @@ def batch_action_list_export_view(request):
 
     # create response for csv file
     response = export_csv(batch_row_list, header_list, row_field_names, batch_description)
-    
+
     return response
 
 
@@ -1154,7 +1154,7 @@ def batch_header_mapping_process_view(request):
 def batch_action_list_assign_election_to_rows_process_view(request):
     """
     :param request:
-    :return: 
+    :return:
     """
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'verified_volunteer'}
@@ -2334,7 +2334,7 @@ def batch_process_log_entry_list_view(request):
     items_per_page = 25  # Number of items per page
     hide_pagination = False
     has_previous_page = False
-    has_next_page = False 
+    has_next_page = False
 
     election_manager = ElectionManager()
     if positive_value_exists(show_all_elections):
@@ -2522,7 +2522,7 @@ def batch_process_log_entry_list_view(request):
         hide_pagination = True
         has_previous_page = False
         has_next_page = False
-     
+
     # Make sure we always include the current election in the election_list, even if it is older
     if positive_value_exists(google_civic_election_id):
         this_election_found = False
@@ -3454,12 +3454,12 @@ def retrieve_ballots_for_polling_locations_api_v4_view(request):
 
     if positive_value_exists(google_civic_election_id) and positive_value_exists(state_code):
         update_candidates_results = update_existing_candidates_from_candidates_api(
-            google_civic_election_id=google_civic_election_id, 
+            google_civic_election_id=google_civic_election_id,
             state_code=state_code)
         if not update_candidates_results['success']:
             status += 'UPDATE_EXISTING_CANDIDATES_FROM_CANDIDATES_API_FAILED: '
             status += update_candidates_results.get('status', '')
-            
+
     if positive_value_exists(use_batch_process):
         from import_export_batches.controllers_batch_process import \
             schedule_retrieve_ballots_for_polling_locations_api_v4

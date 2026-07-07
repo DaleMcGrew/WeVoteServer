@@ -3529,7 +3529,7 @@ def update_candidate_details_from_campaignx(candidate, campaignx):
 
     if candidate.opposers_count != campaignx.opposers_count:
         candidate.opposers_count = campaignx.opposers_count
-        save_changes = True 
+        save_changes = True
 
     results = {
         'success': success,
