@@ -1,5 +1,3 @@
-from datetime import time
-from logging import error
 from django.urls import reverse
 from django.test import TestCase
 from django.utils import timezone

@@ -13,7 +13,7 @@ from .models import ACTIVITY_NOTICE_PROCESS, API_REFRESH_REQUEST, \
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_ORGANIZATIONS, BATCH_IMPORT_KEYS_ACCEPTED_FOR_POLITICIANS, \
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_POSITIONS, BATCH_IMPORT_KEYS_ACCEPTED_FOR_BALLOT_ITEMS, \
     BATCH_SET_SOURCE_IMPORT_BALLOTPEDIA_BALLOT_ITEMS, BATCH_SET_SOURCE_IMPORT_CTCL_BALLOT_ITEMS, \
-    BATCH_SET_SOURCE_IMPORT_GOOGLE_CIVIC_REPRESENTATIVES, BATCH_SET_SOURCE_IMPORT_VOTE_USA_BALLOT_ITEMS, \
+    BATCH_SET_SOURCE_IMPORT_VOTE_USA_BALLOT_ITEMS, \
     IMPORT_CREATE, IMPORT_DELETE, IMPORT_ALREADY_DELETED, IMPORT_ADD_TO_EXISTING, IMPORT_POLLING_LOCATION, \
     IMPORT_VOTER, REFRESH_BALLOT_ITEMS_FROM_POLLING_LOCATIONS, \
     REFRESH_BALLOT_ITEMS_FROM_VOTERS, RETRIEVE_BALLOT_ITEMS_FROM_POLLING_LOCATIONS, \
@@ -41,13 +41,11 @@ from exception.models import handle_exception
 from import_export_ballotpedia.controllers import groom_ballotpedia_data_for_processing, \
     process_ballotpedia_voter_districts, BALLOTPEDIA_API_SAMPLE_BALLOT_RESULTS_URL
 from import_export_ctcl.controllers import CTCL_VOTER_INFO_URL
-from import_export_google_civic.controllers import REPRESENTATIVES_BY_ADDRESS_URL
 from import_export_vote_usa.controllers import VOTE_USA_VOTER_INFO_URL
 from import_export_vote_usa.controllers_candidates import update_existing_candidates_from_candidates_api
 import json
 import math
-from polling_location.models import KIND_OF_LOG_ENTRY_BALLOT_RECEIVED, KIND_OF_LOG_ENTRY_REPRESENTATIVES_RECEIVED, \
-    MAP_POINTS_RETRIEVED_EACH_BATCH_CHUNK, PollingLocation, PollingLocationManager
+from polling_location.models import KIND_OF_LOG_ENTRY_BALLOT_RECEIVED, MAP_POINTS_RETRIEVED_EACH_BATCH_CHUNK, PollingLocation, PollingLocationManager
 from position.models import POSITION
 import random
 import requests
@@ -56,7 +54,6 @@ from voter.models import voter_has_authority
 from voter_guide.models import ORGANIZATION_WORD
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, get_voter_api_device_id, positive_value_exists, STATE_CODE_MAP
-import pytz
 
 logger = wevote_functions.admin.get_logger(__name__)
 

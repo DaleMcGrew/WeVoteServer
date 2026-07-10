@@ -1,7 +1,7 @@
 import os
 import re
 import urllib.request
-from datetime import datetime, date
+from datetime import datetime
 import requests
 from django.db import connection
 import pytz

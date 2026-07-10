@@ -5,7 +5,6 @@
 import os
 import re
 
-from wevote_functions.functions import positive_value_exists
 from config.environment_variable_functions import get_environment_variable, get_environment_variable_default, \
     get_we_vote_server_root_url, convert_logging_level
 

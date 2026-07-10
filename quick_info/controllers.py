@@ -11,7 +11,7 @@ from django.http import HttpResponse
 from exception.models import handle_record_not_found_exception, handle_record_not_saved_exception
 from organization.models import OrganizationManager
 import json
-from voter.models import fetch_voter_id_from_voter_device_link, VoterManager
+from voter.models import VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, is_voter_device_id_valid, positive_value_exists
 

@@ -3,7 +3,6 @@ from unittest.mock import patch, MagicMock
 from django.test import RequestFactory
 from wevote_tokens.models.single_use_tokens import SingleUseTokenManager, Scope
 from wevote_tokens.enums import TokenHeaders, TokenTypes, TokenResponse
-from apis_v1.views.views_retrieve_tables import backup_one_table_to_s3_view
 import json
 from wevote_tokens.utils import TokensManager
 from django.utils import timezone

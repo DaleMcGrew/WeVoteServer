@@ -12,7 +12,7 @@ from ballot.controllers import move_ballot_items_to_another_measure
 import json
 from position.controllers import move_positions_to_another_measure, update_all_position_details_from_contest_measure
 import wevote_functions.admin
-from wevote_functions.functions import convert_state_code_to_state_text, convert_to_int, MEASURE_TITLE_SYNONYMS, \
+from wevote_functions.functions import convert_state_code_to_state_text, MEASURE_TITLE_SYNONYMS, \
     positive_value_exists, process_request_from_master, strip_html_tags
 from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
 

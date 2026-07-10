@@ -2531,7 +2531,6 @@ def repair_ocd_id_mismatch_damage_view(request):
         campaignx_list = list(queryset[:100])
         campaignx_list_count = len(campaignx_list)
         campaignx_list_remaining_count = queryset.count() - campaignx_list_count
-        from campaign.controllers import update_campaignx_from_politician
         politician_manager = PoliticianManager()
         for one_campaignx in campaignx_list:
             save_campaignx_changes = True  # Default to saving

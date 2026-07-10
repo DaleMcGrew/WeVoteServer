@@ -6,11 +6,9 @@ from django.db.models import Q
 
 from config.environment_variable_functions import get_environment_variable
 from candidate.models import CandidateCampaign
-from politician.models import Politician, PoliticianManager
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
-from wevote_functions.functions_date import generate_localized_datetime_from_obj
-from .models import PositionEntered, PositionForFriends
+from .models import PositionEntered
 
 POLITICIANS_SYNC_URL = get_environment_variable("POLITICIANS_SYNC_URL")  # politiciansSyncOut
 TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
@@ -181,8 +179,7 @@ def create_followers_from_positions_batch(
     update_message = ''
 
     from follow.controllers import create_followers_from_positions
-    from campaign.controllers import delete_campaignx_supporters_after_positions_removed, \
-        refresh_campaignx_supporters_count_in_all_children, \
+    from campaign.controllers import refresh_campaignx_supporters_count_in_all_children, \
         refresh_campaignx_supporters_count_for_campaignx_we_vote_id_list
     campaignx_we_vote_id_list_to_refresh = []
     # #############################

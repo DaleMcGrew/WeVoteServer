@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from ballot.models import CANDIDATE, MEASURE, OFFICE, POLITICIAN
+from ballot.models import CANDIDATE, MEASURE, POLITICIAN
 from candidate.models import CandidateManager
 from friend.models import FriendManager
 from measure.models import ContestMeasureManager
@@ -10,8 +10,8 @@ from politician.models import PoliticianManager
 from django.http import HttpResponse
 from follow.models import FollowOrganizationList
 import json
-from position.models import ANY_STANCE, convert_position_object_to_dict, FRIENDS_ONLY, NO_STANCE, OPPOSE, \
-    PositionManager, PositionListManager, PUBLIC_ONLY, SUPPORT
+from position.models import convert_position_object_to_dict, NO_STANCE, OPPOSE, \
+    PositionManager, PositionListManager, SUPPORT
 from voter.models import fetch_voter_id_from_voter_device_link, VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, is_voter_device_id_valid, positive_value_exists

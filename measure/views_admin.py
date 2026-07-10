@@ -22,7 +22,7 @@ from django.db.models import Q
 from django.shortcuts import render
 from election.models import Election, ElectionManager
 from exception.models import handle_record_found_more_than_one_exception,\
-    handle_record_not_found_exception, handle_record_not_saved_exception
+    handle_record_not_found_exception
 from position.controllers import move_positions_to_another_measure, update_all_position_details_from_contest_measure
 from position.models import OPPOSE, PositionEntered, PositionListManager, SUPPORT
 from volunteer_task.models import VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION, VolunteerTaskManager
