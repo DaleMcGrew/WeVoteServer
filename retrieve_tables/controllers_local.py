@@ -116,7 +116,7 @@ def retrieve_sql_files_from_master_server(request):
                     if not DEBUG_FASTLOAD_SINGLE_SERVER:
                         print(f"Token authentication failed: {token_authentication['error_message']}")
             else:
-                print(f"Token authentication not found in response headers.")
+                print("Token authentication not found in response headers.")
 
             structured_json = fetch_data_response.json()
             aws_s3_file_url = structured_json['aws_s3_file_url']
