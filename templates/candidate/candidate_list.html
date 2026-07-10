@@ -617,6 +617,15 @@
                                        {% if show_candidates_with_claimed_profile %}checked{% endif %} />
                                 Is Claimed Profile
                               </label>
+                              &nbsp;&nbsp;&nbsp;&nbsp;
+                              <label for="missing_politician_id">
+                                <input type="checkbox"
+                                       name="missing_politician"
+                                       id="missing_politician_id"
+                                       value="1"
+                                       {% if missing_politician %}checked{% endif %} />
+                                Missing Politician
+                              </label>
 
                               <input type="hidden" name="page" value="{{ current_page_number }}" />
                             </form>
@@ -1124,6 +1133,11 @@
     }
 
     $(function() {
+        $('#missing_politician_id').change(function() {
+            displayLoadingBanner();
+            this.form.submit();
+        });
+
         $('#exclude_candidate_analysis_done_id').change(function() {
             displayLoadingBanner();
             this.form.submit();

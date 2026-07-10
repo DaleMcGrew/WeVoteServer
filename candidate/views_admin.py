@@ -441,6 +441,7 @@ def candidate_list_view(request):
     hide_candidates_with_photos = \
         positive_value_exists(request.GET.get('hide_candidates_with_photos', False))
     migrate_to_candidate_link = positive_value_exists(request.GET.get('migrate_to_candidate_link', False))
+    missing_politician = positive_value_exists(request.GET.get('missing_politician', False))
     no_supporters = request.GET.get('no_supporters', False)
     page = convert_to_int(request.GET.get('page', 0))
     page = page if positive_value_exists(page) else 0  # Prevent negative pages
@@ -798,6 +799,11 @@ def candidate_list_view(request):
             'description': 'Build filters for link/federal/state/photos',
             'time_difference': t1_C - t0_C,
         })
+
+
+        if positive_value_exists(missing_politician):
+            candidate_query = candidate_query.filter(
+                Q(politician_we_vote_id__isnull=True) | Q(politician_we_vote_id=""))
 
         t0_D = time()
         if positive_value_exists(show_candidates_with_best_twitter_options):
@@ -1410,6 +1416,7 @@ def candidate_list_view(request):
         'hide_candidates_with_photos':              hide_candidates_with_photos,
         'hide_pagination':                          hide_pagination,
         'messages_on_stage':                        messages_on_stage,
+        'missing_politician':                       missing_politician,
         'next_page_url':                            next_page_url,
         'no_supporters':                            no_supporters,
         'previous_page_url':                        previous_page_url,
@@ -2144,7 +2151,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
                 performance_dict.update(performance_process_dict)
             except Exception as e:
                 status += "Error parsing performance_process_dict: {error}".format(error=e)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
             status += "Error decoding performance_process_dict: {error}".format(error=e)
 
     # Set up performance_list for this view. A pointer to the performance_list variable is established here.
@@ -4099,6 +4106,7 @@ def candidate_politician_match_this_election_view(request):
     print_to_log(logger, exception_message_optional=message)
 
     # Loop through all the candidates in this election
+    candidate_we_vote_id_list_with_multiple_possible_politicians = []
     for we_vote_candidate in candidate_list:
         num_candidates_reviewed += 1
         if we_vote_candidate.politician_we_vote_id:
@@ -4110,6 +4118,7 @@ def candidate_politician_match_this_election_view(request):
             existing_politician_found += 1
         elif match_results['politician_list_found']:
             multiple_politicians_found += 1
+            candidate_we_vote_id_list_with_multiple_possible_politicians.append(we_vote_candidate.we_vote_id)
         else:
             other_results += 1
 
@@ -4118,9 +4127,12 @@ def candidate_politician_match_this_election_view(request):
               "{num_that_already_have_politician_we_vote_id} Candidates that already have Politician Ids, " \
               "{new_politician_created} politicians just created, " \
               "{existing_politician_found} politicians found that already exist, " \
-              "{multiple_politicians_found} times we found multiple politicians and could not link, " \
+              "{multiple_politicians_found} times we found multiple politicians and could not link " \
+              "({candidate_we_vote_id_list_with_multiple_possible_politicians}), " \
               "{other_results} other results". \
-              format(election_id=google_civic_election_id,
+              format(candidate_we_vote_id_list_with_multiple_possible_politicians=\
+                                       candidate_we_vote_id_list_with_multiple_possible_politicians,
+                     election_id=google_civic_election_id,
                      num_candidates_reviewed=num_candidates_reviewed,
                      num_that_already_have_politician_we_vote_id=num_that_already_have_politician_we_vote_id,
                      new_politician_created=new_politician_created,
