@@ -1428,26 +1428,8 @@ def politician_edit_view(request, politician_id=0, politician_we_vote_id=''):
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
 
-    # The performance_dict variable contains list(s) of performance_snapshots.
-
-    # # Take in performance_process_dict from the view that saved data for this candidate. Move the lists of
-    # # the performance_snapshots from that view into the local performance_dict.
-    # performance_process_cache_key = f"politician_edit_process_view_performance_dict_{politician_id}"
-    # performance_process_dict = cache.get(performance_process_cache_key)
-    # cache.delete(performance_process_cache_key) # Delete the cache key after we use it. We don't want to reuse results.
-
-    # if positive_value_exists(performance_process_dict):
-    #     performance_dict.update(performance_process_dict)
-
-    # # Set up performance_list for this view. A pointer to the performance_list variable is established here.
-    # #  Throughout the rest of this view, we add snapshots to the performance_list. Since the performance_list
-    # #  is "attached" to the performance_dict with a pointer, when we pass performance_dict to the template,
-    # #  the performance_list data is included.
-    # performance_list = []
-    # performance_dict.update({
-    #     'politician_edit_view': performance_list,
-    # })
-
+    # Load in speed_statistics from the view that saved data for this candidate.
+    # Move the lists of the performance_snapshots from that view into the local speed_statistics.
     speed_statistics = request.speed_statistics
     speed_statistics.pop_merge_stats(stats_cache_key=f"politician_edit_process_view_{politician_id}")
 
