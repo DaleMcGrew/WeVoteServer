@@ -680,8 +680,8 @@ class OfficeHeldManager(models.Manager):
             office_held_name,
             defaults={}):
         """
-        Create OfficeHeld table entry with OfficeHeld details 
-        :param office_held_name: 
+        Create OfficeHeld table entry with OfficeHeld details
+        :param office_held_name:
         :param defaults:
         :return:
         """
@@ -782,10 +782,10 @@ class OfficeHeldManager(models.Manager):
             office_held_we_vote_id='',
             defaults={}):
         """
-            Update OfficeHeld table entry with matching we_vote_id 
+            Update OfficeHeld table entry with matching we_vote_id
         :param office_held_we_vote_id:
         :param defaults:
-        :return: 
+        :return:
         """
         success = False
         status = ""

@@ -112,7 +112,7 @@ def politician_url_test_view(request):
         value = getattr(politician_data, field, None)
         if value:
             urls_to_test.append(value)
-    politician_name = politician_data.politician_name  
+    politician_name = politician_data.politician_name
     
     # Handle case when no URLs exist
     if not urls_to_test:
@@ -2673,7 +2673,7 @@ def politician_edit_process_view(request):
                 else False
             if required_politician_variables:
                 # #################################################
-                # Create new politician object if none exists       
+                # Create new politician object if none exists
                 t0 = time()
                 politician_on_stage = Politician.objects.create(
                     first_name=extract_first_name_from_full_name(politician_name),

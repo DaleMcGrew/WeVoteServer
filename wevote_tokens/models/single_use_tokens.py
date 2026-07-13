@@ -173,7 +173,7 @@ class SingleUseTokenManager(models.Manager):
         try:
             new_token.save(
                 user_id=user_id,
-                validation_key=validation_key, 
+                validation_key=validation_key,
                 scope=scope,
                 expiration_seconds=expiration_seconds,
                 json_data=json_data)

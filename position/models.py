@@ -1437,7 +1437,7 @@ class PositionListManager(models.Manager):
 
             position_query = position_on_stage_starter.objects.using('readonly').all()
             position_query = position_query.filter(candidate_campaign_we_vote_id__in=candidate_we_vote_id_list)
-            
+
             # As of Aug 2018 we are no longer using PERCENT_RATING
             # position_query = position_query.exclude(stance__iexact=PERCENT_RATING)
 
@@ -1534,9 +1534,9 @@ class PositionListManager(models.Manager):
     def remove_positions_unrelated_to_issues(positions_list, organizations_related_to_issue):
         """
         We filter the list of organizations whose we_vote_id is present in organizations_related_to_issue
-        :param positions_list: 
-        :param organizations_related_to_issue: 
-        :return: 
+        :param positions_list:
+        :param organizations_related_to_issue:
+        :return:
         """
         positions_related_to_organization = []
         for position in positions_list:
@@ -8917,7 +8917,7 @@ class PositionManager(models.Manager):
     def count_positions_for_election(google_civic_election_id, retrieve_public_positions=True):
         """
         Return count of positions for a given election
-        :param google_civic_election_id: 
+        :param google_civic_election_id:
         :param retrieve_public_positions:
         :return:
         """

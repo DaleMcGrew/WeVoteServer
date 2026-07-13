@@ -2166,8 +2166,8 @@ class BatchManager(models.Manager):
     def retrieve_column_name_from_batch_row(self, batch_header_name_we_want, batch_header_map):
         """
         Given column name from batch_header_map, retrieve equivalent column name from batch row
-        :param batch_header_name_we_want: 
-        :param batch_header_map: 
+        :param batch_header_name_we_want:
+        :param batch_header_map:
         :return:
         """
         index_number = 0
@@ -3771,8 +3771,8 @@ class BatchManager(models.Manager):
     def count_number_of_batch_action_rows(self, header_id, kind_of_batch):
         """
             Return count of batch rows for a given header id
-        :param header_id: 
-        :return: 
+        :param header_id:
+        :return:
         """
         number_of_batch_action_rows = 0
         if positive_value_exists(header_id):
@@ -3839,7 +3839,7 @@ class BatchManager(models.Manager):
     def fetch_office_held_name_from_office_held_ctcl_id(self, office_held_ctcl_id, batch_set_id):
         """
         Take in office_held_ctcl_id and batch_set_id, look up BatchRow and return office_held_name
-        :param office_held_ctcl_id: 
+        :param office_held_ctcl_id:
         :param batch_set_id:
         :return:
         """
@@ -3887,9 +3887,9 @@ class BatchManager(models.Manager):
     def fetch_state_code_from_person_id_in_candidate(self, person_id, batch_set_id):
         """
         Take in person_id, batch_set_id, look up BatchRowActionCandidate and return state_code
-        :param person_id: 
+        :param person_id:
         :param batch_set_id:
-        :return: 
+        :return:
         """
         state_code = ''
         batch_header_id = 0
@@ -3924,10 +3924,10 @@ class BatchManager(models.Manager):
     def retrieve_election_details_from_election_day_or_state_code(self, election_day='', state_code='', read_only=True):
         """
         Retrieve election_name and google_civic_election_id from election_day and/or state_code
-        :param election_day: 
+        :param election_day:
         :param state_code:
         :param read_only:
-        :return: 
+        :return:
         """
 
         success = False
@@ -3969,8 +3969,8 @@ class BatchManager(models.Manager):
     def create_batch_set_organization_endorsements(self, organization):
         """
         Create batch set for organization endorsements
-        :param organization: 
-        :return: 
+        :param organization:
+        :return:
         """
         batch_set_id = 0
         batch_saved = False
@@ -4110,11 +4110,11 @@ class BatchManager(models.Manager):
                                              candidate_positions_list=''):
         """
         Import Offices from organization endorsements json file
-        :param batch_uri: 
-        :param batch_set_id: 
+        :param batch_uri:
+        :param batch_set_id:
         :param organization_we_vote_id:
-        :param candidate_positions_list: 
-        :return: 
+        :param candidate_positions_list:
+        :return:
         """
 
         status = ''
@@ -4233,11 +4233,11 @@ class BatchManager(models.Manager):
                                                 candidate_positions_list=''):
         """
         Import Candidates from organization endorsements json file
-        :param batch_uri: 
-        :param batch_set_id: 
+        :param batch_uri:
+        :param batch_set_id:
         :param organization_we_vote_id:
-        :param candidate_positions_list: 
-        :return: 
+        :param candidate_positions_list:
+        :return:
         """
 
         status = ''
@@ -4375,12 +4375,12 @@ class BatchManager(models.Manager):
                                                          organization_twitter_handle, candidate_positions_list):
         """
         Import candidate positions from organization endorsements json file
-        :param batch_uri: 
-        :param batch_set_id: 
-        :param organization_we_vote_id: 
-        :param organization_twitter_handle: 
-        :param candidate_positions_list: 
-        :return: 
+        :param batch_uri:
+        :param batch_set_id:
+        :param organization_we_vote_id:
+        :param organization_twitter_handle:
+        :param candidate_positions_list:
+        :return:
         """
 
         status = ''
@@ -4526,11 +4526,11 @@ class BatchManager(models.Manager):
 
     def import_measure_positions_from_endorsement_json(self, batch_uri, batch_set_id, measure_positions_list):
         """
-        Import measure positions from organization endorsements json file        
-        :param batch_uri: 
-        :param batch_set_id: 
-        :param measure_positions_list: 
-        :return: 
+        Import measure positions from organization endorsements json file
+        :param batch_uri:
+        :param batch_set_id:
+        :param measure_positions_list:
+        :return:
         """
 
         status = ''

@@ -1669,7 +1669,7 @@ def organization_edit_process_view(request):
                     'upcoming_election_list':       upcoming_election_list,
                 }
                 return render(request, 'voter_guide/voter_guide_search.html', template_values)
-            else: 
+            else:
                 organization_on_stage_found = True
             
             organization_on_stage = org_results['organization']
@@ -2704,7 +2704,7 @@ def organization_position_new_view(request, organization_id):
     candidates_for_this_election_list = []
     results = candidate_list.retrieve_all_candidates_for_upcoming_election(
         google_civic_election_id_list=google_civic_election_id_list,
-        state_code=state_code.upper() if state_code else None, 
+        state_code=state_code.upper() if state_code else None,
         search_string=candidate_search,
         return_list_of_objects=True,
         read_only=True)
@@ -2717,7 +2717,7 @@ def organization_position_new_view(request, organization_id):
     contest_measures_for_this_election_list = []
     results = contest_measure_list.retrieve_all_measures_for_upcoming_election(
         google_civic_election_id_list=google_civic_election_id_list,
-        state_code=state_code.upper() if state_code else None, 
+        state_code=state_code.upper() if state_code else None,
         search_string=measure_search,
         return_list_of_objects=True)
 

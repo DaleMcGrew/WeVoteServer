@@ -8,7 +8,7 @@ from config.environment_variable_functions import get_environment_variable
 
 logger = wevote_functions.admin.get_logger(__name__)
 
-# For testing the job queue system locally, you can run an SQS 
+# For testing the job queue system locally, you can run an SQS
 # server locally using localstack within docker.
 # Use the following commands to install:
 #

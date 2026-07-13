@@ -762,7 +762,7 @@ class FollowIssueList(models.Model):
             read_only=True):
         """
         Retrieve a list of follow_issue entries for this voter
-        :param voter_we_vote_id: 
+        :param voter_we_vote_id:
         :param following_status:
         :param read_only:
         :return: a list of follow_issue objects for the voter_we_vote_id
