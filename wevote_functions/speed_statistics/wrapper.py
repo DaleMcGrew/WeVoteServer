@@ -1,14 +1,17 @@
 import inspect
 from django.http import HttpRequest, HttpResponse
 import django.shortcuts
+from typing import Callable
+from wevote_functions.speed_statistics.statistics import SpeedStatistics
+from functools import wraps
+import sys
 
 class SpeedStatisticsViewWrapper:
-    def __init__(self, scope: str = None, stats_cache_keys: list = None, template_name: str = None) -> None:
-        self._speed_statistics = SpeedStatistics(scope)
-        self._stats_cache_keys = stats_cache_keys
-        self._template_name = template_name
+    def __init__(self, scope: str = None, stats_cache_keys: list = None) -> None:
+        self._default_scope = scope
+        self._default_stats_cache_keys = stats_cache_keys
 
-    def __call__(self, func: Callable) -> None:
+    def __call__(self, func: Callable) -> Callable:
         func_signature = inspect.signature(func)
         params = list(func_signature.parameters.values())
 
@@ -21,30 +24,39 @@ class SpeedStatisticsViewWrapper:
                 f"SpeedStatisticsViewWrapper expected first parameter to be 'request' or 'http_request', got '{first_param}'"
             )
 
-        if not self._speed_statistics.get_scope():
-            self._speed_statistics.set_scope(func.__name__)
-
         @wraps(func)
         def wrapper(request: HttpRequest, *args, **kwargs) -> HttpResponse:
 
             if not isinstance(request, HttpRequest):
                 raise TypeError(f"Expected HttpRequest, got {type(request).__name__}")
 
-            request.speed_statistics = self._speed_statistics
+            scope = self._default_scope or func.__name__
+            stats_cache_keys = list(self._default_stats_cache_keys or [])
 
-            if self._stats_cache_keys:
-                while self._stats_cache_keys:
-                    self._speed_statistics.retrieve_merge_stats(self._stats_cache_keys.pop())
+            speed_statistics = SpeedStatistics(scope)
 
-            original_render = django.shortcuts.render
+            request.speed_statistics = speed_statistics
+
+            while stats_cache_keys:
+                speed_statistics.retrieve_merge_stats(stats_cache_keys.pop())
+
             def instrumented_render(request: HttpRequest, *r_args, **r_kwargs) -> HttpResponse:
-                return self._speed_statistics.stats_render(request, *r_args, **r_kwargs)
+                return SpeedStatistics.stats_render(speed_statistics, request, *r_args, **r_kwargs)
 
+            view_module = sys.modules[func.__module__]
+            originals = {}
+            for name, value in list(view_module.__dict__.items()):
+                if value is django.shortcuts.render:
+                    originals[name] = value
+                    view_module.__dict__[name] = instrumented_render
+
+            original_django_render = django.shortcuts.render
             django.shortcuts.render = instrumented_render
 
             try:
                 return func(request, *args, **kwargs)
             finally:
-                django.shortcuts.render = original_render
+                django.shortcuts.render = original_django_render
+                view_module.__dict__.update(originals)
 
         return wrapper

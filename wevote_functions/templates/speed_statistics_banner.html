@@ -22,8 +22,8 @@
     <table class="table table-bordered">
       <thead>
         <tr>
-          <th>Context</th>
-          <th>Time Difference (seconds)</th>
+          <th>Scope / Context</th>
+          <th>Runtime (seconds)</th>
           <th>Description</th>
         </tr>
       </thead>
@@ -35,17 +35,14 @@
           {% for stat in context %}
             <tr>
               <td>{{ stat.context }}</td>
-              <td>{{ stat.start_time|floatformat:4 }}</td>
-              <td>{{ stat.end_time|floatformat:4 }}</td>
-              <td>{{ stat.time_difference|floatformat:4 }}</td>
+              {% if stat.time_difference %}
+                <td>{{ stat.time_difference|floatformat:4 }}</td>
+              {% else %}
+                <td>N/A</td>
+              {% endif %}
               <td style="font-weight:300; color:#666; text-align:left;">{{ stat.description }}</td>
             </tr>
           {% endfor %}
-          <tr style="font-weight: bold; background-color: #C0DDED;">
-            <td>Total for {{ view }}</td>
-            <td>{{ stats|performance_total|floatformat:4 }}</td>
-            <td style="font-weight: bold; color: #666; text-align: left;">Sum of performance snapshots for {{ view }}</td>
-          </tr>
         {% endfor %}
         
         {% comment %} comment out the load time display {% endcomment %}
