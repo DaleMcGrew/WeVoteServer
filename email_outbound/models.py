@@ -1669,11 +1669,11 @@ class EmailManager(models.Manager):
                 status += "SEND_SCHEDULED_ADD_HEADER_ERROR: " + str(e) + " "
                 print(status)
             if positive_value_exists(email_scheduled.sender_voter_name):
-                from_email = "{sender_voter_name} via We Vote <email_address>" \
+                from_email = "{sender_voter_name} via We Vote <{email_address}>" \
                              "".format(email_address='info@wevote.us',
                                        sender_voter_name=email_scheduled.sender_voter_name)
             else:
-                from_email = "We Vote <email_address>" \
+                from_email = "We Vote <{email_address}>" \
                              "".format(email_address='info@wevote.us')
             # For some reason the default Emailbackend doesn't have access to environment_variables.json directly
             connection = get_connection(
