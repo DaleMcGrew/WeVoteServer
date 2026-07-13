@@ -1935,126 +1935,126 @@ def candidate_new_view(request):
         'office_name':                      office_name,
         'page':                             page,
         'politician_we_vote_id':            politician_we_vote_id,
-        'ballotpedia_candidate_id_dict':              
+        'ballotpedia_candidate_id_dict':
             {
                 'label':    'Candidate Name (from Ballotpedia)',
                 'id':       'ballotpedia_candidate_id_id',
                 'name':     'ballotpedia_candidate_id',
                 'value':     ballotpedia_candidate_id
             },
-            'ballotpedia_candidate_name_dict':              
+            'ballotpedia_candidate_name_dict':
             {
                 'label':    'Ballotpedia Candidate Id',
                 'id':       'ballotpedia_candidate_name_id',
                 'name':     'ballotpedia_candidate_name',
                 'value':     ballotpedia_candidate_name
             },
-            'ballotpedia_office_id_dict':              
+            'ballotpedia_office_id_dict':
             {
                 'label':    'Ballotpedia Office Held Id',
                 'id':       'ballotpedia_office_id_id',
                 'name':     'ballotpedia_office_id',
                 'value':     ballotpedia_office_id
             },
-            'ballotpedia_person_id_dict':              
+            'ballotpedia_person_id_dict':
             {
                 'label':    'Ballotpedia Person Id',
                 'id':       'ballotpedia_person_id_id',
                 'name':     'ballotpedia_person_id',
                 'value':     ballotpedia_person_id
             },
-            'ballotpedia_race_id_dict':              
+            'ballotpedia_race_id_dict':
             {
                 'label':    'Ballotpedia Race Id',
                 'id':       'ballotpedia_race_id_id',
                 'name':     'ballotpedia_race_id',
                 'value':     ballotpedia_race_id
             },
-            'candidate_email_dict':              
+            'candidate_email_dict':
             {
                 'label':    'Candidate Email',
                 'id':       'candidate_email_id',
                 'name':     'candidate_email',
                 'value':     candidate_email
             },
-            'candidate_phone_dict':              
+            'candidate_phone_dict':
             {
                 'label':    'Candidate Phone',
                 'id':       'candidate_phone_id',
                 'name':     'candidate_phone',
                 'value':     candidate_phone
             },
-            'contest_office_name_dict':              
+            'contest_office_name_dict':
             {
                 'label':    'Contest Office Name (Cached)',
                 'id':       'contest_office_name_id',
                 'name':     'contest_office_name',
                 'value':     contest_office_name
             },
-            'district_name_dict':              
+            'district_name_dict':
             {
                 'label':    'District Name (Cached)',
                 'id':       'district_name_id',
                 'name':     'district_name',
                 'value':     district_name
             },
-            'google_civic_candidate_name_dict':              
+            'google_civic_candidate_name_dict':
             {
                 'label':    'Candidate Alt Name1',
                 'id':       'google_civic_candidate_name_id',
                 'name':     'google_civic_candidate_name',
                 'value':     google_civic_candidate_name
             },
-            'google_civic_candidate_name2_dict':              
+            'google_civic_candidate_name2_dict':
             {
                 'label':    'Candidate Alt Name2',
                 'id':       'google_civic_candidate_name2_id',
                 'name':     'google_civic_candidate_name2',
                 'value':     google_civic_candidate_name2
             },
-            'google_civic_candidate_name3_dict':              
+            'google_civic_candidate_name3_dict':
             {
                 'label':    'Candidate Alt Name3',
                 'id':       'google_civic_candidate_name3_id',
                 'name':     'google_civic_candidate_name3',
                 'value':     google_civic_candidate_name3
             },
-            'linkedin_url_dict':              
+            'linkedin_url_dict':
             {
                 'label':    'LinkedIn URL',
                 'id':       'linkedin_url_id',
                 'name':     'linkedin_url',
                 'value':     linkedin_url
             },
-            'party_dict':              
+            'party_dict':
             {
                 'label':    'Candidate Party',
                 'id':       'party_id',
                 'name':     'party',
                 'value':     party
-            }, 
-            'state_code_dict':              
+            },
+            'state_code_dict':
             {
                 'label':    'Candidate State Code',
                 'id':       'state_code_id',
                 'name':     'state_code',
                 'value':     state_code
             },
-            'vote_usa_office_id_dict':              
+            'vote_usa_office_id_dict':
             {
                 'label':    'Vote USA Office Id',
                 'id':       'vote_usa_office_id',
                 'name':     'vote_usa_office',
                 'value':     vote_usa_office_id
-            }, 
-            'vote_usa_politician_id_dict':              
+            },
+            'vote_usa_politician_id_dict':
             {
                 'label':    'Vote USA Politician Id',
                 'id':       'vote_usa_politician_id',
                 'name':     'vote_usa_politician',
                 'value':     vote_usa_politician_id
-            }, 
-            'youtube_url_dict':              
+            },
+            'youtube_url_dict':
             {
                 'label':    'YouTube URL',
                 'id':       'youtube_url_id',
@@ -2068,14 +2068,14 @@ def candidate_new_view(request):
 def update_candidate_wikipedia_image(candidate_on_stage, request, messages):
     print("made it here")
     response = retrieve_images_from_wikipedia(candidate_on_stage.wikipedia_page_title)
-    if response["success"]==True:
+    if response["success"]:
         print("made it here!!!!")
         candidate_on_stage.wikipedia_photo_url = response["result"]
         candidate_on_stage.save()
         messages.add_message(request, messages.INFO,
                              "Retrieved the following from wikipedia: {result}".format(result=response["result"]))
     else:
-        messages.add_message(request, messages.ERROR, response["result"])    
+        messages.add_message(request, messages.ERROR, response["result"])
 
 
 @login_required
@@ -2127,7 +2127,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
     vote_usa_office_id = request.GET.get('vote_usa_office_id', False)
     vote_usa_politician_id = request.GET.get('vote_usa_politician_id', False)
     youtube_url = request.GET.get('youtube_url', False)
-    
+
     messages_on_stage = get_messages(request)
     candidate_id = convert_to_int(candidate_id)
     candidate_on_stage_found = False
@@ -2182,7 +2182,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
     # if not positive_value_exists(candidate_on_stage.wikipedia_photo_url):
     #     if positive_value_exists(candidate_on_stage.wikipedia_page_title):
     #         update_candidate_wikipedia_image(candidate_on_stage, request, messages)
-                
+
     if 'localhost' in WEB_APP_ROOT_URL:
         web_app_root_url = 'https://localhost:3000'
     else:
@@ -2395,14 +2395,14 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
 
         template_values = {
             'ballot_guide_official_statement':  ballot_guide_official_statement,
-            'ballotpedia_candidate_id_dict':              
+            'ballotpedia_candidate_id_dict':
             {
                 'label':    'Candidate Name (from Ballotpedia)',
                 'id':       'ballotpedia_candidate_id_id',
                 'name':     'ballotpedia_candidate_id',
                 'value':     ballotpedia_candidate_id if ballotpedia_candidate_id else candidate_on_stage.ballotpedia_candidate_id
             },
-            'ballotpedia_candidate_name_dict':              
+            'ballotpedia_candidate_name_dict':
             {
                 'label':    'Ballotpedia Candidate Id',
                 'id':       'ballotpedia_candidate_name_id',
@@ -2410,21 +2410,21 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
                 'value':     ballotpedia_candidate_name if ballotpedia_candidate_name else candidate_on_stage.ballotpedia_candidate_name
             },
             'ballotpedia_candidate_url':        ballotpedia_candidate_url,
-            'ballotpedia_office_id_dict':              
+            'ballotpedia_office_id_dict':
             {
                 'label':    'Ballotpedia Office Held Id',
                 'id':       'ballotpedia_office_id_id',
                 'name':     'ballotpedia_office_id',
                 'value':     ballotpedia_office_id if ballotpedia_office_id else candidate_on_stage.ballotpedia_office_id
             },
-            'ballotpedia_person_id_dict':              
+            'ballotpedia_person_id_dict':
             {
                 'label':    'Ballotpedia Person Id',
                 'id':       'ballotpedia_person_id_id',
                 'name':     'ballotpedia_person_id',
                 'value':     ballotpedia_person_id if ballotpedia_person_id else candidate_on_stage.ballotpedia_person_id
             },
-            'ballotpedia_race_id_dict':              
+            'ballotpedia_race_id_dict':
             {
                 'label':    'Ballotpedia Race Id',
                 'id':       'ballotpedia_race_id_id',
@@ -2439,14 +2439,14 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
                 'value':     candidate_on_stage.bluesky_handle
             },
             'candidate':                        candidate_on_stage,
-            'candidate_email_dict':              
+            'candidate_email_dict':
             {
                 'label':    'Candidate Email',
                 'id':       'candidate_email_id',
                 'name':     'candidate_email',
                 'value':     candidate_email if candidate_email else candidate_on_stage.candidate_email
             },
-            'candidate_phone_dict':              
+            'candidate_phone_dict':
             {
                 'label':    'Candidate Phone',
                 'id':       'candidate_phone_id',
@@ -2471,7 +2471,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
                 'value':     contest_office_name if contest_office_name else candidate_on_stage.contest_office_name
             },
             'ctcl_uuid_list': ctcl_uuid_list,
-            'district_name_dict':              
+            'district_name_dict':
             {
                 'label':    'District Name (Cached)',
                 'id':       'district_name_id',
@@ -2483,21 +2483,21 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
             # 'google_civic_election_id':         google_civic_election_id,
             'google_search_possibility_list':   google_search_possibility_list,
             'google_search_possibility_total_count':    google_search_possibility_total_count,
-            'google_civic_candidate_name_dict':              
+            'google_civic_candidate_name_dict':
             {
                 'label':    'Candidate Alt Name1',
                 'id':       'google_civic_candidate_name_id',
                 'name':     'google_civic_candidate_name',
                 'value':     google_civic_candidate_name if google_civic_candidate_name else candidate_on_stage.google_civic_candidate_name
             },
-            'google_civic_candidate_name2_dict':              
+            'google_civic_candidate_name2_dict':
             {
                 'label':    'Candidate Alt Name2',
                 'id':       'google_civic_candidate_name2_id',
                 'name':     'google_civic_candidate_name2',
                 'value':     google_civic_candidate_name2 if google_civic_candidate_name2 else candidate_on_stage.google_civic_candidate_name2
             },
-            'google_civic_candidate_name3_dict':              
+            'google_civic_candidate_name3_dict':
             {
                 'label':    'Candidate Alt Name3',
                 'id':       'google_civic_candidate_name3_id',
@@ -2505,7 +2505,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
                 'value':     google_civic_candidate_name3 if google_civic_candidate_name3 else candidate_on_stage.google_civic_candidate_name3
             },
             'instagram_handle':                 instagram_handle,
-            'linkedin_url_dict':              
+            'linkedin_url_dict':
             {
                 'label':    'LinkedIn URL',
                 'id':       'linkedin_url_id',
@@ -2516,13 +2516,13 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
             'messages_on_stage':                messages_on_stage,
             # 'office_list':                      contest_office_list,
             'page':                             page,
-            'party_dict':              
+            'party_dict':
             {
                 'label':    'Candidate Party',
                 'id':       'party_id',
                 'name':     'party',
                 'value':     party if party else candidate_on_stage.party
-            }, 
+            },
             'path_count':                       path_count,
             'path_list':                        path_list,
             'performance_dict':                 performance_dict,
@@ -2531,7 +2531,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
             'related_candidate_list':           related_candidate_list,
             'use_trigram_match':                use_trigram_match,
             'state_code':                       state_code,
-            'state_code_dict':              
+            'state_code_dict':
             {
                 'label':    'Candidate State Code',
                 'id':       'state_code_id',
@@ -2562,26 +2562,26 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
                 'value':     candidate_on_stage.twitter_url
             },
             'vote_smart_id':                    vote_smart_id,
-            'vote_usa_office_id_dict':              
+            'vote_usa_office_id_dict':
             {
                 'label':    'Vote USA Office Id',
                 'id':       'vote_usa_office_id_id',
                 'name':     'vote_usa_office_id',
                 'value':     vote_usa_office_id if vote_usa_office_id else candidate_on_stage.vote_usa_office_id
-            }, 
-            'vote_usa_politician_id_dict':              
+            },
+            'vote_usa_politician_id_dict':
             {
                 'label':    'Vote USA Politician Id',
                 'id':       'vote_usa_politician_id_id',
                 'name':     'vote_usa_politician_id',
                 'value':     vote_usa_politician_id \
                     if vote_usa_politician_id else candidate_on_stage.vote_usa_politician_id
-            }, 
+            },
             # 'vote_usa_profile_image_url_https': vote_usa_profile_image_url_https,
             'web_app_root_url':                 web_app_root_url,
             'withdrawal_date':                  withdrawal_date,
             'withdrawn_from_election':          withdrawn_from_election,
-            'youtube_url_dict':              
+            'youtube_url_dict':
             {
                 'label':    'YouTube URL',
                 'id':       'youtube_url_id',
@@ -5662,7 +5662,7 @@ def update_ocd_id_state_mismatch_view(request):
         messages.add_message(request,message.ERROR,
                              "ERROR with update_ocd_id_state_mismatch_view: {e} "
                              "".format(e=e))
-        
+
     queryset = Politician.objects.all()
     queryset = queryset.filter(we_vote_id__in=politician_we_vote_id_with_mismatch_list)
     politician_list = list(queryset)
@@ -5755,7 +5755,7 @@ def create_trigram_gist_idx_view(request):
             if not fields:
                 raise Exception("No field provided for index creation.")
             results = create_trigram_index(model, fields)
-        
+
             status_message = results['status']
             status_type = results.get('status_level', 'error' if not results['success'] else 'success')
             indexes_created = results.get('indexes_created', [])
