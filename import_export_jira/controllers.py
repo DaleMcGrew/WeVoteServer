@@ -126,7 +126,7 @@ class JiraSubTask:
     election_date: Optional[datetime] = None
     county: Optional[str] = None
     due_date: Optional[datetime] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             'task_type': self.task_type,
@@ -152,10 +152,10 @@ class JiraStory:
     election_date: Optional[datetime] = None
     due_date: Optional[datetime] = None
     sub_tasks: List[JiraSubTask] = field(default_factory=list)
-    
+
     def add_sub_task(self, sub_task: JiraSubTask):
         self.sub_tasks.append(sub_task)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             'story_title': self.story_title,
@@ -183,16 +183,16 @@ class JiraEpic:
     county: Optional[str] = None
     due_date: Optional[datetime] = None
     stories: List[JiraStory] = field(default_factory=list)
-    
+
     def add_story(self, story: JiraStory):
         self.stories.append(story)
-    
+
     def get_total_candidates(self) -> int:
         return len(self.stories)
-    
+
     def get_total_sub_tasks(self) -> int:
         return sum(len(s.sub_tasks) for s in self.stories)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             'epic_title': self.epic_title,
@@ -282,7 +282,7 @@ class JiraExcelLoader:
                 continue
 
             rows_with_epic_title += 1
-            
+
             if epic_title not in epics_dict:
                 election_date = row.iloc[COL_ELECTION_DATE] if pd.notna(row.iloc[COL_ELECTION_DATE]) else None
                 state = row.iloc[COL_STATE] if pd.notna(row.iloc[COL_STATE]) else None
@@ -462,7 +462,8 @@ class JiraApiControl:
         Returns:
             List of issue keys (or None for failures)
         """
-        if not issue_list: return []
+        if not issue_list:
+            return []
         all_keys = []
         total_chunks = (len(issue_list) + chunk_size - 1) // chunk_size
         logger.info(f"Creating {len(issue_list)} issues in {total_chunks} bulk operations")
@@ -628,17 +629,17 @@ class JiraApiControl:
             election_label = self._extract_election_label(epic.epic_title)
             story_dicts = [self.create_story_fields(s, epic_key, election_label) for s in epic.stories]
             story_keys = self.create_issues_bulk(story_dicts)
-            
+
             created_stories = [k for k in story_keys if k]
             self.stats['stories_created'] += len(created_stories)
             self.stats['stories_failed'] += (len(story_dicts) - len(created_stories))
-            
+
             subtask_dicts = []
             for story, story_key in zip(epic.stories, story_keys):
                 if story_key:
                     for st in story.sub_tasks:
                         subtask_dicts.append(self.create_subtask_fields(st, story_key, story.candidate_name, election_label))
-            
+
             if subtask_dicts:
                 logger.info(f"Creating {len(subtask_dicts)} subtasks for epic {epic_key}")
                 sub_keys = self.create_issues_bulk(subtask_dicts)
