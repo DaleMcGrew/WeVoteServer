@@ -1,0 +1,361 @@
+{% extends "template_base.html" %}
+
+{% block title %}{{ email_campaign.email_campaign_name }} Analytics{% endblock %}
+
+{% block content %}
+<style>
+  .campaign-analytics {
+    color: #17233c;
+    margin: 10px auto 40px;
+    max-width: 1400px;
+  }
+
+  .analytics-back-link {
+    display: inline-block;
+    margin-bottom: 14px;
+  }
+
+  .analytics-title-row {
+    align-items: center;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    margin-bottom: 22px;
+  }
+
+  .analytics-title-row h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .analytics-demo-label {
+    background: #fff7d6;
+    border: 1px solid #ead27a;
+    border-radius: 12px;
+    color: #6f5a00;
+    display: inline-block;
+    font-size: 1rem;
+    margin-left: 8px;
+    padding: 4px 10px;
+    vertical-align: middle;
+  }
+
+  .metric-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 18px;
+  }
+
+  .metric-card,
+  .chart-panel {
+    background: #fff;
+    border: 1px solid #d8dee8;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  .metric-card {
+    min-height: 112px;
+    padding: 16px 18px;
+    position: relative;
+  }
+
+  .metric-label {
+    color: #29416d;
+    font-size: 1.5rem;
+  }
+
+  .metric-value {
+    color: #29416d;
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .metric-detail {
+    color: #1687de;
+    font-size: 1.1rem;
+    margin-top: 5px;
+  }
+
+  .chart-panel {
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+
+  .chart-panel-header {
+    align-items: flex-start;
+    background: #f1f1f1;
+    border-bottom: 1px solid #d8dee8;
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 14px;
+  }
+
+  .chart-panel-header h2 {
+    color: #454545;
+    font-size: 1.55rem;
+    margin: 0;
+  }
+
+  .chart-subtitle {
+    color: #929292;
+    font-size: 1.05rem;
+    margin-top: 2px;
+  }
+
+  .chart-updated {
+    color: #555;
+    font-size: 1rem;
+    font-style: italic;
+    padding-top: 4px;
+  }
+
+  .chart-layout {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr);
+    padding: 14px;
+  }
+
+  .chart-container {
+    min-height: 285px;
+    position: relative;
+  }
+
+  .delivery-summary {
+    border-left: 1px solid #b9c0ca;
+    padding: 4px 8px 4px 18px;
+  }
+
+  .delivery-summary h3 {
+    border-bottom: 2px solid #1687de;
+    color: #1687de;
+    font-size: 1.3rem;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+  }
+
+  .delivery-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .split-charts {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .split-charts .chart-container {
+    min-height: 245px;
+    padding: 12px;
+  }
+
+  @media (max-width: 900px) {
+    .metric-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .chart-layout,
+    .split-charts {
+      grid-template-columns: 1fr;
+    }
+
+    .delivery-summary {
+      border-left: 0;
+      border-top: 1px solid #b9c0ca;
+      padding: 16px 0 0;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .metric-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="campaign-analytics">
+  <a class="analytics-back-link"
+     href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+    &lt; Back to Email Campaigns
+  </a>
+
+  <div class="analytics-title-row">
+    <h1>
+      {{ email_campaign.email_campaign_name }}
+      <span class="analytics-demo-label">Demo data</span>
+    </h1>
+    {% if email_campaign.date_sent %}
+      <div>Sent {{ email_campaign.date_sent|date:"m/d/Y g:iA" }}</div>
+    {% endif %}
+  </div>
+
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-label">Total Sends</div>
+      <div class="metric-value">{{ analytics_data.total_sends }}</div>
+      <div class="metric-detail">of this campaign</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Open Rate</div>
+      <div class="metric-value">{{ analytics_data.open_rate }}%</div>
+      <div class="metric-detail">{{ analytics_data.open_count }} Opened Emails</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Click Rate</div>
+      <div class="metric-value">{{ analytics_data.click_rate }}%</div>
+      <div class="metric-detail">{{ analytics_data.click_count }} Clicked Emails</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Unsubscribe Rate</div>
+      <div class="metric-value">{{ analytics_data.unsubscribe_rate }}%</div>
+      <div class="metric-detail">{{ analytics_data.unsubscribe_count }} Unsubscribers</div>
+    </div>
+  </div>
+
+  <section class="chart-panel">
+    <div class="chart-panel-header">
+      <div>
+        <h2>Open Rate</h2>
+        <div class="chart-subtitle">{{ open_rate_chart_subtitle }}</div>
+      </div>
+      {% if open_rate_chart_updated %}
+        <div class="chart-updated">Last updated: {{ open_rate_chart_updated }}</div>
+      {% endif %}
+    </div>
+    <div class="chart-layout">
+      <div class="chart-container">
+        <canvas id="openRateChart"></canvas>
+      </div>
+      <aside class="delivery-summary">
+        <h3>Delivery details</h3>
+        <div class="delivery-row"><span>Emails sent:</span><strong>{{ analytics_data.total_sends }}</strong></div>
+        <div class="delivery-row"><span>Deliveries:</span><strong>{{ analytics_data.delivered_count }}</strong></div>
+        <div class="delivery-row"><span>Bounces:</span><strong>{{ analytics_data.bounce_count }}</strong></div>
+        <div class="delivery-row"><span>Unsubscribed:</span><strong>{{ analytics_data.unsubscribe_count }}</strong></div>
+        <div class="delivery-row"><span>Abuse report:</span><strong>{{ analytics_data.abuse_report_count }}</strong></div>
+      </aside>
+    </div>
+  </section>
+
+  <div class="split-charts">
+    <section class="chart-panel">
+      <div class="chart-panel-header">
+        <div>
+          <h2>Click Rate</h2>
+          <div class="chart-subtitle">Feb 15, 2026 - Mar 10, 2026</div>
+        </div>
+        <div class="chart-updated">Last updated: Apr 3, 2026 3:50pm</div>
+      </div>
+      <div class="chart-container">
+        <canvas id="clickRateChart"></canvas>
+      </div>
+    </section>
+
+    <section class="chart-panel">
+      <div class="chart-panel-header">
+        <div>
+          <h2>Unsubscribe Rate</h2>
+          <div class="chart-subtitle">Feb 15, 2026 - Mar 10, 2026</div>
+        </div>
+        <div class="chart-updated">Last updated: Apr 3, 2026 3:50pm</div>
+      </div>
+      <div class="chart-container">
+        <canvas id="unsubscribeRateChart"></canvas>
+      </div>
+    </section>
+  </div>
+
+  <section class="chart-panel">
+    <div class="chart-panel-header">
+      <div>
+        <h2>Conversions</h2>
+        <div class="chart-subtitle">Total Clicked Conversions: {{ analytics_data.conversion_count }}</div>
+      </div>
+      <div class="chart-updated">Last updated: Apr 3, 2026 3:50pm</div>
+    </div>
+    <div class="chart-layout">
+      <div class="chart-container">
+        <canvas id="conversionChart"></canvas>
+      </div>
+      <aside class="delivery-summary">
+        <h3>Delivery details</h3>
+        <div class="delivery-row"><span>Emails sent:</span><strong>{{ analytics_data.total_sends }}</strong></div>
+        <div class="delivery-row"><span>Deliveries:</span><strong>{{ analytics_data.delivered_count }}</strong></div>
+        <div class="delivery-row"><span>Bounces:</span><strong>{{ analytics_data.bounce_count }}</strong></div>
+        <div class="delivery-row"><span>Unsubscribed:</span><strong>{{ analytics_data.unsubscribe_count }}</strong></div>
+        <div class="delivery-row"><span>Abuse report:</span><strong>{{ analytics_data.abuse_report_count }}</strong></div>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const chartLabels = {{ chart_labels_json|safe }};
+  const chartData = {{ chart_data_json|safe }};
+  const lineColor = '#168fe5';
+  const lineFill = 'rgba(22, 143, 229, 0.20)';
+
+  function createLineChart(canvasId, data, percentAxis) {
+    const context = document.getElementById(canvasId).getContext('2d');
+    return new Chart(context, {
+      type: 'line',
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          data: data,
+          borderColor: lineColor,
+          backgroundColor: lineFill,
+          borderWidth: 3,
+          fill: true,
+          pointBackgroundColor: lineColor,
+          pointBorderColor: lineColor,
+          pointRadius: 3,
+          tension: 0.15
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        responsive: true,
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        },
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              autoSkip: true,
+              maxRotation: 45,
+              minRotation: 45
+            }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return percentAxis ? value + '%' : value;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  createLineChart('openRateChart', chartData.open_rates, true);
+  createLineChart('clickRateChart', chartData.click_rates, true);
+  createLineChart('unsubscribeRateChart', chartData.unsubscribe_rates, true);
+  createLineChart('conversionChart', chartData.conversion_counts, false);
+</script>
+{% endblock %}
