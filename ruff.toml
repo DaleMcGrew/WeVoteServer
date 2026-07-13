@@ -4,7 +4,16 @@ target-version = "py313"
 exclude = ["**/*"]
 
 [lint]
-select = ["DJ", "E4", "E7", "E9", "F", "PLR6301"]
-ignore = ["F841"]
+select = [
+    "DJ",       # flake8-django
+    "E4",       # codestyle: imports
+    "E7",       # codestyle: statement check
+    "E9",       # io error
+    "F",        # Pyflakes rules
+    "PLR6301"   # unused self parameters
+]
+ignore = [
+    "F841"      # unused variables
+]
 preview = true
 explicit-preview-rules = true
