@@ -1,7 +1,8 @@
 from PIL import Image
 from io import BytesIO
 from urllib import request
-import math, re
+import math
+import re
 
 
 def generate_background(politician, base=None):

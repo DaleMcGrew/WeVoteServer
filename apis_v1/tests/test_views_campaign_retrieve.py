@@ -5,7 +5,6 @@
 from django.urls import reverse
 from django.test import TransactionTestCase
 from django.test import Client
-from voter.models import VoterDeviceLink
  
 import json
 

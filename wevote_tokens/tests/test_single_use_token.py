@@ -1,5 +1,4 @@
 from django.test import TestCase
-from voter.models import VoterManager
 from wevote_tokens.models.single_use_tokens import SingleUseToken, SingleUseTokenManager, Scope
 from cryptography.fernet import Fernet
 import json

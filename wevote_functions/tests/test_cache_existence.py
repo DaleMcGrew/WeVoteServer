@@ -7,9 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from django.conf import settings
 from django.core.cache import cache
-from django.db import connection
 from django.test import TestCase
 from django.utils import timezone
 

@@ -1,7 +1,7 @@
 import os
 import re
 import urllib.request
-from datetime import datetime, date
+from datetime import datetime
 import requests
 from django.db import connection
 import pytz
@@ -55,7 +55,7 @@ def get_git_params():
     try:
         hash_payload = requests.get(hash_url).json()
         # print(hash_payload)
-        dateISO = hash_payload['commit']['author']['date'];
+        dateISO = hash_payload['commit']['author']['date']
         d = datetime.fromisoformat(dateISO).replace(tzinfo=pytz.utc)
         date = d.astimezone(pytz.timezone('America/Los_Angeles')).strftime('%m-%d-%Y %I:%M %p')
 

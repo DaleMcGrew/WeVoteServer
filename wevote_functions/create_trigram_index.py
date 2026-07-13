@@ -15,7 +15,6 @@ django.setup()
 
 from django.db import connection, transaction
 from django.db.models import CharField, TextField
-from django.conf import settings
 from django.apps import apps
 from psycopg2 import sql
 

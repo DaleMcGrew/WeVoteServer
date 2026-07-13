@@ -14,12 +14,11 @@ from django.http import HttpResponse
 from exception.models import handle_exception
 import json
 
-from campaign.models import CampaignXManager, FINAL_ELECTION_DATE_COOL_DOWN, CampaignXOwner
+from campaign.models import CampaignXManager, CampaignXOwner
 from candidate.controllers import add_name_to_next_spot, copy_field_value_from_object1_to_object2, \
     generate_candidate_dict_list_from_candidate_object_list, move_candidates_to_another_politician
-from candidate.models import CandidateListManager, CandidateManager, PROFILE_IMAGE_TYPE_FACEBOOK, \
-    PROFILE_IMAGE_TYPE_UNKNOWN, \
-    PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_VOTE_USA, CandidateCampaign
+from candidate.models import CandidateListManager, CandidateManager, PROFILE_IMAGE_TYPE_UNKNOWN, \
+    CandidateCampaign
 from email_outbound.models import EmailAddress
 from image.controllers import cache_image_object_to_aws, create_resized_images
 from office.models import ContestOfficeManager, ContestOfficeListManager, ContestOffice
@@ -29,7 +28,6 @@ from politician.controllers_generate_seo_friendly_path import generate_campaign_
 from politician.models import Politician, PoliticianManager, PoliticianSEOFriendlyPath, \
     POLITICIAN_UNIQUE_ATTRIBUTES_TO_BE_CLEARED, POLITICIAN_UNIQUE_IDENTIFIERS, UNKNOWN
 from position.controllers import move_positions_to_another_politician
-import pytz
 from representative.controllers import generate_representative_dict_list_from_representative_object_list, \
     move_representatives_to_another_politician
 from representative.models import RepresentativeManager
@@ -38,10 +36,9 @@ from config.environment_variable_functions import get_environment_variable
 import wevote_functions.admin
 from wevote_functions.functions import candidate_party_display, convert_to_int, \
     convert_to_political_party_constant, extract_instagram_handle_from_text_string, \
-    generate_random_string, positive_value_exists, \
+    positive_value_exists, \
     process_request_from_master, remove_middle_initial_from_name
-from wevote_functions.functions_date import convert_date_to_we_vote_date_string, \
-    convert_we_vote_date_string_to_date_as_integer, generate_date_as_integer, \
+from wevote_functions.functions_date import convert_we_vote_date_string_to_date_as_integer, generate_date_as_integer, \
     generate_localized_datetime_from_obj, DATE_FORMAT_YMD_HMS
 
 logger = wevote_functions.admin.get_logger(__name__)

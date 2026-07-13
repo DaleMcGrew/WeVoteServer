@@ -4,9 +4,8 @@
 
 from django.db import models
 from django.db.models import Q
-from django.utils import timezone
 from django.utils.timezone import localtime, now
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from organization.models import ORGANIZATION_TYPE_CHOICES, UNKNOWN
 import pytz
 import sys

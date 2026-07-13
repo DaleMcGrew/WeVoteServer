@@ -18,9 +18,9 @@ from PIL import Image, ImageOps
 import re
 from activity.controllers import update_or_create_activity_notice_seed_for_campaignx_supporter_initial_response
 from candidate.models import CandidateCampaign
-from follow.models import FOLLOW_DISLIKE, FOLLOWING, FollowOrganization, FollowOrganizationManager
-from position.models import OPPOSE, SUPPORT
-from voter.models import Voter, VoterManager
+from follow.models import FOLLOW_DISLIKE, FOLLOWING, FollowOrganizationManager
+from position.models import SUPPORT
+from voter.models import VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
 from wevote_functions.functions_date import generate_date_as_integer, get_current_date_as_integer, DATE_FORMAT_YMD_HMS

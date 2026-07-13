@@ -4,7 +4,7 @@
 
 from config.environment_variable_functions import get_environment_variable
 from django.db import models
-from django.db.models import F, Q, Count, FloatField, ExpressionWrapper, Func
+from django.db.models import F, Q, FloatField, ExpressionWrapper, Func
 from geopy.geocoders import get_geocoder_for_service
 from geopy.exc import GeocoderQuotaExceeded
 from exception.models import handle_exception, handle_record_found_more_than_one_exception

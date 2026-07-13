@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from django.db import models, IntegrityError
+from django.db import models
 from datetime import datetime, timezone, timedelta
 from exception.models import handle_exception, handle_record_found_more_than_one_exception
 from organization.models import CHOSEN_FAVICON_ALLOWED, CHOSEN_FULL_DOMAIN_ALLOWED, CHOSEN_GOOGLE_ANALYTICS_ALLOWED, \

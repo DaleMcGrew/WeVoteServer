@@ -1,12 +1,10 @@
 # email_outbound/views_admin.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-import base64
 import json
 import re
 import uuid
 from datetime import datetime
-import time
 
 from django.utils import timezone
 from urllib.parse import urlencode
@@ -35,7 +33,7 @@ from .controllers_email_campaign import augment_email_campaign_recipient, refres
 from .controllers_audience_builder import audience_builder_data_retrieve, render_audience_builder_preview_html
 from .models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
     AudienceBuilderFolder, AudienceBuilder, AudienceFilter, AudienceFilterChain, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS, \
-    OPERATOR_AND, OPERATOR_EXCLUDE, OPERATOR_INCLUDE, OPERATOR_OR
+    OPERATOR_AND, OPERATOR_OR
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -343,13 +341,13 @@ def email_campaign_edit_process_view(request):
                                 if hasattr(recipient_object, field_key):
                                     setattr(recipient_object, field_key, field_value)
                         save_recipient_object = True
-                        status += f"EmailCampaignRecipient updated. "
+                        status += "EmailCampaignRecipient updated. "
                     else:
                         # Create a new EmailCampaignRecipient object
                         recipient_object = EmailCampaignRecipient(**recipient_dict)
                         manually_added_recipients_found = True
                         save_recipient_object = True
-                        status += f"New EmailCampaignRecipient added. "
+                        status += "New EmailCampaignRecipient added. "
                 except Exception as e:
                     status += f"Error saving recipient: {str(e)}. "
 
@@ -1566,7 +1564,7 @@ def audience_builder_edit_process_view(request):
                     audience_builder_id=audience_builder_id)
                 audience_filter_dict[audience_filter.id] = audience_filter
                 # Now link the new filter to the first spot in the chain
-                audience_filter_id_attribute = f'filter1_id'
+                audience_filter_id_attribute = 'filter1_id'
                 setattr(audience_filter_chain, audience_filter_id_attribute, audience_filter.id)
                 audience_filter_chain.save()
 

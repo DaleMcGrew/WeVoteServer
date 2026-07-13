@@ -7,8 +7,7 @@ from django.utils.timezone import now
 from follow.models import FollowOrganizationManager
 from friend.models import FriendManager
 from organization.models import OrganizationManager
-from position.models import ANY_STANCE, SUPPORT, STILL_DECIDING, INFORMATION_ONLY, NO_STANCE, OPPOSE, PERCENT_RATING, \
-    FRIENDS_ONLY, PUBLIC_ONLY, FRIENDS_AND_PUBLIC, PositionForFriends, PositionListManager, PositionManager
+from position.models import ANY_STANCE, PUBLIC_ONLY, FRIENDS_AND_PUBLIC, PositionForFriends, PositionListManager, PositionManager
 from voter.models import VoterManager
 from voter_guide.models import VoterGuideManager
 import wevote_functions.admin

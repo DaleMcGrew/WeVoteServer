@@ -34,7 +34,6 @@ from issue.models import ACTIVE_ISSUES_DICTIONARY, OrganizationLinkToIssueManage
 from politician.models import PoliticianManager
 from position.controllers import delete_positions_for_organization, move_positions_to_another_organization, \
     update_position_entered_details_from_organization
-from position.models import PositionListManager
 from stripe_donations.controllers import move_donation_info_to_another_organization
 from twitter.models import TwitterUserManager, create_detailed_counter_entry, mark_detailed_counter_entry
 from voter.models import fetch_voter_id_from_voter_device_link, VoterManager, Voter

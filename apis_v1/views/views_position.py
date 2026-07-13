@@ -18,7 +18,7 @@ from support_oppose_deciding.controllers import position_oppose_count_for_ballot
     position_public_oppose_count_for_ballot_item_for_api, \
     position_public_support_count_for_ballot_item_for_api
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_bool, get_voter_device_id,  \
+from wevote_functions.functions import get_voter_device_id,  \
     is_speaker_type_organization, is_speaker_type_public_figure, positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)

@@ -23,7 +23,7 @@ from election.models import ElectionManager
 from import_export_batches.models import BATCH_HEADER_MAP_FOR_POSITIONS, BatchManager, POSITION
 from issue.models import IssueListManager
 from office.models import ContestOfficeManager
-from organization.models import GROUP, OrganizationListManager, OrganizationManager, ORGANIZATION_TYPE_MAP
+from organization.models import OrganizationListManager, OrganizationManager, ORGANIZATION_TYPE_MAP
 from organization.views_admin import organization_edit_process_view
 from position.models import PositionEntered, PositionListManager
 from twitter.models import TwitterUserManager
@@ -40,8 +40,7 @@ from .controllers import augment_with_voter_guide_possibility_position_data, \
 from .controllers_possibility import candidates_found_on_url, \
     match_endorsement_list_with_candidates_in_database, \
     match_endorsement_list_with_measures_in_database, \
-    match_endorsement_list_with_organizations_in_database, modify_one_row_in_possible_endorsement_list, \
-    organizations_found_on_url
+    match_endorsement_list_with_organizations_in_database, organizations_found_on_url
 from .controllers_possibility_shared import fix_sequence_of_possible_endorsement_list
 from .models import INDIVIDUAL, VoterGuide, VoterGuideManager, VoterGuidePossibility, \
     VoterGuidePossibilityManager, VoterGuidePossibilityPosition, \
