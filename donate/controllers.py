@@ -1052,15 +1052,15 @@ def donation_subscription_cancellation_for_api(voter_we_vote_id, plan_type_enum=
             ended_at = subscription['ended_at']
             if 'email' in subscription['metadata']:
                 email_raw = subscription['metadata']['email']
-                if type(email_raw) == str:
+                if type(email_raw) is str:
                     email = email_raw
-                elif type(email_raw) == tuple:
+                elif type(email_raw) is tuple:
                     email = email_raw[0],
             if 'voter_we_vote_id' in subscription['metadata']:
                 voter_we_vote_id_raw = subscription['metadata']['voter_we_vote_id']
-                if type(voter_we_vote_id_raw) == str:
+                if type(voter_we_vote_id_raw) is str:
                     voter_we_vote_id_from_subscription = voter_we_vote_id_raw
-                elif type(voter_we_vote_id_raw) == tuple:
+                elif type(voter_we_vote_id_raw) is tuple:
                     voter_we_vote_id_from_subscription = voter_we_vote_id_raw[0],
             livemode = subscription['livemode']
 

@@ -23,7 +23,7 @@ from election.models import ElectionManager
 from import_export_batches.models import BATCH_HEADER_MAP_FOR_POSITIONS, BatchManager, POSITION
 from issue.models import IssueListManager
 from office.models import ContestOfficeManager
-from organization.models import GROUP, OrganizationListManager, OrganizationManager, ORGANIZATION_TYPE_MAP
+from organization.models import OrganizationListManager, OrganizationManager, ORGANIZATION_TYPE_MAP
 from organization.views_admin import organization_edit_process_view
 from position.models import PositionEntered, PositionListManager
 from twitter.models import TwitterUserManager
@@ -40,8 +40,7 @@ from .controllers import augment_with_voter_guide_possibility_position_data, \
 from .controllers_possibility import candidates_found_on_url, \
     match_endorsement_list_with_candidates_in_database, \
     match_endorsement_list_with_measures_in_database, \
-    match_endorsement_list_with_organizations_in_database, modify_one_row_in_possible_endorsement_list, \
-    organizations_found_on_url
+    match_endorsement_list_with_organizations_in_database, organizations_found_on_url
 from .controllers_possibility_shared import fix_sequence_of_possible_endorsement_list
 from .models import INDIVIDUAL, VoterGuide, VoterGuideManager, VoterGuidePossibility, \
     VoterGuidePossibilityManager, VoterGuidePossibilityPosition, \
@@ -1508,6 +1507,8 @@ def voter_guide_edit_process_view(request):  # NOTE: THIS FORM DOESN'T SAVE YET 
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
     voter_guide_url = request.POST.get('voter_guide_url', False)
     state_code = request.POST.get('state_code', False)
+    contest_office_id = request.POST.get('contest_office_id', 0)
+    contest_office_we_vote_id = request.POST.get('contest_office_we_vote_id', 0)
 
     # Check to see if this voter_guide is already being used anywhere
     voter_guide_on_stage_found = False
@@ -1577,22 +1578,14 @@ def voter_guide_edit_process_view(request):  # NOTE: THIS FORM DOESN'T SAVE YET 
                 url_variables = "?google_civic_election_id=" + str(google_civic_election_id) + \
                                 "&voter_guide_name=" + str(voter_guide_name) + \
                                 "&state_code=" + str(state_code) + \
-                                "&google_civic_voter_guide_name=" + str(google_civic_voter_guide_name) + \
                                 "&contest_office_id=" + str(contest_office_id) + \
                                 "&voter_guide_twitter_handle=" + str(voter_guide_twitter_handle) + \
-                                "&voter_guide_url=" + str(voter_guide_url) + \
-                                "&party=" + str(party) + \
-                                "&ballot_guide_official_statement=" + str(ballot_guide_official_statement) + \
-                                "&ballotpedia_voter_guide_id=" + str(ballotpedia_voter_guide_id) + \
-                                "&ballotpedia_voter_guide_name=" + str(ballotpedia_voter_guide_name) + \
-                                "&ballotpedia_voter_guide_url=" + str(ballotpedia_voter_guide_url) + \
-                                "&vote_smart_id=" + str(vote_smart_id) + \
-                                "&politician_we_vote_id=" + str(politician_we_vote_id) + \
-                                "&maplight_id=" + str(maplight_id)
+                                "&voter_guide_url=" + str(voter_guide_url)
                 if positive_value_exists(voter_guide_id):
                     return HttpResponseRedirect(reverse('voter_guide:voter_guide_edit', args=(voter_guide_id,)) +
                                                 url_variables)
                 else:
+                    # this doesn't resolve to anything..
                     return HttpResponseRedirect(reverse('voter_guide:voter_guide_new', args=()) +
                                                 url_variables)
 
@@ -2512,7 +2505,7 @@ def voter_guide_search_process_view(request):
 
     if request.method == 'POST':
         search_performed = True
-    
+
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'political_data_viewer', 'verified_volunteer'}
     if not voter_has_authority(request, authority_required):
@@ -2521,7 +2514,7 @@ def voter_guide_search_process_view(request):
     add_organization_button = request.POST.get('add_organization_button', False)
     if add_organization_button:
         return organization_edit_process_view(request)
-    
+
     organization_name = request.POST.get('organization_name', '')
     organization_twitter_handle = request.POST.get('organization_twitter_handle', '')
     organization_facebook = request.POST.get('organization_facebook', '')

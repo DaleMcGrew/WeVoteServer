@@ -13,8 +13,7 @@ import robot_detection
 from django_user_agents.utils import get_user_agent
 from voter.models import Voter, VoterDeviceLinkManager, voter_has_authority, VoterManager
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, get_voter_device_id, is_voter_device_id_valid, \
-    positive_value_exists, STATE_CODE_MAP
+from wevote_functions.functions import convert_to_int, get_voter_device_id, positive_value_exists, STATE_CODE_MAP
 
 logger = wevote_functions.admin.get_logger(__name__)
 

@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from .controllers import retrieve_endorsements, import_candidate_position, import_measure_position
+from .controllers import retrieve_endorsements
 from admin_tools.views import redirect_to_sign_in_page
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -11,7 +11,6 @@ from django.http import HttpResponseRedirect
 from organization.models import OrganizationManager
 from voter.models import voter_has_authority
 import wevote_functions.admin
-from wevote_functions.functions import positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 

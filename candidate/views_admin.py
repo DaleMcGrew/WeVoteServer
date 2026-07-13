@@ -53,12 +53,12 @@ from volunteer_task.models import VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS
     VOLUNTEER_ACTION_MATCH_CANDIDATES_TO_POLITICIANS, \
     VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION, VOLUNTEER_ACTION_POLITICIAN_AUGMENTATION, \
     VOLUNTEER_ACTION_POLITICIAN_PHOTO, VOLUNTEER_ACTION_POLITICIAN_REQUEST, VolunteerTaskManager
-from voter.models import fetch_voter_from_voter_device_link, VoterDeviceLinkManager, VoterManager, voter_has_authority
+from voter.models import fetch_voter_from_voter_device_link, VoterManager, voter_has_authority
 from voter_guide.models import VoterGuide
 from wevote_functions.create_trigram_index import create_trigram_index
 from wevote_functions.functions import convert_to_int, \
     extract_instagram_handle_from_text_string, extract_twitter_handle_from_text_string, \
-    get_voter_api_device_id, get_voter_device_id, list_intersection, normalize_bluesky_handle, normalize_threads_handle, normalize_tiktok_url, \
+    get_voter_api_device_id, list_intersection, normalize_bluesky_handle, normalize_threads_handle, normalize_tiktok_url, \
     positive_value_exists, STATE_CODE_MAP, display_full_name_with_correct_capitalization, \
     extract_state_from_ocd_division_id
 from wevote_functions.functions_date import convert_we_vote_date_string_to_date_as_integer, \
@@ -73,13 +73,12 @@ from .controllers import add_twitter_handle_to_next_candidate_spot, analyze_cand
     merge_these_two_candidates, fetch_ballotpedia_urls_to_retrieve_for_links_count, \
     fetch_ballotpedia_urls_to_retrieve_for_photos_count, \
     retrieve_candidate_photos, retrieve_next_or_most_recent_office_for_candidate, \
-    save_google_search_link_to_candidate_table, save_image_to_candidate_table
+    save_image_to_candidate_table
 from .models import CandidateCampaign, CandidateListManager, CandidateChangeLog, CandidateCTCLAlternateMap, \
     CandidateManager, CandidatesArePossibleDuplicates, CandidateToOfficeLink, \
     CANDIDATE_UNIQUE_IDENTIFIERS, KIND_OF_LOG_ENTRY_ANALYSIS_COMMENT, KIND_OF_LOG_ENTRY_LINK_ADDED, \
-    PROFILE_IMAGE_TYPE_BALLOTPEDIA, PROFILE_IMAGE_TYPE_FACEBOOK, PROFILE_IMAGE_TYPE_LINKEDIN, \
-    PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKNOWN, \
-    PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_VOTE_USA, PROFILE_IMAGE_TYPE_WIKIPEDIA
+    PROFILE_IMAGE_TYPE_BALLOTPEDIA, PROFILE_IMAGE_TYPE_UNKNOWN, \
+    PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_WIKIPEDIA
 
 CANDIDATES_SYNC_URL = get_environment_variable("CANDIDATES_SYNC_URL")  # candidatesSyncOut
 TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
@@ -2069,7 +2068,7 @@ def candidate_new_view(request):
 def update_candidate_wikipedia_image(candidate_on_stage, request, messages):
     print("made it here")
     response = retrieve_images_from_wikipedia(candidate_on_stage.wikipedia_page_title)
-    if response["success"]==True:
+    if response["success"]:
         print("made it here!!!!")
         candidate_on_stage.wikipedia_photo_url = response["result"]
         candidate_on_stage.save()
@@ -2128,7 +2127,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
     vote_usa_office_id = request.GET.get('vote_usa_office_id', False)
     vote_usa_politician_id = request.GET.get('vote_usa_politician_id', False)
     youtube_url = request.GET.get('youtube_url', False)
-    
+
     messages_on_stage = get_messages(request)
     candidate_id = convert_to_int(candidate_id)
     candidate_on_stage_found = False
@@ -2183,7 +2182,7 @@ def candidate_edit_view(request, candidate_id=0, candidate_we_vote_id=""):
     # if not positive_value_exists(candidate_on_stage.wikipedia_photo_url):
     #     if positive_value_exists(candidate_on_stage.wikipedia_page_title):
     #         update_candidate_wikipedia_image(candidate_on_stage, request, messages)
-                
+
     if 'localhost' in WEB_APP_ROOT_URL:
         web_app_root_url = 'https://localhost:3000'
     else:
@@ -5663,7 +5662,7 @@ def update_ocd_id_state_mismatch_view(request):
         messages.add_message(request,message.ERROR,
                              "ERROR with update_ocd_id_state_mismatch_view: {e} "
                              "".format(e=e))
-        
+
     queryset = Politician.objects.all()
     queryset = queryset.filter(we_vote_id__in=politician_we_vote_id_with_mismatch_list)
     politician_list = list(queryset)
@@ -5756,7 +5755,7 @@ def create_trigram_gist_idx_view(request):
             if not fields:
                 raise Exception("No field provided for index creation.")
             results = create_trigram_index(model, fields)
-        
+
             status_message = results['status']
             status_type = results.get('status_level', 'error' if not results['success'] else 'success')
             indexes_created = results.get('indexes_created', [])

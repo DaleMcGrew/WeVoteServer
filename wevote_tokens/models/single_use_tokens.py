@@ -1,10 +1,8 @@
-from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
 from cryptography.fernet import Fernet, InvalidToken
 import json
-from wevote_functions.functions import positive_value_exists
 from wevote_tokens.enums import TokenInfo
 
 

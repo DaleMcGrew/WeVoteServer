@@ -5,10 +5,8 @@
 from config.environment_variable_functions import get_environment_variable
 from voter.models import VoterDeviceLinkManager, VoterManager
 
-from voter_guide.controllers import voter_follow_all_organizations_followed_by_organization_for_api
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, get_maximum_number_to_retrieve_from_request, \
-    get_voter_device_id, is_voter_device_id_valid, positive_value_exists
+from wevote_functions.functions import get_voter_device_id, positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 

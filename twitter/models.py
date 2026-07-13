@@ -8,7 +8,6 @@ from datetime import date, timedelta, datetime, timezone
 import tweepy
 from django.db import models
 from django.db.models import Q
-from django.utils.timezone import localtime, now
 
 import wevote_functions.admin
 from config.environment_variable_functions import get_environment_variable

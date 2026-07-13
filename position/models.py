@@ -15,7 +15,6 @@ from django.utils.timezone import now
 from election.models import Election
 from exception.models import handle_exception, handle_record_found_more_than_one_exception,\
     handle_record_not_found_exception, handle_record_not_saved_exception, print_to_log
-from follow.models import FollowOrganizationManager, FollowOrganizationList
 from friend.models import FriendManager
 from measure.models import ContestMeasure, ContestMeasureManager
 from office.models import ContestOffice, ContestOfficeManager
@@ -1081,6 +1080,30 @@ class PositionListManager(models.Manager):
     #         outgoing_position_list.append(one_position)
     #
     #     return outgoing_position_list
+
+    @staticmethod
+    def positions_exist_for_voter_and_politician(voter_id=0, politician_we_vote_id=''):
+        """
+        WV-2664: Does this voter already have a position (public or friends-only) for this
+        politician? Used so a heart / dislike click does not silently flip an existing Choose/Oppose.
+        Reads the primary DB, not 'readonly', to avoid replica lag right after a write.
+        """
+        if not positive_value_exists(voter_id) or not positive_value_exists(politician_we_vote_id):
+            return False
+        try:
+            return (
+                PositionEntered.objects.using('default').filter(
+                    voter_id=voter_id, politician_we_vote_id=politician_we_vote_id,
+                ).exists()
+                or PositionForFriends.objects.using('default').filter(
+                    voter_id=voter_id, politician_we_vote_id=politician_we_vote_id,
+                ).exists()
+            )
+        except Exception:
+            # WV-2664: Fail closed. This guard exists to PREVENT a heart/dislike click from silently
+            # flipping an existing position, so on an unexpected DB error assume a position exists
+            # rather than allowing the flip.
+            return True
 
     @staticmethod
     def calculate_positions_followed_by_voter(

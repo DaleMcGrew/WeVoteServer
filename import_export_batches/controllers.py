@@ -6,8 +6,8 @@ from .models import BatchManager, BatchDescription, BatchHeaderMap, BatchRow, Ba
     BatchRowActionMeasure, BatchRowActionOfficeHeld, BatchRowActionContestOffice, BatchRowActionPolitician, \
     BatchRowActionCandidate, BatchRowActionPollingLocation, BatchRowActionPosition, BatchRowActionBallotItem, \
     CLEAN_DATA_MANUALLY, POSITION, IMPORT_DELETE, IMPORT_ALREADY_DELETED, \
-    IMPORT_CREATE, IMPORT_ADD_TO_EXISTING, IMPORT_DATA_ALREADY_MATCHING, IMPORT_QUERY_ERROR, \
-    IMPORT_TO_BE_DETERMINED, DO_NOT_PROCESS, BATCH_IMPORT_KEYS_ACCEPTED_FOR_BALLOT_ITEMS, \
+    IMPORT_CREATE, IMPORT_ADD_TO_EXISTING, IMPORT_QUERY_ERROR, \
+    IMPORT_TO_BE_DETERMINED, BATCH_IMPORT_KEYS_ACCEPTED_FOR_BALLOT_ITEMS, \
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_CANDIDATES, BATCH_IMPORT_KEYS_ACCEPTED_FOR_CONTEST_OFFICES, \
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_OFFICES_HELD, BATCH_IMPORT_KEYS_ACCEPTED_FOR_MEASURES, \
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_ORGANIZATIONS, BATCH_IMPORT_KEYS_ACCEPTED_FOR_POLITICIANS, \
@@ -15,7 +15,7 @@ from .models import BatchManager, BatchDescription, BatchHeaderMap, BatchRow, Ba
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_REPRESENTATIVES
 from ballot.models import BallotItem, BallotItemListManager, BallotItemManager, BallotReturnedManager
 from candidate.controllers import retrieve_next_or_most_recent_office_for_candidate
-from candidate.models import CandidateCampaign, CandidateListManager, CandidateManager
+from candidate.models import CandidateListManager, CandidateManager
 # from django.db import transaction
 from django.db.models import Q
 from django.utils.timezone import now
@@ -25,15 +25,14 @@ from election.models import ElectionManager
 from exception.models import handle_exception, print_to_log
 from image.controllers import retrieve_and_save_ballotpedia_candidate_images
 from measure.models import ContestMeasure, ContestMeasureManager, ContestMeasureListManager
-from office.models import ContestOffice, ContestOfficeListManager, ContestOfficeManager
-from organization.models import Organization, OrganizationListManager, OrganizationManager, \
-    NONPROFIT_501C3, NONPROFIT_501C4, POLITICAL_ACTION_COMMITTEE, PUBLIC_FIGURE, \
-    CORPORATION, NEWS_ORGANIZATION, UNKNOWN
+from office.models import ContestOfficeListManager, ContestOfficeManager
+from organization.models import OrganizationListManager, OrganizationManager, \
+    NONPROFIT_501C3, NONPROFIT_501C4, UNKNOWN
 from politician.models import Politician, PoliticianManager
 from polling_location.models import PollingLocationManager
 from position.models import PositionManager, INFORMATION_ONLY, OPPOSE, SUPPORT
 from twitter.models import TwitterUserManager
-from volunteer_task.models import VOLUNTEER_ACTION_CANDIDATE_CREATED, VOLUNTEER_ACTION_POSITION_SAVED, \
+from volunteer_task.models import VOLUNTEER_ACTION_POSITION_SAVED, \
     VolunteerTaskManager
 from voter.models import fetch_voter_from_voter_device_link, VoterManager
 from voter_guide.controllers import refresh_existing_voter_guides

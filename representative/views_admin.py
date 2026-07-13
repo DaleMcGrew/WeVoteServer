@@ -12,7 +12,6 @@ from exception.models import handle_record_not_found_exception, handle_record_fo
 from admin_tools.views import redirect_to_sign_in_page
 from config.environment_variable_functions import get_environment_variable
 from datetime import datetime, timedelta
-import pytz
 from django.http import HttpResponse, HttpResponseRedirect
 from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse
@@ -32,10 +31,9 @@ from voter.models import voter_has_authority
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP, \
     extract_instagram_handle_from_text_string, extract_twitter_handle_from_text_string, \
-    convert_to_political_party_constant, \
     extract_first_name_from_full_name, \
     extract_last_name_from_full_name, extract_state_from_ocd_division_id
-from wevote_functions.functions_date import generate_localized_datetime_from_obj, DATE_FORMAT_YMD_HMS
+from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
 from wevote_settings.constants import IS_BATTLEGROUND_YEARS_AVAILABLE, OFFICE_HELD_YEARS_AVAILABLE
 
 OFFICES_SYNC_URL = get_environment_variable("OFFICES_SYNC_URL")  # officesSyncOut
@@ -251,8 +249,7 @@ def find_duplicate_representative_view(request, representative_id):
               "{number_of_duplicate_representatives_processed} duplicates processed, " \
               "{number_of_duplicate_representatives_failed} duplicate merges failed, " \
               "{number_of_duplicates_could_not_process} could not be processed " \
-              "".format(election_id=google_civic_election_id,
-                        number_of_duplicate_representatives_processed=number_of_duplicate_representatives_processed,
+              "".format(number_of_duplicate_representatives_processed=number_of_duplicate_representatives_processed,
                         number_of_duplicate_representatives_failed=number_of_duplicate_representatives_failed,
                         number_of_duplicates_could_not_process=number_of_duplicates_could_not_process)
 

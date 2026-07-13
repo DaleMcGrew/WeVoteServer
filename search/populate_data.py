@@ -73,7 +73,8 @@ for row in rows:
 
 logging.info("Bulk indexing candidate data")
 bulk_data_json = "\n".join(map(json.dumps,bulk_data))
-if bulk_data_json: es.bulk(body = bulk_data_json)
+if bulk_data_json:
+	es.bulk(body = bulk_data_json)
 bulk_data = []
 
 # index measure_contestmeasure table
@@ -96,7 +97,8 @@ for row in rows:
 
 logging.info("Bulk indexing measure data")
 bulk_data_json = "\n".join(map(json.dumps,bulk_data))
-if bulk_data_json: es.bulk(body = bulk_data_json)
+if bulk_data_json:
+	es.bulk(body = bulk_data_json)
 bulk_data = []
 
 # index office_contestoffice table
@@ -117,7 +119,8 @@ for row in rows:
 
 logging.info("Bulk indexing office data")
 bulk_data_json = "\n".join(map(json.dumps,bulk_data))
-if bulk_data_json: es.bulk(body = bulk_data_json)
+if bulk_data_json:
+	es.bulk(body = bulk_data_json)
 bulk_data = []
 
 # index politician_politician table
@@ -161,5 +164,6 @@ for row in rows:
 
 logging.info("Bulk indexing organization data")
 bulk_data_json = "\n".join(map(json.dumps,bulk_data))
-if bulk_data_json: es.bulk(body = bulk_data_json)
+if bulk_data_json:
+	es.bulk(body = bulk_data_json)
 bulk_data = []

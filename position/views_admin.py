@@ -3,11 +3,10 @@
 # -*- coding: UTF-8 -*-
 
 from .controllers import generate_position_sorting_dates_for_election, positions_import_from_master_server, \
-    refresh_cached_position_info_for_election, \
     refresh_positions_with_candidate_details_for_election, \
     refresh_positions_with_contest_office_details_for_election, \
     refresh_positions_with_contest_measure_details_for_election
-from .models import ANY_STANCE, PositionEntered, PositionForFriends, PositionListManager, PERCENT_RATING
+from .models import ANY_STANCE, PositionEntered, PositionForFriends, PositionListManager
 from admin_tools.views import redirect_to_sign_in_page
 from candidate.models import CandidateCampaign, CandidateListManager, CandidateManager
 from config.environment_variable_functions import get_environment_variable
@@ -34,7 +33,6 @@ from wevote_functions.functions import convert_to_int, \
 from wevote_settings.constants import ELECTION_YEARS_AVAILABLE
 from django.http import HttpResponse
 import json
-from time import time
 from datetime import date
 
 UNKNOWN = 'U'

@@ -12,7 +12,7 @@ from organization.models import OrganizationManager
 import pytz
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
-from wevote_functions.functions_date import generate_localized_datetime_from_obj, DATE_FORMAT_YMD
+from wevote_functions.functions_date import generate_localized_datetime_from_obj
 from voter.models import VoterManager
 
 
@@ -930,6 +930,26 @@ class FollowOrganizationManager(models.Manager):
 
     def __unicode__(self):
         return "FollowOrganizationManager"
+
+    @staticmethod
+    def voter_has_active_heart_preference(voter_id=0, organization_we_vote_id=''):
+        """
+        WV-2664: Does this voter already have an active heart (FOLLOWING or FOLLOW_DISLIKE) for this
+        organization? Used to preserve first-action-wins. Reads the primary DB, not 'readonly',
+        which can lag behind a write in the same dispatcher cycle.
+        """
+        if not positive_value_exists(voter_id) or not positive_value_exists(organization_we_vote_id):
+            return False
+        try:
+            return FollowOrganization.objects.using('default').filter(
+                voter_id=voter_id,
+                organization_we_vote_id=organization_we_vote_id,
+                following_status__in=[FOLLOWING, FOLLOW_DISLIKE],
+            ).exists()
+        except Exception:
+            # WV-2664: Fail closed. Assume the voter already has a heart preference so a DB error
+            # can't cause first-action-wins to be violated by re-flipping an existing heart.
+            return True
 
     @staticmethod
     def fetch_follow_organization_count(

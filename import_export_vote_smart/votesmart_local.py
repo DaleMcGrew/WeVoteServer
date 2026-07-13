@@ -187,7 +187,8 @@ class BillDetail(VotesmartApiObject):
         sponsors = d.pop('sponsors')
         actions = d.pop('actions')
         amendments = d.pop('amendments')  # ammendments -- sic
-        if not sponsors: sponsors = { 'sponsor': [] }
+        if not sponsors:
+            sponsors = { 'sponsor': [] }
         self.sponsors = _result_to_obj(BillSponsor, sponsors['sponsor'])
         self.actions = _result_to_obj(BillAction, actions['action'])
         if amendments:

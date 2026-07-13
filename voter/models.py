@@ -4916,7 +4916,7 @@ class VoterAddressManager(models.Manager):
                 success = True
                 status += "UPDATE_OR_CREATE_SUCCESSFUL "
             except Exception as e:
-                status += f'CRASHING_GOOGLE_GEOCODER: '
+                status += 'CRASHING_GOOGLE_GEOCODER: '
 
             except VoterAddress.MultipleObjectsReturned as e:
                 handle_record_found_more_than_one_exception(e, logger=logger)

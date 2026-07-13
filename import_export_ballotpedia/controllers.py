@@ -5,13 +5,11 @@
 from bs4 import BeautifulSoup
 import json
 
-from django.contrib import messages
 
 from .models import BallotpediaApiCounterManager
 from ballot.models import BallotItemListManager, BallotItemManager, BallotReturned, BallotReturnedManager, \
     VoterBallotSavedManager
-from candidate.controllers import save_image_to_candidate_table, add_twitter_handle_to_next_candidate_spot, \
-    add_to_candidate_new_links_from_ballotpedia
+from candidate.controllers import save_image_to_candidate_table, add_to_candidate_new_links_from_ballotpedia
 from candidate.models import CandidateManager, CandidateListManager, fetch_candidate_count_for_office, \
     PROFILE_IMAGE_TYPE_BALLOTPEDIA, PROFILE_IMAGE_TYPE_UNKNOWN
 from config.environment_variable_functions import get_environment_variable
@@ -30,7 +28,7 @@ from voter.models import fetch_voter_id_from_voter_device_link, VoterAddressMana
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, extract_state_code_from_address_string, positive_value_exists
 from wevote_functions.functions_date import get_current_year_as_integer
-from wevote_settings.models import RemoteRequestHistory, RemoteRequestHistoryManager, \
+from wevote_settings.models import RemoteRequestHistoryManager, \
     RETRIEVE_POSSIBLE_BALLOTPEDIA_PHOTOS, RETRIEVE_POSSIBLE_BALLOTPEDIA_CANDIDATES_LINKS
 
 BALLOTPEDIA_API_KEY = get_environment_variable("BALLOTPEDIA_API_KEY")

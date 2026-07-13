@@ -4,7 +4,6 @@
 
 from django.urls import reverse
 from django.test import TestCase
-from email_outbound.models import EmailAddress, EmailManager
 import json
 
 
