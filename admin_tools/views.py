@@ -17,7 +17,7 @@ import wevote_functions
 from ballot.models import BallotReturned, VoterBallotSaved
 from candidate.controllers import candidates_import_from_sample_file
 from candidate.models import CandidateCampaign, CandidateManager
-from config.base import LOGIN_URL, BASE_DIR, PROJECT_PATH
+from config.base import LOGIN_URL
 from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from election.controllers import elections_import_from_sample_file
 from election.models import Election
@@ -1821,7 +1821,7 @@ def login_we_vote(request):
                     if request_token_info['create_token']:
                         request_token_info['user_id'] = user.we_vote_id
                         token_manager = TokensManager(token_types=[request_token_info['token_type']], scope=Scope.BACKUP_ONE_TABLE_TO_S3.value, expiration_seconds=300)
-                        token_response['token_creation'] = token_manager.token_creation(request_token_info) 
+                        token_response['token_creation'] = token_manager.token_creation(request_token_info)
                 except Exception as e:
                     pass
 

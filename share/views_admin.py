@@ -12,7 +12,7 @@ from django.utils.timezone import now
 import wevote_functions.admin
 from admin_tools.views import redirect_to_sign_in_page
 from datetime import timedelta
-from email_outbound.models import EmailAddress, EmailManager
+from email_outbound.models import EmailAddress
 from sms.models import SMSPhoneNumber
 from voter.models import voter_has_authority, VoterManager
 from wevote_functions.functions import convert_to_int, get_voter_api_device_id, \

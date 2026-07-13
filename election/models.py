@@ -1276,8 +1276,8 @@ class ElectionManager(models.Manager):
             read_only=True):
         """
         Retrieve elections using election_day_text
-        :param election_day_text: 
-        :param include_test_election: 
+        :param election_day_text:
+        :param include_test_election:
         :param read_only:
         :return:
         """
@@ -1361,8 +1361,8 @@ class ElectionManager(models.Manager):
         """
           Retrieve elections using state_code and election_day_text
         :param state_code:
-        :param election_day_text: 
-        :param include_test_election: 
+        :param election_day_text:
+        :param include_test_election:
         :param read_only:
         :return:
         """

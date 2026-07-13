@@ -116,7 +116,7 @@ def retrieve_sql_files_from_master_server(request):
                     if not DEBUG_FASTLOAD_SINGLE_SERVER:
                         print(f"Token authentication failed: {token_authentication['error_message']}")
             else:
-                print(f"Token authentication not found in response headers.")
+                print("Token authentication not found in response headers.")
 
             structured_json = fetch_data_response.json()
             aws_s3_file_url = structured_json['aws_s3_file_url']
@@ -165,7 +165,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
                 if chunk:
                     # print(f"Chunk: {chunk}")
                     tf.write(chunk)
-        # Force the python buffer to be written to the file            
+        # Force the python buffer to be written to the file
         tf.flush()
         if tf.tell() != global_stats['table_size']:
             raise Exception(f"Downloaded {int(tf.tell()/1024)} Kb, expected {int(global_stats['table_size']/1024)} Kb")

@@ -9,8 +9,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django_user_agents.utils import get_user_agent
 import json
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_bool, get_voter_device_id,  \
-    is_speaker_type_organization, is_speaker_type_public_figure, positive_value_exists
+from wevote_functions.functions import get_voter_device_id,  \
+    positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 

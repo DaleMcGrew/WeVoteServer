@@ -1,7 +1,6 @@
 # import_export_vertex/controllers.py
 # Brought to you by We Vote. Be good.
 import json
-import urllib.request
 from socket import timeout
 from time import time
 import os

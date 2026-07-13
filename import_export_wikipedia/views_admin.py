@@ -6,7 +6,7 @@ from candidate.models import CandidateCampaign, CandidateListManager
 from wevote_settings.models import RemoteRequestHistoryManager
 from .controllers import retrieve_all_organizations_logos_from_wikipedia, \
     retrieve_organization_logo_from_wikipedia_page, retrieve_wikipedia_page_from_wikipedia, \
-    retrieve_candidate_images_from_wikipedia_page, get_photo_url_from_wikipedia
+    get_photo_url_from_wikipedia
 from admin_tools.views import redirect_to_sign_in_page
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -19,7 +19,7 @@ from organization.models import OrganizationManager
 from volunteer_task.models import VOLUNTEER_ACTION_PHOTO_BULK_RETRIEVE, VolunteerTaskManager
 from voter.models import voter_has_authority
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, is_valid_state_code, positive_value_exists
+from wevote_functions.functions import convert_to_int, positive_value_exists
 
 
 logger = wevote_functions.admin.get_logger(__name__)

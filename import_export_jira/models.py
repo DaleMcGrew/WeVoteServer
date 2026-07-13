@@ -3,7 +3,6 @@
 # -*- coding: UTF-8 -*-
 
 from django.db import models
-from wevote_functions.functions import convert_to_int
 
 
 class JiraApiCounterManager(models.Manager):

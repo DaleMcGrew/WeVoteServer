@@ -34,7 +34,6 @@ from issue.models import ACTIVE_ISSUES_DICTIONARY, OrganizationLinkToIssueManage
 from politician.models import PoliticianManager
 from position.controllers import delete_positions_for_organization, move_positions_to_another_organization, \
     update_position_entered_details_from_organization
-from position.models import PositionListManager
 from stripe_donations.controllers import move_donation_info_to_another_organization
 from twitter.models import TwitterUserManager, create_detailed_counter_entry, mark_detailed_counter_entry
 from voter.models import fetch_voter_id_from_voter_device_link, VoterManager, Voter
@@ -364,7 +363,7 @@ def merge_if_duplicate_organizations(organization1, organization2, conflict_valu
 
     # Loop over all organization-specific unique identifiers
     for attribute in ORGANIZATION_UNIQUE_IDENTIFIERS:
-        # For the below special cases, we can default to choosing the value from organization1. 
+        # For the below special cases, we can default to choosing the value from organization1.
         # If organization1 does not have a valid attribute, we choose the value from organization2.
         if attribute == "ballotpedia_id" \
                 or attribute == "ballotpedia_photo_url" \
@@ -1331,7 +1330,7 @@ def organization_analyze_tweets(organization_we_vote_id):
 
     # TODO (eayoungs@gmail.com) This is Abed's code; left to be considered for future work
     # This is giving a weird output!
-    # Populate a dictionary with the frequency of words in all tweets 
+    # Populate a dictionary with the frequency of words in all tweets
     # counts = dict()
     # for tweet in tweet_list:
     #    words = str(tweet.tweet_text).split()

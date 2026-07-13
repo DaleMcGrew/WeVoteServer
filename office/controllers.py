@@ -8,11 +8,9 @@ from ballot.models import OFFICE
 from bookmark.models import BookmarkItemList
 from candidate.controllers import move_candidates_to_another_office
 from config.environment_variable_functions import get_environment_variable
-from django.contrib import messages
 from django.http import HttpResponse
 import json
 from position.controllers import move_positions_to_another_office, update_all_position_details_from_contest_office
-import requests
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists, process_request_from_master
 from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS

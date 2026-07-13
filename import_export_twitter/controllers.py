@@ -338,7 +338,7 @@ def fetch_number_of_candidates_needing_twitter_update():
 def fetch_number_of_organizations_needing_twitter_update():
     """
     Do not include individuals in this.
-    :return: 
+    :return:
     """
     organization_we_vote_id_list_to_exclude = []
     status = ''
@@ -348,7 +348,7 @@ def fetch_number_of_organizations_needing_twitter_update():
     results = twitter_user_manager.retrieve_twitter_link_to_organization_list(
         return_we_vote_id_list_only=True, read_only=True)
     organization_we_vote_id_list_to_include = results['organization_we_vote_id_list']
-    
+
     if len(organization_we_vote_id_list_to_include):
         try:
             # Exclude organizations searched for in the last month

@@ -12,7 +12,7 @@ from organization.models import OrganizationManager
 import pytz
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
-from wevote_functions.functions_date import generate_localized_datetime_from_obj, DATE_FORMAT_YMD
+from wevote_functions.functions_date import generate_localized_datetime_from_obj
 from voter.models import VoterManager
 
 
@@ -762,7 +762,7 @@ class FollowIssueList(models.Model):
             read_only=True):
         """
         Retrieve a list of follow_issue entries for this voter
-        :param voter_we_vote_id: 
+        :param voter_we_vote_id:
         :param following_status:
         :param read_only:
         :return: a list of follow_issue objects for the voter_we_vote_id
