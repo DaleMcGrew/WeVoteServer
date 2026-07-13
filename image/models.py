@@ -9,14 +9,13 @@ from django.db import models
 from exception.models import handle_record_found_more_than_one_exception, handle_exception, \
     handle_record_not_saved_exception, handle_record_not_deleted_exception
 from pathlib import Path
-from PIL import ExifTags, GifImagePlugin, Image, ImageOps, ImageSequence
-from subprocess import run
+from PIL import ExifTags, GifImagePlugin, Image, ImageOps
 from urllib.request import urlretrieve
 from urllib.error import HTTPError
 from wevote_functions.functions import convert_to_int, positive_value_exists
 import boto3
 import wevote_functions.admin
-from .functions import analyze_remote_url, crop_to_square
+from .functions import analyze_remote_url
 
 # naming convention stored at aws
 BALLOTPEDIA_IMAGE_NAME = "ballotpedia_image"
@@ -2090,7 +2089,7 @@ class WeVoteImageManager(models.Manager):
         :param image_offset_y:
         :param save_gif_as_webp:
         :return:
-        """        
+        """
         original_image_local_path = "/tmp/" + image_local_path
         converted_image_local_path = "/tmp/"
         converted_image_format = None

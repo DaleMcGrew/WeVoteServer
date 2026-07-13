@@ -601,14 +601,14 @@ class RemoteRequestHistoryManager(models.Manager):
             status=''):
         """
         Create a new entry for twitter link search request in the RemoteRequestHistory
-        :param kind_of_action: 
-        :param google_civic_election_id: 
-        :param candidate_campaign_we_vote_id: 
-        :param organization_we_vote_id: 
+        :param kind_of_action:
+        :param google_civic_election_id:
+        :param candidate_campaign_we_vote_id:
+        :param organization_we_vote_id:
         :param representative_we_vote_id:
         :param number_of_results:
-        :param status: 
-        :return: 
+        :param status:
+        :return:
         """
 
         success = False

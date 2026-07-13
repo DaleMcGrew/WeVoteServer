@@ -6,8 +6,8 @@ from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
 
-from candidate.models import PROFILE_IMAGE_TYPE_FACEBOOK, PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKNOWN, \
-    PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_VOTE_USA, PROFILE_IMAGE_TYPE_CURRENTLY_ACTIVE_CHOICES
+from candidate.models import PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKNOWN, \
+    PROFILE_IMAGE_TYPE_CURRENTLY_ACTIVE_CHOICES
 from config.environment_variable_functions import get_environment_variable
 from exception.models import handle_exception, \
     handle_record_found_more_than_one_exception, handle_record_not_saved_exception, handle_record_not_found_exception
@@ -275,7 +275,7 @@ class OrganizationManager(models.Manager):
             }
             return results
         # add required for hashtag_text similar to organization_we_vote_id
-        try:    
+        try:
             defaults = {
                 "organization_we_vote_id": organization_we_vote_id,
                 "hashtag_text": hashtag_text,
@@ -2906,7 +2906,7 @@ class OrganizationListManager(models.Manager):
         organization_list = []
         organization_list_found = False
 
-        if not type(organization_ids_followed_by_voter) is list:
+        if type(organization_ids_followed_by_voter) is not list:
             status += 'NO_ORGANIZATIONS_FOUND_MISSING_ORGANIZATION_LIST '
             success = False
             results = {
@@ -3301,7 +3301,7 @@ class OrganizationListManager(models.Manager):
         status = ''
         success = True
 
-        if not type(list_of_organization_we_vote_ids) is list:
+        if type(list_of_organization_we_vote_ids) is not list:
             status += 'NO_ORGANIZATIONS_FOUND_MISSING_ORGANIZATION_LIST '
             success = False
             results = {

@@ -4,9 +4,8 @@
 
 from ballot.models import BallotItem
 from election.models import ElectionManager
-from exception.models import handle_exception
 from office.models import ContestOffice
-from office_held.models import OfficeHeld, OfficeHeldManager
+from office_held.models import OfficeHeldManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists
 

@@ -6,7 +6,7 @@ from .models import convert_position_object_to_dict, PositionEntered, PositionFo
     PositionManager, PositionListManager, ANY_STANCE, \
     FRIENDS_AND_PUBLIC, FRIENDS_ONLY, PUBLIC_ONLY, SHOW_PUBLIC, THIS_ELECTION_ONLY, ALL_OTHER_ELECTIONS, \
     ALL_ELECTIONS, SUPPORT, OPPOSE, INFORMATION_ONLY, NO_STANCE
-from ballot.models import OFFICE, CANDIDATE, MEASURE, POLITICIAN
+from ballot.models import OFFICE, CANDIDATE, MEASURE
 from candidate.models import CandidateCampaign, CandidateManager, CandidateListManager, \
     CandidateToOfficeLink
 from config.environment_variable_functions import get_environment_variable

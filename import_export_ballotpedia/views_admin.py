@@ -1,7 +1,7 @@
 # import_export_ballotpedia/views_admin.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-from candidate.models import CandidateCampaign, CandidateListManager
+from candidate.models import CandidateListManager
 from wevote_settings.models import RemoteRequestHistoryManager
 from .controllers import attach_ballotpedia_election_by_district_from_api, \
     retrieve_ballot_items_from_polling_location, \

@@ -28,9 +28,9 @@ def get_current_fastly_config_version():
         logging.warning("Unable to get list of versions: %s", response.content)
         return None
     versions = response.json()
-    for v in versions:
-        if v['active'] == True:
-            return v['number']
+    for version in versions:
+        if version['active']:
+            return version['number']
     return None
 
 
@@ -362,10 +362,10 @@ def delete_wevote_subdomain_from_fastly(subdomain):
         logging.error("Unable to get current version")
         return
     new_version = clone_current_fastly_config_version(current_version)
-    if del_fastly_domain(new_version, subdomain) != True:
+    if not del_fastly_domain(new_version, subdomain):
         logging.error("Unable to remove domain from service")
         return
-    if activate_new_fastly_config_version(new_version) != True:
+    if not activate_new_fastly_config_version(new_version):
         logging.error("Unable to activate new version of service")
         return
     logging.info("Domain %s removed from Fastly service", subdomain)

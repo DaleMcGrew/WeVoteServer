@@ -4,23 +4,15 @@
 
 from .controllers_representatives import retrieve_representatives_from_google_civic_api, store_representatives_from_google_civic_api
 from admin_tools.views import redirect_to_sign_in_page
-from ballot.controllers import refresh_voter_ballots_from_polling_location
-from ballot.models import BallotItemListManager, BallotReturnedListManager, BallotReturnedManager, \
-    VoterBallotSavedManager
 from config.environment_variable_functions import get_environment_variable
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.messages import get_messages
-from django.db.models import Q
-from exception.models import handle_record_found_more_than_one_exception, handle_record_not_found_exception, \
-    handle_record_not_saved_exception
 from polling_location.models import PollingLocation
-from wevote_settings.models import RemoteRequestHistoryManager
-from voter.models import VoterAddressManager, VoterDeviceLinkManager, voter_has_authority
+from voter.models import voter_has_authority
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, get_voter_device_id, positive_value_exists, STATE_CODE_MAP
+from wevote_functions.functions import convert_to_int, positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 

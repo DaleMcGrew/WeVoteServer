@@ -17,15 +17,13 @@ from admin_tools.views import redirect_to_sign_in_page
 from config.environment_variable_functions import get_environment_variable
 from datetime import datetime, timedelta
 from election.models import ElectionManager
-from follow.models import FOLLOW_DISLIKE, FOLLOWING, FollowOrganization, FollowOrganizationManager
-from follow.controllers import create_followers_from_positions
 from organization.models import Organization, OrganizationManager
 from politician.models import Politician, PoliticianManager
 from stripe_donations.models import StripeManager
 from volunteer_task.models import VOLUNTEER_ACTION_DUPLICATE_POLITICIAN_ANALYSIS, \
     VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION, VolunteerTaskManager
 from voter.models import fetch_voter_from_voter_device_link, voter_has_authority, VoterManager
-from wevote_functions.functions import convert_state_code_to_state_text, convert_to_int, \
+from wevote_functions.functions import convert_to_int, \
     get_voter_api_device_id, positive_value_exists, STATE_CODE_MAP
 from wevote_functions.functions_date import generate_date_as_integer
 from .controllers import fetch_duplicate_challenge_count, \

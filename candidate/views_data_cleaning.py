@@ -20,7 +20,6 @@ from election.models import ElectionManager
 from import_export_batches.models import BatchManager
 from measure.models import ContestMeasure
 from office.models import ContestOffice
-from politician.models import PoliticianManager
 from position.models import PositionEntered
 from voter.models import voter_has_authority
 from voter_guide.models import VoterGuide

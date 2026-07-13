@@ -7,9 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from django.conf import settings
 from django.core.cache import cache
-from django.db import connection
 from django.test import TestCase
 from django.utils import timezone
 
@@ -45,7 +43,7 @@ class ComplexTestCachePayload:
 
 
 @unittest.skipIf(
-    SERVER_IS_SOURCE_OF_TRUTH == True,
+    SERVER_IS_SOURCE_OF_TRUTH,
     "Database cache tests only run when SERVER_IS_SOURCE_OF_TRUTH is false",
 )
 class TestDatabaseCacheComplexObject(TestCase):

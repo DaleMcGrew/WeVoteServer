@@ -2,10 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-import json
-import requests
 from config.environment_variable_functions import get_environment_variable
-from exception.models import handle_exception
 import wevote_functions.admin
 from googleapiclient.discovery import build
 from google.oauth2 import service_account

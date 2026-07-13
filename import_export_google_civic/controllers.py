@@ -24,9 +24,9 @@ import requests
 from voter.models import fetch_voter_id_from_voter_device_link, VoterAddressManager
 from wevote_functions.functions import augment_vote_usa_office_id, \
     convert_district_scope_to_ballotpedia_race_office_level, \
-    convert_level_to_race_office_level, convert_state_text_to_state_code, convert_to_int, \
+    convert_state_text_to_state_code, convert_to_int, \
     extract_district_id_label_when_district_id_exists_from_ocd_id, extract_district_id_from_ocd_division_id, \
-    extract_facebook_username_from_text_string, extract_instagram_handle_from_text_string, \
+    extract_instagram_handle_from_text_string, \
     extract_state_code_from_address_string, extract_state_from_ocd_division_id, \
     extract_twitter_handle_from_text_string, extract_vote_usa_measure_id, extract_vote_usa_office_id, \
     is_voter_device_id_valid, logger, positive_value_exists, STATE_CODE_MAP

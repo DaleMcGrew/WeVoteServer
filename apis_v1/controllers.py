@@ -6,11 +6,11 @@ from django.http import HttpResponse
 from exception.models import handle_exception
 from follow.models import FOLLOW_DISLIKE, FOLLOW_IGNORE, FOLLOWING, STOP_DISLIKING, STOP_FOLLOWING, STOP_IGNORING
 import json
-from organization.models import Organization, OrganizationManager
+from organization.models import Organization
 from organization.controllers import organization_follow_or_unfollow_or_ignore
-from voter.models import fetch_voter_id_from_voter_device_link, Voter, VoterManager, VoterMetricsManager
+from voter.models import VoterMetricsManager
 import wevote_functions.admin
-from wevote_functions.functions import is_voter_device_id_valid, positive_value_exists
+from wevote_functions.functions import positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 

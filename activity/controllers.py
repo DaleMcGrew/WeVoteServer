@@ -6,11 +6,11 @@ from .models import ActivityComment, ActivityNoticeSeed, ActivityManager, Activi
     NOTICE_ACTIVITY_POST_SEED, \
     NOTICE_CAMPAIGNX_FRIEND_HAS_SUPPORTED, \
     NOTICE_CAMPAIGNX_NEWS_ITEM, NOTICE_CAMPAIGNX_NEWS_ITEM_AUTHORED, NOTICE_CAMPAIGNX_NEWS_ITEM_SEED, \
-    NOTICE_CAMPAIGNX_SUPER_SHARE_ITEM_AUTHORED, NOTICE_CAMPAIGNX_SUPER_SHARE_ITEM_SEED, \
+    NOTICE_CAMPAIGNX_SUPER_SHARE_ITEM_SEED, \
     NOTICE_CAMPAIGNX_SUPPORTER_INITIAL_RESPONSE, NOTICE_CAMPAIGNX_SUPPORTER_INITIAL_RESPONSE_SEED, \
     NOTICE_FRIEND_ACTIVITY_POSTS, \
     NOTICE_FRIEND_ENDORSEMENTS, NOTICE_FRIEND_ENDORSEMENTS_SEED, \
-    NOTICE_VOTER_DAILY_SUMMARY, NOTICE_VOTER_DAILY_SUMMARY_SEED
+    NOTICE_VOTER_DAILY_SUMMARY_SEED
 from config.environment_variable_functions import get_environment_variable
 from django.utils.timezone import now
 from friend.models import FriendManager
@@ -18,13 +18,10 @@ import json
 from datetime import timedelta
 from reaction.models import ReactionManager
 from voter.models import \
-    NOTIFICATION_FRIEND_OPINIONS_OTHER_REGIONS_EMAIL, NOTIFICATION_FRIEND_OPINIONS_OTHER_REGIONS_SMS, \
-    NOTIFICATION_FRIEND_OPINIONS_YOUR_BALLOT_EMAIL, NOTIFICATION_FRIEND_OPINIONS_YOUR_BALLOT_SMS,\
-    NOTIFICATION_VOTER_DAILY_SUMMARY_EMAIL, NOTIFICATION_VOTER_DAILY_SUMMARY_SMS, \
-    VoterDeviceLinkManager, VoterManager
+    NOTIFICATION_FRIEND_OPINIONS_OTHER_REGIONS_EMAIL, NOTIFICATION_VOTER_DAILY_SUMMARY_EMAIL, NOTIFICATION_VOTER_DAILY_SUMMARY_SMS, \
+    VoterManager
 import wevote_functions.admin
-from wevote_functions.functions import is_voter_device_id_valid, positive_value_exists, return_first_x_words
-from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
+from wevote_functions.functions import positive_value_exists, return_first_x_words
 
 logger = wevote_functions.admin.get_logger(__name__)
 
