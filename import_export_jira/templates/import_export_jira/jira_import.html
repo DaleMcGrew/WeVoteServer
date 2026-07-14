@@ -16,6 +16,13 @@
 </div>
 {% endif %}
 
+{# ---- Loading overlay ---- #}
+<div id="loading-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.85); z-index:9999; text-align:center; padding-top:20%;">
+    <div style="font-size:24px; font-weight:bold; margin-bottom:16px;">Processing&hellip;</div>
+    <div style="font-size:14px; color:#666;">Please wait while your file is being processed.</div>
+    <div style="margin-top:20px;"><img src="https://loading.io/spinners/double-ring/lg.double-ring-spinner.gif" alt="Loading" style="width:64px; height:64px;"></div>
+</div>
+
 {# ---- Credentials banner ---- #}
 {% if missing_vars %}
 <div class="alert alert-danger">
@@ -37,14 +44,24 @@
 
 {# ---- Upload form ---- #}
 <h2>Upload Election Spreadsheet</h2>
-<p>Upload an Arkansas-style <code>.xlsx</code> file to preview or import its data into JIRA.</p>
+<p>Upload an Arkansas-style <code>.xlsx</code> or <code>.csv</code> file to preview or import its data into JIRA.</p>
 
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" id="upload-form">
     {% csrf_token %}
     <div class="form-group">
-        <label for="excel_file">Excel File (.xlsx)</label>
-        <input type="file" id="excel_file" name="excel_file" accept=".xlsx" required class="form-control">
+        <label for="excel_file">Election Data File (.xlsx, .csv)</label>
+        <input type="file" id="excel_file" name="excel_file" accept=".xlsx,.xls,.csv" required class="form-control">
     </div>
+
+    <div class="form-group">
+        <label for="subtask_count">Number of subtasks per story (0-4)</label>
+        <input type="number" id="subtask_count" name="subtask_count" min="0" max="4" value="0" class="form-control" style="width: 100px;">
+    </div>
+    <div id="subtask_names_wrapper" class="form-group" style="display:none;">
+        <label>Subtask names:</label>
+        <div id="subtask_names_container"></div>
+    </div>
+
     <br>
     <button type="submit" name="action" value="preview" class="btn btn-default">
         Preview (parse only — no JIRA connection)
@@ -55,6 +72,47 @@
         Import to JIRA
     </button>
 </form>
+
+<script>
+(function() {
+    var suggestions = {% if header_suggestions %}{{ header_suggestions|safe }}{% else %}[]{% endif %};
+
+    function buildSubtaskRows(count, prefill) {
+        var container = document.getElementById('subtask_names_container');
+        var wrapper = document.getElementById('subtask_names_wrapper');
+        container.innerHTML = '';
+        if (count > 0) {
+            wrapper.style.display = 'block';
+            for (var i = 1; i <= count; i++) {
+                var val = (prefill && prefill[i - 1]) ? prefill[i - 1] : '';
+                var div = document.createElement('div');
+                div.className = 'form-inline';
+                div.style.marginBottom = '5px';
+                div.innerHTML = '<span style="display:inline-block;width:30px;font-weight:bold;">' + i + '.</span>' +
+                    '<input type="text" name="subtask_name_' + (i - 1) + '" class="form-control" placeholder="Subtask description" style="width:400px;" value="' + val.replace(/"/g, '&quot;') + '">';
+                container.appendChild(div);
+            }
+        } else {
+            wrapper.style.display = 'none';
+        }
+    }
+
+    var countInput = document.getElementById('subtask_count');
+    countInput.addEventListener('input', function() {
+        var count = parseInt(this.value) || 0;
+        buildSubtaskRows(count, null);
+    });
+
+    if (suggestions.length > 0) {
+        countInput.value = suggestions.length;
+        buildSubtaskRows(suggestions.length, suggestions);
+    }
+
+    document.getElementById('upload-form').addEventListener('submit', function() {
+        document.getElementById('loading-overlay').style.display = 'block';
+    });
+})();
+</script>
 
 {# ---- Preview results ---- #}
 {% if action == 'preview' and preview_summary %}
