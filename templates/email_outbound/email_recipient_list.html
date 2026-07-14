@@ -7,6 +7,16 @@
 {% block content %}
 {% include "admin_tools/loading_banner.html" %}
 
+<!-- Message Sent Drawer CSS -->
+<style>
+    {% include "email_outbound/css/_message_sent_drawer_styles.html" %}
+</style>
+
+<!-- Message Sent Drawer Javascript -->
+<script>
+    {% include "email_outbound/js/_message_sent_drawer_js.html" %}
+</script>
+
 <style>
   .wv-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
   .wv-spacer { flex:1; }
@@ -271,8 +281,9 @@
                 {% endif %}
             </td>
             <td>
-                <a href="{% url 'email_outbound:view_recipient_email' recipient.id %}?google_civic_election_id={{ google_civic_election_id }}"
-                   class="campaign-link" target="_blank">
+                <a href="#"
+                   class="campaign-link"
+                   onclick="openMessageSentDrawer('{{ recipient.id }}', '{{ google_civic_election_id }}'); return false;">
                   show
                 </a>
             </td>
@@ -344,8 +355,9 @@
                 {{ recipient.email_address }}
             </td>
             <td>
-                <a href="{% url 'email_outbound:view_recipient_email' recipient.id %}?google_civic_election_id={{ google_civic_election_id }}"
-                   class="campaign-link" target="_blank">
+                <a href="#"
+                   class="campaign-link"
+                   onclick="openMessageSentDrawer('{{ recipient.id }}', '{{ google_civic_election_id }}'); return false;">
                   show
                 </a>
             </td>
@@ -458,5 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+
+{% include 'components/_message_sent_drawer.html' %}
 
 {% endblock %}
