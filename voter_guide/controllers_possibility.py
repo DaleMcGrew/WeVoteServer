@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 import copy
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from candidate.controllers import find_candidate_endorsements_on_one_candidate_web_page, \
     find_organization_endorsements_of_candidates_on_one_web_page, \
     retrieve_candidate_list_for_all_upcoming_elections

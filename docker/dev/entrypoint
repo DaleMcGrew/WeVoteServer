@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import debugpy
 
 def log(line: str):
     print(line, flush=True)
@@ -22,11 +23,10 @@ def load_environment_file(file: str) -> bool:
                 if key not in os.environ:
                     os.environ[key] = str(value)
     except json.JSONDecodeError:
-        print(f"Error decoding JSON from {file}")
-    except Exception as e:
-        print(f"An error occurred while loading config variables: {e}")
+        log(f"Error decoding JSON from {file}")
+    except Exception as err:
+        log(f"An error occurred while loading config variables: {err}")
     return True
-
 
 load_environment_file(os.path.join("config", "environment_variables.json"))
 load_environment_file(os.path.join("config", "environment_variables-template.json"))
@@ -35,10 +35,39 @@ log("Running 'manage.py makemigrations'")
 os.system("python manage.py makemigrations")
 log("Running 'manage.py migrate'")
 os.system("python manage.py migrate")
+log("Running 'manage.py createcachetable'")
+os.system("python manage.py createcachetable")
 log("Running 'manage.py createsuperuser'")
 os.system("python manage.py createsuperuser --noinput")
+initial_dev_user = os.environ.get('DEV_VOTER_INITIAL_USER', "Samuel Adams samuel@adams.com ale")
+log(f"Running 'manage.py create_dev_user {initial_dev_user}'")
+os.system("python manage.py create_dev_user " + initial_dev_user)
 
+# Start debugpy listener
+try:
+    log("Starting debugpy on 0.0.0.0:5678")
+    debugpy.listen(("0.0.0.0", 5678))
 
-sys.exit(subprocess.call(sys.argv[1:]))
+    log("Debugger is ready and waiting for VS Code or PyCharm to attach...")
+except Exception as e:
+    log(f"Error starting debugpy: {e}")
 
+# log(f"os.environ.get('WE_VOTE_SERVER_PROTOCOL', ''): {os.environ.get('WE_VOTE_SERVER_PORT', '')}")
+if os.environ.get('WE_VOTE_SERVER_PROTOCOL', '') == 'https':
+    new_args = ['python', 'manage.py',
+                'runsslserver',
+                f"{os.environ.get('WE_VOTE_SERVER_DOMAIN_HTTPS', 'localhost')}:{os.environ.get('WE_VOTE_SERVER_PORT', '8000')}",
+                '--certificate', os.environ.get('DEV_SERVER_SSL_CERT', 'cert/wevotedeveloper.com.crt'),
+                '--key', os.environ.get('DEV_SERVER_SSL_KEY', 'cert/wevotedeveloper.com_key.txt')]
+    startup = f"https://{os.environ.get('WE_VOTE_SERVER_DOMAIN_HTTPS', 'localhost')}:{os.environ.get('WE_VOTE_SERVER_PORT', '8000')}"
+    log(f"Starting development server at {startup} ")
+else:
+    new_args = sys.argv[1:]
+    # log(f"Startup args : {new_args}")
+    if len(new_args) == 4:
+        startup = f"{'http://localhost:8000' if new_args[3] == '0.0.0.0:8000' else 'unknown'}"
+        log(f"Starting development server at {startup} ")
+    else:
+        log(f"Starting on: {new_args}")
 
+sys.exit(subprocess.call(new_args))

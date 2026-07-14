@@ -1,0 +1,36 @@
+version: 0.2
+
+# BuildSpec for the SQS Worker Lambda image.
+# Environment variables injected by the CDK CodeBuild project:
+#   LAMBDA_REPO_URI        — ECR repository URI for the Lambda image
+#   LAMBDA_FUNCTION_NAME   — Lambda function name to update after push
+#   AWS_DEFAULT_REGION     — AWS region
+
+env:
+  shell: bash
+phases:
+  pre_build:
+    on-failure: ABORT
+    commands:
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=build}
+      - ECR_LOGIN_HOST=$(echo $LAMBDA_REPO_URI | sed 's#/.*##')
+      - echo Logging into ECR
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_LOGIN_HOST
+  build:
+    on-failure: ABORT
+    commands:
+      - echo Build started at $(date)
+      - docker build -f docker/Dockerfile.lambda-worker -t wevote-sqs-worker:latest .
+  post_build:
+    on-failure: ABORT
+    commands:
+      - echo Tagging and pushing Lambda image
+      - docker tag wevote-sqs-worker:latest $LAMBDA_REPO_URI:$IMAGE_TAG
+      - docker tag wevote-sqs-worker:latest $LAMBDA_REPO_URI:latest
+      - docker push $LAMBDA_REPO_URI:$IMAGE_TAG
+      - docker push $LAMBDA_REPO_URI:latest
+      - echo Updating Lambda function to image $LAMBDA_REPO_URI:$IMAGE_TAG
+      - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --image-uri $LAMBDA_REPO_URI:$IMAGE_TAG
+      - aws lambda wait function-updated --function-name $LAMBDA_FUNCTION_NAME
+      - echo Lambda update complete

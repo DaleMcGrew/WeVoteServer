@@ -5,10 +5,12 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
+from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from django.urls import reverse
 
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from voter.models import voter_has_authority
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP
@@ -94,7 +96,7 @@ def politicians_data_cleaning_view(request):
     #  make sure we have that corresponding CampaignX entry. If not, delete the Politician.linked_campaignx_we_vote_id
     #  value.
     delete_linked_campaignx_we_vote_id_if_campaignx_not_found_on = True
-    number_to_verify = 1000
+    number_to_verify = 5000
     if delete_linked_campaignx_we_vote_id_if_campaignx_not_found_on and run_scripts:
         from politician.controllers_data_cleaning import delete_linked_campaignx_we_vote_id_if_campaignx_not_found
         results = delete_linked_campaignx_we_vote_id_if_campaignx_not_found(
@@ -171,3 +173,20 @@ def politicians_data_cleaning_view(request):
         'state_list':                           sorted_state_list,
     }
     return render(request, 'politician/politician_data_cleaning.html', template_values)
+
+
+def update_is_claimed_profile_for_politicians(request):
+    number_to_update = 5000
+    state_code = request.GET.get('state_code', '')
+    from politician.controllers_data_cleaning import update_is_claimed_profile_fields_in_bulk
+    results = update_is_claimed_profile_fields_in_bulk(
+        number_to_update=number_to_update,
+        state_code=state_code,
+    )
+    if positive_value_exists(results['status']):
+        if positive_value_exists(results['success']):
+            messages.add_message(request, messages.INFO, results['status'])
+        else:
+            messages.add_message(request, messages.ERROR, results['status'])
+
+    return HttpResponseRedirect(reverse('politician:politicians_data_cleaning', args=()))

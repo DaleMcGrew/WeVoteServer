@@ -8,10 +8,9 @@ from datetime import date, timedelta, datetime, timezone
 import tweepy
 from django.db import models
 from django.db.models import Q
-from django.utils.timezone import localtime, now
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from wevote_functions.functions import convert_to_int, generate_random_string, positive_value_exists
 
 TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
@@ -183,7 +182,7 @@ class TwitterUserManager(models.Manager):
         if "retweeted_status" in tweet_json._json:
             is_retweet_boolean = True
 
-        if not tweet_json: 
+        if not tweet_json:
             success = False
             status += 'MISSING_TWEET_JSON '
         else:

@@ -21,24 +21,34 @@
       Email Campaigns › {% if email_campaign %}Edit Campaign{% else %}New Email Campaign{% endif %}
     </h4>
     <div>
-      <a href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}" class="btn btn-outline-secondary me-2">Cancel</a>
+      <a href="{% url 'email_outbound:email_campaign_list' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&draft_uuid={{ draft_uuid }}" class="btn btn-outline-secondary me-2">Cancel</a>
+    {% if emails_sent %}
+        <button type="input" form="email-campaign-form" class="btn btn-secondary me-2" disabled>ALREADY SENT</button>
+    {% else %}
       <button type="submit" form="email-campaign-form" class="btn btn-primary me-2">Save Draft</button>
+    {% endif %}
     </div>
+    {% if emails_sent %}
+        {% if email_campaign.date_sent %}
+            Sent on {{ email_campaign.date_sent|date:"F j, Y, g:ia" }}
+        {% endif %}
+    {% else %}
     <div>
         <select name="send-time" id="send-time-select"
                 class="form-select form-select-sm me-0"
                 style="width: auto;">
           <option value="now">Now</option>
-          <option value="tomorrow_9">Tomorrow at 9:00 AM</option>
-          <option value="tomorrow_16">Tomorrow at 4:00 PM</option>
-          <option value="day2_9">Day after tomorrow</option>
-          <option value="day3_9">Day after that</option>
-          <option value="saved" style="display: none;"></option>
-          <option value="custom">Custom…</option>
+          <option value="tomorrow_9" disabled>Tomorrow at 9:00 AM</option>
+          <option value="tomorrow_16" disabled>Tomorrow at 4:00 PM</option>
+          <option value="day2_9" disabled>Day after tomorrow</option>
+          <option value="day3_9" disabled>Day after that</option>
+          <option value="saved" style="display: none;" disabled></option>
+          <option value="custom" disabled>Custom…</option>
         </select>
         <input type="datetime-local" id="scheduled-datetime" class="form-control form-control-sm me-2" style="width: auto; display: none !important;">&nbsp;
         <button type="submit" id="send-campaign-btn" class="btn btn-success">Send</button> <!-- Also submits email-campaign-form //-->
     </div>
+    {% endif %}
   </div>
 
   <form id="email-campaign-form" method="post" action="{% url 'email_outbound:email_campaign_edit_process' %}">
@@ -80,23 +90,97 @@
                        name="from_email_name"
                        class="form-control"
                        value="{% if email_campaign %}{{ email_campaign.from_email_name|default_if_none:"" }}{% endif %}"
-                       placeholder="Default is We Vote">
+                       placeholder="Default is WeVote">
             </div>
         </div>
 
         <div class="col-md-4">
+    {% if not emails_sent %}
         {% include "components/selection_tree/selection_tree.html" with selection_type="Email Template" selection_tree_data=folder_tree %}
+    {% endif %}
         </div>
     </div>
 
-    
+    <!-- Display attachments -->
+    <ul id="existingAttachments" class="list-group">
+        {% for att in email_campaign.attachments.all %}
+          <li class="list-group-item d-flex justify-content-between align-items-center" data-att-id="{{ att.id }}">
+            {% if att.is_inline %}
+              <div class="d-flex flex-row align-items-center" >
+                <div class="d-flex flex-column mr-3">
+                  <span class="fw-semibold">{{ att.original_name|default:"file" }}</span>
+                  <small class="muted">{{ att.created }}</small>
+                </div>
+                <span><b>(Inline)</b></span>
+              </div>
+            {% else %}
+              <div class="d-flex flex-column">
+                <span class="fw-semibold">{{ att.original_name|default:"file" }}</span>
+                <small class="muted">{{ att.created }}</small>
+              </div>
+            {% endif %}
+            <div class="d-flex gap-2">
+              <a class="btn btn-sm btn-outline-primary"
+                 href="{% url 'email_outbound:email_attachment_download' attachment_id=att.id %}">
+                Download
+              </a>
+
+              {% if not att.is_inline %}
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        onclick="deleteCampaignAttachment({{ att.id }})">
+                  Delete
+                </button>
+              {% endif %}
+            </div>
+          </li>
+        {% empty %}
+          <li class="list-group-item muted">No attachments yet.</li>
+        {% endfor %}
+    </ul>
+
+
+    {# Upload buttons for attachments   #}
+    <div class="d-flex flex-column gap-3">
+      <div class="d-flex gap-2 align-items-center mb-2">
+        <label class="btn btn-primary mb-0">
+          Choose files
+          <input id="attachmentInput" type="file" name="attachments" multiple class="d-none">
+        </label>
+
+        <button id="uploadBtn" type="button" class="btn btn-outline-primary" disabled>
+          <span id="btnText">Upload selected</span>
+          <span id="btnSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+        </button>
+      </div>
+
+      <ul id="fileList" class="list-group list-group-flush small"></ul>
+    </div>
+
 
     <!-- Recipients Section -->
     <div class="mb-3">
-      <label class="form-label">Search Recipients</label>
       <div class="d-flex gap-2 mb-2">
-        <input type="text" id="recipient_search" class="form-control" placeholder="Search by name or email..." style="flex: 1;">
-        <button type="button" class="btn border border-secondary text-secondary bg-transparent" id="search_btn" style="white-space: nowrap;">Add Recipient</button>
+          <div>
+              <label class="form-label">Add Audience ID</label>
+              <div class="d-flex gap-2 mb-2">
+                <input type="text"
+                       id="audience_builder_id_id"
+                       name="audience_builder_id"
+                       class="form-control"
+                       value="{% if email_campaign and email_campaign.audience_builder_id != 0 %}{{ email_campaign.audience_builder_id|default_if_none:"" }}{% endif %}"
+                       placeholder="ID of Audience Builder..." style="flex: 1;"
+                >
+              </div>
+          </div>
+       {% if not emails_sent %}
+          <div class="col-md-4">
+              <label class="form-label">Add Individual Recipients</label>
+              <div class="d-flex gap-2 mb-2">
+                <input type="text" id="recipient_search" class="form-control" placeholder="Search by name or email..." style="flex: 1;">
+                <button type="button" class="btn border border-secondary text-secondary bg-transparent" id="search_btn" style="white-space: nowrap;">Add Recipient</button>
+              </div>
+          </div>
+       {% endif %}
       </div>
       
       <div id="search_results" class="border rounded p-2 mb-2" style="max-height: 300px; overflow-y: auto; display: none;">
@@ -110,7 +194,9 @@
       <div class="border rounded p-3" style="min-height: 100px; background-color: #f8f9fa;">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <strong>Selected Recipients (<span id="recipient_count">0</span>)</strong>
+        {% if not emails_sent %}
           <button type="button" class="btn btn-sm btn-outline-danger" id="clear_all_btn">Clear All</button>
+        {% endif %}
         </div>
         <div id="selected_recipients"></div>
       </div>
@@ -131,11 +217,25 @@
              value="{% if email_campaign %}{{ email_campaign.email_subject_template_raw|default_if_none:"" }}{% endif %}"
              placeholder="Enter email subject"
              required>
+    <!-- Include footer checkbox -->
+      <div class="d-flex align-items-center gap-2" style="margin-left: 12px; white-space: nowrap;">
+        <input type="checkbox" 
+               class="form-control" 
+               id="include_footer_id" 
+               name="include_footer" 
+               value="1"
+               {% if not email_campaign or email_campaign.include_footer %}checked{% endif %}>
+      &nbsp;
+        <label for="include_footer_id" class="form-label mb-0 d-flex align-items-center gap-2">
+          Include Footer
+        </label>
+        <small class="text-muted" style="margin-left: 4px;">Includes open tracking and unsubscribe link</small>
+      </div>
     </div>
 
     <!-- Email Preview/Editor -->
     <div class="mb-3">
-      <textarea id="email_body" name="email_body" class="form-control" rows="10">{% if email_campaign %}{{ email_campaign.email_body_template_raw }}{% endif %}</textarea>
+      <textarea id="email_body" name="email_body" class="form-control js-tinymce" rows="10">{% if email_campaign %}{{ email_campaign.email_body_template_raw }}{% endif %}</textarea>
       <small class="text-muted">This will auto-populate when you select a template above. You can edit it before sending.</small>
     </div>
 
@@ -159,6 +259,7 @@
     <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
     <input type="hidden" name="state_code" value="{{ state_code }}">
     <input type="hidden" name="email_campaign_id" id="email_campaign_id" value="{% if email_campaign %}{{ email_campaign.id }}{% endif %}">
+    <input type="hidden" name="draft_uuid" id="draft_uuid" value="{{ draft_uuid }}">
     <input type="hidden" name="selected_template_id" value="{{ selected_template_id }}">
     <input type="hidden" name="send_button_clicked" id="send_button_clicked_id" value="0">
     <input type="hidden" name="send_time_option" id="send_time_option_input" value="{% if email_campaign.scheduled_send_time %}scheduled{% else %}now{% endif %}">
@@ -171,8 +272,11 @@
 {% endblock %}
 
 {% block extrabody %}
-<!-- Use TinyMCE via Local -->
-<script src="{% static 'tinymce/tinymce.min.js' %}"></script>
+<!-- Use TinyMCE -->
+<script src="https://quality.wevote.us/javascript/api-server/tinymce/tinymce.min.js"></script>
+  <script>
+    {% include "email_outbound/js/_tinymce_loader_js.html" %}
+  </script>
 <style>
   .recipient-chip {
     display: inline-block;
@@ -466,9 +570,11 @@
       const campaignTitle = document.getElementById('campaign_title').value.trim();
       // const templateId = document.getElementById('template_select').value;
       const hasRecipients = selectedRecipientDictList.length > 0;
+      const hasAudienceBuilder = document.getElementById('audience_builder_id_id').value;
       const sendBtn = document.getElementById('send-campaign-btn');
-      
-      if (campaignTitle && hasRecipients) {
+
+      // TODO: Give indication in the UI why the send button is disabled
+      if (campaignTitle && (hasRecipients || hasAudienceBuilder)) {
         sendBtn.disabled = false;
       } else {
         sendBtn.disabled = true;
@@ -512,15 +618,75 @@
           }
           
           if (data.message) {
-            // Set textarea value directly
-            // document.getElementById('email_body').value = data.message;
-            if (tinymce.get('email_body')) {
-              tinymce.get('email_body').setContent(data.message);
-            } else {
-              document.getElementById('email_body').value = data.message;
-            }
-            console.log('Content set successfully');
+              // Set textarea value directly
+              // document.getElementById('email_body').value = data.message;
+              if (tinymce.get('email_body')) {
+                  tinymce.get('email_body').setContent(data.message);
+              } else {
+                  document.getElementById('email_body').value = data.message;
+              }
+              console.log('Content set successfully');
           }
+          const clean = (val) => (val ? val.toString() : "null");
+
+          {#const copyUrl = draftUuid ? `{% url 'email_outbound:copy_attachments_to_campaign_draft' 111111 222222 %}`#}
+          {#    .replace("111111", templateId).replace("222222", draftUuid ?? '') :#}
+          {#    `{% url 'email_outbound:copy_attachments_to_campaign' 111111 222222 %}`#}
+          {#    .replace("111111", templateId).replace("222222", campaign_id ? campaign_id.toString() : '');#}
+          const copyUrl = `{% url 'email_outbound:copy_attachments_to_campaign' 'T_ID' 'C_ID' 'D_UUID' %}`
+              .replace("T_ID", clean(templateId))
+              .replace("C_ID", clean(campaign_id))
+              .replace("D_UUID", clean(draftUuid));
+          console.log(`copyURL: ${copyUrl}`)
+          fetch(copyUrl, {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": csrfToken,
+            },
+          }).then(res => {
+            if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+            console.log(res)
+            return res.json()
+          }).then(data => {
+              if (!data.ok) throw new Error("Upload failed");
+              (data.attachments || []).forEach(att => {
+                  // Add to existing attachments list
+                const li = document.createElement("li");
+                li.className = "list-group-item d-flex justify-content-between align-items-center";
+                li.dataset.attId = att.id;
+                const downloadUrl = "{% url 'email_outbound:email_attachment_download' attachment_id=0 %}".replace('0', att.id);
+                li.innerHTML = att.is_inline ? `
+                  <div class="d-flex flex-row align-items-center" >
+                    <div class="d-flex flex-column mr-3">
+                      <span class="fw-semibold">${att.name}</span>
+                      <small class="muted">Just now</small>
+                    </div>
+                    <span><b>(Inline)</b></span>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary" href="${downloadUrl}">Download</a>
+                  </div>
+                ` :
+                `
+                  <div class="d-flex flex-column">
+                    <span class="fw-semibold">${att.name}</span>
+                    <small class="muted">Just now</small>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary" href="${downloadUrl}">Download</a>
+                    <button type="button" class="btn btn-sm btn-outline-danger">Delete</button>
+                  </div>
+                `;
+
+                // event listener to call deleteCampaignAttachment
+                const deleteBtn = li.querySelector("button.btn-outline-danger");
+                if (deleteBtn) deleteBtn.addEventListener("click", () => deleteCampaignAttachment(att.id));
+                // If list is empty placeholder, remove it
+                const placeholder = existingCampaignAttachments.querySelector(".list-group-item.muted");
+                if (placeholder) placeholder.remove();
+                existingCampaignAttachments.prepend(li);
+              })
+          })
         })
         .catch(error => {
           console.error('Error loading template:', error);
@@ -699,7 +865,8 @@
       const action = isScheduled ? 'schedule' : 'send';
       const timeInfo = isScheduled ? ' for ' + new Date(scheduledTime).toLocaleString() : '';
 
-      if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign to ' + String(selectedRecipientDictList.length) + ' recipient(s)' + timeInfo + '?')) {
+      // if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign to ' + String(selectedRecipientDictList.length) + ' recipient(s)' + timeInfo + '?')) {
+      if (confirm(action.charAt(0).toUpperCase() + action.slice(1) + ' this email campaign?')) {
         // alert(action.charAt(0).toUpperCase() + action.slice(1) + ' functionality will be implemented on the backend.');
         // We want to call the save API with a variable to proceed to sending after save
         sendButtonClicked.value = 1;
@@ -735,68 +902,146 @@
     window.location.href = '{% url "email_outbound:email_campaign_edit" %}?id=' + campaignId + '&google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}';
   }
 
-  // Initialize TinyMCE for email body
-  document.addEventListener('DOMContentLoaded', function () {
-    if (!window.tinymce) {
-      console.log('TinyMCE did not load from static.');
-      return;
-    } else {
-      console.log('tinymce loaded (self-hosted)');
-    }
-    if (tinymce.get('email_body')) tinymce.get('email_body').remove();
+  // Attachment functions
+  const csrfToken = "{{ csrf_token }}";
+  const campaign_id = {% if email_campaign and email_campaign.id %}{{ email_campaign.id }}{% else %}null{% endif %};
 
-    tinymce.init({
-      selector: '#email_body',
-      license_key: 'gpl',
-      menubar: true,
-      plugins: 'advlist autolink lists link image charmap preview anchor ' +
-               'searchreplace visualblocks code fullscreen insertdatetime media ' +
-               'table help wordcount',
-      toolbar: 'undo redo | blocks fontsize | ' +
-               'bold italic underline strikethrough | forecolor backcolor | ' +
-               'alignleft aligncenter alignright alignjustify | ' +
-               'outdent indent | bullist numlist | ' +
-               'link image media table | removeformat code fullscreen help',
-      toolbar_mode: 'wrap',
-      height: 500,
-      branding: false,
-      promotion: false,
-      content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px; line-height: 1.6; }',
-      link_default_target: '_blank',
-      link_assume_external_targets: true,
-      block_formats: 'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; Heading 4=h4; Heading 5=h5; Heading 6=h6; Preformatted=pre',
-      font_size_formats: '8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt',
-      extended_valid_elements: '*[*]',
-      valid_children: '+body[style]',
-      images_upload_handler: function (blobInfo, success, failure) {
-        var reader = new FileReader();
-        reader.onload = function() { success(reader.result); };
-        reader.onerror = function() { failure('Image upload failed'); };
-        reader.readAsDataURL(blobInfo.blob());
+  const draftUuid = "{{ draft_uuid|default:'' }}";
+  if (draftUuid) console.log("DraftUuid: ", draftUuid);
+
+  const uploadUrl = `{% url 'email_outbound:email_attachment_upload' %}?draft_uuid=${draftUuid}`;
+  console.log(`uploadURL: ${uploadUrl}`)
+
+  const existingCampaignAttachments = document.getElementById("existingAttachments");
+  const uploadBtn = document.getElementById("uploadBtn");
+  const input = document.getElementById("attachmentInput");
+  const fileList = document.getElementById("fileList");
+  const btnText = document.getElementById("btnText");
+  const btnSpinner = document.getElementById("btnSpinner");
+
+  async function deleteCampaignAttachment(attId) {
+    const deleteUrl = "{% url 'email_outbound:email_attachment_delete' attachment_id=999999 %}".replace("999999", attId);
+
+    const res = await fetch(deleteUrl, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfToken,
       },
-      file_picker_types: 'image',
-      file_picker_callback: function(callback, value, meta) {
-        if (meta.filetype === 'image') {
-          var input = document.createElement('input');
-          input.type = 'file';
-          input.accept = 'image/*';
-          input.onchange = function() {
-            var file = this.files[0];
-            var reader = new FileReader();
-            reader.onload = function() {
-              callback(reader.result, { alt: file.name });
-            };
-            reader.readAsDataURL(file);
-          };
-          input.click();
-        }
-      },
-      setup: function(editor) {
-        editor.on('init', function() {
-          console.log('TinyMCE initialized successfully');
-        });
-      }
     });
+
+    if (!res.ok) {
+      alert("Delete failed.");
+      return;
+    }
+    const data = await res.json();
+    if (data.ok) {
+      const row = existingAttachments.querySelector(`[data-att-id="${attId}"]`);
+      if (row) row.remove();
+    }
+  }
+
+  // Show list of selected files
+  input.addEventListener("change", function () {
+    fileList.innerHTML = ""; // Clear existing list
+    const files = Array.from(this.files);
+
+    if (files.length > 0) {
+      uploadBtn.disabled = false;
+      files.forEach(file => {
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center";
+        li.textContent = file.name;
+        fileList.appendChild(li);
+      });
+    } else {
+      uploadBtn.disabled = true;
+    }
+  });
+
+  uploadBtn.addEventListener("click", async () => {
+    if (!input.files || input.files.length === 0) return;
+
+    uploadBtn.disabled = true;
+    btnText.textContent = "Uploading...";
+    btnSpinner.classList.remove("d-none");
+
+    const formData = new FormData();
+    [...input.files].forEach(f => formData.append("attachments", f));
+
+    try {
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Upload failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      if (!data.ok) {
+        throw new Error("Upload failed");
+      }
+
+      // Clears the input
+      input.value = "";
+      fileList.innerHTML = "";
+
+      // mark each uploaded item as done + add to existing list
+      (data.attachments || []).forEach(att => {
+
+        // Add to existing attachments list
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center";
+        li.dataset.attId = att.id;
+        const downloadUrl = "{% url 'email_outbound:email_attachment_download' attachment_id=0 %}".replace('0', att.id);
+        li.innerHTML = att.is_inline ? `
+          <div class="d-flex flex-row align-items-center" >
+            <div class="d-flex flex-column mr-3">
+              <span class="fw-semibold">${att.name}</span>
+              <small class="muted">Just now</small>
+            </div>
+            <span><b>(Inline)</b></span>
+          </div>
+          <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="${downloadUrl}">Download</a>
+          </div>
+        ` :
+        `
+          <div class="d-flex flex-column">
+            <span class="fw-semibold">${att.name}</span>
+            <small class="muted">Just now</small>
+          </div>
+          <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="${downloadUrl}">Download</a>
+            <button type="button" class="btn btn-sm btn-outline-danger">Delete</button>
+          </div>
+        `;
+        // event listener to call deleteCampaignAttachment
+        const deleteBtn = li.querySelector("button.btn-outline-danger");
+        if (deleteBtn) deleteBtn.addEventListener("click", () => deleteCampaignAttachment(att.id));
+        // If list is empty placeholder, remove it
+        const placeholder = existingCampaignAttachments.querySelector(".list-group-item.muted");
+        if (placeholder) placeholder.remove();
+        existingCampaignAttachments.prepend(li);
+      });
+
+      // reset picker
+      input.value = "";
+
+    } catch (err) {
+      // mark all as failed
+      console.error(err);
+      alert("Upload failed. Check server logs / response.");
+    } finally {
+      // End Loading State
+      btnText.textContent = "Upload selected";
+      btnSpinner.classList.add("d-none");
+      uploadBtn.disabled = true;
+    }
   });
 </script>
 

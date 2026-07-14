@@ -3,10 +3,8 @@
 # -*- coding: UTF-8 -*-
 
 from .controllers import electoral_districts_import_from_sample_file
-from .models import ElectoralDistrict, ElectoralDistrictManager, ElectoralDistrictLinkToPollingLocation
+from .models import ElectoralDistrict, ElectoralDistrictLinkToPollingLocation
 from admin_tools.views import redirect_to_sign_in_page
-from ballot.models import BallotReturnedListManager
-from config.base import get_environment_variable
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages
@@ -17,11 +15,9 @@ from django.shortcuts import render
 from exception.models import handle_record_found_more_than_one_exception
 from import_export_ctcl.controllers import CTCL_SAMPLE_XML_FILE
 from voter.models import voter_has_authority
-from wevote_functions.functions import convert_state_code_to_state_text, convert_to_float, convert_to_int, \
+from wevote_functions.functions import convert_state_code_to_state_text, convert_to_int, \
     positive_value_exists
 import wevote_functions.admin
-from django.http import HttpResponse
-import json
 
 logger = wevote_functions.admin.get_logger(__name__)
 

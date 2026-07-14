@@ -3,11 +3,9 @@
 # -*- coding: UTF-8 -*-
 
 import json
-import string
 
 from django.db import models
 from django.db.models import Q
-from django.utils.text import slugify
 
 import wevote_functions.admin
 from exception.models import handle_record_found_more_than_one_exception, \
@@ -15,8 +13,7 @@ from exception.models import handle_record_found_more_than_one_exception, \
 from organization.models import Organization, OrganizationManager, OrganizationTeamMember
 from politician.models import Politician
 from wevote_functions.functions import convert_to_int, \
-    extract_first_name_from_full_name, extract_middle_name_from_full_name, \
-    extract_last_name_from_full_name, \
+    extract_first_name_from_full_name, extract_last_name_from_full_name, \
     positive_value_exists
 from wevote_functions.functions_date import generate_date_as_integer
 from wevote_settings.models import fetch_next_we_vote_id_campaignx_integer, \
@@ -119,6 +116,7 @@ class CampaignX(models.Model):
     #  This organization_we_vote_id field (cached, not the master link) is the
     #  "Endorser" object attached to that politician.
     organization_we_vote_id = models.CharField(max_length=255, null=True, db_index=True)
+    # passkey_for_creating_campaign_owner is also used for politician_passkey
     passkey_for_creating_campaign_owner = models.CharField(max_length=25, null=True, db_index=True)
     politician_starter_list_serialized = models.TextField(null=True, blank=True)
     profile_image_background_color = models.CharField(blank=True, null=True, max_length=7)

@@ -214,9 +214,17 @@ class CandidateChangeLog(models.Model):  # Formerly called CandidateLogEntry
             #             we_vote_id,
             #             "{issue_name}".format(issue_name=issue_name))
             # change_description_augmented = change_description_augmented\
+            #     .replace("ADDED", "<span style=\'color: #A9A9A9;\'>ADDED</span><br />")
+            # change_description_augmented = change_description_augmented\
             #     .replace("ADD", "<span style=\'color: #A9A9A9;\'>ADDED</span><br />")
             # change_description_augmented = change_description_augmented\
+            #     .replace("CLEARED", "<span style=\'color: #A9A9A9;\'>CLEARED</span><br />")
+            # change_description_augmented = change_description_augmented\
+            #     .replace("REMOVED", "<span style=\'color: #A9A9A9;\'>REMOVED</span><br />")
+            # change_description_augmented = change_description_augmented\
             #     .replace("REMOVE", "<span style=\'color: #A9A9A9;\'>REMOVED</span><br />")
+            # change_description_augmented = change_description_augmented\
+            #     .replace("REPLACED", "<span style=\'color: #A9A9A9;\'>REPLACED</span><br />")
             return change_description_augmented
         else:
             return ''
@@ -2661,7 +2669,7 @@ class CandidateCampaign(models.Model):
     opposers_count = models.PositiveIntegerField(default=0)  # From linked_campaignx_we_vote_id CampaignX entry
     threads_handle = models.TextField(blank=True, null=True)
     tiktok_url = models.TextField(blank=True, null=True)
-    
+
     twitter_url = models.URLField(verbose_name='twitter url of candidate', blank=True, null=True)
     twitter_user_id = models.BigIntegerField(verbose_name="twitter id", null=True, blank=True)
     # TODO Update whole system to handle candidate_twitter_handle2 and 3
@@ -5131,10 +5139,10 @@ class CandidateManager(models.Manager):
         """
         Save profile image url for candidate in image table
         This function could be updated to save images from other sources beyond ORGANIZATION_ENDORSEMENTS_IMAGE_NAME
-        :param candidate: 
-        :param candidate_photo_url: 
-        :param save_to_candidate_object: 
-        :return: 
+        :param candidate:
+        :param candidate_photo_url:
+        :param save_to_candidate_object:
+        :return:
         """
         status = ''
         success = False
@@ -5190,9 +5198,9 @@ class CandidateManager(models.Manager):
     @staticmethod
     def count_candidates_for_election(google_civic_election_id):
         """
-        Return count of candidates found for a given election        
-        :param google_civic_election_id: 
-        :return: 
+        Return count of candidates found for a given election
+        :param google_civic_election_id:
+        :return:
         """
         candidates_count = 0
         success = False

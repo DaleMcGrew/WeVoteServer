@@ -1,5 +1,4 @@
 from django.test import TestCase
-from voter.models import VoterManager
 from wevote_tokens.models.single_use_tokens import SingleUseToken, SingleUseTokenManager, Scope
 from cryptography.fernet import Fernet
 import json
@@ -51,7 +50,7 @@ class TestSingleUseToken(TestCase):
             "_validation Not Set Correctly")
         self.assertEqual(
             json.loads(self.test_cipher.decrypt(token._json_data_encrypted).decode('utf-8')),
-            json_data, 
+            json_data,
             "_json_data_encrypted Not Set Correctly")
         self.assertLessEqual(
             (timezone.now() + timedelta(seconds=expiration_seconds)) - token._expiration_datetime,

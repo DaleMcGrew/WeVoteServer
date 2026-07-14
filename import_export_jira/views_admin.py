@@ -8,10 +8,9 @@ import logging
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
-from wevote_functions.functions import positive_value_exists
 from voter.models import voter_has_authority
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from jira.exceptions import JIRAError
 from .controllers import JiraExcelLoader, JiraApiControl, MAX_SUBTASK_COLUMNS
 

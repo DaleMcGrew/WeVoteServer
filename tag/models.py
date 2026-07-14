@@ -3,7 +3,6 @@
 # -*- coding: UTF-8 -*-
 
 from django.db import models
-from twitter.models import Tweet
 
 
 class Tag(models.Model):

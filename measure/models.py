@@ -55,6 +55,11 @@ CONTEST_MEASURE_UNIQUE_IDENTIFIERS = [
     'wikipedia_photo_url',
 ]
 
+CONTEST_MEASURE_UNIQUE_ATTRIBUTES_TO_BE_CLEARED = [
+    'maplight_id',
+    'vote_smart_id',
+]
+
 
 # The measure that is on the ballot (equivalent to ContestOffice)
 class ContestMeasure(models.Model):
@@ -987,14 +992,14 @@ class ContestMeasureManager(models.Manager):
             measure_we_vote_id,
             defaults):
         """
-            Update ContestMeasure table entry with matching we_vote_id 
-        :param measure_title: 
-        :param measure_subtitle: 
-        :param measure_text: 
-        :param state_code: 
-        :param ctcl_uuid: 
-        :param google_civic_election_id: 
-        :param measure_we_vote_id:  
+            Update ContestMeasure table entry with matching we_vote_id
+        :param measure_title:
+        :param measure_subtitle:
+        :param measure_text:
+        :param state_code:
+        :param ctcl_uuid:
+        :param google_civic_election_id:
+        :param measure_we_vote_id:
         :param defaults:
         :return:
         """
@@ -1064,6 +1069,47 @@ class ContestMeasureManager(models.Manager):
             }
         return results
 
+    @staticmethod
+    def update_or_create_measures_are_not_duplicates(measure1_we_vote_id, measure2_we_vote_id):
+        """
+        Either update or create a measure entry.
+        """
+        exception_multiple_object_returned = False
+        success = False
+        new_measures_are_not_duplicates_created = False
+        measures_are_not_duplicates = None
+        status = ""
+
+        if positive_value_exists(measure1_we_vote_id) and positive_value_exists(measure2_we_vote_id):
+            try:
+                updated_values = {
+                    'contest_measure1_we_vote_id':    measure1_we_vote_id,
+                    'contest_measure2_we_vote_id':    measure2_we_vote_id,
+                }
+                measures_are_not_duplicates, new_measures_are_not_duplicates_created = \
+                    ContestMeasuresAreNotDuplicates.objects.update_or_create(
+                        contest_measure1_we_vote_id__exact=measure1_we_vote_id,
+                        contest_measure2_we_vote_id=measure2_we_vote_id,
+                        defaults=updated_values)
+                success = True
+                status += "MEASURES_ARE_NOT_DUPLICATES_UPDATED_OR_CREATED "
+            except ContestMeasuresAreNotDuplicates.MultipleObjectsReturned as e:
+                success = False
+                status += 'MULTIPLE_MATCHING_MEASURES_ARE_NOT_DUPLICATES_FOUND_BY_MEASURE_WE_VOTE_ID '
+                exception_multiple_object_returned = True
+            except Exception as e:
+                status += 'EXCEPTION_UPDATE_OR_CREATE_MEASURES_ARE_NOT_DUPLICATES ' \
+                         '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
+                success = False
+
+        results = {
+            'success':                                      success,
+            'status':                                       status,
+            'MultipleObjectsReturned':                      exception_multiple_object_returned,
+            'new_measures_are_not_duplicates_created':      new_measures_are_not_duplicates_created,
+            'measures_are_not_duplicates':                  measures_are_not_duplicates,
+        }
+        return results
 
 class ContestMeasureListManager(models.Manager):
     """
@@ -1630,9 +1676,20 @@ class ContestMeasureListManager(models.Manager):
         return results
 
     @staticmethod
-    def retrieve_measure_count_for_election_and_state(google_civic_election_id=0, state_code=''):
+    def retrieve_measure_count_for_election_and_state(
+            google_civic_election_id=0,
+            state_code='',
+            google_civic_election_id_list=None,
+    ):
+        """Return the number of measures for the supplied election(s) and state.
+
+        We allow either a single election id or a list of ids so that callers
+        can provide the same list they used for filtering.  If both a single id
+        and a list are provided the list takes precedence.
+        """
         status = ''
-        if not positive_value_exists(google_civic_election_id) and not positive_value_exists(state_code):
+        if not positive_value_exists(google_civic_election_id) and not positive_value_exists(state_code) \
+                and not positive_value_exists(google_civic_election_id_list):
             status += 'VALID_ELECTION_ID_AND_STATE_CODE_MISSING '
             results = {
                 'success':                  False,
@@ -1645,16 +1702,21 @@ class ContestMeasureListManager(models.Manager):
 
         try:
             measure_queryset = ContestMeasure.objects.using('readonly').all()
-            if positive_value_exists(google_civic_election_id):
-                google_civic_election_id_list = [convert_to_int(google_civic_election_id)]
-                measure_queryset = measure_queryset.filter(google_civic_election_id__in=google_civic_election_id_list)
+            # apply election filter(s)
+            if positive_value_exists(google_civic_election_id_list):
+                # trust the caller-provided list over a single id
+                measure_queryset = measure_queryset.filter(
+                    google_civic_election_id__in=google_civic_election_id_list)
+            elif positive_value_exists(google_civic_election_id):
+                measure_queryset = measure_queryset.filter(
+                    google_civic_election_id=google_civic_election_id)
             if positive_value_exists(state_code):
                 measure_queryset = measure_queryset.filter(state_code__iexact=state_code)
             measure_count = measure_queryset.count()
             success = True
             status += "MEASURE_COUNT_FOUND "
         except ContestMeasure.DoesNotExist:
-            # No candidates found. Not a problem.
+            # No measures found. Not a problem.
             status += 'NO_MEASURES_FOUND_DoesNotExist '
             measure_count = 0
             success = True
@@ -1899,11 +1961,29 @@ class ContestMeasuresAreNotDuplicates(models.Model):
     When checking for duplicates, there are times when we want to explicitly mark two contest measures as NOT duplicates
     """
     contest_measure1_we_vote_id = models.CharField(
-        verbose_name="first contest measure we are tracking", max_length=255, null=True, unique=False, db_index=True)
+        verbose_name="first contest measure we are tracking", max_length=255, null=True, unique=False)
     contest_measure2_we_vote_id = models.CharField(
-        verbose_name="second contest measure we are tracking", max_length=255, null=True, unique=False, db_index=True)
+        verbose_name="second contest measure we are tracking", max_length=255, null=True, unique=False)
 
-    def fetch_other_office_we_vote_id(self, one_we_vote_id):
+    def fetch_other_contest_measure_we_vote_id(self, one_we_vote_id):
+        if one_we_vote_id == self.contest_measure1_we_vote_id:
+            return self.contest_measure2_we_vote_id
+        elif one_we_vote_id == self.contest_measure2_we_vote_id:
+            return self.contest_measure1_we_vote_id
+        else:
+            # If the we_vote_id passed in wasn't found, don't return another we_vote_id
+            return ""
+
+
+class ContestMeasuresArePossibleDuplicates(models.Model):
+    """
+    When checking for duplicates, there are times when we want to explicitly mark two measures as possible duplicates
+    """
+    contest_measure1_we_vote_id = models.CharField(max_length=255, null=True, unique=False)
+    contest_measure2_we_vote_id = models.CharField(max_length=255, null=True, unique=False)
+    state_code = models.CharField(max_length=2, null=True)
+
+    def fetch_other_contest_measure_we_vote_id(self, one_we_vote_id):
         if one_we_vote_id == self.contest_measure1_we_vote_id:
             return self.contest_measure2_we_vote_id
         elif one_we_vote_id == self.contest_measure2_we_vote_id:

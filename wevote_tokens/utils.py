@@ -1,10 +1,12 @@
-from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
-from wevote_tokens.enums import TokenTypes, TokenHeaders, TokenResponse, Prefixes
-from wevote_functions.functions import positive_value_exists
-from django.http import HttpResponse, StreamingHttpResponse
-import re
 import json
 import logging
+
+from django.http import HttpResponse, StreamingHttpResponse
+
+from config.environment_variable_functions import get_environment_variable_default
+from wevote_functions.functions import positive_value_exists
+from wevote_tokens.enums import TokenTypes, TokenHeaders, TokenResponse
+from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
 
 
 class TokensManager():
@@ -355,4 +357,5 @@ class TokensManager():
         }
         
         # TODO: change level to info when possible. Add security tagging.
-        logging.warning("[TOKEN_MANAGER_TEST_WARNING]: " + json.dumps(result))
+        if not get_environment_variable_default("DEBUG_FASTLOAD_SINGLE_SERVER", False):
+            logging.warning("[TOKEN_MANAGER_TEST_WARNING]: " + json.dumps(result))

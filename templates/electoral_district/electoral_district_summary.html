@@ -1,57 +1,84 @@
 {# templates/electoral_district/electoral_district_summary.html #}
 {% extends "template_base.html" %}
 
-{% block title %}{% if electoral_district %}{{ electoral_district.electoral_district_name }} Summary{% else %}No Election Found{% endif %}{% endblock %}
+{% block title %}
+  {% if electoral_district %}
+    {{ electoral_district.electoral_district_name }} Summary
+  {% else %}
+    No Election Found
+  {% endif %}
+{% endblock %}
 
-{%  block content %}
-{% load template_filters %}
+{% block content %}
+  {% load template_filters %}
 
-{% if electoral_district %}
+  {% if electoral_district %}
 
-<h1>{{ electoral_district.electoral_district_name }}</h1>
+    <h1>{{ electoral_district.electoral_district_name }}</h1>
 
-<form action="{% url "election:election_edit_process" %}" method="post" class="form-horizontal">
+    <form action="{% url "election:election_edit_process" %}"
+          method="post"
+          class="form-horizontal">
 
-    <div class="form-group">
-        <label for="electoral_district_id" class="col-sm-3 control-label">Electoral District{% if electoral_district %} (ID: {{ electoral_district.id }}){% endif %}</label>
+      <div class="form-group">
+        <label for="electoral_district_id" class="col-sm-3 control-label">
+          Electoral District
+          {% if electoral_district %}(ID: {{ electoral_district.id }}){% endif %}
+        </label>
         <div class="col-sm-8">
-            <input type="text" name="electoral_district_name" id="electoral_district_name_id" class="form-control" disabled
-                   value="{% if electoral_district %}{{ electoral_district.electoral_district_name }}{% endif %}" />
+          <input type="text"
+                 name="electoral_district_name"
+                 id="electoral_district_name_id"
+                 class="form-control"
+                 disabled
+                 value="{% if electoral_district %}{{ electoral_district.electoral_district_name }}{% endif %}" />
         </div>
-    </div>
+      </div>
 
-    <div class="form-group">
+      <div class="form-group">
         <label for="google_civic_election_id_id" class="col-sm-3 control-label">TBD</label>
         <div class="col-sm-8">
-            <input type="text" name="google_civic_election_id" id="google_civic_election_id_id" class="form-control" disabled
-                   value="{% if election %}{{ election.google_civic_election_id|default_if_none:"" }}{% endif %}" />
+          <input type="text"
+                 name="google_civic_election_id"
+                 id="google_civic_election_id_id"
+                 class="form-control"
+                 disabled
+                 value="{% if election %}{{ election.google_civic_election_id|default_if_none:"" }}{% endif %}" />
         </div>
-    </div>
+      </div>
 
-    <div class="form-group">
+      <div class="form-group">
         <label for="election_day_text_id" class="col-sm-3 control-label">TBD</label>
         <div class="col-sm-8">
-            <input type="text" name="election_day_text" id="election_day_text_id" class="form-control" disabled
-                   value="{% if election %}{{ election.election_day_text|default_if_none:"" }}{% endif %}" />
+          <input type="text"
+                 name="election_day_text"
+                 id="election_day_text_id"
+                 class="form-control"
+                 disabled
+                 value="{% if election %}{{ election.election_day_text|default_if_none:"" }}{% endif %}" />
         </div>
-    </div>
+      </div>
 
-    <div class="form-group">
+      <div class="form-group">
         <label for="state_id" class="col-sm-3 control-label">TBD</label>
         <div class="col-sm-8">
-            <input type="text" name="state" id="state_id" class="form-control" disabled
-                   value="{% if election %}{{ election.state_code|default_if_none:"" }}{% endif %}" />
+          <input type="text"
+                 name="state"
+                 id="state_id"
+                 class="form-control"
+                 disabled
+                 value="{% if election %}{{ election.state_code|default_if_none:"" }}{% endif %}" />
         </div>
-    </div>
-</form>
-{% endif %}
+      </div>
+    </form>
+  {% endif %}
 
-    <script>
+  <script>
         $(function() {
             $('#state_code_id').change(function() {
                 this.form.submit();
             });
         });
-    </script>
+  </script>
 
 {% endblock %}

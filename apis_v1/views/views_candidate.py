@@ -6,7 +6,7 @@ from candidate.controllers import candidate_retrieve_for_api, candidates_query_f
 from candidate.views_admin import candidate_change_names
 from politician.views_admin import politician_change_names
 from django.contrib.auth.decorators import login_required
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 import json
 import wevote_functions.admin

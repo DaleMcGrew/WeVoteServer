@@ -1,0 +1,36 @@
+version: 0.2
+
+# BuildSpec for the Batch Processor Lambda image.
+# Environment variables injected by the CDK CodeBuild project:
+#   BATCH_LAMBDA_REPO_URI       — ECR repository URI for the Lambda image
+#   BATCH_LAMBDA_FUNCTION_NAME  — Lambda function name to update after push
+#   AWS_DEFAULT_REGION          — AWS region
+
+env:
+  shell: bash
+phases:
+  pre_build:
+    on-failure: ABORT
+    commands:
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=build}
+      - ECR_LOGIN_HOST=$(echo $BATCH_LAMBDA_REPO_URI | sed 's#/.*##')
+      - echo Logging into ECR
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_LOGIN_HOST
+  build:
+    on-failure: ABORT
+    commands:
+      - echo Build started at $(date)
+      - docker build -f docker/Dockerfile.lambda-batch -t wevote-batch-processor:latest .
+  post_build:
+    on-failure: ABORT
+    commands:
+      - echo Tagging and pushing batch processor Lambda image
+      - docker tag wevote-batch-processor:latest $BATCH_LAMBDA_REPO_URI:$IMAGE_TAG
+      - docker tag wevote-batch-processor:latest $BATCH_LAMBDA_REPO_URI:latest
+      - docker push $BATCH_LAMBDA_REPO_URI:$IMAGE_TAG
+      - docker push $BATCH_LAMBDA_REPO_URI:latest
+      - echo Updating Lambda function to image $BATCH_LAMBDA_REPO_URI:$IMAGE_TAG
+      - aws lambda update-function-code --function-name $BATCH_LAMBDA_FUNCTION_NAME --image-uri $BATCH_LAMBDA_REPO_URI:$IMAGE_TAG
+      - aws lambda wait function-updated --function-name $BATCH_LAMBDA_FUNCTION_NAME
+      - echo Lambda update complete

@@ -239,6 +239,7 @@
           <th>Campaign name</th>
           <th>Sent</th>
           <th>Recipients</th>
+          <th>Bounced</th>
           <th>Opened</th>
           <th>Open rate</th>
           <th></th>
@@ -254,10 +255,33 @@
                 {{ campaign.email_campaign_name }}
               </a>
             </td>
-            <td>{{ campaign.scheduled_send_time|date:"m/d/Y"|default:"06/21/2025" }}</td>
-            <td>934</td>
-            <td>501</td>
-            <td>53.6%</td>
+            <td style="white-space: nowrap;">
+                {% if campaign.date_sent %}
+                    {{ campaign.date_sent|date:"m/d/Y g:iA"|default:"" }}
+                {% else %}
+                    <span class="text-muted">—</span>
+                {% endif %}
+            </td>
+            <td style="text-align: center;">
+                <a href="{% url 'email_outbound:email_recipient_list' %}?id={{ campaign.id }}&google_civic_election_id={{ google_civic_election_id}}"
+                   target="_blank">
+                {{ campaign.recipient_count }}
+                </a>
+            </td>
+            <td style="text-align: center;">
+{#                {{ campaign.bounce_count }}#}
+                coming soon
+            </td>
+            <td style="text-align: center;">
+                {{ campaign.open_count }}
+            </td>
+            <td>
+                {% if campaign.open_rate %}
+                    {{ campaign.open_rate }}%
+                {% else %}
+                    <span class="text-muted">—</span>
+                {% endif %}
+            </td>
             <td>
               <div class="wv-dropdown">
                 <button type="button" class="wv-kebab js-dd">•••</button>

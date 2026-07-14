@@ -3,12 +3,14 @@
 # -*- coding: UTF-8 -*-
 
 import json
+import hmac
 from datetime import datetime, timezone
 from time import time
 from sendgrid import sendgrid
 from sendgrid.helpers.mail import Mail, Email, To, Content
 from django.contrib import messages
 from django.core.exceptions import RequestDataTooBig
+from django.db.models import F
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django_user_agents.utils import get_user_agent
@@ -19,16 +21,16 @@ from apis_v1.views import views_voter_utils
 from ballot.controllers import choose_election_and_prepare_ballot_data, voter_ballot_items_retrieve_for_api, \
     voter_ballot_list_retrieve_for_api
 from ballot.models import BallotItemListManager, BallotReturnedManager, find_best_previously_stored_ballot_returned, \
-    OFFICE, CANDIDATE, MEASURE, POLITICIAN, VoterBallotSavedManager
+    OFFICE, CANDIDATE, MEASURE, VoterBallotSavedManager
 from bookmark.controllers import voter_all_bookmarks_status_retrieve_for_api, voter_bookmark_off_save_for_api, \
     voter_bookmark_on_save_for_api, voter_bookmark_status_retrieve_for_api
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from email_outbound.controllers import voter_email_address_retrieve_for_api, voter_email_address_save_for_api, \
     voter_email_address_send_sign_in_code_email_for_api, voter_email_address_sign_in_for_api, \
     voter_email_address_verify_for_api
 from email_outbound.models import EmailManager
 from follow.controllers import voter_issue_follow_for_api
-from follow.models import FollowIssueList
+from follow.models import FOLLOWING, FollowIssue
 from geoip.controllers import voter_location_retrieve_from_ip_for_api
 from image.controllers import TWITTER, FACEBOOK, cache_master_and_resized_image, create_resized_images
 from import_export_ballotpedia.controllers import voter_ballot_items_retrieve_from_ballotpedia_for_api_v4
@@ -36,8 +38,8 @@ from import_export_facebook.controllers import voter_facebook_sign_in_retrieve_f
     voter_facebook_sign_in_save_auth_for_api, voter_facebook_save_to_current_account_for_api
 from import_export_google_civic.controllers import voter_ballot_items_retrieve_from_google_civic_for_api
 from import_export_twitter.controllers import voter_twitter_save_to_current_account_for_api
-from issue.models import IssueManager
-from organization.models import INDIVIDUAL, Organization, OrganizationManager
+from issue.models import Issue
+from organization.models import INDIVIDUAL, OrganizationManager
 from position.controllers import voter_all_positions_retrieve_for_api, \
     voter_position_retrieve_for_api, voter_position_comment_save_for_api, voter_position_visibility_save_for_api
 from sms.controllers import voter_sms_phone_number_retrieve_for_api, voter_sms_phone_number_save_for_api
@@ -58,13 +60,23 @@ from voter.models import BALLOT_ADDRESS, fetch_voter_we_vote_id_from_voter_devic
     VoterAddressManager, VoterDeviceLink, VoterDeviceLinkManager, VoterManager, Voter, \
     voter_has_authority, APP_REVIEW_NEGATIVE
 from voter_guide.controllers import voter_follow_all_organizations_followed_by_organization_for_api
-from wevote_functions.functions import convert_to_int, get_maximum_number_to_retrieve_from_request, \
-    get_voter_device_id, is_voter_device_id_valid, positive_value_exists
+from wevote_functions.functions import convert_to_int, generate_random_string, get_maximum_number_to_retrieve_from_request, \
+    get_voter_device_id, is_voter_device_id_valid, positive_value_exists, normalize_sms_phone_number_for_voter_update
 from wevote_functions.functions import extract_first_name_from_full_name, extract_last_name_from_full_name
 from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
 logger = wevote_functions.admin.get_logger(__name__)
 
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
+MANAGEMENT_API_KEY = get_environment_variable("MANAGEMENT_API_KEY", no_exception=True)
+
+STAFF_ACCESS_TO_VOTER_FIELD = {
+    'ANALYTICS_ADMIN': 'is_analytics_admin',
+    'VOTER_MANAGER': 'is_voter_manager',
+    'PARTNER_ORGANIZATION': 'is_partner_organization',
+    'POLITICAL_DATA_MANAGER': 'is_political_data_manager',
+    'POLITICAL_DATA_VIEWER': 'is_political_data_viewer',
+    'VERIFIED_VOLUNTEER': 'is_verified_volunteer',
+}
 
 
 def get_politician_data_results(candidate_id, candidate_we_vote_id, politician_id, politician_we_vote_id):
@@ -207,6 +219,7 @@ def voter_address_retrieve_view(request):  # voterAddressRetrieve
 
     if voter_address_retrieve_results['address_found']:
         status += voter_address_retrieve_results['status']
+        text_for_map_search = voter_address_retrieve_results['text_for_map_search']
         if positive_value_exists(voter_address_retrieve_results['google_civic_election_id']):
             google_civic_election_id = voter_address_retrieve_results['google_civic_election_id']
         else:
@@ -226,11 +239,13 @@ def voter_address_retrieve_view(request):  # voterAddressRetrieve
         status += results['status']
         if results['voter_ballot_saved_found']:
             google_civic_election_id = results['google_civic_election_id']
+        if not positive_value_exists(text_for_map_search):
+            text_for_map_search = results['text_for_map_search']
 
         json_data = {
             'voter_device_id': voter_address_retrieve_results['voter_device_id'],
             'address_type': voter_address_retrieve_results['address_type'],
-            'text_for_map_search': voter_address_retrieve_results['text_for_map_search'],
+            'text_for_map_search': text_for_map_search,
             'google_civic_election_id': google_civic_election_id,
             'ballot_location_display_name': voter_address_retrieve_results['ballot_location_display_name'],
             'ballot_returned_we_vote_id': voter_address_retrieve_results['ballot_returned_we_vote_id'],
@@ -347,24 +362,29 @@ def voter_address_retrieve_view(request):  # voterAddressRetrieve
             voter_address_results = voter_address_manager.retrieve_ballot_address_from_voter_id(voter_id)
             if voter_address_results['voter_address_found']:
                 voter_address = voter_address_results['voter_address']
+                if not positive_value_exists(text_for_map_search):
+                    text_for_map_search = voter_address.text_for_map_search
             else:
                 voter_address = None
 
             results = choose_election_and_prepare_ballot_data(voter_device_link, google_civic_election_id,
                                                               voter_address)
             status += results['status']
-
             if results['voter_ballot_saved_found']:
                 google_civic_election_id = results['google_civic_election_id']
+            if not positive_value_exists(text_for_map_search):
+                text_for_map_search = results['text_for_map_search']
 
             voter_address_retrieve_results = voter_address_retrieve_for_api(voter_device_id)
 
             status += voter_address_retrieve_results['status']
             if voter_address_retrieve_results['address_found']:
+                if not positive_value_exists(text_for_map_search):
+                    text_for_map_search = voter_address_retrieve_results['text_for_map_search']
                 json_data = {
                     'voter_device_id': voter_device_id,
                     'address_type': voter_address_retrieve_results['address_type'],
-                    'text_for_map_search': voter_address_retrieve_results['text_for_map_search'],
+                    'text_for_map_search': text_for_map_search,
                     'google_civic_election_id': google_civic_election_id,
                     'ballot_location_display_name': voter_address_retrieve_results['ballot_location_display_name'],
                     'ballot_returned_we_vote_id': voter_address_retrieve_results['ballot_returned_we_vote_id'],
@@ -1511,6 +1531,23 @@ def voter_issue_follow_view(request):  # issueFollow
     user_agent_object = get_user_agent(request)
     ignore_value = positive_value_exists(request.GET.get('ignore', False))
 
+    # Capture the voter's prior follow state for this issue so we can adjust
+    # Issue.issue_followers_count by the actual transition delta (atomic SQL UPDATE)
+    # rather than recounting FollowIssue rows post-toggle. Atomic delta sidesteps a
+    # read-after-write race against the readonly replica, and is robust when the
+    # cached count and the FollowIssue table aren't in sync (e.g. dev environments
+    # where the master sync brings counts but not the underlying rows).
+    voter_we_vote_id = fetch_voter_we_vote_id_from_voter_device_link(voter_device_id)
+    prior_following = False
+    if positive_value_exists(voter_we_vote_id) and positive_value_exists(issue_we_vote_id):
+        try:
+            prior_row = FollowIssue.objects.using('default').get(
+                voter_we_vote_id=voter_we_vote_id,
+                issue_we_vote_id=issue_we_vote_id)
+            prior_following = (prior_row.following_status == FOLLOWING)
+        except FollowIssue.DoesNotExist:
+            prior_following = False
+
     result = voter_issue_follow_for_api(voter_device_id=voter_device_id,
                                         issue_we_vote_id=issue_we_vote_id,
                                         follow_value=follow_value,
@@ -1519,17 +1556,16 @@ def voter_issue_follow_view(request):  # issueFollow
     result['google_civic_election_id'] = google_civic_election_id
 
     try:
-        # Update the issue_followers_count in the issue table now that a new person has followed or unfollowed an issue
-        issue_manager = IssueManager()
-        results = issue_manager.retrieve_issue(
-            issue_we_vote_id=issue_we_vote_id,
-            read_only=False)
-        if results['issue_found']:
-            issue = results['issue']
-            follow_issue_list_manager = FollowIssueList()
-            issue.issue_followers_count = \
-                follow_issue_list_manager.fetch_follow_issue_count_by_issue_we_vote_id(issue_we_vote_id)
-            issue.save()
+        if result.get('success') and positive_value_exists(issue_we_vote_id):
+            now_following = bool(follow_value)
+            if now_following and not prior_following:
+                Issue.objects.filter(we_vote_id=issue_we_vote_id).update(
+                    issue_followers_count=F('issue_followers_count') + 1)
+            elif prior_following and not now_following:
+                Issue.objects.filter(
+                    we_vote_id=issue_we_vote_id,
+                    issue_followers_count__gt=0,
+                ).update(issue_followers_count=F('issue_followers_count') - 1)
     except Exception as e:
         result['status'] += " COULD_NOT_UPDATE_ISSUE_FOLLOWERS_COUNT: " + str(e) + " "
 
@@ -2638,6 +2674,218 @@ def return_string_value_and_changed_boolean_from_get(request, variable_name):
     return value, value_changed
 
 
+def get_voter_update_request_value(request, variable_name, default=False):
+    if request.method == 'POST':
+        return request.POST.get(variable_name, default)
+    return request.GET.get(variable_name, default)
+
+
+def get_voter_update_request_list(request, variable_name):
+    data = request.POST if request.method == 'POST' else request.GET
+    values = data.getlist(variable_name)
+    values += data.getlist(variable_name + '[]')
+
+    if not values:
+        raw_value = data.get(variable_name, '')
+        if positive_value_exists(raw_value):
+            values = [raw_value]
+
+    normalized_values = []
+    for value in values:
+        for split_value in str(value).split(','):
+            if positive_value_exists(split_value):
+                normalized_values.append(split_value.strip().upper())
+
+    return normalized_values
+
+def voter_update_staff_access_for_api(request):
+    status = ""
+    voter_updated = False
+    voter_created = False
+    voter_found = False
+    voter = None
+
+    management_api_key = get_voter_update_request_value(request, 'management_api_key', '')
+    if not positive_value_exists(MANAGEMENT_API_KEY) or \
+            not hmac.compare_digest(str(management_api_key), str(MANAGEMENT_API_KEY)):
+        return {
+            'success': False,
+            'status': "MANAGEMENT_API_KEY_NOT_ACCEPTED ",
+            'voter_found': False,
+            'voter_created': False,
+            'voter_updated': False,
+        }
+
+    email_address = get_voter_update_request_value(request, 'email_address', '')
+    phone_number = get_voter_update_request_value(request, 'phone_number', '')
+    create_account = positive_value_exists(get_voter_update_request_value(request, 'create_account', False))
+    remove_all_staff_access = positive_value_exists(
+        get_voter_update_request_value(request, 'remove_all_staff_access', False))
+    add_staff_access_list = get_voter_update_request_list(request, 'add_staff_access')
+    remove_staff_access_list = get_voter_update_request_list(request, 'remove_staff_access')
+
+    invalid_access_list = [
+        access for access in add_staff_access_list + remove_staff_access_list
+        if access not in STAFF_ACCESS_TO_VOTER_FIELD
+    ]
+    if invalid_access_list:
+        return {
+            'success': False,
+            'status': "INVALID_STAFF_ACCESS: " + ",".join(invalid_access_list) + " ",
+            'voter_found': False,
+            'voter_created': False,
+            'voter_updated': False,
+        }
+
+    if not positive_value_exists(email_address) and not positive_value_exists(phone_number):
+        return {
+            'success': False,
+            'status': "EMAIL_ADDRESS_OR_PHONE_NUMBER_REQUIRED ",
+            'voter_found': False,
+            'voter_created': False,
+            'voter_updated': False,
+        }
+
+    if positive_value_exists(email_address):
+        email_address = email_address.strip().lower()
+
+    normalized_sms_phone_number = ''
+    if positive_value_exists(phone_number):
+        normalize_results = normalize_sms_phone_number_for_voter_update(phone_number)
+        status += normalize_results['status']
+        if not normalize_results['success']:
+            return {
+                'success': False,
+                'status': status,
+                'voter_found': False,
+                'voter_created': False,
+                'voter_updated': False,
+            }
+        normalized_sms_phone_number = normalize_results['normalized_sms_phone_number']
+
+    voter_manager = VoterManager()
+
+    if positive_value_exists(email_address):
+        email_manager = EmailManager()
+        email_results = email_manager.retrieve_primary_email_with_ownership_verified(
+            normalized_email_address=email_address,
+            read_only=False,
+        )
+        status += email_results['status']
+        if email_results['email_address_object_found']:
+            email_address_object = email_results['email_address_object']
+            voter_results = voter_manager.retrieve_voter_by_we_vote_id(
+                email_address_object.voter_we_vote_id,
+                read_only=False,
+            )
+            status += voter_results['status']
+            if voter_results['voter_found']:
+                voter = voter_results['voter']
+                voter_found = True
+                status += "VOTER_FOUND_BY_VERIFIED_EMAIL "
+
+    if not voter_found and positive_value_exists(normalized_sms_phone_number):
+        voter_results = voter_manager.retrieve_voter_by_sms(normalized_sms_phone_number, read_only=False)
+        status += voter_results['status']
+        if voter_results['voter_found']:
+            voter = voter_results['voter']
+            voter_found = True
+            status += "VOTER_FOUND_BY_VERIFIED_PHONE "
+
+    if not voter_found and create_account:
+        if positive_value_exists(email_address):
+            create_results = Voter.objects.create_new_voter_account(
+                '',
+                '',
+                email_address,
+                generate_random_string(20),
+            )
+            status += create_results['status']
+            if create_results['success']:
+                voter = create_results['voter']
+                voter_found = True
+                voter_created = True
+                status += "VOTER_CREATED_BY_EMAIL "
+            else:
+                status += "VOTER_NOT_CREATED_BY_EMAIL "
+        else:
+            create_results = voter_manager.create_voter()
+            if create_results['voter_created']:
+                voter = create_results['voter']
+                voter_found = True
+                voter_created = True
+                status += "VOTER_CREATED_BY_PHONE "
+            else:
+                status += "VOTER_NOT_CREATED_BY_PHONE "
+
+        if voter_found and positive_value_exists(normalized_sms_phone_number):
+            sms_manager = SMSManager()
+            sms_results = sms_manager.create_sms_phone_number(
+                normalized_sms_phone_number,
+                voter.we_vote_id,
+                sms_ownership_is_verified=True,
+            )
+            status += sms_results['status']
+            if sms_results['sms_phone_number_saved']:
+                ownership_results = voter_manager.update_voter_sms_ownership_verified(
+                    voter,
+                    sms_results['sms_phone_number'],
+                )
+                status += ownership_results['status']
+                voter = ownership_results['voter']
+
+    if not voter_found:
+        return {
+            'success': False,
+            'status': status + "VOTER_NOT_FOUND ",
+            'voter_found': False,
+            'voter_created': voter_created,
+            'voter_updated': False,
+        }
+
+    changed = False
+
+    if remove_all_staff_access:
+        for voter_field in STAFF_ACCESS_TO_VOTER_FIELD.values():
+            if getattr(voter, voter_field):
+                setattr(voter, voter_field, False)
+                changed = True
+
+    for access in remove_staff_access_list:
+        voter_field = STAFF_ACCESS_TO_VOTER_FIELD[access]
+        if getattr(voter, voter_field):
+            setattr(voter, voter_field, False)
+            changed = True
+
+    for access in add_staff_access_list:
+        voter_field = STAFF_ACCESS_TO_VOTER_FIELD[access]
+        if not getattr(voter, voter_field):
+            setattr(voter, voter_field, True)
+            changed = True
+
+    if changed:
+        voter.save()
+        voter_updated = True
+        status += "VOTER_STAFF_ACCESS_UPDATED "
+    else:
+        status += "NO_STAFF_ACCESS_CHANGES_NEEDED "
+
+    return {
+        'success': True,
+        'status': status,
+        'voter_found': voter_found,
+        'voter_created': voter_created,
+        'voter_updated': voter_updated,
+        'voter_we_vote_id': voter.we_vote_id,
+        'is_analytics_admin': voter.is_analytics_admin,
+        'is_voter_manager': voter.is_voter_manager,
+        'is_partner_organization': voter.is_partner_organization,
+        'is_political_data_manager': voter.is_political_data_manager,
+        'is_political_data_viewer': voter.is_political_data_viewer,
+        'is_verified_volunteer': voter.is_verified_volunteer,
+    }
+
+
 @csrf_exempt
 def voter_update_view(request):  # voterUpdate
     """
@@ -2650,6 +2898,14 @@ def voter_update_view(request):  # voterUpdate
     status = ""
     voter_updated = False
     voter_name_needs_to_be_updated_in_activity = False
+
+    is_post = True if request.method == 'POST' else False
+    management_api_key = request.POST.get('management_api_key', '') if is_post \
+        else request.GET.get('management_api_key', '')
+    if positive_value_exists(management_api_key):
+        results = voter_update_staff_access_for_api(request)
+        response = HttpResponse(json.dumps(results), content_type='application/json')
+        return response
 
     try:
         voter_device_id = get_voter_device_id(request)  # We standardize how we take in the voter_device_id
@@ -2684,8 +2940,6 @@ def voter_update_view(request):  # voterUpdate
 
         response = HttpResponse(json.dumps(json_data), content_type='application/json')
         return response
-
-    is_post = True if request.method == 'POST' else False
 
     if is_post:
         delete_voter_account = positive_value_exists(request.POST.get('delete_voter_account', False))
@@ -2941,6 +3195,7 @@ def voter_update_view(request):  # voterUpdate
                 campaign = CampaignX.objects.using('readonly').get(linked_politician_we_vote_id=politician_we_vote_id)
                 campaignx_we_vote_id = campaign.we_vote_id
                 if passkey_to_verify_politician_control == campaign.passkey_for_creating_campaign_owner:
+                    # passkey_for_creating_campaign_owner also used for politician_passkey
                     passkey_verified = True
                 else:
                     passkey_received_but_not_accepted = True

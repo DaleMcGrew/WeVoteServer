@@ -5,16 +5,14 @@
 from bs4 import BeautifulSoup
 import json
 
-from django.contrib import messages
 
 from .models import BallotpediaApiCounterManager
 from ballot.models import BallotItemListManager, BallotItemManager, BallotReturned, BallotReturnedManager, \
     VoterBallotSavedManager
-from candidate.controllers import save_image_to_candidate_table, add_twitter_handle_to_next_candidate_spot, \
-    add_to_candidate_new_links_from_ballotpedia
+from candidate.controllers import save_image_to_candidate_table, add_to_candidate_new_links_from_ballotpedia
 from candidate.models import CandidateManager, CandidateListManager, fetch_candidate_count_for_office, \
     PROFILE_IMAGE_TYPE_BALLOTPEDIA, PROFILE_IMAGE_TYPE_UNKNOWN
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from electoral_district.models import ElectoralDistrict, ElectoralDistrictManager
 from election.models import BallotpediaElection, ElectionManager, Election
 from exception.models import handle_exception
@@ -30,7 +28,7 @@ from voter.models import fetch_voter_id_from_voter_device_link, VoterAddressMana
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, extract_state_code_from_address_string, positive_value_exists
 from wevote_functions.functions_date import get_current_year_as_integer
-from wevote_settings.models import RemoteRequestHistory, RemoteRequestHistoryManager, \
+from wevote_settings.models import RemoteRequestHistoryManager, \
     RETRIEVE_POSSIBLE_BALLOTPEDIA_PHOTOS, RETRIEVE_POSSIBLE_BALLOTPEDIA_CANDIDATES_LINKS
 
 BALLOTPEDIA_API_KEY = get_environment_variable("BALLOTPEDIA_API_KEY")
@@ -166,8 +164,14 @@ logger = wevote_functions.admin.get_logger(__name__)
 # Retrieves the parsed HTML content from the given URL.
 def get_parsed_html(url):
     try:
-        page = requests.get(url)
-        return BeautifulSoup(page.content, "html.parser")
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/120.0.0.0 Safari/537.36"
+        }
+        page = requests.get(url, headers=headers, timeout=10)
+        page.raise_for_status()
+        return BeautifulSoup(page.content, "lxml")
 
     except requests.exceptions.RequestException:
         print('Unable to connect to {}'.format(url))
@@ -518,24 +522,31 @@ def get_ballotpedia_photo_url_from_ballotpedia_candidate_url_page(ballotpedia_ca
     try:
         soup = get_parsed_html(ballotpedia_candidate_url)
         if soup:
-            for img in soup.find_all(class_=IMG_CLASS_NAME_WE_ARE_SEEKING):
-                if photo_url_found:
-                    continue
-                photo_url = img.get('src')  # Use get() method to safely retrieve attributes
-                if photo_url:
-                    try:
-                        print(img['alt'], photo_url)
-                        is_silhouette = SILHOUETTE_PLACEHOLDER_IMAGE_NAME in photo_url
-                        if is_silhouette:
-                            status += "SILHOUETTE_PLACEHOLDER_FOUND "
-                        else:
-                            photo_url_found = True
-                    except Exception as e:
-                        status += "ERROR_TRYING_TO_GET_BALLOTPEDIA_PHOTO_URL: " + str(e) + " "
-                        success = False
-                        status += ("Image URL not found for:", img['alt'])
-        if not photo_url_found and not is_silhouette:
+            images = soup.find_all("img", class_=IMG_CLASS_NAME_WE_ARE_SEEKING)
+
+            if images:
+                for img in images:
+                    photo_url = img.get("src")
+                    if photo_url:
+                        photo_url_found = True
+                        break
+            else:
+                placeholder_img = soup.find("img", id="placeholder_image")
+
+                if placeholder_img and placeholder_img.get("src"):
+                    photo_url = placeholder_img.get("src")
+                    is_silhouette = True
+                    photo_url_found = False
+                    is_broken = False
+                    status += "SILHOUETTE_PLACEHOLDER_FOUND "
+                else:
+                    is_broken = True
+                    status += "NO_IMAGE_FOUND "
+        else:
             is_broken = True
+            success = False
+            status += "SOUP_NOT_FOUND "
+
     except Exception as e:
         status += "ERROR_TRYING_TO_FIND_BALLOTPEDIA_IMAGE_URL: " + str(e) + " "
         success = False

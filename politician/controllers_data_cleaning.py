@@ -2,12 +2,11 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from datetime import datetime, timedelta
-from django.db.models import Count, Q
+from django.db.models import Q
 from django.utils.timezone import now
 import pytz
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from import_export_batches.controllers_data_cleaning import full_deduplication_for_next_state
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
@@ -16,6 +15,8 @@ from .controllers import add_alternate_names_to_next_spot, find_duplicate_politi
     generate_campaignx_for_politician, merge_if_duplicate_politicians
 from .models import DeduplicationNeededForStateToday, Politician, PoliticianManager, PoliticiansArePossibleDuplicates
 from .controllers_generate_color import generate_background
+from .controllers_managed_politician import has_politician_been_claimed_by_campaignx_owner, \
+    has_politician_been_claimed_by_voter_email, retrieve_db_objects_for_claimed_profile_analysis
 
 POLITICIANS_SYNC_URL = get_environment_variable("POLITICIANS_SYNC_URL")  # politiciansSyncOut
 TWITTER_API_ON = positive_value_exists(get_environment_variable("TWITTER_API_ON", no_exception=True))
@@ -820,7 +821,7 @@ def update_campaignx_with_linked_politician_we_vote_id(
         for one_campaignx in campaignx_list:
             if one_campaignx.we_vote_id in politician_dict_by_campaign_we_vote_id:
                 one_politician = politician_dict_by_campaign_we_vote_id[one_campaignx.we_vote_id]
-                if hasattr(one_politician, 'we_vote_id') and positive_value_exists(one_politician.we_vote_id):
+                if isinstance(one_politician, Politician) and positive_value_exists(one_politician.we_vote_id):
                     if one_campaignx.linked_politician_we_vote_id != one_politician.we_vote_id:
                         one_campaignx.linked_politician_we_vote_id = one_politician.we_vote_id
                         update_list.append(one_campaignx)
@@ -867,6 +868,215 @@ def update_campaignx_with_linked_politician_we_vote_id(
             success = False
     else:
         status += "NO_UPDATES_NEEDED_update_campaignx_with_linked_politician_we_vote_id "
+
+    results = {
+        'status': status,
+        'success': success,
+    }
+    return results
+
+
+def calculate_if_is_claimed_profile(
+        politician=None,
+):
+    """
+
+    """
+    politician_list_to_update = [politician]
+    status = ''
+    success = True
+
+    error_results = {
+        'date_last_changed':    None,
+        'is_claimed_profile':   False,
+        'politician':           politician,
+        'status':               status,
+        'success':              False,
+    }
+
+    results = retrieve_db_objects_for_claimed_profile_analysis(politician_list=politician_list_to_update)
+    if not results['success']:
+        error_results['status'] = results['status']
+        return error_results
+    voter_date_last_changed_by_email = results['voter_date_last_changed_by_email']
+    voter_dict = results['voter_dict']
+    voter_has_signed_in_with_email_dict = results['voter_has_signed_in_with_email_dict']
+    voter_we_vote_id_lists_by_campaignx_we_vote_id = results['voter_we_vote_id_lists_by_campaignx_we_vote_id']
+
+    results = has_politician_been_claimed_by_voter_email(
+        politician,
+        voter_date_last_changed_by_email,
+        voter_has_signed_in_with_email_dict)
+    if not results['success']:
+        status += results['status']
+        error_results['status'] = status
+        return error_results
+    if positive_value_exists(results['is_claimed_profile']):
+        is_claimed_profile = True
+        date_last_changed = results['date_last_changed']
+    else:
+        if positive_value_exists(voter_we_vote_id_lists_by_campaignx_we_vote_id) and \
+                positive_value_exists(voter_dict):
+            results = has_politician_been_claimed_by_campaignx_owner(
+                voter_we_vote_id_lists_by_campaignx_we_vote_id=
+                voter_we_vote_id_lists_by_campaignx_we_vote_id,
+                politician=politician,
+                voter_dict=voter_dict,
+            )
+            if not results['success']:
+                status += results['status']
+                error_results['status'] = status
+                return error_results
+            date_last_changed = results['date_last_changed']
+            is_claimed_profile = results['is_claimed_profile']
+        else:
+            date_last_changed = None
+            is_claimed_profile = False
+
+    if is_claimed_profile:
+        politician.is_claimed_profile = True
+        if positive_value_exists(date_last_changed):
+            politician.is_claimed_profile_date_time = date_last_changed
+    politician.is_claimed_profile_analysis_complete = True
+
+    results = {
+        'date_last_changed':    date_last_changed,
+        'is_claimed_profile':   is_claimed_profile,
+        'politician':           politician,
+        'status':               status,
+        'success':              success,
+    }
+    return results
+
+
+def update_is_claimed_profile_fields_in_bulk(
+        number_to_update=1000,
+        state_code=None,
+):
+    """
+
+    """
+    politician_list_to_update = []
+    politician_update_list = []
+    politician_dict_by_candidate_we_vote_id = {}
+    politician_we_vote_id_list = []
+    status = ''
+    success = True
+    total_to_convert_after = 0
+    updates_made = 0
+    updates_needed = False
+
+    try:
+        politician_query = Politician.objects.all()
+        politician_query = politician_query.filter(is_claimed_profile_analysis_complete=False)
+        if positive_value_exists(state_code):
+            politician_query = politician_query.filter(state_code__iexact=state_code)
+        total_to_convert = politician_query.count()
+        total_to_convert_after = total_to_convert - number_to_update if total_to_convert > number_to_update else 0
+        politician_list_to_update = list(politician_query[:number_to_update])
+    except Exception as e:
+        status += "ERROR_POLITICIAN_QUERY_update_is_claimed_profile_fields_in_bulk: {e} ".format(e=e)
+        success = False
+
+    if politician_list_to_update:
+        results = retrieve_db_objects_for_claimed_profile_analysis(politician_list=politician_list_to_update)
+        status += results['status']
+        voter_date_last_changed_by_email = results['voter_date_last_changed_by_email']
+        voter_dict = results['voter_dict']
+        voter_has_signed_in_with_email_dict = results['voter_has_signed_in_with_email_dict']
+        voter_we_vote_id_lists_by_campaignx_we_vote_id = results['voter_we_vote_id_lists_by_campaignx_we_vote_id']
+
+        if not positive_value_exists(voter_we_vote_id_lists_by_campaignx_we_vote_id) or \
+                not positive_value_exists(voter_dict):
+            status += "NO_VOTERS_FOUND_AS_CAMPAIGNX_OWNERS "
+
+        # Has this politician been claimed?
+        politician_we_vote_id = None
+        for one_politician in politician_list_to_update:
+            # try:
+            # politician_we_vote_id = one_politician.we_vote_id
+            results = has_politician_been_claimed_by_voter_email(
+                one_politician,
+                voter_date_last_changed_by_email,
+                voter_has_signed_in_with_email_dict)
+            if positive_value_exists(results['is_claimed_profile']):
+                is_claimed_profile = True
+                date_last_changed = results['date_last_changed']
+            else:
+                if positive_value_exists(voter_we_vote_id_lists_by_campaignx_we_vote_id) and \
+                        positive_value_exists(voter_dict):
+                    results = has_politician_been_claimed_by_campaignx_owner(
+                        voter_we_vote_id_lists_by_campaignx_we_vote_id=
+                        voter_we_vote_id_lists_by_campaignx_we_vote_id,
+                        politician=one_politician,
+                        voter_dict=voter_dict,
+                    )
+                    date_last_changed = results['date_last_changed']
+                    is_claimed_profile = results['is_claimed_profile']
+                    status += results['status'] + " "
+                else:
+                    date_last_changed = None
+                    is_claimed_profile = False
+
+            if is_claimed_profile:
+                one_politician.is_claimed_profile = True
+                if positive_value_exists(date_last_changed):
+                    one_politician.is_claimed_profile_date_time = date_last_changed
+            one_politician.is_claimed_profile_analysis_complete = True
+            politician_update_list.append(one_politician)
+            updates_needed = True
+            updates_made += 1
+            # except Exception as e:
+            #     status += "FAILED_CHECKING_ONE_POLITICIAN_FOR_CLAIMED_STATUS for {politician_we_vote_id}: {e} " \
+            #               "".format(
+            #                         e=e,
+            #                         politician_we_vote_id=politician_we_vote_id)
+
+        # # Retrieve all relevant CandidateCampaign entries in a single query so we can mark them as claimed
+        # #  if the linked politician was claimed.
+        # queryset = CandidateCampaign.objects.all()
+        # queryset = queryset.filter(politician_we_vote_id__in=politician_we_vote_id_list)
+        # candidate_list = list(queryset)
+        # candidate_with_politician_we_vote_id_count = 0
+        # for one_candidate in candidate_list:
+        #     if one_candidate.we_vote_id in politician_dict_by_candidate_we_vote_id:
+        #         one_politician = politician_dict_by_candidate_we_vote_id[one_candidate.we_vote_id]
+        #         if positive_value_exists(one_politician.is_claimed_profile):
+        #             pass
+        #
+        #     candidate_with_politician_we_vote_id_count += 1
+
+    if updates_needed:
+        status += "ABOUT_TO_BULK_UPDATE_POLITICIANS "
+        try:
+            Politician.objects.bulk_update(
+                politician_update_list,
+                ['is_claimed_profile', 'is_claimed_profile_analysis_complete', 'is_claimed_profile_date_time'])
+            status += \
+                "update_is_claimed_profile_fields_in_bulk_POLITICIAN: " \
+                "{updates_made:,} politicians.is_claimed_profile updated. " \
+                "{total_to_convert_after:,} remaining. " \
+                "".format(
+                    total_to_convert_after=total_to_convert_after,
+                    updates_made=updates_made)
+        except Exception as e:
+            status += "ERROR_POLITICIAN_BULK_UPDATE_update_is_claimed_profile_fields_in_bulk: {e} " \
+                      "".format(e=e)
+            success = False
+
+        # try:
+        #     CandidateCampaign.objects.bulk_update(
+        #         candidate_update_list, ['is_claimed_profile'])
+        #     status += \
+        #         "{updates_made:,} updates of linked_campaignx_we_vote_id_verified_in_campaignx. " \
+        #         "".format(
+        #             updates_made=updates_made)
+        # except Exception as e:
+        #     status += "ERROR_POLITICIAN_BULK_UPDATE_update_campaignx_with_linked_politician_we_vote_id: {e} " \
+        #               "".format(e=e)
+        #     success = False
+    else:
+        status += "NO_CANDIDATE_UPDATES_NEEDED_update_is_claimed_profile_fields_in_bulk "
 
     results = {
         'status': status,

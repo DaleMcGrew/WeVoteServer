@@ -4,10 +4,10 @@
 
 from django.test import TestCase
 from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock
+from jira import JIRAError
+from unittest.mock import Mock, patch
 import pandas as pd
 from io import BytesIO
-from jira.exceptions import JIRAError
 
 from .controllers import (
     format_date,

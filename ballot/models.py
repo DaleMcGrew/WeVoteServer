@@ -12,7 +12,7 @@ from geopy.geocoders import get_geocoder_for_service
 
 import wevote_functions.admin
 from candidate.models import CandidateCampaign
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from election.models import ElectionManager
 from exception.models import handle_exception, handle_record_found_more_than_one_exception
 from measure.models import ContestMeasureManager

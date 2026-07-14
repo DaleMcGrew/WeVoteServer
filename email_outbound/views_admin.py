@@ -1,9 +1,11 @@
 # email_outbound/views_admin.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-
 import json
+import re
+import uuid
 from datetime import datetime
+
 from django.utils import timezone
 from urllib.parse import urlencode
 
@@ -11,25 +13,39 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
 from django.db.models import Q
-from django.http import JsonResponse
+from django.db import transaction
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, StreamingHttpResponse
 from django.http import HttpResponseRedirect
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 
 from admin_tools.views import redirect_to_sign_in_page
+from email_outbound.models import EmailAttachments
 from voter.models import voter_has_authority
 import wevote_functions.admin
-from wevote_functions.functions import positive_value_exists
+from wevote_functions.functions import convert_to_int, positive_value_exists
 from wevote_functions.validate_email import validate_email
+from .functions import build_s3_key, upload_fileobj_to_s3, delete_from_s3, download_bytes_from_s3, \
+    move_s3_object, cleanup_unused_inline_attachments
 
-from .controllers_email_campaign import audience_builder_data_retrieve, augment_email_campaign_recipient, \
+from .controllers_email_campaign import augment_email_campaign_recipient, refresh_email_campaign_data, \
     render_audience_builder_html
+from .controllers_audience_builder import audience_builder_data_retrieve, render_audience_builder_preview_html
 from .models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
     AudienceBuilderFolder, AudienceBuilder, AudienceFilter, AudienceFilterChain, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS, \
-    OPERATOR_AND, OPERATOR_EXCLUDE, OPERATOR_INCLUDE, OPERATOR_OR
+    OPERATOR_AND, OPERATOR_OR
 
 logger = wevote_functions.admin.get_logger(__name__)
 
+# can change these restrictions accordingly
+MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024  # 10MB; adjust to your needs
+ALLOWED_CONTENT_TYPES = {
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "text/plain",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+}
 
 def add_to_recipient_dict_if_accepted_we_vote_id_type(incoming_we_vote_id, recipient_dict, accepted_we_vote_id_types):
     save_recipient = False
@@ -81,17 +97,22 @@ def email_campaign_edit_process_view(request):
     status = ""
 
     # Get form data
+    audience_builder_id = request.POST.get('audience_builder_id', 0)
+    audience_builder_id = convert_to_int(audience_builder_id)
     campaign_title = request.POST.get('campaign_title', '').strip()
     email_template_id = request.POST.get('email_template_id', 0)
-    recipient_ids = request.POST.get('recipient_ids', '')
     email_subject = request.POST.get('email_subject', '').strip()
     email_body = request.POST.get('email_body', '')
     email_campaign_id = request.POST.get('email_campaign_id', '')
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
+    include_footer = request.POST.get('include_footer', False)
+    include_footer = positive_value_exists(include_footer)
+    recipient_ids = request.POST.get('recipient_ids', '')
     state_code = request.POST.get('state_code', '')
     send_button_clicked = request.POST.get('send_button_clicked', '')
     send_time_option = request.POST.get('send_time_option', 'now')
     scheduled_send_time_str = request.POST.get('scheduled_send_time', '')
+    draft_uuid = request.POST.get('draft_uuid', None)
 
     # Parse scheduled send time
     scheduled_send_time = None
@@ -107,10 +128,12 @@ def email_campaign_edit_process_view(request):
     if email_campaign_id:
         try:
             email_campaign = EmailCampaign.objects.get(id=email_campaign_id)
+            email_campaign.audience_builder_id = audience_builder_id
             email_campaign.email_campaign_name = campaign_title
             email_campaign.email_template_id = email_template_id
             email_campaign.email_subject_template_raw = email_subject
             email_campaign.email_body_template_raw = email_body
+            email_campaign.include_footer = include_footer
             email_campaign.scheduled_send_time = scheduled_send_time
             email_campaign.save()
             
@@ -118,9 +141,10 @@ def email_campaign_edit_process_view(request):
             # # TODO: We want to update this to only delete entries below that have been removed from the form
             # deleted_count, result_dict = EmailCampaignRecipient.objects.filter(
             # email_campaign_id=email_campaign.id).delete()
-            status += 'Email campaign updated.'
+            status += 'EMAIL_CAMPAIGN_UPDATED '
         except EmailCampaign.DoesNotExist:
             email_campaign = EmailCampaign.objects.create(
+                audience_builder_id=audience_builder_id,
                 email_campaign_name=campaign_title,
                 email_template_id=email_template_id,
                 email_subject_template_raw=email_subject,
@@ -134,6 +158,7 @@ def email_campaign_edit_process_view(request):
     else:
         try:
             email_campaign = EmailCampaign.objects.create(
+                audience_builder_id=audience_builder_id,
                 email_campaign_name=campaign_title,
                 email_template_id=email_template_id,
                 email_subject_template_raw=email_subject,
@@ -147,6 +172,39 @@ def email_campaign_edit_process_view(request):
 
     if not positive_value_exists(email_campaign_id):
         messages.add_message(request, messages.ERROR, 'Email campaign not created or saved.')
+
+    # if creating an email campaign move attachments from draft to campaign folder
+    if draft_uuid and email_campaign and email_campaign_id:
+        try:
+            with transaction.atomic():
+                qs = EmailAttachments.objects.select_for_update().filter(
+                    draft_uuid=draft_uuid,
+                    email_campaign__isnull=True,
+                    email_template__isnull=True,
+                )
+                for att in qs:
+                    new_key = build_s3_key(
+                        campaign_id=int(email_campaign_id),
+                        template_id=None,
+                        draft_uuid=None,
+                        original_filename=att.original_name,
+                    )
+                    if EmailAttachments.objects.filter(s3_key=att.s3_key).count() == 1:
+
+                        move_s3_object(old_key=att.s3_key, new_key=new_key)
+                        att.s3_key = new_key
+
+                    att.email_campaign = email_campaign
+                    att.draft_uuid = None
+                    att.save(update_fields=["s3_key", "email_campaign", "draft_uuid"])
+        except Exception as e:
+            status += f'ERROR_MOVING_DRAFT_ATTACHMENTS: {e} '
+
+    # clean up previously saved inline images removed before hitting save
+    try:
+        cleanup_unused_inline_attachments(html=email_body, email_campaign=email_campaign)
+    except Exception as e:
+        status += f'ERROR_CLEANING_UP_INLINE_IMAGES: {e} '
 
     # Find all existing manually entered recipients for this email_campaign so we can remove them if they don't come in
     manually_added_recipients = []
@@ -176,8 +234,6 @@ def email_campaign_edit_process_view(request):
         else:
             status += "SENDER_VOTER_NOT_FOUND "
             messages.add_message(request, messages.ERROR, 'Could not identify sender voter.')
-
-    # TODO: Consider collecting some ids in a pre-processing loop?
 
     campaignx_list_dict = {}
     politicians_dict = {}
@@ -285,13 +341,13 @@ def email_campaign_edit_process_view(request):
                                 if hasattr(recipient_object, field_key):
                                     setattr(recipient_object, field_key, field_value)
                         save_recipient_object = True
-                        status += f"EmailCampaignRecipient updated. "
+                        status += "EmailCampaignRecipient updated. "
                     else:
                         # Create a new EmailCampaignRecipient object
                         recipient_object = EmailCampaignRecipient(**recipient_dict)
                         manually_added_recipients_found = True
                         save_recipient_object = True
-                        status += f"New EmailCampaignRecipient added. "
+                        status += "New EmailCampaignRecipient added. "
                 except Exception as e:
                     status += f"Error saving recipient: {str(e)}. "
 
@@ -311,12 +367,15 @@ def email_campaign_edit_process_view(request):
                     voters_dict=voters_dict)
                 if results['success'] and results['save_changes']:
                     recipient_object = results['email_campaign_recipient']
-                    status += "AUGMENTED_RECIPIENT_SUCCESS "
+                    status += results['status'] + "AUGMENTED_RECIPIENT_SUCCESS "
                     campaignx_list_dict = results['campaignx_list_dict']
                     politicians_dict = results['politicians_dict']
                     voters_dict = results['voters_dict']
 
                     recipient_object.save()
+                    status += "SAVED_RECIPIENT_OBJECT_SUCCESS "
+                else:
+                    status += results['status'] + "AUGMENTED_RECIPIENT_FAILED "
 
                 # And now remove this object from manually_added_recipients. Any manually_added_recipients entries
                 #  that remain after this loop can be deleted from the database.
@@ -339,21 +398,31 @@ def email_campaign_edit_process_view(request):
 
     if positive_value_exists(send_button_clicked):
         # Prepare the EmailCampaignRecipients from the AudienceBuilder
-        from email_outbound.controllers_email_campaign import generate_email_campaign_recipients_from_audience_builder
-        # Here when we generate the campaign recipients from audience_builders, and we populate them with rich data
-        generate_results = generate_email_campaign_recipients_from_audience_builder(
-            email_campaign_id=email_campaign_id)
+        if positive_value_exists(audience_builder_id):
+            from email_outbound.controllers_audience_builder import \
+                generate_email_campaign_recipients_from_audience_builder
+            # Here when we generate the campaign recipients from audience_builders, and we populate them with rich data
+            generate_results = generate_email_campaign_recipients_from_audience_builder(
+                audience_builder_id=audience_builder_id,
+                email_campaign_id=email_campaign_id)
+            status += generate_results['status']
 
         # Send the email
         from email_outbound.controllers_email_campaign import email_campaign_send
         send_results = email_campaign_send(email_campaign=email_campaign, email_campaign_id=email_campaign_id)
+        emails_scheduled = send_results['emails_scheduled']
+        status += send_results['status']
 
-        if send_results['success']:
-            messages.add_message(request, messages.SUCCESS, 'Email sent!')
+        if positive_value_exists(emails_scheduled):
+            status += "EMAILS_SCHEDULED: " + str(emails_scheduled) + " "
+            status += " Email sent! "
+            messages.add_message(request, messages.SUCCESS, status)
+            # email_campaign = send_results['email_campaign']
         else:
-            messages.add_message(request, messages.ERROR, 'Error sending email: ' + send_results['status'])
+            messages.add_message(request, messages.ERROR, 'Error sending email: ' + status)
         redirect_url = reverse('email_outbound:email_campaign_edit') + \
-            "?google_civic_election_id=" + str(google_civic_election_id) + \
+            "?id=" + str(email_campaign_id) + \
+            "&google_civic_election_id=" + str(google_civic_election_id) + \
             "&state_code=" + str(state_code)
     else:
         # Redirect back to edit page with the campaign ID
@@ -374,16 +443,24 @@ def email_campaign_edit_view(request):
     google_civic_election_id = request.GET.get('google_civic_election_id', '')
     state_code = request.GET.get('state_code', '')
     campaign_id = request.GET.get('id', '')
+
+    # generate uuid unique identifier to pre-save the attachments
+    draft_uuid = uuid.uuid4()
     
     # Load existing campaign if editing
-    email_campaign = None
     campaign_recipients = []
+    email_campaign = None
+    emails_sent = False
     if campaign_id:
         try:
             email_campaign = EmailCampaign.objects.get(id=campaign_id)
+            emails_sent = positive_value_exists(email_campaign.emails_sent)
             
-            # Load recipients for this campaign
-            recipients = EmailCampaignRecipient.objects.filter(email_campaign_id=campaign_id)
+            # Load recipients for this campaign who were manually added
+            recipients = EmailCampaignRecipient.objects.filter(
+                email_campaign_id=campaign_id,
+                manually_added=True,
+            )
             campaign_recipients = []
             for recipient in recipients:
                 recipient_dict = {
@@ -465,6 +542,7 @@ def email_campaign_edit_view(request):
     # Step 3: Pass data to template
     import json
     template_values = {
+        'emails_sent':  emails_sent,
         'folder_tree': folder_tree,
         'google_civic_election_id': google_civic_election_id,
         'state_code': state_code,
@@ -472,6 +550,7 @@ def email_campaign_edit_view(request):
         'saved_campaigns': saved_campaigns,
         'campaign_recipients': json.dumps(campaign_recipients),
         'token_list': EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS,
+        'draft_uuid': draft_uuid
     }
 
     return render(request, 'email_outbound/email_campaign_edit.html', template_values)
@@ -484,18 +563,61 @@ def email_campaign_list_view(request):
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
 
+    fields_changed = []
     google_civic_election_id = request.GET.get('google_civic_election_id', '')
     state_code = request.GET.get('state_code', '')
+    status = ''
+    update_list = []
+    draft_uuid = request.GET.get('draft_uuid', request.POST.get('draft_uuid', ''))
+
+    # on cancel, delete unsaved attachments temporarily stored in s3
+    # delete behavior: only delete from s3 if no other copies/references of attachment remain
+    if draft_uuid:
+        attachments = list(EmailAttachments.objects.filter(draft_uuid=draft_uuid))
+        for att in attachments:
+            att_s3_key = att.s3_key
+            att_count = EmailAttachments.objects.filter(s3_key=att_s3_key).count()
+            if att_count > 1:
+                att.delete()
+            elif att_count == 1:
+                att.delete()
+                delete_from_s3(key=att.s3_key)
+            messages.success(request, "Attachment deleted")
 
     campaigns_queryset = EmailCampaign.objects.filter(deleted=False).order_by('-id')
 
     # Active tab: sent campaigns
     campaigns_sent = campaigns_queryset.filter(emails_sent=True)
+    for campaign in campaigns_sent:
+        # Refresh the recipient_count, bounce_count, and open_count for all sent campaigns
+        refresh_results = refresh_email_campaign_data(campaign)
+        if refresh_results['changes_made']:
+            update_list.append(refresh_results['email_campaign'])
+            fields_changed_temp = refresh_results['fields_changed']
+            # Update the fields_changed list with any additional fields in fields_changed_temp
+            fields_changed.extend(fields_changed_temp)
+
+        if campaign.recipient_count and campaign.recipient_count > 0 and campaign.open_count:
+            campaign.open_rate = round((campaign.open_count / campaign.recipient_count) * 100, 2)
+        else:
+            campaign.open_rate = None
 
     # Drafts tab: not yet sent
     campaigns_drafts = campaigns_queryset.filter(emails_sent=False)
 
     # Archived tab filter would go here:
+
+    if len(update_list) > 0:
+        # Do a bulk update of the changes made in the update_list of EmailCampaign objects
+        try:
+            EmailCampaign.objects.bulk_update(update_list, fields_changed)
+            status += \
+                "{campaign_updates_made:,} campaigns updated " \
+                "".format(campaign_updates_made=len(update_list))
+        except Exception as e:
+            messages.add_message(request, messages.ERROR,
+                                 "ERROR with PositionEntered.objects.bulk_update: {e}, "
+                                 "".format(e=e))
 
     template_values = {
         # 'election':                                 election,
@@ -511,6 +633,46 @@ def email_campaign_list_view(request):
 
 
 @login_required
+def email_recipient_list_view(request):
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    campaign_id = request.GET.get('id', '')
+    google_civic_election_id = request.GET.get('google_civic_election_id', '')
+    state_code = request.GET.get('state_code', '')
+    status = ''
+
+    email_campaign = EmailCampaign.objects.get(id=campaign_id)
+
+    queryset = EmailCampaignRecipient.objects.filter(email_campaign_id=campaign_id)
+    # Sort the recipients by "open_tracking_last_open". If that field doesn't have a date,
+    #  then sort by "recipient_last_name"
+    queryset = queryset.order_by(
+        '-open_tracking_last_open',
+        'recipient_last_name',
+    )
+
+    # Opened the email
+    recipient_open_list = queryset.filter(open_tracking_count__gt=0)
+
+    # Not opened yet
+    recipient_not_opened_list = queryset.filter(open_tracking_count=0)
+
+    # Bounced tab filter would go here:
+
+    template_values = {
+        'email_campaign':             email_campaign,
+        'google_civic_election_id': google_civic_election_id,
+        'state_code':               state_code,
+        'recipient_open_list':      recipient_open_list,
+        'recipient_not_opened_list': recipient_not_opened_list,
+    }
+    return render(request, 'email_outbound/email_recipient_list.html', template_values)
+
+
+@login_required
 def email_template_edit_view(request):
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'political_data_manager', 'verified_volunteer'}
@@ -521,6 +683,9 @@ def email_template_edit_view(request):
     state_code = request.GET.get('state_code', '')
     email_template_id = request.GET.get('email_template_id', 0)
     default_folder_id = request.GET.get('default_email_template_folder_id', None)
+
+    # generate unique identifier to temporarily attach attachments to before save
+    draft_uuid = uuid.uuid4()
 
     # Load existing template if editing
     email_template = None
@@ -550,10 +715,210 @@ def email_template_edit_view(request):
         'selected_folder_id':       selected_folder_id,
         'state_code':               state_code,
         'token_list':               EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS,
+        'draft_uuid':               draft_uuid,
         # 'state_list':             sorted_state_list,
     }
     return render(request, 'email_outbound/email_template_edit.html', template_values)
+# Upload attachments to S3 temporarily to the draft uuid
+# expects query params: draft UUID
+@login_required
+def attachment_upload_view(request) -> HttpResponse:
+    draft_uuid = request.GET.get("draft_uuid") or request.POST.get("draft_uuid") or None
 
+    if not draft_uuid:
+        return HttpResponseBadRequest("draft_uuid is required")
+
+    # POST
+    print("no issues till here")
+    files = request.FILES.getlist("attachments")
+    if not files:
+        return HttpResponseBadRequest("No files provided")
+
+    created = []
+    for f in files:
+        if f.size and f.size > MAX_ATTACHMENT_BYTES:
+            return HttpResponseBadRequest(f"File too large. Max is {MAX_ATTACHMENT_BYTES} bytes.")
+
+        content_type = (getattr(f, "content_type", "") or "").strip()
+        # print(f"no issues up to here as well {content_type}")
+        if content_type and content_type not in ALLOWED_CONTENT_TYPES:
+            return HttpResponseBadRequest(f"Unsupported content type: {content_type}")
+
+        # build s3 key
+        key = build_s3_key(
+            campaign_id=None,
+            template_id=None,
+            draft_uuid=draft_uuid,
+            original_filename=f.name,
+        )
+
+        size_bytes = upload_fileobj_to_s3(
+            fileobj=f,
+            key=key,
+            content_type=content_type,
+        )
+
+        # create attachment object with s3 key and other details
+        att = EmailAttachments.objects.create(
+            email_campaign=None,
+            email_template=None,
+            draft_uuid=draft_uuid,
+            s3_key=key,
+            original_name=f.name,
+            content_type=content_type,
+            file_size=size_bytes or int(f.size or 0),
+        )
+
+        created.append({
+            "id": att.id,
+            "name": att.original_name or f.name,
+        })
+
+    messages.success(request, "Attachment uploaded.")
+    return JsonResponse({"ok": True, "attachments": created})
+
+# delete attachments using attachment id
+# delete from s3 only if 1 copy or referrence remains
+@login_required
+def attachment_delete_view(request, attachment_id: int) -> HttpResponse:
+    att = get_object_or_404(EmailAttachments, id=attachment_id)
+    att_s3_key = att.s3_key
+    att_count = EmailAttachments.objects.filter(s3_key=att_s3_key).count()
+    if att_count > 1:
+        att.delete()
+    elif att_count == 1:
+        att.delete()
+        delete_from_s3(key=att.s3_key)
+    messages.success(request, "Attachment deleted.")
+    # redirect back
+    return JsonResponse({"ok": True, "deleted_id": attachment_id})
+
+# download attachments using attachment id (using max preset file size vals)
+@login_required
+def attachment_download_view(request, attachment_id: int) -> StreamingHttpResponse:
+    att = get_object_or_404(EmailAttachments, id=attachment_id)
+
+    body = download_bytes_from_s3(key=att.s3_key)
+    #
+    resp = StreamingHttpResponse(body.iter_chunks(chunk_size=1024 * 512),
+                                 content_type=att.content_type or "application/octet-stream")
+    resp["Content-Disposition"] = f'attachment; filename="{att.original_name}"'
+    return resp
+
+# copy attachments from template to campaign
+@login_required
+def copy_attachments_to_campaign(request, template_id, campaign_id, draft_uuid):
+    template_id = int(template_id) if template_id and template_id != 'null' else None
+    campaign_id = int(campaign_id) if campaign_id and campaign_id != 'null' else None
+
+    campaign = get_object_or_404(EmailCampaign, pk=campaign_id) if campaign_id else None
+    template = get_object_or_404(EmailTemplate, pk=template_id) if template_id else None
+    draft_uuid = None if draft_uuid == 'D_UUID' or draft_uuid == 'null' else draft_uuid
+
+    attachments = []
+    try:
+        template_attachments = list(EmailAttachments.objects.filter(email_template=template))
+        # delete old inline attachments on campaign when copying in new template
+        if campaign_id:
+            campaign_inline_attachments = list(EmailAttachments.objects.filter(email_campaign=campaign, is_inline=True))
+            for c_att in campaign_inline_attachments:
+                att_s3_key = c_att.s3_key
+                att_count = EmailAttachments.objects.filter(s3_key=att_s3_key).count()
+                if att_count > 1:
+                    c_att.delete()
+                elif att_count == 1:
+                    c_att.delete()
+                    delete_from_s3(key=c_att.s3_key)
+                messages.success(request, "Attachment deleted.")
+
+        # copy in new attachments from template to campaign
+        if draft_uuid:
+            for att in template_attachments:
+                if not EmailAttachments.objects.filter(draft_uuid=draft_uuid, s3_key=att.s3_key).exists():
+                    new_att = EmailAttachments.objects.create(
+                        draft_uuid=draft_uuid,
+                        email_template=None,
+                        s3_key=att.s3_key,
+                        original_name=att.original_name,
+                        content_type=att.content_type,
+                        file_size=att.file_size,
+                        is_inline=att.is_inline,
+                    )
+
+                    attachments.append({
+                        "id": new_att.id,
+                        "name": new_att.original_name,
+                        "is_inline": new_att.is_inline,
+                    })
+    except EmailAttachments.DoesNotExist:
+        return JsonResponse({"ok": False, "attachments": attachments})
+
+    return JsonResponse({"ok": True, "attachments": attachments})
+
+# handle inline image upload
+@login_required
+def attachment_image_upload_view(request):
+    draft_uuid = request.GET.get("draft_uuid") or request.POST.get("draft_uuid") or None
+
+    if not draft_uuid:
+        return HttpResponseBadRequest("campaign_id or template_id or draft_uuid is required")
+
+    # POST
+    print("no issues till here")
+    f = request.FILES.get("file")
+    print("are there files: ", f)
+    if not f:
+        return HttpResponseBadRequest("No files provided")
+
+    if f.size and f.size > MAX_ATTACHMENT_BYTES:
+        return HttpResponseBadRequest(f"File too large. Max is {MAX_ATTACHMENT_BYTES} bytes.")
+
+    content_type = (getattr(f, "content_type", "") or "").strip()
+    if content_type and content_type not in ALLOWED_CONTENT_TYPES:
+        return HttpResponseBadRequest(f"Unsupported content type: {content_type}")
+
+    print("at good files")
+    key = build_s3_key(
+        campaign_id=None,
+        template_id=None,
+        draft_uuid=draft_uuid,
+        original_filename=f.name,
+    )
+    size_bytes = upload_fileobj_to_s3(
+        fileobj=f,
+        key=key,
+        content_type=content_type,
+    )
+    att = EmailAttachments.objects.create(
+        email_campaign=None,
+        email_template=None,
+        draft_uuid=draft_uuid,
+        s3_key=key,
+        original_name=f.name,
+        content_type=content_type,
+        file_size=size_bytes or int(f.size or 0),
+        is_inline=True
+    )
+
+    messages.success(request, "Attachment uploaded.")
+
+    render_url = reverse("email_outbound:email_attachment_render", kwargs={"attachment_id": att.id})
+
+    return JsonResponse({
+        "location": render_url,   # TinyMCE expects this
+        "attachment_id": att.id
+    })
+
+# generate render view for inline attachment
+@login_required
+def attachment_render_view(request, attachment_id: int):
+    att = get_object_or_404(EmailAttachments, id=attachment_id)
+
+    raw = download_bytes_from_s3(key=att.s3_key)
+    resp = HttpResponse(raw, content_type=att.content_type or "application/octet-stream")
+    resp["Content-Disposition"] = f'inline; filename="{att.original_name}"'
+    print('render url: ', resp)
+    return resp
 
 @login_required
 def email_template_edit_process_view(request):
@@ -585,7 +950,8 @@ def email_template_edit_process_view(request):
     message = request.POST.get('message', '').strip()
     folder_id = request.POST.get('folder', 0)
     email_template_id = request.POST.get('email_template_id', None)
-
+    draft_uuid = request.POST.get('draft_uuid', None)
+    email_template = None
     # if positive_value_exists(email_template_name):
     #     email_template_name = email_template_name.strip()
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
@@ -618,8 +984,35 @@ def email_template_edit_process_view(request):
                 deleted=False,
                 archived=False,
             )
+            email_template_id = email_template.id
             if email_template is not None:
                 status += "New template created. "
+
+        # on save, process attachments, move s3 key location, and mark them to respective template id
+        if draft_uuid and email_template and email_template_id:
+            with transaction.atomic():
+                qs = EmailAttachments.objects.select_for_update().filter(
+                    draft_uuid=draft_uuid,
+                    email_campaign__isnull=True,
+                    email_template__isnull=True,
+                )
+                for att in qs:
+                    new_key = build_s3_key(
+                        campaign_id=None,
+                        template_id=int(email_template_id),
+                        draft_uuid=None,
+                        original_filename=att.original_name,
+                    )
+                    if EmailAttachments.objects.filter(s3_key=att.s3_key).count() == 1:
+                        move_s3_object(old_key=att.s3_key, new_key=new_key)
+                        att.s3_key = new_key
+                    att.email_template = email_template
+                    att.draft_uuid = None
+                    att.save(update_fields=["s3_key", "email_template", "draft_uuid"])
+
+        # clean up unused inline attachments that have been removed
+        cleanup_unused_inline_attachments(html=message, email_template=email_template)
+
     except Exception as e:
         status += f"Error saving template: {e}"
 
@@ -755,11 +1148,34 @@ def email_template_list_process_view(request):
             return back()
 
         if action == "delete_template":
+            # delete templates attached to template as well
             template_id = request.POST.get("template_id")
-            tmpl = EmailTemplate.objects.get(id=template_id, deleted=False)
-            tmpl.deleted = True
-            tmpl.email_template_folder_id = None
-            tmpl.save(update_fields=["deleted", "email_template_folder_id"])
+
+            with transaction.atomic():
+                tmpl = get_object_or_404(EmailTemplate, id=template_id, deleted=False)
+                tmpl.deleted = True
+                tmpl.email_template_folder_id = None
+                tmpl.save(update_fields=["deleted", "email_template_folder_id"])
+
+                # select and lock attachment rows for this template
+                attachments = list(
+                    EmailAttachments.objects.select_for_update()
+                    .filter(email_template=tmpl)
+                )
+
+                # get S3 keys
+                keys_to_maybe_delete = []
+                for att in attachments:
+                    key = att.s3_key  # if you store it
+                    keys_to_maybe_delete.append(key)
+                    att.delete()
+
+            # Outside transaction: delete from S3 only if no refs remain
+            for key in keys_to_maybe_delete:
+                still_used = EmailAttachments.objects.filter(s3_key=key).exists()
+                if not still_used:
+                    delete_from_s3(key=key)
+
             messages.success(request, "Template deleted.")
             return back()
 
@@ -787,6 +1203,7 @@ def email_template_list_view(request):
     google_civic_election_id = request.GET.get('google_civic_election_id',
                                                request.POST.get('google_civic_election_id', 0))
     state_code = request.GET.get('state_code', request.POST.get('state_code', ''))
+    draft_uuid = request.GET.get('draft_uuid', request.POST.get('draft_uuid', ''))
 
     # Folders
     folder_qs = EmailTemplateFolder.objects.filter(deleted=False)
@@ -797,6 +1214,19 @@ def email_template_list_view(request):
     template_qs = EmailTemplate.objects.filter(deleted=False)
     templates_active = template_qs.filter(archived=False).order_by('email_template_name')
     templates_archived = template_qs.filter(archived=True).order_by('email_template_name')
+
+    # delete unsaved attachments temporarily stored on cancel
+    if draft_uuid:
+        attachments = list(EmailAttachments.objects.filter(draft_uuid=draft_uuid))
+        for att in attachments:
+            att_s3_key = att.s3_key
+            att_count = EmailAttachments.objects.filter(s3_key=att_s3_key).count()
+            if att_count > 1:
+                att.delete()
+            elif att_count == 1:
+                att.delete()
+                delete_from_s3(key=att.s3_key)
+            messages.success(request, "Attachment deleted")
 
     # Map active templates by folder id
     templates_by_folder = {}
@@ -868,6 +1298,64 @@ def audience_builder_drawer_html_view(request):
                 'audience_builder_id': audience_builder_id,
                 'audience_builder_name': audience_builder_name,
                 'html': html_results['audience_builder_html'],
+                'status': html_results['status'],
+                'success': True,
+            })
+        else:
+            return JsonResponse({
+                'audience_builder_id': audience_builder_id,
+                'audience_builder_name': audience_builder_name,
+                'html': '',
+                'status': html_results['status'],
+                'success': False,
+            }, status=500)
+    else:
+        return JsonResponse({
+            'audience_builder_id': audience_builder_id,
+            'audience_builder_name': audience_builder_name,
+            'html': '',
+            'status': status,
+            'success': False,
+        }, status=500)
+
+
+def audience_builder_drawer_preview_html_view(request):
+    """
+    Returns HTML fragment for the preview shown in the audience builder drawer
+    """
+    status = ""
+    success = True
+
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return JsonResponse({'success': False, 'status': 'PERMISSION_DENIED'}, status=403)
+
+    audience_builder_id = request.POST.get('audience_builder_id', request.GET.get('audience_builder_id', None))
+    audience_builder_name = ''
+
+    results = audience_builder_data_retrieve(audience_builder_id)
+    status += results['status']
+
+    if results['success']:
+        audience_builder = results['audience_builder']
+        if hasattr(audience_builder, 'audience_builder_name'):
+            audience_builder_name = audience_builder.audience_builder_name
+        audience_filter_chain_dict = results['audience_filter_chain_dict']
+        audience_filter_dict = results['audience_filter_dict']
+
+        html_results = render_audience_builder_preview_html(
+            audience_builder=audience_builder,
+            audience_filter_chain_dict=audience_filter_chain_dict,
+            audience_filter_dict=audience_filter_dict,
+            request=request,
+        )
+
+        if html_results['success']:
+            return JsonResponse({
+                'audience_builder_id': audience_builder_id,
+                'audience_builder_name': audience_builder_name,
+                'html': html_results['audience_builder_preview_html'],
                 'status': html_results['status'],
                 'success': True,
             })
@@ -1076,7 +1564,7 @@ def audience_builder_edit_process_view(request):
                     audience_builder_id=audience_builder_id)
                 audience_filter_dict[audience_filter.id] = audience_filter
                 # Now link the new filter to the first spot in the chain
-                audience_filter_id_attribute = f'filter1_id'
+                audience_filter_id_attribute = 'filter1_id'
                 setattr(audience_filter_chain, audience_filter_id_attribute, audience_filter.id)
                 audience_filter_chain.save()
 
@@ -1436,3 +1924,35 @@ def email_template_content_view(request):
             'success': False,
             'error': 'Template not found'
         }, status=404)
+
+
+@login_required
+def email_recipient_view(request, email_recipient_id=0):
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    google_civic_election_id = request.GET.get('google_civic_election_id', '')
+    state_code = request.GET.get('state_code', '')
+    status = ''
+
+    email_recipient = EmailCampaignRecipient.objects.get(id=email_recipient_id)
+    email_body_assembled = email_recipient.email_body_assembled
+    if email_body_assembled:
+        try:
+            # We want to search for this pattern "/apis/v1/opened/hcRlYMGJCK4yZuz/" in email_body_assembled,
+            #  where hcRlYMGJCK4yZuz could be any random string, and then remove that final random string.
+            # This serves the purpose of NOT marking the email as opened when we view it in our admin tools.
+            email_body_assembled = re.sub(r'/apis/v1/opened/[a-zA-Z0-9]+/', '/apis/v1/opened/DONOTTRACK/',
+                                          email_body_assembled)
+        except Exception as e:
+            email_body_assembled = email_recipient.email_body_assembled
+            status += "ERROR_SUBSTITUTING_EMAIL_BODY_ASSEMBLED: " + str(e) + " "
+
+    template_values = {
+        'email_body_assembled':     email_body_assembled,
+        'google_civic_election_id': google_civic_election_id,
+        'state_code':               state_code,
+    }
+    return render(request, 'email_outbound/view_recipient_email.html', template_values)
