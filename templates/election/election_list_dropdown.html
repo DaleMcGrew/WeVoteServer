@@ -1,0 +1,19 @@
+{% load template_filters %}
+
+{% if election_list %}
+  <select id="{{ select_id|default:"google_civic_election_id" }}"
+          name="{{ select_name|default:"google_civic_election_id" }}"
+          {% if select_class %}class="{{ select_class }}"{% endif %}>
+    <option value="0"
+            {% if 0 == selected_election_id|convert_to_int %}selected="selected"{% endif %}>
+      {{ default_option_text|default:"-- Filter by Election --" }}
+    </option>
+    {% for one_election in election_list %}
+      <option value="{{ one_election.google_civic_election_id }}"
+              {% if one_election.google_civic_election_id|slugify == selected_election_id|slugify %} selected="selected"{% endif %}>
+        {% if one_election.state_code %}{{ one_election.election_day_text}} {% endif %}
+        {{ one_election.state_code }}: {{ one_election.election_name }} &ndash; {{ one_election.google_civic_election_id }}
+      </option>
+    {% endfor %}
+  </select>
+{% endif %}
