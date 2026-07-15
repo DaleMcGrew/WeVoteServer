@@ -7,7 +7,6 @@ from datetime import datetime
 from jira import JIRAError
 from unittest.mock import Mock, patch
 import pandas as pd
-from io import BytesIO
 
 from .controllers import (
     format_date,
@@ -17,8 +16,6 @@ from .controllers import (
     JiraEpic,
     JiraExcelLoader,
     JiraApiControl,
-    COL_EPIC_TITLE,
-    COL_ELECTION_DATE,
 )
 from .models import JiraApiCounter
 

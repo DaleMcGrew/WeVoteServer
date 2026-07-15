@@ -538,7 +538,8 @@ class JiraApiControl:
         self.last_api_call_time = time.time()
         self.stats["api_calls"] += 1
 
-    def _extract_election_label(self, epic_title: str) -> Optional[str]:
+    @staticmethod
+    def _extract_election_label(epic_title: str) -> Optional[str]:
         """
         Extract and sanitize election label from epic title.
 
