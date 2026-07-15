@@ -248,7 +248,7 @@ class JiraExcelLoader:
     ):
         self.file_path = file_path
         self.file_format = file_format
-        self.subtask_names = subtask_names or []
+        self.subtask_names = subtask_names  # None means auto-detect from file headers
         self.df: Optional[pd.DataFrame] = None
         self.epics: Optional[List[JiraEpic]] = None
 
@@ -320,6 +320,15 @@ class JiraExcelLoader:
                 f"Very large file detected: {num_rows} rows. "
                 f"Consider splitting into smaller batches to avoid timeout or memory issues."
             )
+
+        if self.subtask_names is None:
+            self.subtask_names = []
+            for i in range(MAX_SUBTASK_COLUMNS):
+                col = COL_SUBTASK_URL_START + i
+                if col < self.df.shape[1] and pd.notna(self.df.iloc[0, col]):
+                    val = str(self.df.iloc[0, col]).strip()
+                    if val:
+                        self.subtask_names.append(val)
 
         epics_dict: Dict[str, JiraEpic] = {}
         rows_with_epic_title = 0

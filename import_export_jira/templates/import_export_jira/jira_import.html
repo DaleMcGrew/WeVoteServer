@@ -54,12 +54,23 @@
     </div>
 
     <div class="form-group">
-        <label for="subtask_count">Number of subtasks per story (0-4)</label>
-        <input type="number" id="subtask_count" name="subtask_count" min="0" max="4" value="0" class="form-control" style="width: 100px;">
+        <label>
+            <input type="checkbox" id="use_file_subtasks" name="use_file_subtasks"
+                {% if use_file_subtasks %}checked{% endif %}>
+            Create subtasks from file
+        </label>
     </div>
-    <div id="subtask_names_wrapper" class="form-group" style="display:none;">
-        <label>Subtask names:</label>
-        <div id="subtask_names_container"></div>
+
+    <div id="manual_subtask_section" class="form-group"
+        {% if use_file_subtasks %}style="display:none;"{% endif %}>
+        <div class="form-group">
+            <label for="subtask_count">Number of subtasks per story (0-4)</label>
+            <input type="number" id="subtask_count" name="subtask_count" min="0" max="4" value="0" class="form-control" style="width: 100px;">
+        </div>
+        <div id="subtask_names_wrapper" class="form-group" style="display:none;">
+            <label>Subtask names:</label>
+            <div id="subtask_names_container"></div>
+        </div>
     </div>
 
     <br>
@@ -76,6 +87,16 @@
 <script>
 (function() {
     var suggestions = {% if header_suggestions %}{{ header_suggestions|safe }}{% else %}[]{% endif %};
+    var checkbox = document.getElementById('use_file_subtasks');
+    var manualSection = document.getElementById('manual_subtask_section');
+
+    function toggleManualSection() {
+        if (checkbox.checked) {
+            manualSection.style.display = 'none';
+        } else {
+            manualSection.style.display = 'block';
+        }
+    }
 
     function buildSubtaskRows(count, prefill) {
         var container = document.getElementById('subtask_names_container');
@@ -96,6 +117,8 @@
             wrapper.style.display = 'none';
         }
     }
+
+    checkbox.addEventListener('change', toggleManualSection);
 
     var countInput = document.getElementById('subtask_count');
     countInput.addEventListener('input', function() {

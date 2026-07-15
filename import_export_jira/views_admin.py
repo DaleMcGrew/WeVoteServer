@@ -56,6 +56,11 @@ def jira_import_view(request):
     preview_summary = None
     import_stats = None
     action = None
+    use_file_subtasks = (
+        request.POST.get("use_file_subtasks") == "on"
+        if request.method == "POST"
+        else True
+    )
 
     if request.method == "POST":
         action = request.POST.get("action", "")
@@ -85,63 +90,85 @@ def jira_import_view(request):
                             tmp.write(chunk)
                         tmp_path = tmp.name
 
-                    try:
-                        raw_count = int(request.POST.get("subtask_count", 0))
-                    except (ValueError, TypeError):
-                        raw_count = 0
-                    subtask_count = max(0, min(raw_count, MAX_SUBTASK_COLUMNS))
-                    subtask_names = []
-                    for i in range(subtask_count):
-                        name = request.POST.get(f"subtask_name_{i}", "").strip()
-                        if name:
-                            subtask_names.append(name)
-
-                    loader = JiraExcelLoader(tmp_path, subtask_names=subtask_names)
-
-                    if action == "preview":
-                        preview_summary = loader.get_summary()
-                        # Warn user about large uploads
-                        total_items = (
-                            preview_summary["totals"]["total_candidates"]
-                            + preview_summary["totals"]["total_sub_tasks"]
-                            + preview_summary["total_epics"]
-                        )
-                        if total_items > 500:
-                            messages.warning(
-                                request,
-                                f"Large import detected: {total_items} total items. "
-                                f"Import may take several minutes.",
-                            )
-                        if total_items > 2000:
-                            messages.warning(
-                                request,
-                                f"Very large import: {total_items} items. "
-                                f"Consider splitting into smaller batches.",
-                            )
-                    elif action == "import":
-                        if missing_vars:
+                    if use_file_subtasks:
+                        subtask_names = None
+                        subtask_names = None
+                    else:
+                        try:
+                            raw_count = int(request.POST.get("subtask_count", 0))
+                        except (ValueError, TypeError):
+                            raw_count = 0
+                        subtask_count = max(0, min(raw_count, MAX_SUBTASK_COLUMNS))
+                        subtask_names = []
+                        all_filled = True
+                        for i in range(subtask_count):
+                            name = request.POST.get(f"subtask_name_{i}", "").strip()
+                            if name:
+                                subtask_names.append(name)
+                            else:
+                                all_filled = False
+                        if subtask_count > 0 and not all_filled:
                             messages.error(
                                 request,
-                                f"Cannot import: missing JIRA credentials: {', '.join(missing_vars)}",
+                                "Every manual subtask must have a non-empty description.",
                             )
-                        else:
-                            epics = loader.load()
-                            try:
-                                api_control = JiraApiControl(
-                                    jira_url=jira_url,
-                                    username=jira_username,
-                                    api_token=jira_api_token,
-                                    project_key=jira_project_key,
+                            action = None
+                        elif subtask_count == 0:
+                            messages.error(
+                                request,
+                                "Please enter at least one subtask description, or check 'Create subtasks from file'.",
+                            )
+                            action = None
+
+                    if action:
+                        loader = JiraExcelLoader(tmp_path, subtask_names=subtask_names)
+
+                        if action == "preview":
+                            preview_summary = loader.get_summary()
+                            # Warn user about large uploads
+                            total_items = (
+                                preview_summary["totals"]["total_candidates"]
+                                + preview_summary["totals"]["total_sub_tasks"]
+                                + preview_summary["total_epics"]
+                            )
+                            if total_items > 500:
+                                messages.warning(
+                                    request,
+                                    f"Large import detected: {total_items} total items. "
+                                    f"Import may take several minutes.",
                                 )
-                            except JIRAError as e:
+                            if total_items > 2000:
+                                messages.warning(
+                                    request,
+                                    f"Very large import: {total_items} items. "
+                                    f"Consider splitting into smaller batches.",
+                                )
+                        elif action == "import":
+                            if missing_vars:
                                 messages.error(
                                     request,
-                                    f"Failed to connect to JIRA: {str(e)}. "
-                                    f"Check your credentials and JIRA URL.",
+                                    f"Cannot import: missing JIRA credentials: {', '.join(missing_vars)}",
                                 )
                             else:
-                                import_stats = api_control.load_all_epics(epics)
-                                messages.success(request, "Import to JIRA completed.")
+                                epics = loader.load()
+                                try:
+                                    api_control = JiraApiControl(
+                                        jira_url=jira_url,
+                                        username=jira_username,
+                                        api_token=jira_api_token,
+                                        project_key=jira_project_key,
+                                    )
+                                except JIRAError as e:
+                                    messages.error(
+                                        request,
+                                        f"Failed to connect to JIRA: {str(e)}. "
+                                        f"Check your credentials and JIRA URL.",
+                                    )
+                                else:
+                                    import_stats = api_control.load_all_epics(epics)
+                                    messages.success(
+                                        request, "Import to JIRA completed."
+                                    )
                 except ValueError as e:
                     messages.error(request, f"Invalid file format: {str(e)}")
                 except FileNotFoundError as e:
@@ -161,6 +188,7 @@ def jira_import_view(request):
         "preview_summary": preview_summary,
         "import_stats": import_stats,
         "action": action,
+        "use_file_subtasks": use_file_subtasks,
         "header_suggestions": (
             preview_summary.get("header_suggestions", []) if preview_summary else []
         ),
