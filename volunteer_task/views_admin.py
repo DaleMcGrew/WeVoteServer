@@ -2,6 +2,8 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
+import ast
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
@@ -39,7 +41,16 @@ def scoreboard_list_view(request):
             'scoreboard_list_view': performance_list,
         }
     else:
-        performance_dict = eval(performance_dict)  # Keep existing data
+        # Keep existing data. The value is a dict literal round-tripped through the query
+        # string, so parse it with ast.literal_eval, which only accepts Python literals
+        # (dict/list/str/num/bool/None). A request value like __import__("os").popen(...) is
+        # rejected instead of executed (was: eval(), which ran arbitrary code server-side).
+        try:
+            performance_dict = ast.literal_eval(performance_dict)
+        except (ValueError, SyntaxError):
+            performance_dict = {}
+        if not isinstance(performance_dict, dict):
+            performance_dict = {}
         performance_list = performance_dict.get('scoreboard_list_view', [])
     status = ""
     success = True
