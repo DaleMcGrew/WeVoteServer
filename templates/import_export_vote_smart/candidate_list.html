@@ -15,18 +15,7 @@
           method="get"
           action="{% url 'candidate:candidate_list' %}">
       {% csrf_token %}
-
-      <select id="google_civic_election_id" name="google_civic_election_id">
-        <option value="0"
-                {% if 0 == google_civic_election_id %}selected="selected"{% endif %}>-- Filter by Election --</option>
-        {% for one_election in election_list %}
-          <option value="{{ one_election.google_civic_election_id }}"
-                  {% if one_election.google_civic_election_id|slugify == google_civic_election_id|slugify %} selected="selected"{% endif %}>
-            {% if one_election.state_code %}{{ one_election.state_code }}{% endif %}
-            {{ one_election.election_day_text }}: {{ one_election.election_name }} - {{ one_election.google_civic_election_id }}
-          </option>
-        {% endfor %}
-      </select>
+      {% include "election/election_list_dropdown.html" with election_list=election_list selected_election_id=google_civic_election_id %}
     </form>
   {% endif %}
   {# End of if election_list #}
