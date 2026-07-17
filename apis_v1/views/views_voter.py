@@ -136,7 +136,8 @@ def unsubscribe_instant_view(request, subscription_secret_key='', unsubscribe_mo
     from voter.models import NOTIFICATION_FRIEND_MESSAGES_EMAIL, NOTIFICATION_FRIEND_OPINIONS_OTHER_REGIONS_EMAIL, \
         NOTIFICATION_FRIEND_OPINIONS_YOUR_BALLOT_EMAIL, NOTIFICATION_FRIEND_REQUEST_RESPONSES_EMAIL, \
         NOTIFICATION_FRIEND_REQUESTS_EMAIL, NOTIFICATION_LOGIN_EMAIL, NOTIFICATION_NEWSLETTER_OPT_IN, \
-        NOTIFICATION_SUGGESTED_FRIENDS_EMAIL, NOTIFICATION_VOTER_DAILY_SUMMARY_EMAIL
+        NOTIFICATION_SUGGESTED_FRIENDS_EMAIL, NOTIFICATION_VOTER_DAILY_SUMMARY_EMAIL, \
+        NOTIFICATION_WEVOTE_POLITICIAN_CAMPAIGN_EMAIL
     # NOTIFICATION_VOTER_DAILY_SUMMARY_EMAIL = 1024  # When a friend posts something - dailyfriendactivity
     # NOTIFICATION_FRIEND_REQUEST_RESPONSES_EMAIL = 4096  # "Show me responses to my friend requests" - friendaccept
     # NOTIFICATION_FRIEND_REQUESTS_EMAIL = 2  # "New friend requests" - friendinvite
@@ -146,6 +147,7 @@ def unsubscribe_instant_view(request, subscription_secret_key='', unsubscribe_mo
     # NOTIFICATION_LOGIN_EMAIL = 16384  # "Show me email login requests" - login
     # NOTIFICATION_NEWSLETTER_OPT_IN = 1  # "I would like to receive the We Vote newsletter" - newsletter
     # NOTIFICATION_SUGGESTED_FRIENDS_EMAIL = 8  # "Suggestions of people you may know" - suggestedfriend
+    # NOTIFICATION_WEVOTE_POLITICIAN_CAMPAIGN_EMAIL = 524288  # "As a politician, would you like to update your info?" - politiciancampaign
     if unsubscribe_modifier == 'dailyfriendactivity':
         notification_flag_integer_to_unset = NOTIFICATION_VOTER_DAILY_SUMMARY_EMAIL
     elif unsubscribe_modifier == 'friendaccept':
@@ -164,6 +166,8 @@ def unsubscribe_instant_view(request, subscription_secret_key='', unsubscribe_mo
         notification_flag_integer_to_unset = NOTIFICATION_NEWSLETTER_OPT_IN
     elif unsubscribe_modifier == 'suggestedfriend':
         notification_flag_integer_to_unset = NOTIFICATION_SUGGESTED_FRIENDS_EMAIL
+    elif unsubscribe_modifier == 'politiciancampaign':
+        notification_flag_integer_to_unset = NOTIFICATION_WEVOTE_POLITICIAN_CAMPAIGN_EMAIL
 
     if not positive_value_exists(notification_flag_integer_to_unset):
         status += "UNSUBSCRIBE_MODIFIER_NOT_VALID "
