@@ -163,13 +163,19 @@
           <div>
               <label class="form-label">Add Audience ID</label>
               <div class="d-flex gap-2 mb-2">
-                <input type="text"
-                       id="audience_builder_id_id"
-                       name="audience_builder_id"
-                       class="form-control"
-                       value="{% if email_campaign and email_campaign.audience_builder_id != 0 %}{{ email_campaign.audience_builder_id|default_if_none:"" }}{% endif %}"
-                       placeholder="ID of Audience Builder..." style="flex: 1;"
-                >
+                <select id="audience_builder_id_id"
+                        name="audience_builder_id"
+                        class="form-select btn border bg-transparent text-start"
+                        style="flex: 1; height: 34px; text-align: left;">
+                  <option value="0"{% if not email_campaign or email_campaign.audience_builder_id == 0 %} selected{% endif %}>
+                    0 - Manual recipients only
+                  </option>
+                  {% for audience_builder in audience_builder_list %}
+                    <option value="{{ audience_builder.id }}"{% if email_campaign and email_campaign.audience_builder_id == audience_builder.id %} selected{% endif %}>
+                      {{ audience_builder.id }} - {{ audience_builder.audience_builder_name }}
+                    </option>
+                  {% endfor %}
+                </select>
               </div>
           </div>
        {% if not emails_sent %}

@@ -486,6 +486,11 @@ def email_campaign_edit_view(request):
     # Get list of saved campaigns
     saved_campaigns = EmailCampaign.objects.filter(deleted=False).order_by('-id')[:10]
 
+    audience_builder_list = AudienceBuilder.objects.filter(
+        deleted=False,
+        archived=False,
+    ).order_by('id', 'audience_builder_name')
+
     # Step 1: Get folders that are not deleted
     folder_queryset = EmailTemplateFolder.objects.filter(deleted=False, archived=False).order_by('email_template_name')
 
@@ -547,6 +552,7 @@ def email_campaign_edit_view(request):
         'google_civic_election_id': google_civic_election_id,
         'state_code': state_code,
         'email_campaign': email_campaign,
+        'audience_builder_list': audience_builder_list,
         'saved_campaigns': saved_campaigns,
         'campaign_recipients': json.dumps(campaign_recipients),
         'token_list': EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS,
