@@ -15,7 +15,7 @@ from urllib.error import HTTPError
 from wevote_functions.functions import convert_to_int, positive_value_exists
 import boto3
 import wevote_functions.admin
-from .functions import analyze_remote_url
+from .functions import analyze_remote_url, crop_to_square
 
 # naming convention stored at aws
 BALLOTPEDIA_IMAGE_NAME = "ballotpedia_image"
