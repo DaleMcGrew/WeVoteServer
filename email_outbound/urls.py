@@ -17,6 +17,8 @@ urlpatterns = [
     re_path(r'^audience_builder_list/$', views_admin.audience_builder_list_view, name='audience_builder_list'),
     re_path(r'^audience_builder_list_process/$', views_admin.audience_builder_list_process_view,
             name='audience_builder_list_process'),
+    re_path(r'^campaign_analytics/$', views_admin.email_campaign_analytics_view,
+            name='email_campaign_analytics'),
     re_path(r'^edit_campaign/$', views_admin.email_campaign_edit_view, name='email_campaign_edit'),
     re_path(r'^edit_campaign_process/$', views_admin.email_campaign_edit_process_view,
             name='email_campaign_edit_process'),
