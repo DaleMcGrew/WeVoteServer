@@ -2,8 +2,6 @@ from time import time
 from django.core.cache import cache
 import copy
 from collections import defaultdict
-from functools import wraps
-from typing import Callable
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
@@ -329,7 +327,7 @@ class SpeedStatistics:
         speed_statistics.end("_render", "_render")
 
         if not isinstance(response, HttpResponse):
-            raise ValueError(f"Response is not a HttpResponse object")
+            raise ValueError("Response is not a HttpResponse object")
 
         # Add the render time to the response
         response.content += f'<div id="renderLoadTimePlaceholder">{speed_statistics.get_context_stats("_render", "_render")[-1]["time_difference"]:.4f}</div>'.encode('utf-8')
@@ -352,7 +350,8 @@ class SpeedStatistics:
         """
         self._speed_stats[scope][context].append(self._make_stats_snapshot(context, description, start_time, end_time))
 
-    def _make_stats_snapshot(self, context: str, desc: str = None, start_time: float = None, end_time: float = None) -> dict:
+    @staticmethod
+    def _make_stats_snapshot(context: str, desc: str = None, start_time: float = None, end_time: float = None) -> dict:
         """
         Make a new stats snapshot for the given context and scope.
         """
