@@ -8,6 +8,34 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
 class SpeedStatistics:
+    """
+    Represents a speed statistics object using timestamps 
+    to track how long different parts of the code take to run.
+
+    Terms:
+    - Scope: A named group of context stats. An easy way to do it is Scope = Function.
+    - Context: A named group of timestamp stats. An easy way to do it is Context = Code Block.
+    - Timestamp: A start and end time for a given context.
+    - Open/ Open ended timestamp: A context stat that has a start time but no end time.
+    - Closed timestamp: A context stat that has a start time and an end time.
+    - Snapshot: A timestamp stat that has a start time and an end time.
+
+    Attributes:
+        _speed_stats (dict): A dictionary of scope names to a dictionary of context names to a list of timestamp dictionaries.
+        _scope (str): The default scope name.
+
+    Methods:
+        get_stats_view_display(self) -> dict: Build a template-ready view of all timing stats.
+        get_stats(self) -> dict: Return the speed statistics object.
+        set_scope(self, scope: str) -> str: Set the default scope name. This is what .start, .end, and .update will default to if no scope is provided.
+        get_scope(self) -> str: Return the default scope name.
+        start(self, context: str, description: str = None, scope: str = None) -> None: Start a new timestamp for the given context and scope.
+        end(self, context: str, scope: str = None) -> None: End the last timestamp for the given context and scope.
+        update_end(self, context: str, scope: str = None) -> None: Update the end time of the last timestamp for the given context and scope.
+        get_context_stats(self, context: str, scope: str = None) -> dict: Return a deep copy of all the context stats for the given context and scope.
+        peek_context_stats(self, context: str, scope: str = None) -> dict: Return a deep copy of the last context stat for the given context and scope.
+    """
+
     def __init__(self, scope: str) -> None:
         if scope == "":
             raise ValueError("Scope cannot be an empty string")
