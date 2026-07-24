@@ -1799,12 +1799,28 @@ def voter_guide_possibility_list_view(request):
         positive_value_exists(request.GET.get('filter_selected_ignore', False))  # ignore_this_source
     filter_selected_not_available_yet = \
         positive_value_exists(request.GET.get('filter_selected_not_available_yet', False))  # cannot_find_endorsements
+    label_filter = request.GET.get('label_filter', '')
     google_civic_election_id = convert_to_int(request.GET.get('google_civic_election_id', 0))
     show_all_elections = positive_value_exists(request.GET.get('show_all_elections', False))
     state_code = request.GET.get('state_code', '')
     voter_guide_possibility_search = request.GET.get('voter_guide_possibility_search', '')
 
     show_number_of_ballot_items = positive_value_exists(request.GET.get('show_number_of_ballot_items', False))
+
+    # Apply label_filter overrides to filter_selected variables
+    if positive_value_exists(label_filter):
+        if label_filter == 'not_available_yet':
+            filter_selected_not_available_yet = True
+        elif label_filter == 'capture_comments':
+            filter_selected_capture_detailed_comments = True
+        elif label_filter == 'candidates_missing':
+            filter_selected_candidates_missing = True
+        elif label_filter == 'past_year':
+            filter_selected_from_prior_election = True
+        elif label_filter == 'ignored':
+            filter_selected_ignore = True
+        elif label_filter == 'archived':
+            filter_selected_archive = True
 
     current_page_url = request.get_full_path()
     page = convert_to_int(request.GET.get('page', 0))
@@ -2105,11 +2121,27 @@ def voter_guide_possibility_list_view(request):
         not voter_guide_possibility_search \
         else False
 
+    # Count the active filters (Assigned to, Election, and each checkbox / search) for the "Filters (N)" label
+    active_filter_count = 0
+    if positive_value_exists(assigned_to_voter_we_vote_id):
+        active_filter_count += 1
+    if positive_value_exists(google_civic_election_id):
+        active_filter_count += 1
+    if positive_value_exists(show_all_elections):
+        active_filter_count += 1
+    if positive_value_exists(show_number_of_ballot_items):
+        active_filter_count += 1
+    if positive_value_exists(voter_guide_possibility_search):
+        active_filter_count += 1
+    if positive_value_exists(label_filter):
+        active_filter_count += 1
+
     messages_on_stage = get_messages(request)
     template_values = {
         'ENDORSEMENTS_FOR_CANDIDATE':           ENDORSEMENTS_FOR_CANDIDATE,
         'ORGANIZATION_ENDORSING_CANDIDATES':    ORGANIZATION_ENDORSING_CANDIDATES,
         'UNKNOWN_TYPE':                         UNKNOWN_TYPE,
+        'active_filter_count':                  active_filter_count,
         'assigned_to_voter_we_vote_id':         assigned_to_voter_we_vote_id,
         'candidates_missing_count':             candidates_missing_count,
         'not_available_yet_count':              not_available_yet_count,
@@ -2130,6 +2162,7 @@ def voter_guide_possibility_list_view(request):
         'filter_selected_to_review':            filter_selected_to_review,
         'from_prior_election_count':            from_prior_election_count,
         'google_civic_election_id':             google_civic_election_id,
+        'label_filter':                         label_filter,
         'next_page_url':                        next_page_url,
         'number_to_show':                       number_to_show,
         'political_data_managers_list':         political_data_managers_list,
@@ -2172,6 +2205,7 @@ def voter_guide_possibility_list_process_view(request):
     filter_selected_ignore = request.POST.get('filter_selected_ignore', False)  # ignore_this_source
     filter_selected_not_available_yet = \
         request.POST.get('filter_selected_not_available_yet', False)  # cannot_find_endorsements
+    label_filter = request.POST.get('label_filter', '')
     state_code = request.POST.get('state_code', '')
     voter_guide_possibility_search = request.POST.get('voter_guide_possibility_search', '')
 
@@ -2195,6 +2229,8 @@ def voter_guide_possibility_list_process_view(request):
         url_variables += "&filter_selected_ignore=" + str(filter_selected_ignore)
     if positive_value_exists(filter_selected_not_available_yet):  # cannot_find_endorsements
         url_variables += "&filter_selected_not_available_yet=" + str(filter_selected_not_available_yet)
+    if positive_value_exists(label_filter):
+        url_variables += "&label_filter=" + str(label_filter)
     if positive_value_exists(state_code):
         url_variables += "&state_code=" + str(state_code)
     if positive_value_exists(voter_guide_possibility_search):
