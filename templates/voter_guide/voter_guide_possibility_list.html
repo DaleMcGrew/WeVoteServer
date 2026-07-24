@@ -136,6 +136,11 @@
           method="get"
           action="{% url 'voter_guide:voter_guide_possibility_list' %}">
       {% csrf_token %}
+      {% if election_list %}
+        {% include "election/election_list_dropdown.html" with election_list=election_list selected_election_id=google_civic_election_id select_id="google_civic_election_id" select_name="google_civic_election_id" %}
+      {% else %}
+        (no elections found)
+      {% endif %}
 
       <div class="ew-filters">
         <span class="ew-filters-label">Filters ({{ active_filter_count }}):</span>

@@ -19,17 +19,7 @@
         action="{% url 'import_export_batches:batch_process_log_entry_list' %}">
     {% csrf_token %}
     {% if election_list %}
-      <select id="google_civic_election_id" name="google_civic_election_id">
-        <option value="0"
-                {% if 0 == google_civic_election_id %}selected="selected"{% endif %}>-- Filter by Election --</option>
-        {% for one_election in election_list %}
-          <option value="{{ one_election.google_civic_election_id }}"
-                  {% if one_election.google_civic_election_id|slugify == google_civic_election_id|slugify %} selected="selected"{% endif %}>
-            {% if one_election.state_code %}{{ one_election.state_code }}{% endif %}
-            {{ one_election.election_day_text }}: {{ one_election.election_name }} - {{ one_election.google_civic_election_id }}
-          </option>
-        {% endfor %}
-      </select>
+      {% include "election/election_list_dropdown.html" with election_list=election_list selected_election_id=google_civic_election_id %}
       {% if google_civic_election_id %}
         <a href="{% url 'import_export_batches:batch_process_log_entry_list' %}?state_code={{ state_code }}&candidate_search={{ candidate_search }}{% if show_all_elections %}&show_all_elections=1{% endif %}&batch_process_id={{ batch_process_id }}&batch_process_chunk_id={{ batch_process_chunk_id }}">
         clear</a>

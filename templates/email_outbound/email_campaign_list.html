@@ -172,6 +172,19 @@
     color: #23527c;
   }
 
+  .analytics-link {
+    color: #337ab7;
+    display: inline-flex;
+    margin-left: 8px;
+    padding: 3px;
+    vertical-align: middle;
+  }
+
+  .analytics-link:hover {
+    color: #23527c;
+    text-decoration: none;
+  }
+
   .tab-content {
     display: none;
   }
@@ -253,6 +266,12 @@
               <a href="{% url 'email_outbound:email_campaign_edit' %}?id={{ campaign.id }}&google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}"
                  class="campaign-link">
                 {{ campaign.email_campaign_name }}
+              </a>
+              <a href="{% url 'email_outbound:email_campaign_analytics' %}?id={{ campaign.id }}&google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}"
+                 class="analytics-link"
+                 title="View campaign analytics"
+                 aria-label="View analytics for {{ campaign.email_campaign_name }}">
+                <i class="fa fa-bar-chart" aria-hidden="true"></i>
               </a>
             </td>
             <td style="white-space: nowrap;">

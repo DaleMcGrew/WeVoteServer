@@ -15,7 +15,7 @@ from urllib.error import HTTPError
 from wevote_functions.functions import convert_to_int, positive_value_exists
 import boto3
 import wevote_functions.admin
-from .functions import analyze_remote_url
+from .functions import analyze_remote_url, crop_to_square
 
 # naming convention stored at aws
 BALLOTPEDIA_IMAGE_NAME = "ballotpedia_image"
@@ -2157,6 +2157,9 @@ class WeVoteImageManager(models.Manager):
                     centering_y = ((image.height - image_offset_y) * 0.5) / image.height
                     centering = (centering_x, centering_y)
                     image = ImageOps.fit(image, target_size, Image.Resampling.LANCZOS, centering)
+                elif image_width == image_height:
+                    image = crop_to_square(image)
+                    image = image.resize(target_size, Image.Resampling.LANCZOS)
                 else:
                     image = ImageOps.contain(image, target_size, Image.Resampling.LANCZOS)
                 if media_type == 'image/jpeg':
