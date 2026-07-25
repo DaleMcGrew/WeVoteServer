@@ -14,7 +14,7 @@ from politician.models import Politician
 from voter.models import VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_state_code_to_state_text, convert_to_int, positive_value_exists, \
-    STATE_CODE_MAP
+    generate_random_string, STATE_CODE_MAP
 from wevote_functions.functions_date import get_current_year_as_integer
 from .models import AudienceFilter, AudienceFilterChain, \
     CUSTOMIZATION_TOKEN_CONVERSION_FROM_JAZZ_HR, \
@@ -25,6 +25,7 @@ logger = wevote_functions.admin.get_logger(__name__)
 
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 WEB_APP_ROOT_URL = get_environment_variable("WEB_APP_ROOT_URL")
+SUBSCRIPTION_SECRET_KEY_LENGTH = 48
 
 
 def augment_email_campaign_recipient(
@@ -101,7 +102,17 @@ def augment_email_campaign_recipient(
             email_campaign_recipient.politician_seo_friendly_path = politician.seo_friendly_path
             email_campaign_recipient.politician_state_code = politician.state_code
             email_campaign_recipient.supporters_count = politician.supporters_count
+            if not positive_value_exists(email_campaign_recipient.recipient_email_subscription_secret_key):
+                if positive_value_exists(politician.politician_email_subscription_secret_key):
+                    email_campaign_recipient.politician_email_subscription_secret_key = \
+                        politician.politician_email_subscription_secret_key
+                else:
+                    secret_key = generate_random_string(SUBSCRIPTION_SECRET_KEY_LENGTH)
+                    politician.politician_email_subscription_secret_key = secret_key
+                    politician.save()
+                    email_campaign_recipient.politician_email_subscription_secret_key = secret_key
             save_changes = True
+
 
         # Find the upcoming linked candidate and office that this politician is running for office next
         # We need candidate_we_vote_id office_we_vote_id in order to calculate:
@@ -901,7 +912,18 @@ def merge_email_campaign_recipient_with_template(
 
         # These are all related to EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS
 
-        #
+        # Build unsubscribe link for email footer
+        secret_key = None
+        if positive_value_exists(email_campaign_recipient.recipient_email_subscription_secret_key):
+            secret_key = email_campaign_recipient.recipient_email_subscription_secret_key
+        elif positive_value_exists(email_campaign_recipient.politician_email_subscription_secret_key):
+            secret_key = email_campaign_recipient.politician_email_subscription_secret_key
+        
+        unsubscribe_html = ""
+        if positive_value_exists(secret_key) and positive_value_exists(web_app_root_url):
+            recipient_unsubscribe_url = f"{web_app_root_url}/unsubscribe/{secret_key}/politiciancampaign"
+            unsubscribe_html = f"<a href='{recipient_unsubscribe_url}'>Unsubscribe</a>"
+
         open_tracking_code = getattr(email_campaign_recipient, "open_tracking_code", "") or ""
         open_tracking_pixel_html = ""
         # Tracking pixel and footer text only generated if open tracking code is present
@@ -915,11 +937,9 @@ def merge_email_campaign_recipient_with_template(
                 "<a href='https://wevote.us/privacy'>Privacy Policy</a>." \
                 "{open_tracking_pixel_html}<br />".format(
                     open_tracking_pixel_html=open_tracking_pixel_html,
-                )
+                ) + unsubscribe_html
         else:
-            email_footer_html = ""
-
-        # Add link to subscription key
+            email_footer_html = unsubscribe_html
 
         token_replacements['[my_first_name]'] = getattr(email_campaign_recipient, 'sender_first_name', '')
         token_replacements['[my_full_name]'] = getattr(email_campaign_recipient, 'sender_full_name', '')

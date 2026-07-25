@@ -470,6 +470,7 @@ class EmailCampaignRecipient(models.Model):
     recipient_full_name = models.CharField(max_length=255, null=True)
     recipient_last_name = models.CharField(max_length=255, null=True)
     recipient_email_subscription_secret_key = models.CharField(max_length=255, null=True)
+    politician_email_subscription_secret_key = models.CharField(max_length=255, null=True)
     recipient_email_we_vote_id = models.CharField(max_length=255, null=True)
     recipient_voter_we_vote_id = models.CharField(max_length=255, null=True)
     sender_email = models.CharField(max_length=255, null=True)
