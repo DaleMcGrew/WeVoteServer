@@ -45,12 +45,12 @@ EXPOSE 8000
 
 ENV RUNNING_IN_DOCKER=True
 
-# OpenTelemetry configuration
-ENV OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=x-token-new-key,x-csrftoken,set-cookie,cookie,authorization \
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=.* \
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=.* \
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST=.* \
-    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE=.* \
+# OpenTelemetry configuration :: See WV-4841 re: this causing build failure
+# ENV OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=x-token-new-key,x-csrftoken,set-cookie,cookie,authorization \
+#     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=.* \
+#     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=.* \
+#     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST=.* \
+#     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE=.* \
 
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["opentelemetry-instrument", "gunicorn", "--workers", "2", "--threads", "4", "--worker-class", "gthread", "--timeout", "1800", "--bind", "0.0.0.0:8000", "config.wsgi"]
