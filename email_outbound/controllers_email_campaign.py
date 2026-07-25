@@ -102,15 +102,19 @@ def augment_email_campaign_recipient(
             email_campaign_recipient.politician_seo_friendly_path = politician.seo_friendly_path
             email_campaign_recipient.politician_state_code = politician.state_code
             email_campaign_recipient.supporters_count = politician.supporters_count
-            if not positive_value_exists(email_campaign_recipient.recipient_email_subscription_secret_key):
-                if positive_value_exists(politician.politician_email_subscription_secret_key):
-                    email_campaign_recipient.politician_email_subscription_secret_key = \
-                        politician.politician_email_subscription_secret_key
-                else:
-                    secret_key = generate_random_string(SUBSCRIPTION_SECRET_KEY_LENGTH)
-                    politician.politician_email_subscription_secret_key = secret_key
-                    politician.save()
-                    email_campaign_recipient.politician_email_subscription_secret_key = secret_key
+            try:
+                if not positive_value_exists(email_campaign_recipient.recipient_email_subscription_secret_key):
+                    if positive_value_exists(politician.politician_email_subscription_secret_key):
+                        email_campaign_recipient.politician_email_subscription_secret_key = \
+                            politician.politician_email_subscription_secret_key
+                    else:
+                        secret_key = generate_random_string(SUBSCRIPTION_SECRET_KEY_LENGTH)
+                        politician.politician_email_subscription_secret_key = secret_key
+                        politician.save()
+                        email_campaign_recipient.politician_email_subscription_secret_key = secret_key
+            except Exception as e:
+                status += "MIGRATION_PROBLEM_ASK_DALE-WV-2671-politician_email_subscription_secret_key " + str(e) + ' '
+
             save_changes = True
 
 
@@ -914,11 +918,14 @@ def merge_email_campaign_recipient_with_template(
 
         # Build unsubscribe link for email footer
         secret_key = None
-        if positive_value_exists(email_campaign_recipient.recipient_email_subscription_secret_key):
-            secret_key = email_campaign_recipient.recipient_email_subscription_secret_key
-        elif positive_value_exists(email_campaign_recipient.politician_email_subscription_secret_key):
-            secret_key = email_campaign_recipient.politician_email_subscription_secret_key
-        
+        try:
+            if positive_value_exists(email_campaign_recipient.recipient_email_subscription_secret_key):
+                secret_key = email_campaign_recipient.recipient_email_subscription_secret_key
+            elif positive_value_exists(email_campaign_recipient.politician_email_subscription_secret_key):
+                secret_key = email_campaign_recipient.politician_email_subscription_secret_key
+        except Exception as e:
+            status += "MIGRATION_PROBLEM_ASK_DALE2-WV-2671-politician_email_subscription_secret_key " + str(e) + ' '
+
         unsubscribe_html = ""
         if positive_value_exists(secret_key) and positive_value_exists(web_app_root_url):
             recipient_unsubscribe_url = f"{web_app_root_url}/unsubscribe/{secret_key}/politiciancampaign"
