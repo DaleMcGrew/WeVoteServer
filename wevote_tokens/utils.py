@@ -205,9 +205,6 @@ class TokensManager():
         if token_type == TokenTypes.SINGLE_USE.value:
             # breakpoint()
             token_info = SingleUseTokenManager.authenticate_retrieve_token(token_id, token_key, scope)
-            if token_info['success']:
-                token_info['expiration_datetime'] = \
-                    token_info['expiration_datetime'].strftime('%Y-%m-%d %H:%M:%S')
 
             # This is for retries in case of faulty api connection
             # if the previous token key was used, its likely that
@@ -223,6 +220,10 @@ class TokensManager():
                         if temp_token_check_info['success']:
                             token_info = temp_token_check_info
                             break
+            
+            if token_info['success']:
+                token_info['expiration_datetime'] = \
+                    token_info['expiration_datetime'].strftime('%Y-%m-%d %H:%M:%S')
 
         else:
             token_auth_info['error_message'] = f"Invalid token type: {token_type}"
