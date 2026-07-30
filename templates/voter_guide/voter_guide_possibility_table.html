@@ -14,6 +14,7 @@
         <th>Status</th>
         <th>Label</th>
         <th><span class="u-no-break">Assigned to</span></th>
+        <th><span class="u-no-break">Date changed</span></th>
       </tr>
     </thead>
     <tbody>
@@ -140,6 +141,13 @@
               <span class="u-no-break"><strong>{{ voter_guide_possibility.number_of_endorsements_not_visible }} NOT visible to voters</strong></span><br />
             {% endif %}
           {% endif %}
+          {% if voter_guide_possibility.done_needs_verification %}
+            <span class="u-no-break">To Verify</span><br />
+          {% elif voter_guide_possibility.done_verified %}
+            <span class="u-no-break">Completed</span><br />
+          {% else %}
+            <span class="u-no-break">Draft</span><br />
+          {% endif %}
 
           {% if voter_guide_possibility.from_prior_election %}
             Past Year<br />
@@ -149,16 +157,10 @@
             Candidates Missing<br />
           {% elif voter_guide_possibility.capture_detailed_comments %}
             Capture Comments<br />
-          {% elif voter_guide_possibility.done_needs_verification %}
-            <span class="u-no-break">Done-To Verify</span><br />
-          {% elif voter_guide_possibility.done_verified %}
-            <span class="u-no-break">Done-Verified</span><br />
           {% elif voter_guide_possibility.hide_from_active_review %}
             Archived<br />
           {% elif voter_guide_possibility.ignore_this_source %}
             Ignored<br />
-          {% else %}
-            <span class="u-no-break">To Review</span><br />
           {% endif %}
 
           {% if voter_guide_possibility.batch_header_id %}
@@ -188,6 +190,17 @@
                 <strong>{{ voter_guide_possibility.voter_who_submitted_name|default_if_none:"" }}</strong></a>
             </span>
           {% endif %}
+        </td>
+        <td>
+          <span style="">
+            {{ voter_guide_possibility.date_last_changed|default_if_none:"" }} PT
+            {% if voter_guide_possibility.voter_who_submitted_we_vote_id and voter_guide_possibility.voter_who_submitted_name %}
+              <br />
+              <a href="{% url 'voter:voter_edit_we_vote_id' voter_guide_possibility.voter_who_submitted_we_vote_id %}"
+                 target="_blank">
+              by <strong>{{ voter_guide_possibility.voter_who_submitted_name|default_if_none:"" }}</strong></a>
+            {% endif %}
+          </span>
         </td>
       </tr>
     {% endfor %}
