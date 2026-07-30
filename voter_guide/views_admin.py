@@ -1775,37 +1775,42 @@ def voter_guide_possibility_list_view(request):
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
 
-    assigned_to_voter_we_vote_id = request.GET.get('assigned_to_voter_we_vote_id', False)
-    assigned_to_no_one = positive_value_exists(request.GET.get('assigned_to_no_one', False))
+    # These are the major states
+    filter_selected_to_review = \
+        positive_value_exists(request.POST.get('filter_selected_to_review', False))
+    filter_selected_done_needs_verification = \
+        positive_value_exists(
+            request.POST.get('filter_selected_done_needs_verification', False))  # done_needs_verification
+    filter_selected_done_verified = \
+        positive_value_exists(
+            request.POST.get('filter_selected_done_verified', False))  # done_verified
+
+    # These relate to the filters
+    assigned_to_voter_we_vote_id = request.POST.get('assigned_to_voter_we_vote_id', False)
+    assigned_to_no_one = positive_value_exists(request.POST.get('assigned_to_no_one', False))
     if positive_value_exists(assigned_to_no_one):
         assigned_to_voter_we_vote_id = "ASSIGNED_TO_NO_ONE"
     filter_selected_archive = \
-        positive_value_exists(request.GET.get('filter_selected_archive', False))  # hide_from_active_review
+        positive_value_exists(request.POST.get('filter_selected_archive', False))  # hide_from_active_review
     filter_selected_candidates_missing = \
         positive_value_exists(
-            request.GET.get('filter_selected_candidates_missing', False))  # candidates_missing_from_we_vote
+            request.POST.get('filter_selected_candidates_missing', False))  # candidates_missing_from_we_vote
     filter_selected_capture_detailed_comments = \
         positive_value_exists(
-            request.GET.get('filter_selected_capture_detailed_comments', False))  # capture_detailed_comments
-    filter_selected_done_needs_verification = \
-        positive_value_exists(
-            request.GET.get('filter_selected_done_needs_verification', False))  # done_needs_verification
-    filter_selected_done_verified = \
-        positive_value_exists(
-            request.GET.get('filter_selected_done_verified', False))  # done_verified
+            request.POST.get('filter_selected_capture_detailed_comments', False))  # capture_detailed_comments
     filter_selected_from_prior_election = \
-        positive_value_exists(request.GET.get('filter_selected_from_prior_election', False))  # from_prior_election
+        positive_value_exists(request.POST.get('filter_selected_from_prior_election', False))  # from_prior_election
     filter_selected_ignore = \
-        positive_value_exists(request.GET.get('filter_selected_ignore', False))  # ignore_this_source
+        positive_value_exists(request.POST.get('filter_selected_ignore', False))  # ignore_this_source
     filter_selected_not_available_yet = \
-        positive_value_exists(request.GET.get('filter_selected_not_available_yet', False))  # cannot_find_endorsements
-    label_filter = request.GET.get('label_filter', '')
-    google_civic_election_id = convert_to_int(request.GET.get('google_civic_election_id', 0))
-    show_all_elections = positive_value_exists(request.GET.get('show_all_elections', False))
-    state_code = request.GET.get('state_code', '')
-    voter_guide_possibility_search = request.GET.get('voter_guide_possibility_search', '')
+        positive_value_exists(request.POST.get('filter_selected_not_available_yet', False))  # cannot_find_endorsements
+    label_filter = request.POST.get('label_filter', '')
+    google_civic_election_id = convert_to_int(request.POST.get('google_civic_election_id', 0))
+    show_all_elections = positive_value_exists(request.POST.get('show_all_elections', False))
+    state_code = request.POST.get('state_code', '')
+    voter_guide_possibility_search = request.POST.get('voter_guide_possibility_search', '')
 
-    show_number_of_ballot_items = positive_value_exists(request.GET.get('show_number_of_ballot_items', False))
+    show_number_of_ballot_items = positive_value_exists(request.POST.get('show_number_of_ballot_items', False))
 
     # Apply label_filter overrides to filter_selected variables
     if positive_value_exists(label_filter):
@@ -1823,7 +1828,7 @@ def voter_guide_possibility_list_view(request):
             filter_selected_archive = True
 
     current_page_url = request.get_full_path()
-    page = convert_to_int(request.GET.get('page', 0))
+    page = convert_to_int(request.POST.get('page', 0))
     page = page if positive_value_exists(page) else 0  # Prevent negative pages
     if "&page=" in current_page_url:
         # This will leave harmless number in URL
@@ -1901,7 +1906,7 @@ def voter_guide_possibility_list_view(request):
         return_count_only=True)
     capture_detailed_comments_count = results['voter_guide_possibility_list_count']
 
-    # Done-To Verify
+    # To Verify
     results = voter_guide_possibility_manager.retrieve_voter_guide_possibility_list(
         done_needs_verification=True,
         search_string=voter_guide_possibility_search,
@@ -1912,7 +1917,7 @@ def voter_guide_possibility_list_view(request):
         return_count_only=True)
     done_needs_verification_count = results['voter_guide_possibility_list_count']
 
-    # Done-Verified
+    # Completed
     results = voter_guide_possibility_manager.retrieve_voter_guide_possibility_list(
         done_verified=True,
         search_string=voter_guide_possibility_search,
@@ -1989,7 +1994,7 @@ def voter_guide_possibility_list_view(request):
         if results['success']:
             voter_guide_possibility_list = results['voter_guide_possibility_list']
     elif positive_value_exists(filter_selected_done_needs_verification):
-        filtered_by_title = "Done-To Verify"
+        filtered_by_title = "To Verify"
         order_by = "-id"
         results = voter_guide_possibility_manager.retrieve_voter_guide_possibility_list(
             order_by=order_by,
@@ -2004,7 +2009,7 @@ def voter_guide_possibility_list_view(request):
         if results['success']:
             voter_guide_possibility_list = results['voter_guide_possibility_list']
     elif positive_value_exists(filter_selected_done_verified):
-        filtered_by_title = "Done-Verified"
+        filtered_by_title = "Completed"
         order_by = "-id"
         results = voter_guide_possibility_manager.retrieve_voter_guide_possibility_list(
             order_by=order_by,
@@ -2056,7 +2061,7 @@ def voter_guide_possibility_list_view(request):
         if positive_value_exists(voter_guide_possibility_search):
             filtered_by_title = "Search Results"
         else:
-            filtered_by_title = "To Review"
+            filtered_by_title = "Draft"
         order_by = "-id"
         results = voter_guide_possibility_manager.retrieve_voter_guide_possibility_list(
             order_by=order_by,
@@ -2109,17 +2114,12 @@ def voter_guide_possibility_list_view(request):
     # from_prior_election == filter_selected_from_prior_election
     # hide_from_active_review == filter_selected_archive
     # ignore_this_source == filter_selected_ignore
-    filter_selected_to_review = \
-        True if not filter_selected_archive and \
-        not filter_selected_candidates_missing and \
-        not filter_selected_capture_detailed_comments and \
-        not filter_selected_done_needs_verification and \
-        not filter_selected_done_verified and \
-        not filter_selected_ignore and \
-        not filter_selected_from_prior_election and \
-        not filter_selected_not_available_yet and \
-        not voter_guide_possibility_search \
+    filter_selected_to_review_if_default_needed = \
+        True if not filter_selected_done_needs_verification and \
+        not filter_selected_done_verified \
         else False
+
+    filter_selected_to_review = filter_selected_to_review or filter_selected_to_review_if_default_needed
 
     # Count the active filters (Assigned to, Election, and each checkbox / search) for the "Filters (N)" label
     active_filter_count = 0
@@ -2209,33 +2209,6 @@ def voter_guide_possibility_list_process_view(request):
     state_code = request.POST.get('state_code', '')
     voter_guide_possibility_search = request.POST.get('voter_guide_possibility_search', '')
 
-    # On redirect, we want to maintain the "state" of the page
-    url_variables = "?google_civic_election_id=" + str(google_civic_election_id)
-    if positive_value_exists(show_all_elections):
-        url_variables += "&show_all_elections=" + str(show_all_elections)
-    if positive_value_exists(filter_selected_archive):  # hide_from_active_review
-        url_variables += "&filter_selected_archive=" + str(filter_selected_archive)
-    if positive_value_exists(filter_selected_candidates_missing):  # candidates_missing_from_we_vote
-        url_variables += "&filter_selected_candidates_missing=" + str(filter_selected_candidates_missing)
-    if positive_value_exists(filter_selected_capture_detailed_comments):  # capture_detailed_comments
-        url_variables += "&filter_selected_capture_detailed_comments=" + str(filter_selected_capture_detailed_comments)
-    if positive_value_exists(filter_selected_done_needs_verification):  # done_needs_verification
-        url_variables += "&filter_selected_done_needs_verification=" + str(filter_selected_done_needs_verification)
-    if positive_value_exists(filter_selected_done_verified):  # done_verified
-        url_variables += "&filter_selected_done_verified=" + str(filter_selected_done_verified)
-    if positive_value_exists(filter_selected_from_prior_election):  # from_prior_election
-        url_variables += "&filter_selected_from_prior_election=" + str(filter_selected_from_prior_election)
-    if positive_value_exists(filter_selected_ignore):  # ignore_this_source
-        url_variables += "&filter_selected_ignore=" + str(filter_selected_ignore)
-    if positive_value_exists(filter_selected_not_available_yet):  # cannot_find_endorsements
-        url_variables += "&filter_selected_not_available_yet=" + str(filter_selected_not_available_yet)
-    if positive_value_exists(label_filter):
-        url_variables += "&label_filter=" + str(label_filter)
-    if positive_value_exists(state_code):
-        url_variables += "&state_code=" + str(state_code)
-    if positive_value_exists(voter_guide_possibility_search):
-        url_variables += "&voter_guide_possibility_search=" + str(voter_guide_possibility_search)
-
     select_for_marking_voter_guide_possibility_ids = request.POST.getlist('select_for_marking_checks[]')
     which_marking = request.POST.get("which_marking")
 
@@ -2254,8 +2227,9 @@ def voter_guide_possibility_list_process_view(request):
         messages.add_message(request, messages.ERROR,
                              'The filter you are trying to update is not recognized: {which_marking}'
                              ''.format(which_marking=which_marking))
-        return HttpResponseRedirect(reverse('voter_guide:voter_guide_possibility_list', args=()) +
-                                    url_variables)
+        return voter_guide_possibility_list_view(request)
+        # return HttpResponseRedirect(reverse('voter_guide:voter_guide_possibility_list', args=()) +
+        #                             url_variables)
 
     # print(f"marked:{select_for_marking_voter_guide_possibility_ids}")
 
@@ -2266,17 +2240,21 @@ def voter_guide_possibility_list_process_view(request):
     elif positive_value_exists(which_marking) or positive_value_exists(reassign_to_voter_we_vote_id):
         if not positive_value_exists(select_for_marking_voter_guide_possibility_ids):
             messages.add_message(request, messages.ERROR, 'Please select some voter guide possibilities.')
-            return HttpResponseRedirect(reverse('voter_guide:voter_guide_possibility_list', args=()) +
-                                        url_variables)
+            return voter_guide_possibility_list_view(request)
+            # return HttpResponseRedirect(reverse('voter_guide:voter_guide_possibility_list', args=()) +
+            #                             url_variables)
 
     voter_guide_possibility_manager = VoterGuidePossibilityManager()
 
     if positive_value_exists(assigned_to_voter_we_vote_id):
+        request.POST = request.POST.copy()
         if assigned_to_voter_we_vote_id == 'ASSIGNED_TO_NO_ONE':
-            url_variables += "&assigned_to_no_one=" + str(True)
+            # QueryDict is immutable; copy to get a mutable version, then add the flag so the
+            # list view (which reads request.POST.get('assigned_to_no_one')) picks it up.
+            request.POST['assigned_to_no_one'] = True
         else:
             # Show voter guide possibilities assigned to on person
-            url_variables += "&assigned_to_voter_we_vote_id=" + str(assigned_to_voter_we_vote_id)
+            request.POST['assigned_to_voter_we_vote_id'] = assigned_to_voter_we_vote_id
 
     if positive_value_exists(reassign_to_voter_we_vote_id):
         voter_manager = VoterManager()
@@ -2286,8 +2264,9 @@ def voter_guide_possibility_list_process_view(request):
             assigned_to_name = voter.get_full_name()
         else:
             messages.add_message(request, messages.ERROR, 'Could not find that voter.')
-            return HttpResponseRedirect(reverse('voter_guide:voter_guide_possibility_list', args=()) +
-                                        url_variables)
+            return voter_guide_possibility_list_view(request)
+            # return HttpResponseRedirect(reverse('voter_guide:voter_guide_possibility_list', args=()) +
+            #                             url_variables)
 
         items_processed_successfully = 0
         for voter_guide_possibility_id_string in select_for_marking_voter_guide_possibility_ids:
@@ -2424,8 +2403,11 @@ def voter_guide_possibility_list_process_view(request):
         messages.add_message(request, messages.INFO,
                              'Voter guides processed successfully: {items_processed_successfully}'
                              ''.format(items_processed_successfully=items_processed_successfully))
-    return HttpResponseRedirect(reverse('voter_guide:voter_guide_possibility_list', args=()) +
-                                url_variables)
+
+    # Now drop into the listing view
+    return voter_guide_possibility_list_view(request)
+    # return HttpResponseRedirect(reverse('voter_guide:voter_guide_possibility_list', args=()) +
+    #                             url_variables)
 
 
 @login_required

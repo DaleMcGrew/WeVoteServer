@@ -33,7 +33,7 @@
     }
     .ew-link-plain:hover { text-decoration: underline; color: #2f6fd0; }
     /* Batch actions */
-    .ew-batch { margin-bottom: 14px; }
+    .ew-batch { margin-bottom: 4px; }
     .ew-batch-toggle {
       display: inline-flex; align-items: center; gap: 8px;
       font-weight: 700; color: #2b2b2b; cursor: pointer; user-select: none;
@@ -46,7 +46,7 @@
     /* Filters row */
     .ew-filters {
       display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-      padding: 6px 0 14px; color: #555;
+      padding: 6px 0 4px; color: #555;
     }
     .ew-filters-label { color: #888; }
     .ew-select {
@@ -54,13 +54,33 @@
       cursor: pointer; padding: 2px 2px;
     }
     .ew-select:disabled { color: #999; cursor: default; }
+    .ew-select-truncate-70 {
+      max-width: 70px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ew-select-truncate-110 {
+      max-width: 110px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* Election dropdown: keep the closed control narrow, truncating long option text.
+       The native open dropdown still lists each option at its full natural width. */
+    .ew-select-truncate-200 {
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .ew-check { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; }
     .ew-search { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
-    .ew-search input[type=text] { border: 1px solid #bbb; padding: 5px 8px; min-width: 190px; }
+    .ew-search input[type=text] { border: 1px solid #bbb; padding: 5px 8px; width: 150px; }
     .ew-search input[type=submit] { padding: 5px 12px; }
     /* Stepper */
     .ew-stepper {
-      display: flex; align-items: center; flex-wrap: wrap; gap: 6px 4px;
+      display: flex; align-items: center; flex-wrap: wrap; font-size: 18px; gap: 6px 4px;
       padding: 14px 0 8px; border-bottom: 1px solid #e3e3e3; margin-bottom: 4px;
     }
     .ew-step {
@@ -68,6 +88,7 @@
       color: #555; text-decoration: none; white-space: nowrap;
     }
     .ew-step:hover { text-decoration: none; color: #2f6fd0; }
+    button.ew-step { background: none; border: none; font: inherit; cursor: pointer; }
     .ew-step-num {
       display: inline-flex; align-items: center; justify-content: center;
       width: 22px; height: 22px; border-radius: 50%;
@@ -131,160 +152,6 @@
       </a>
     </div>
 
-    {# ---- Filters (GET form) ---- #}
-    <form name="voter_guide_choose_election"
-          method="get"
-          action="{% url 'voter_guide:voter_guide_possibility_list' %}">
-      {% csrf_token %}
-      {% if election_list %}
-        {% include "election/election_list_dropdown.html" with election_list=election_list selected_election_id=google_civic_election_id select_id="google_civic_election_id" select_name="google_civic_election_id" %}
-      {% else %}
-        (no elections found)
-      {% endif %}
-
-      <div class="ew-filters">
-        <span class="ew-filters-label">Filters ({{ active_filter_count }}):</span>
-
-        {# Assigned to #}
-        <select id="assigned_to_voter_we_vote_id_id"
-                name="assigned_to_voter_we_vote_id"
-                class="ew-select">
-          <option value="">Assigned to</option>
-          {% for voter in political_data_managers_list %}
-            <option value="{{ voter.we_vote_id }}"
-                    {% if assigned_to_voter_we_vote_id|slugify == voter.we_vote_id|slugify %}selected="selected"{% endif %}>
-              {{ voter.get_full_name }}
-            </option>
-          {% endfor %}
-          <option value="ASSIGNED_TO_NO_ONE"
-                  {% if assigned_to_voter_we_vote_id|slugify == "ASSIGNED_TO_NO_ONE"|slugify %}selected="selected"{% endif %}>
-            * Not Assigned *
-          </option>
-        </select>
-
-        {# Label #}
-        <select id="label_filter_id"
-                name="label_filter"
-                class="ew-select">
-          <option value="">Label</option>
-          <option value="not_available_yet"
-                  {% if label_filter|slugify == "not_available_yet"|slugify %}selected="selected"{% endif %}>
-            Not available yet
-          </option>
-          <option value="capture_comments"
-                  {% if label_filter|slugify == "capture_comments"|slugify %}selected="selected"{% endif %}>
-            Capture comments
-          </option>
-          <option value="candidates_missing"
-                  {% if label_filter|slugify == "candidates_missing"|slugify %}selected="selected"{% endif %}>
-            Candidates missing
-          </option>
-          <option value="past_year"
-                  {% if label_filter|slugify == "past_year"|slugify %}selected="selected"{% endif %}>
-            Past year
-          </option>
-          <option value="ignored"
-                  {% if label_filter|slugify == "ignored"|slugify %}selected="selected"{% endif %}>
-            Ignored
-          </option>
-          <option value="archived"
-                  {% if label_filter|slugify == "archived"|slugify %}selected="selected"{% endif %}>
-            Archived
-          </option>
-        </select>
-
-        {# Election #}
-        {% if election_list %}
-          <select id="google_civic_election_id" name="google_civic_election_id" class="ew-select">
-            <option value="0">Election</option>
-            {% for one_election in election_list %}
-              <option value="{{ one_election.google_civic_election_id }}"
-                      {% if one_election.google_civic_election_id|slugify == google_civic_election_id|slugify %} selected="selected"{% endif %}>
-                {% if one_election.state_code %}{{ one_election.state_code }}{% endif %}
-                {{ one_election.election_day_text }}: {{ one_election.election_name }} - {{ one_election.google_civic_election_id }}
-              </option>
-            {% endfor %}
-          </select>
-        {% else %}
-          <span class="ew-muted">(no elections found)</span>
-        {% endif %}
-
-        {# Default to showing only upcoming elections #}
-        <label for="show_all_elections_id" class="ew-check">
-          <input type="checkbox"
-                 name="show_all_elections"
-                 id="show_all_elections_id"
-                 value="1"
-                 {% if show_all_elections %}checked{% endif %} />
-          <strong>Include Past Elections</strong>
-        </label>
-
-        <label for="show_number_of_ballot_items_id" class="ew-check">
-          <input type="checkbox"
-                 name="show_number_of_ballot_items"
-                 id="show_number_of_ballot_items_id"
-                 value="1"
-                 {% if show_number_of_ballot_items %}checked{% endif %} />
-          <strong>Show Ballot Items Count</strong>
-        </label>
-
-        <span class="ew-search">
-          {% if voter_guide_possibility_search %}
-            <a href="#" onclick="clearSearch(); return false;">clear</a>
-          {% endif %}
-          <input type="text"
-                 name="voter_guide_possibility_search"
-                 id="voter_guide_possibility_search_id"
-                 value="{{ voter_guide_possibility_search }}" />
-          <input type="submit" value="Search" />
-        </span>
-      </div>
-
-      {# Pass along the filter state so the stepper selection is preserved through a search #}
-      <input type="hidden" name="filter_selected_archive" value="{{ filter_selected_archive }}">
-      <input type="hidden" name="filter_selected_candidates_missing" value="{{ filter_selected_candidates_missing }}">
-      <input type="hidden" name="filter_selected_capture_detailed_comments" value="{{ filter_selected_capture_detailed_comments }}">
-      <input type="hidden" name="filter_selected_done_needs_verification" value="{{ filter_selected_done_needs_verification }}">
-      <input type="hidden" name="filter_selected_done_verified" value="{{ filter_selected_done_verified }}">
-      <input type="hidden" name="filter_selected_from_prior_election" value="{{ filter_selected_from_prior_election }}">
-      <input type="hidden" name="filter_selected_ignore" value="{{ filter_selected_ignore }}">
-      <input type="hidden" name="filter_selected_not_available_yet" value="{{ filter_selected_not_available_yet }}">
-      <input type="hidden" name="label_filter" value="{{ label_filter }}">
-      <input type="hidden" name="show_ignore_this_source" value="{{ show_ignore_this_source }}">
-      <input type="hidden" name="state_code" value="{{ state_code }}">
-    </form>
-
-    {# ---- Stepper: the 4 main workflow steps ---- #}
-    {% url 'voter_guide:voter_guide_possibility_list' as list_url %}
-    <div class="ew-stepper">
-      <a class="ew-step{% if filter_selected_to_review %} ew-active{% endif %}"
-         href="{{ list_url }}?google_civic_election_id={{ google_civic_election_id }}&show_all_elections={{ show_all_elections }}&assigned_to_voter_we_vote_id={{ assigned_to_voter_we_vote_id }}"
-         onclick="displayLoadingBanner()">
-        <span class="ew-step-num">1</span> Draft ({{ to_review_count }})
-      </a>
-      <span class="ew-step-arrow">&rarr;</span>
-
-      <a class="ew-step{% if filter_selected_done_needs_verification %} ew-active{% endif %}"
-         href="{{ list_url }}?google_civic_election_id={{ google_civic_election_id }}&show_all_elections={{ show_all_elections }}&assigned_to_voter_we_vote_id={{ assigned_to_voter_we_vote_id }}&filter_selected_done_needs_verification=1"
-         onclick="displayLoadingBanner()">
-        <span class="ew-step-num">2</span> To verify ({{ done_needs_verification_count }})
-      </a>
-      <span class="ew-step-arrow">&rarr;</span>
-
-      <a class="ew-step{% if filter_selected_done_verified %} ew-active{% endif %}"
-         href="{{ list_url }}?google_civic_election_id={{ google_civic_election_id }}&show_all_elections={{ show_all_elections }}&assigned_to_voter_we_vote_id={{ assigned_to_voter_we_vote_id }}&filter_selected_done_verified=1"
-         onclick="displayLoadingBanner()">
-        <span class="ew-step-num">3</span> To import ({{ done_verified_count }})
-      </a>
-      <span class="ew-step-arrow">&rarr;</span>
-
-      <a class="ew-step{% if filter_selected_done_verified %} ew-active{% endif %}"
-         href="{{ list_url }}?google_civic_election_id={{ google_civic_election_id }}&show_all_elections={{ show_all_elections }}&assigned_to_voter_we_vote_id={{ assigned_to_voter_we_vote_id }}&filter_selected_done_verified=1"
-         onclick="displayLoadingBanner()">
-        <span class="ew-step-num">4</span> Completed ({{ done_verified_count }})
-      </a>
-    </div>
-
     {# ---- Marking / batch form (wraps the table) ---- #}
     <form name="voter_guide_possibility_markings"
           method="post"
@@ -319,13 +186,15 @@
               </label><br />
               <select id="which_marking_id" name="which_marking">
                 {# note: option values match keys in updated_values parameter of update_or_create_voter_guide_possibility() #}
-                <option value="add_to_active_review">To Review</option>
+                <option value="">-- choose --</option>
+                <option value="add_to_active_review">Draft</option>
+                <option value="done_needs_verification">To Verify</option>
+                <option value="done_verified">Completed</option>
+                <option value="">-----</option>
                 <option value="from_prior_election">Past Year</option>
                 <option value="cannot_find_endorsements">Not Available Yet</option>
                 <option value="candidates_missing_from_we_vote">Candidates Missing</option>
                 <option value="capture_detailed_comments">Capture Comments</option>
-                <option value="done_needs_verification">Done-To Verify</option>
-                <option value="done_verified">Done-Verified</option>
                 <option value="hide_from_active_review">Archive</option>
                 <option value="ignore_this_source">Ignore Website in Future</option>
                 <option value="delete_this_source">Hard Delete this Entry</option>
@@ -334,13 +203,161 @@
             </div>
           </div>
         </div>
+      {% endif %}
 
-        {% if not hide_pagination %}
-          <span class="float-right">
-            {% if current_page_number > 0 %}<a href="{{ previous_page_url }}">Previous page</a> |{% endif %}
-            Page {{ current_page_number|add:1 }}
-          | <a href="{{ next_page_url }}">Next page</a></span>
+    {# ---- Filters (GET form) ---- #}
+{#    <form name="voter_guide_choose_election"#}
+{#          method="get"#}
+{#          action="{% url 'voter_guide:voter_guide_possibility_list' %}">#}
+{#      {% csrf_token %}#}
+
+      <div class="ew-filters">
+        <span class="ew-filters-label">Filters ({{ active_filter_count }}):</span>
+
+        {# Assigned to #}
+        <select id="assigned_to_voter_we_vote_id_id"
+                name="assigned_to_voter_we_vote_id"
+                class="ew-select ew-select-truncate-110">
+          <option value="">Assigned to</option>
+          {% for voter in political_data_managers_list %}
+            <option value="{{ voter.we_vote_id }}"
+                    {% if assigned_to_voter_we_vote_id|slugify == voter.we_vote_id|slugify %}selected="selected"{% endif %}>
+              {{ voter.get_full_name }}
+            </option>
+          {% endfor %}
+          <option value="ASSIGNED_TO_NO_ONE"
+                  {% if assigned_to_voter_we_vote_id|slugify == "ASSIGNED_TO_NO_ONE"|slugify %}selected="selected"{% endif %}>
+            * Not Assigned *
+          </option>
+        </select>
+
+        {# Label #}
+        <select id="label_filter_id"
+                name="label_filter"
+                class="ew-select ew-select-truncate-70">
+          <option value="">Label</option>
+          <option value="not_available_yet"
+                  {% if label_filter|slugify == "not_available_yet"|slugify %}selected="selected"{% endif %}>
+            Not available yet
+          </option>
+          <option value="capture_comments"
+                  {% if label_filter|slugify == "capture_comments"|slugify %}selected="selected"{% endif %}>
+            Capture comments
+          </option>
+          <option value="candidates_missing"
+                  {% if label_filter|slugify == "candidates_missing"|slugify %}selected="selected"{% endif %}>
+            Candidates missing
+          </option>
+          <option value="past_year"
+                  {% if label_filter|slugify == "past_year"|slugify %}selected="selected"{% endif %}>
+            Past year
+          </option>
+          <option value="ignored"
+                  {% if label_filter|slugify == "ignored"|slugify %}selected="selected"{% endif %}>
+            Ignored
+          </option>
+          <option value="archived"
+                  {% if label_filter|slugify == "archived"|slugify %}selected="selected"{% endif %}>
+            Archived
+          </option>
+        </select>
+
+        {# Election #}
+        {% if election_list %}
+          <select id="google_civic_election_id" name="google_civic_election_id" class="ew-select ew-select-truncate-200">
+            <option value="0">Election</option>
+            {% for one_election in election_list %}
+              <option value="{{ one_election.google_civic_election_id }}"
+                      {% if one_election.google_civic_election_id|slugify == google_civic_election_id|slugify %} selected="selected"{% endif %}>
+                {{ one_election.election_day_text }}
+                  {% if one_election.state_code %}{{ one_election.state_code }}{% endif %}: {{ one_election.election_name }} - {{ one_election.google_civic_election_id }}
+              </option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <span class="ew-muted">(no elections found)</span>
         {% endif %}
+
+        {# Default to showing only upcoming elections #}
+        <label for="show_all_elections_id" class="ew-check">
+          <input type="checkbox"
+                 name="show_all_elections"
+                 id="show_all_elections_id"
+                 value="1"
+                 {% if show_all_elections %}checked{% endif %} />
+          <strong>Show Past Years</strong>
+        </label>
+
+        <label for="show_number_of_ballot_items_id" class="ew-check">
+          <input type="checkbox"
+                 name="show_number_of_ballot_items"
+                 id="show_number_of_ballot_items_id"
+                 value="1"
+                 {% if show_number_of_ballot_items %}checked{% endif %} />
+          <strong>Show Statistics</strong>
+        </label>
+
+        <span class="ew-search">
+          {% if voter_guide_possibility_search %}
+            <a href="#" onclick="clearSearch(); return false;">clear</a>
+          {% endif %}
+          <input type="text"
+                 name="voter_guide_possibility_search"
+                 id="voter_guide_possibility_search_id"
+                 value="{{ voter_guide_possibility_search }}"/>
+          <input type="submit" value="Search" />
+        </span>
+      </div>
+
+    {# ---- Stepper: the 4 main workflow steps ---- #}
+    <div class="ew-stepper">
+      <button type="submit"
+              class="ew-step{% if filter_selected_to_review %} ew-active{% endif %}"
+              name="filter_selected_to_review" value="1"
+              onclick="displayLoadingBanner()">
+        <span class="ew-step-num">1</span> Draft ({{ to_review_count }})
+      </button>
+      <span class="ew-step-arrow">&rarr;</span>
+
+      <button type="submit"
+              class="ew-step{% if filter_selected_done_needs_verification %} ew-active{% endif %}"
+              name="filter_selected_done_needs_verification" value="1"
+              onclick="displayLoadingBanner()">
+        <span class="ew-step-num">2</span> To verify ({{ done_needs_verification_count }})
+      </button>
+      <span class="ew-step-arrow">&rarr;</span>
+
+        {# Use when we can figure out which entries haven't been imported yet. #}
+{#      <button type="submit"#}
+{#              class="ew-step{% if filter_selected_done_verified %} ew-active{% endif %}"#}
+{#              name="filter_selected_done_verified" value="1"#}
+{#              onclick="displayLoadingBanner()">#}
+{#        <span class="ew-step-num">3</span> To import ({{ done_verified_count }})#}
+{#      </button>#}
+{#      <span class="ew-step-arrow">&rarr;</span>#}
+
+      <button type="submit"
+              class="ew-step{% if filter_selected_done_verified %} ew-active{% endif %}"
+              name="filter_selected_done_verified" value="1"
+              onclick="displayLoadingBanner()">
+        <span class="ew-step-num">4</span> Completed ({{ done_verified_count }})
+      </button>
+    </div>
+
+    {# ---- Voter Guide Possibility List ---- #}
+{#    <form name="voter_guide_possibility_markings"#}
+{#          method="post"#}
+{#          action="{% url 'voter_guide:voter_guide_possibility_list_process' %}">#}
+{#      {% csrf_token %}#}
+
+      {% if voter_guide_possibility_list %}
+
+{#        {% if not hide_pagination %}#}
+{#          <span class="float-right">#}
+{#            {% if current_page_number > 0 %}<a href="{{ previous_page_url }}">Previous page</a> |{% endif %}#}
+{#            Page {{ current_page_number|add:1 }}#}
+{#          | <a href="{{ next_page_url }}">Next page</a></span>#}
+{#        {% endif %}#}
 
         {% include "voter_guide/voter_guide_possibility_table.html" with voter_guide_possibility_list=voter_guide_possibility_list google_civic_election_id=google_civic_election_id starting_counter_number=starting_counter_number show_number_of_ballot_items=show_number_of_ballot_items %}
       {% else %}
@@ -348,20 +365,8 @@
       {% endif %}
 
       {# Pass along the url_variables this page is using, so we can return to the same page state #}
-      <input type="hidden" name="assigned_to_voter_we_vote_id" value="{{ assigned_to_voter_we_vote_id }}">
-      <input type="hidden" name="google_civic_election_id" value="{{ google_civic_election_id }}">
-      <input type="hidden" name="show_all_elections" value="{{ show_all_elections }}">
       <input type="hidden" name="page" value="{{ page }}">
-      <input type="hidden" name="filter_selected_archive" value="{{ filter_selected_archive }}">
-      <input type="hidden" name="filter_selected_candidates_missing" value="{{ filter_selected_candidates_missing }}">
-      <input type="hidden" name="filter_selected_capture_detailed_comments" value="{{ filter_selected_capture_detailed_comments }}">
-      <input type="hidden" name="filter_selected_done_needs_verification" value="{{ filter_selected_done_needs_verification }}">
-      <input type="hidden" name="filter_selected_done_verified" value="{{ filter_selected_done_verified }}">
-      <input type="hidden" name="filter_selected_from_prior_election" value="{{ filter_selected_from_prior_election }}">
-      <input type="hidden" name="filter_selected_ignore" value="{{ filter_selected_ignore }}">
-      <input type="hidden" name="filter_selected_not_available_yet" value="{{ filter_selected_not_available_yet }}">
       <input type="hidden" name="state_code" value="{{ state_code }}">
-      <input type="hidden" name="voter_guide_possibility_search" value="{{ voter_guide_possibility_search }}">
     </form>
 
     {% if not hide_pagination %}
@@ -384,7 +389,7 @@
     function clearSearch() {
         displayLoadingBanner();
         $('#voter_guide_possibility_search_id').val('');
-        $('form[name="voter_guide_choose_election"]').submit();
+        $('form[name="voter_guide_possibility_markings"]').submit();
     }
 
     function ewCopyToClipboard(text) {
@@ -405,10 +410,10 @@
         $('#assigned_to_voter_we_vote_id_id, #google_civic_election_id, ' +
           '#show_all_elections_id, #show_number_of_ballot_items_id').change(function() {
             displayLoadingBanner();
-            $('form[name="voter_guide_choose_election"]').submit();
+            $('form[name="voter_guide_possibility_markings"]').submit();
         });
 
-        $('form[name="voter_guide_choose_election"]').submit(function() {
+        $('form[name="voter_guide_possibility_markings"]').submit(function() {
             displayLoadingBanner();
         });
 
