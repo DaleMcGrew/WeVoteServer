@@ -134,11 +134,11 @@ class JiraExcelLoaderTests(TestCase):
     @patch("pandas.read_excel")
     def test_load_insufficient_rows(self, mock_read_excel):
         """Test validation for insufficient rows."""
-        mock_read_excel.return_value = pd.DataFrame([[1, 2], [3, 4]])
+        mock_read_excel.return_value = pd.DataFrame([[1] * 14])
         loader = JiraExcelLoader("/tmp/test.xlsx")
         with self.assertRaises(ValueError) as context:
             loader.load()
-        self.assertIn("at least 3 rows", str(context.exception))
+        self.assertIn("at least 2 rows", str(context.exception))
 
     @patch("pandas.read_excel")
     def test_load_insufficient_columns(self, mock_read_excel):
@@ -192,6 +192,71 @@ class JiraExcelLoaderTests(TestCase):
         self.assertEqual(len(epics), 1)
         self.assertEqual(len(epics[0].stories), 1)
         mock_read_csv.assert_called_once()
+
+    @patch("pandas.read_excel")
+    def test_load_single_header_row_does_not_drop_first_story(
+        self, mock_read_excel
+    ):
+        """
+        Regression test: files with a single header row (column names only,
+        no extra section-title row) must not lose the first data row's story.
+        """
+        header = [
+            "Election Date",
+            "Epic Title",
+            "Election Name",
+            "Election Id",
+            "Report URL",
+            "Office",
+            "Jurisdiction",
+            "State",
+            "County Code",
+            "County",
+            "Local Name",
+            "Candidate Name",
+            "Candidate Id",
+            "Story Title",
+        ] + [""] * 4
+        first_row = [
+            "2024-11-05",
+            "2024 General: Senate",
+            "General",
+            "G-001",
+            "url",
+            "Senate",
+            "Statewide",
+            "CA",
+            "001",
+            "County",
+            "",
+            "First Candidate",
+            "C-001",
+            "First Candidate - Senate",
+        ] + [""] * 4
+        second_row = [
+            "2024-11-05",
+            "2024 General: Senate",
+            "General",
+            "G-001",
+            "url",
+            "Senate",
+            "Statewide",
+            "CA",
+            "001",
+            "County",
+            "",
+            "Second Candidate",
+            "C-002",
+            "Second Candidate - Senate",
+        ] + [""] * 4
+        mock_read_excel.return_value = pd.DataFrame([header, first_row, second_row])
+        loader = JiraExcelLoader("/tmp/test.xlsx")
+        epics = loader.load()
+        self.assertEqual(len(epics), 1)
+        candidate_names = [s.candidate_name for s in epics[0].stories]
+        self.assertIn("First Candidate", candidate_names)
+        self.assertIn("Second Candidate", candidate_names)
+        self.assertEqual(len(epics[0].stories), 2)
 
     @patch("pandas.read_csv")
     def test_load_csv_with_override(self, mock_read_csv):
