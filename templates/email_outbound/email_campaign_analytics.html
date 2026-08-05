@@ -30,10 +30,10 @@
   }
 
   .analytics-demo-label {
-    background: #fff7d6;
-    border: 1px solid #ead27a;
+    background: #fff1f0;
+    border: 1px solid #d89b96;
     border-radius: 12px;
-    color: #6f5a00;
+    color: #9f3a38;
     display: inline-block;
     font-size: 1rem;
     margin-left: 8px;
@@ -78,6 +78,10 @@
     color: #1687de;
     font-size: 1.1rem;
     margin-top: 5px;
+  }
+
+  .demo-data {
+    color: #9f3a38;
   }
 
   .chart-panel {
@@ -208,13 +212,13 @@
     </div>
     <div class="metric-card">
       <div class="metric-label">Click Rate</div>
-      <div class="metric-value">{{ analytics_data.click_rate }}%</div>
-      <div class="metric-detail">{{ analytics_data.click_count }} Clicked Emails</div>
+      <div class="metric-value demo-data">{{ analytics_data.click_rate }}%</div>
+      <div class="metric-detail demo-data">{{ analytics_data.click_count }} Clicked Emails</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Unsubscribe Rate</div>
-      <div class="metric-value">{{ analytics_data.unsubscribe_rate }}%</div>
-      <div class="metric-detail">{{ analytics_data.unsubscribe_count }} Unsubscribers</div>
+      <div class="metric-value demo-data">{{ analytics_data.unsubscribe_rate }}%</div>
+      <div class="metric-detail demo-data">{{ analytics_data.unsubscribe_count }} Unsubscribers</div>
     </div>
   </div>
 
@@ -235,10 +239,10 @@
       <aside class="delivery-summary">
         <h3>Delivery details</h3>
         <div class="delivery-row"><span>Emails sent:</span><strong>{{ analytics_data.total_sends }}</strong></div>
-        <div class="delivery-row"><span>Deliveries:</span><strong>{{ analytics_data.delivered_count }}</strong></div>
-        <div class="delivery-row"><span>Bounces:</span><strong>{{ analytics_data.bounce_count }}</strong></div>
-        <div class="delivery-row"><span>Unsubscribed:</span><strong>{{ analytics_data.unsubscribe_count }}</strong></div>
-        <div class="delivery-row"><span>Abuse report:</span><strong>{{ analytics_data.abuse_report_count }}</strong></div>
+        <div class="delivery-row demo-data"><span>Deliveries:</span><strong>{{ analytics_data.delivered_count }}</strong></div>
+        <div class="delivery-row demo-data"><span>Bounces:</span><strong>{{ analytics_data.bounce_count }}</strong></div>
+        <div class="delivery-row demo-data"><span>Unsubscribed:</span><strong>{{ analytics_data.unsubscribe_count }}</strong></div>
+        <div class="delivery-row demo-data"><span>Abuse report:</span><strong>{{ analytics_data.abuse_report_count }}</strong></div>
       </aside>
     </div>
   </section>
@@ -286,10 +290,10 @@
       <aside class="delivery-summary">
         <h3>Delivery details</h3>
         <div class="delivery-row"><span>Emails sent:</span><strong>{{ analytics_data.total_sends }}</strong></div>
-        <div class="delivery-row"><span>Deliveries:</span><strong>{{ analytics_data.delivered_count }}</strong></div>
-        <div class="delivery-row"><span>Bounces:</span><strong>{{ analytics_data.bounce_count }}</strong></div>
-        <div class="delivery-row"><span>Unsubscribed:</span><strong>{{ analytics_data.unsubscribe_count }}</strong></div>
-        <div class="delivery-row"><span>Abuse report:</span><strong>{{ analytics_data.abuse_report_count }}</strong></div>
+        <div class="delivery-row demo-data"><span>Deliveries:</span><strong>{{ analytics_data.delivered_count }}</strong></div>
+        <div class="delivery-row demo-data"><span>Bounces:</span><strong>{{ analytics_data.bounce_count }}</strong></div>
+        <div class="delivery-row demo-data"><span>Unsubscribed:</span><strong>{{ analytics_data.unsubscribe_count }}</strong></div>
+        <div class="delivery-row demo-data"><span>Abuse report:</span><strong>{{ analytics_data.abuse_report_count }}</strong></div>
       </aside>
     </div>
   </section>
@@ -301,21 +305,25 @@
   const chartData = {{ chart_data_json|safe }};
   const lineColor = '#168fe5';
   const lineFill = 'rgba(22, 143, 229, 0.20)';
+  const demoLineColor = '#9f3a38';
+  const demoLineFill = 'rgba(159, 58, 56, 0.18)';
 
-  function createLineChart(canvasId, data, percentAxis) {
+  function createLineChart(canvasId, data, percentAxis, chartColor, chartFill) {
     const context = document.getElementById(canvasId).getContext('2d');
+    const selectedLineColor = chartColor || lineColor;
+    const selectedLineFill = chartFill || lineFill;
     return new Chart(context, {
       type: 'line',
       data: {
         labels: chartLabels,
         datasets: [{
           data: data,
-          borderColor: lineColor,
-          backgroundColor: lineFill,
+          borderColor: selectedLineColor,
+          backgroundColor: selectedLineFill,
           borderWidth: 3,
           fill: true,
-          pointBackgroundColor: lineColor,
-          pointBorderColor: lineColor,
+          pointBackgroundColor: selectedLineColor,
+          pointBorderColor: selectedLineColor,
           pointRadius: 3,
           tension: 0.15
         }]
@@ -354,8 +362,8 @@
   }
 
   createLineChart('openRateChart', chartData.open_rates, true);
-  createLineChart('clickRateChart', chartData.click_rates, true);
-  createLineChart('unsubscribeRateChart', chartData.unsubscribe_rates, true);
-  createLineChart('conversionChart', chartData.conversion_counts, false);
+  createLineChart('clickRateChart', chartData.click_rates, true, demoLineColor, demoLineFill);
+  createLineChart('unsubscribeRateChart', chartData.unsubscribe_rates, true, demoLineColor, demoLineFill);
+  createLineChart('conversionChart', chartData.conversion_counts, false, demoLineColor, demoLineFill);
 </script>
 {% endblock %}
