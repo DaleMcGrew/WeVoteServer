@@ -251,6 +251,35 @@ class JiraExcelLoader:
         self.subtask_names = subtask_names  # None means auto-detect from file headers
         self.df: Optional[pd.DataFrame] = None
         self.epics: Optional[List[JiraEpic]] = None
+        self.header_row_index: int = 0
+
+    def _detect_header_row_count(self) -> int:
+        """
+        Detect how many leading rows are headers by finding the first row
+        whose Election Date column holds a real, parseable date rather than
+        header text (e.g. "Election Date" or a section title like "JIRA EPIC").
+
+        Returns:
+            Number of leading header rows (defaults to 2 if detection fails,
+            matching the legacy Arkansas-style template).
+        """
+        max_check = min(5, self.df.shape[0])
+        for row_idx in range(max_check):
+            val = self.df.iloc[row_idx, COL_ELECTION_DATE]
+            if pd.isna(val):
+                continue
+            if isinstance(val, (datetime, pd.Timestamp)):
+                return row_idx
+            try:
+                pd.to_datetime(val)
+                return row_idx
+            except (ValueError, TypeError):
+                continue
+        logger.warning(
+            "Could not auto-detect header row count from Election Date column; "
+            "defaulting to 2 header rows."
+        )
+        return 2
 
     def load(self) -> List[JiraEpic]:
         """
@@ -291,15 +320,23 @@ class JiraExcelLoader:
             raise ValueError(f"Invalid or corrupted file: {e}") from e
 
         # Validate minimum structure
-        if self.df.shape[0] < 3:
-            raise ValueError("File must have at least 3 rows (headers + data)")
+        if self.df.shape[0] < 2:
+            raise ValueError("File must have at least 2 rows (headers + data)")
         if self.df.shape[1] < COL_STORY_TITLE + 1:
             raise ValueError(
                 f"File must have at least {COL_STORY_TITLE + 1} columns, found {self.df.shape[1]}"
             )
 
+        # Detect how many leading rows are headers. Some files have a single
+        # header row (column names only); others (e.g. the Arkansas-style
+        # template) have an extra section-title row above the column names.
+        # Hardcoding this caused the first real data row to be silently
+        # dropped for single-header-row files.
+        header_row_count = self._detect_header_row_count()
+        self.header_row_index = header_row_count - 1
+
         # Validate that we have data rows (not just headers)
-        data_df = self.df.iloc[2:].reset_index(drop=True)
+        data_df = self.df.iloc[header_row_count:].reset_index(drop=True)
         if data_df.empty:
             raise ValueError("Excel file contains no data rows")
 
@@ -325,8 +362,10 @@ class JiraExcelLoader:
             self.subtask_names = []
             for i in range(MAX_SUBTASK_COLUMNS):
                 col = COL_SUBTASK_URL_START + i
-                if col < self.df.shape[1] and pd.notna(self.df.iloc[0, col]):
-                    val = str(self.df.iloc[0, col]).strip()
+                if col < self.df.shape[1] and pd.notna(
+                    self.df.iloc[self.header_row_index, col]
+                ):
+                    val = str(self.df.iloc[self.header_row_index, col]).strip()
                     if val:
                         self.subtask_names.append(val)
 
@@ -460,8 +499,10 @@ class JiraExcelLoader:
         header_suggestions = []
         for i in range(MAX_SUBTASK_COLUMNS):
             col = COL_SUBTASK_URL_START + i
-            if col < self.df.shape[1] and pd.notna(self.df.iloc[0, col]):
-                val = str(self.df.iloc[0, col]).strip()
+            if col < self.df.shape[1] and pd.notna(
+                self.df.iloc[self.header_row_index, col]
+            ):
+                val = str(self.df.iloc[self.header_row_index, col]).strip()
                 if val:
                     header_suggestions.append(val)
 
