@@ -44,7 +44,11 @@
 
 {# ---- Upload form ---- #}
 <h2>Upload Election Spreadsheet</h2>
-<p>Upload an Arkansas-style <code>.xlsx</code> or <code>.csv</code> file to preview or import its data into JIRA.</p>
+<p>Upload a spreadsheet that has been exported from Vote USA <code>.xlsx</code> or <code>.csv</code> file to preview or import its data into JIRA.</p>
+
+<p> Preview - will simply analyse the file and produce counts: Epics, Stories and Subtasks.</p>
+
+<p> Create subtasks from file - will create subtasks for each story based on the file content. This can be overiden by selecting the checkbox and adding up to 4 subtasks manually. </p>
 
 <form method="post" enctype="multipart/form-data" id="upload-form">
     {% csrf_token %}
