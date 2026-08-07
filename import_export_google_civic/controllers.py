@@ -310,7 +310,7 @@ def groom_and_store_google_civic_ballot_json_2021(
         else:
             google_civic_election_id_from_json = one_ballot_json['election']['id']
 
-    if 'electionDay' in one_ballot_json['election']:
+    if not positive_value_exists(election_day_text) and 'electionDay' in one_ballot_json['election']:
         election_day_text = one_ballot_json['election']['electionDay']
     # We may not need this
     election_description_text = ''
@@ -392,6 +392,7 @@ def groom_and_store_google_civic_ballot_json_2021(
                     process_contest_results = groom_and_store_google_civic_measure_json_2021(
                         ballot_item_dict_list=ballot_item_dict_list,
                         election_day_text=election_day_text,
+                        measure_year=election_year_integer,
                         existing_measure_objects_dict=existing_measure_objects_dict,
                         google_civic_election_id=google_civic_election_id,
                         local_ballot_order=local_ballot_order,
@@ -3234,6 +3235,7 @@ def groom_and_store_google_civic_measure_json_2021(
         existing_measure_objects_dict={},
         google_civic_election_id='',
         local_ballot_order=0,
+        measure_year=0,
         new_measure_we_vote_ids_list=[],
         one_contest_json={},
         polling_location_we_vote_id='',
@@ -3484,6 +3486,8 @@ def groom_and_store_google_civic_measure_json_2021(
                 updated_contest_measure_values['district_id'] = district_id
             if positive_value_exists(district_name):
                 updated_contest_measure_values['district_name'] = district_name
+            if positive_value_exists(election_day_text):
+                updated_contest_measure_values['election_day_text'] = election_day_text
             if positive_value_exists(referendum_title):
                 updated_contest_measure_values['measure_title'] = referendum_title
                 # We store the literal spelling here so we can match in the future, even if we customize measure_title
@@ -3494,6 +3498,8 @@ def groom_and_store_google_civic_measure_json_2021(
                 updated_contest_measure_values['measure_url'] = referendum_url
             if positive_value_exists(referendum_text):
                 updated_contest_measure_values['measure_text'] = referendum_text
+            if positive_value_exists(measure_year):
+                updated_contest_measure_values['measure_year'] = convert_to_int(measure_year)
             if positive_value_exists(measure_ocd_division_id):
                 updated_contest_measure_values['ocd_division_id'] = measure_ocd_division_id
             if positive_value_exists(primary_party):
@@ -3569,8 +3575,10 @@ def groom_and_store_google_civic_measure_json_2021(
             'contest_measure_url':          contest_measure.measure_url,
             'contest_measure_we_vote_id':   contest_measure.we_vote_id,
             'contest_measure_id':           contest_measure.id,
-            'election_day_text':            election_day_text,
+            'election_day_text':            contest_measure.election_day_text \
+                if positive_value_exists(contest_measure.election_day_text) else election_day_text,
             'local_ballot_order':           local_ballot_order,
+            'measure_year':                 contest_measure.measure_year,
             'no_vote_description':          contest_measure.ballotpedia_no_vote_description,
             'polling_location_we_vote_id':  polling_location_we_vote_id,
             'state_code':                   state_code,
