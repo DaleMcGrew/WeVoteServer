@@ -9,7 +9,7 @@ from django.db import models
 from exception.models import handle_record_found_more_than_one_exception, handle_exception, \
     handle_record_not_saved_exception, handle_record_not_deleted_exception
 from pathlib import Path
-from PIL import ExifTags, GifImagePlugin, Image, ImageOps
+from PIL import ExifTags, GifImagePlugin, Image, ImageOps, ImageSequence
 from urllib.request import urlretrieve
 from urllib.error import HTTPError
 from wevote_functions.functions import convert_to_int, positive_value_exists
@@ -2143,6 +2143,8 @@ class WeVoteImageManager(models.Manager):
             # convert()/single-frame resize strips animation. Skip resize only for animated
             # gif/webp. Static gif/webp use the same crop/resize path as other stills.
             # Animated frame-by-frame resize (or Fastly Image Optimizer) is a follow-up.
+            # convert()/single-frame resize strips animation. Animated gif/webp are
+            # cropped/resized frame-by-frame; static gif/webp use the still path below.
             is_animated = (
                 media_type in {'image/gif', 'image/webp'}
                 and (
@@ -2152,10 +2154,39 @@ class WeVoteImageManager(models.Manager):
             )
 
             if is_animated:
-                # Preserve animation frames. Avoid SameFileError when paths are identical.
-                if original_image_local_path != converted_image_local_path:
-                    import shutil
-                    shutil.copy2(original_image_local_path, converted_image_local_path)
+                target_size = (image_width, image_height)
+                # Build a new frame list at the target size, preserving per-frame timing.
+                frames = []
+                durations = []
+
+                # copy()+convert so we do not mutate iterator buffers; duration is ms/frame.
+                for frame in ImageSequence.Iterator(image):
+                    durations.append(frame.info.get('duration', 100))
+                    frame = frame.copy().convert('RGBA')
+                    if image_type == FACEBOOK_BACKGROUND_IMAGE_NAME:
+                        centering_y = ((frame.height - image_offset_y) * 0.5) / frame.height
+                        frame = ImageOps.fit(
+                            frame, target_size, Image.Resampling.LANCZOS,
+                            centering=(0.5, centering_y))
+                    # Same square logic as still profiles: center-crop, then scale.
+                    elif image_width == image_height:
+                        frame = crop_to_square(frame)
+                        frame = frame.resize(target_size, Image.Resampling.LANCZOS)
+                    else:
+                        frame = ImageOps.contain(frame, target_size, Image.Resampling.LANCZOS)
+                    frames.append(frame)
+
+                save_format = 'WEBP' if media_type == 'image/webp' else 'GIF'
+                
+                # Reassemble animation; save_all keeps all frames (not just the first).
+                frames[0].save(
+                    converted_image_local_path,
+                    format=save_format,
+                    save_all=True,
+                    append_images=frames[1:],
+                    duration=durations,
+                    loop=image.info.get('loop', 0),
+                )
                 resized_image_created = True
             else:
                 # Color conversion (safe for non-animated formats)
