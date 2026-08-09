@@ -2041,11 +2041,7 @@ def sync_data_with_master_servers_view(request):
     state_list = STATE_CODE_MAP
     sorted_state_list = sorted(state_list.items())
 
-    DEBUG_FASTLOAD_SINGLE_SERVER = get_environment_variable_default("DEBUG_FASTLOAD_SINGLE_SERVER", False)
-    if positive_value_exists(DEBUG_FASTLOAD_SINGLE_SERVER):
-        fast_load_start_token_valid = True
-    else:
-        fast_load_start_token_valid = positive_value_exists(fast_load_start_token_id) and positive_value_exists(fast_load_start_token_key)
+    fast_load_start_token_valid = positive_value_exists(fast_load_start_token_id) and positive_value_exists(fast_load_start_token_key)
 
     template_values = {
         'election_list':                election_list,
