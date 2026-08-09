@@ -46,7 +46,7 @@ jira>=3.5               # JIRA API client for JiraUtil integration
 langdetect==1.0.9
 openpyxl>=3.1           # required by pandas for .xlsx support
 phonenumbers==8.13.26
-pillow==12.1.1
+pillow==12.3.0
 pip-tools==7.4.1
 pipdeptree==2.26.1
 polars~=0.19.17         # recommend engine - comment out if initial installation is failing
