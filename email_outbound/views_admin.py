@@ -30,7 +30,8 @@ from .functions import build_s3_key, upload_fileobj_to_s3, delete_from_s3, downl
 
 from .controllers_email_campaign import augment_email_campaign_recipient, refresh_email_campaign_data, \
     render_audience_builder_html
-from .controllers_audience_builder import audience_builder_data_retrieve, render_audience_builder_preview_html
+from .controllers_audience_builder import audience_builder_data_retrieve, generate_preview_list_from_audience_builder, \
+    render_audience_builder_preview_html
 from .models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
     AudienceBuilderFolder, AudienceBuilder, AudienceFilter, AudienceFilterChain, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS, \
     OPERATOR_AND, OPERATOR_OR
@@ -560,6 +561,68 @@ def email_campaign_edit_view(request):
     }
 
     return render(request, 'email_outbound/email_campaign_edit.html', template_values)
+
+
+@login_required
+def audience_builder_recipient_count_view(request):
+    authority_required = {'political_data_manager', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return JsonResponse({'success': False, 'status': 'PERMISSION_DENIED'}, status=403)
+
+    audience_builder_id = request.GET.get('audience_builder_id', request.POST.get('audience_builder_id', 0))
+    audience_builder_id = convert_to_int(audience_builder_id)
+    if not positive_value_exists(audience_builder_id):
+        return JsonResponse({
+            'audience_builder_id': audience_builder_id,
+            'recipient_count': 0,
+            'status': 'AUDIENCE_BUILDER_ID_REQUIRED ',
+            'success': False,
+        }, status=400)
+
+    status = ''
+    recipient_count = 0
+    try:
+        audience_builder_results = audience_builder_data_retrieve(audience_builder_id)
+        status += audience_builder_results['status']
+        if audience_builder_results['success']:
+            preview_results = generate_preview_list_from_audience_builder(
+                audience_builder=audience_builder_results['audience_builder'],
+                audience_filter_chain_dict=audience_builder_results['audience_filter_chain_dict'],
+                audience_filter_dict=audience_builder_results['audience_filter_dict'],
+                request=request,
+            )
+            status += preview_results['status']
+            if preview_results['success']:
+                recipient_count = preview_results['preview_list_length']
+            else:
+                return JsonResponse({
+                    'audience_builder_id': audience_builder_id,
+                    'recipient_count': recipient_count,
+                    'status': status,
+                    'success': False,
+                }, status=500)
+        else:
+            return JsonResponse({
+                'audience_builder_id': audience_builder_id,
+                'recipient_count': recipient_count,
+                'status': status,
+                'success': False,
+            }, status=404)
+    except Exception as e:
+        status += f"AUDIENCE_BUILDER_COUNT_ERROR: {audience_builder_id}: {e} "
+        return JsonResponse({
+            'audience_builder_id': audience_builder_id,
+            'recipient_count': recipient_count,
+            'status': status,
+            'success': False,
+        }, status=500)
+
+    return JsonResponse({
+        'audience_builder_id': audience_builder_id,
+        'recipient_count': recipient_count,
+        'status': status,
+        'success': True,
+    })
 
 
 @login_required

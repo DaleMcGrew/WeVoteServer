@@ -177,6 +177,7 @@
                   {% endfor %}
                 </select>
               </div>
+              <div id="audience_builder_recipient_count_status" class="text-muted small" style="min-height: 18px;"></div>
           </div>
        {% if not emails_sent %}
           <div class="col-md-4">
@@ -327,6 +328,54 @@
     const addSelectedBtn = document.getElementById('add_selected_btn');
     const clearAllBtn = document.getElementById('clear_all_btn');
     const sendButtonClicked = document.getElementById('send_button_clicked_id');
+    const audienceBuilderSelect = document.getElementById('audience_builder_id_id');
+    const audienceBuilderRecipientCountStatus = document.getElementById('audience_builder_recipient_count_status');
+    const audienceBuilderRecipientCountUrl = "{% url 'email_outbound:audience_builder_recipient_count' %}";
+    let audienceBuilderRecipientCountRequestId = 0;
+
+    function clearAudienceBuilderRecipientCount() {
+       if (audienceBuilderRecipientCountStatus) {
+         audienceBuilderRecipientCountStatus.textContent = '';
+       }
+     }
+
+     async function loadAudienceBuilderRecipientCount() {
+       if (!audienceBuilderSelect || !audienceBuilderRecipientCountStatus) return;
+       const audienceBuilderId = audienceBuilderSelect.value;
+       const requestId = ++audienceBuilderRecipientCountRequestId;
+
+       if (!audienceBuilderId || audienceBuilderId === '0') {
+         clearAudienceBuilderRecipientCount();
+         return;
+       }
+
+       audienceBuilderRecipientCountStatus.textContent = 'Calculating audience count...';
+       try {
+         const response = await fetch(`${audienceBuilderRecipientCountUrl}?audience_builder_id=${encodeURIComponent(audienceBuilderId)}`, {
+           method: 'GET',
+           headers: {
+             'X-Requested-With': 'XMLHttpRequest',
+             'Accept': 'application/json',
+           },
+           credentials: 'same-origin'
+         });
+         const data = await response.json();
+         if (requestId !== audienceBuilderRecipientCountRequestId) return;
+
+         if (response.ok && data.success) {
+          audienceBuilderRecipientCountStatus.textContent = `Audience count: ${data.recipient_count} recipients`;
+        } else {
+          audienceBuilderRecipientCountStatus.textContent = 'Audience count unavailable';
+        }
+      } catch (error) {
+        if (requestId !== audienceBuilderRecipientCountRequestId) return;
+        audienceBuilderRecipientCountStatus.textContent = 'Audience count unavailable';
+      }
+    }
+
+    if (audienceBuilderSelect) {
+      audienceBuilderSelect.addEventListener('change', loadAudienceBuilderRecipientCount);
+    }
 
     // Handle recipient search
     searchBtn.addEventListener('click', performSearch);
