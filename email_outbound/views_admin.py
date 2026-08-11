@@ -2183,3 +2183,49 @@ def email_recipient_view(request, email_recipient_id=0):
         'state_code':               state_code,
     }
     return render(request, 'email_outbound/view_recipient_email.html', template_values)
+
+
+def email_recipient_view_html_view(request, email_recipient_id=0):
+    """
+    Returns the assembled email body as an HTML fragment (JSON) for the "Message Sent" drawer,
+    so it can be shown inline instead of opening a new tab.
+    """
+    status = ''
+
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return JsonResponse({'success': False, 'status': 'PERMISSION_DENIED'}, status=403)
+
+    recipient_full_name = ''
+    try:
+        email_recipient = EmailCampaignRecipient.objects.get(id=email_recipient_id)
+    except EmailCampaignRecipient.DoesNotExist:
+        return JsonResponse({
+            'email_recipient_id':   email_recipient_id,
+            'html':                 '',
+            'recipient_full_name':  recipient_full_name,
+            'status':               'EMAIL_RECIPIENT_NOT_FOUND',
+            'success':              False,
+        }, status=404)
+
+    recipient_full_name = email_recipient.recipient_full_name or ''
+    email_body_assembled = email_recipient.email_body_assembled
+    if email_body_assembled:
+        try:
+            # We want to search for this pattern "/apis/v1/opened/hcRlYMGJCK4yZuz/" in email_body_assembled,
+            #  where hcRlYMGJCK4yZuz could be any random string, and then remove that final random string.
+            # This serves the purpose of NOT marking the email as opened when we view it in our admin tools.
+            email_body_assembled = re.sub(r'/apis/v1/opened/[a-zA-Z0-9]+/', '/apis/v1/opened/DONOTTRACK/',
+                                          email_body_assembled)
+        except Exception as e:
+            email_body_assembled = email_recipient.email_body_assembled
+            status += "ERROR_SUBSTITUTING_EMAIL_BODY_ASSEMBLED: " + str(e) + " "
+
+    return JsonResponse({
+        'email_recipient_id':   email_recipient_id,
+        'html':                 email_body_assembled or '',
+        'recipient_full_name':  recipient_full_name,
+        'status':               status,
+        'success':              True,
+    })

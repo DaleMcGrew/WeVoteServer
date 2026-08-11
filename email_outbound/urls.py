@@ -44,4 +44,6 @@ urlpatterns = [
     re_path(r'^template_content/$', views_admin.email_template_content_view, name='email_template_content'),
     re_path(r'^view_recipient_email/(?P<email_recipient_id>[0-9]+)/$',
             views_admin.email_recipient_view, name='view_recipient_email'),
+    re_path(r'^view_recipient_email_html/(?P<email_recipient_id>[0-9]+)/$',
+            views_admin.email_recipient_view_html_view, name='view_recipient_email_html'),
 ]
