@@ -4,14 +4,13 @@ import requests
 from election.models import ElectionManager
 from exception.models import handle_exception
 from office.models import ContestOffice
-from wevote_functions.functions import augment_vote_usa_office_id_with_suffix, extract_vote_usa_office_id, \
-    extract_vote_usa_office_id_with_suffix, positive_value_exists
+from wevote_functions.functions import extract_vote_usa_office_id_with_suffix, positive_value_exists
 import wevote_functions.admin
 
 from .models import VoteUSAApiCounterManager
 from import_export_vote_usa.controllers import (
-    VOTE_USA_API_KEY, 
-    VOTE_USA_CANDIDATE_QUERY_URL, 
+    VOTE_USA_API_KEY,
+    VOTE_USA_CANDIDATE_QUERY_URL,
     HEADERS_FOR_VOTE_USA_API_CALL,
     VOTE_USA_CANDIDATE_QUERY_TYPE,
 )
@@ -111,7 +110,7 @@ def update_existing_candidates_from_candidates_api(google_civic_election_id=0, s
         
         # Raw VoteUSA office IDs include the election ID prefix (e.g. 'CA20221108GA|CAStateHouse51')
         # We extract the base ID and re-append the party suffix for primaries (e.g. 'CAStateHouse51|PD'),
-        # or we use base ID as-is for general elections, special elections, and runoffs. 
+        # or we use base ID as-is for general elections, special elections, and runoffs.
         vote_usa_to_wevote_office_id = {}
         for raw_vote_usa_office_id in vote_usa_candidates_by_office.keys():
             vote_usa_office_id = extract_vote_usa_office_id_with_suffix(raw_vote_usa_office_id)

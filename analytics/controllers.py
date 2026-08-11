@@ -8,19 +8,14 @@ from candidate.models import CandidateManager
 from config.environment_variable_functions import get_environment_variable
 from datetime import date, datetime, timedelta
 from django.db.models import Q
-from django.utils.timezone import localtime, now
+from django.utils.timezone import now
 from exception.models import print_to_log
 from follow.models import FollowMetricsManager, FollowOrganizationList
 from import_export_batches.models import AUGMENT_ANALYTICS_ACTION_WITH_ELECTION_ID, \
     AUGMENT_ANALYTICS_ACTION_WITH_FIRST_VISIT, \
     BatchProcessManager, \
-    CALCULATE_ORGANIZATION_DAILY_METRICS, \
-    CALCULATE_ORGANIZATION_ELECTION_METRICS, \
-    CALCULATE_SITEWIDE_DAILY_METRICS, \
-    CALCULATE_SITEWIDE_ELECTION_METRICS, \
     CALCULATE_SITEWIDE_VOTER_METRICS
 from measure.models import ContestMeasureManager
-from office.models import ContestOfficeManager
 from politician.models import Politician
 from position.models import PositionMetricsManager
 from share.models import ShareManager

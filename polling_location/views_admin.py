@@ -3,8 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 from .models import KIND_OF_LOG_ENTRY_ADDRESS_PARSE_ERROR, KIND_OF_LOG_ENTRY_API_END_POINT_CRASH, \
-    KIND_OF_LOG_ENTRY_BALLOT_RECEIVED, KIND_OF_LOG_ENTRY_NO_BALLOT_JSON, KIND_OF_LOG_ENTRY_NO_CONTESTS, \
-    PollingLocation, PollingLocationManager
+    KIND_OF_LOG_ENTRY_NO_BALLOT_JSON, PollingLocation, PollingLocationManager
 from .controllers import filter_polling_locations_structured_json_for_local_duplicates, \
     import_and_save_all_polling_locations_data, polling_locations_import_from_structured_json
 from admin_tools.views import redirect_to_sign_in_page

@@ -78,7 +78,7 @@ def delete_friend_invitations_for_voter(voter_to_delete_we_vote_id):
         friend_invitation_entries_not_deleted += 1
 
     # RECIPIENT entries
-    # FROM RECIPIENT: Invitations sent TO the voter_to_delete from others            
+    # FROM RECIPIENT: Invitations sent TO the voter_to_delete from others
     try:
         number_deleted, details = FriendInvitationVoterLink.objects\
             .filter(recipient_voter_we_vote_id=voter_to_delete_we_vote_id, )\

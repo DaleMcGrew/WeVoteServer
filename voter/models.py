@@ -73,7 +73,7 @@ NOTIFICATION_FRIEND_MESSAGES_EMAIL = 65536  # Email: "Show me messages from frie
 NOTIFICATION_FRIEND_MESSAGES_SMS = 131072  # SMS: "Show me messages from friends"
 NOTIFICATION_WEVOTE_VOTING_REMINDER_EMAIL = 262144  # Email: "Remind me to vote on We Vote"
 NOTIFICATION_WEVOTE_POLITICIAN_CAMPAIGN_EMAIL = 524288  # Email: "As a politician, would you like to update your info?"
-# NEXT BITS AVAILABLE: 262144, 524288, 1048576, 2097152, 4194304, 8388608
+# NEXT BITS AVAILABLE: 1048576, 2097152, 4194304, 8388608
 
 # Default to set for new voters
 NOTIFICATION_SETTINGS_FLAGS_DEFAULT = \
@@ -4916,7 +4916,7 @@ class VoterAddressManager(models.Manager):
                 success = True
                 status += "UPDATE_OR_CREATE_SUCCESSFUL "
             except Exception as e:
-                status += f'CRASHING_GOOGLE_GEOCODER: '
+                status += 'CRASHING_GOOGLE_GEOCODER: '
 
             except VoterAddress.MultipleObjectsReturned as e:
                 handle_record_found_more_than_one_exception(e, logger=logger)

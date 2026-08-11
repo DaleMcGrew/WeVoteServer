@@ -373,7 +373,7 @@ def caching_facebook_images_for_retrieve_process(repair_facebook_related_voter_c
         facebook_auth_response = None
         status += "FACEBOOK_AUTH_RESPONSE_FAILED: " + str(e) + " "
         if LOG_OAUTH:
-            logger.error('(Fail) caching_facebook_images_for_retrieve_process voter %s' % voter.we_vote_id)
+            logger.error('(Fail) caching_facebook_images_for_retrieve_process voter %s' % voter_we_vote_id)
 
     if facebook_auth_response:
         # Voter existed immediately before the call, so safe
@@ -974,4 +974,3 @@ def is_invalid_facebook_url_format(facebook_url):
         'success':      success,
     }
     return results
-

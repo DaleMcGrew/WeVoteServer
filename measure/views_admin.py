@@ -22,7 +22,7 @@ from django.db.models import Q
 from django.shortcuts import render
 from election.models import Election, ElectionManager
 from exception.models import handle_record_found_more_than_one_exception,\
-    handle_record_not_found_exception, handle_record_not_saved_exception
+    handle_record_not_found_exception
 from position.controllers import move_positions_to_another_measure, update_all_position_details_from_contest_measure
 from position.models import OPPOSE, PositionEntered, PositionListManager, SUPPORT
 from volunteer_task.models import VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION, VolunteerTaskManager
@@ -999,6 +999,7 @@ def measure_edit_process_view(request):
     measure_year = request.POST.get('measure_year', False)
     maplight_id = request.POST.get('maplight_id', False)
     vote_smart_id = request.POST.get('vote_smart_id', False)
+    vote_usa_measure_id = request.POST.get('vote_usa_measure_id', False)
     state_code = request.POST.get('state_code', False)
 
     # Check to see if this measure exists
@@ -1063,6 +1064,8 @@ def measure_edit_process_view(request):
                     measure_on_stage.maplight_id = maplight_id
                 if vote_smart_id is not False:
                     measure_on_stage.vote_smart_id = vote_smart_id
+                if vote_usa_measure_id is not False:
+                    measure_on_stage.vote_usa_measure_id = vote_usa_measure_id
                 if state_code is not False:
                     measure_on_stage.state_code = state_code
 
@@ -1095,6 +1098,7 @@ def measure_edit_process_view(request):
                     state_code=state_code,
                     maplight_id=maplight_id,
                     vote_smart_id=vote_smart_id,
+                    vote_usa_measure_id=vote_usa_measure_id,
                 )
                 if ballotpedia_district_id is not False:
                     if ballotpedia_district_id == '':

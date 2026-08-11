@@ -13,20 +13,7 @@
     {% csrf_token %}
     {% if election_list %}
       Copy From:
-      <select id="from_google_civic_election_id"
-              name="from_google_civic_election_id">
-        <option value="0"
-                {% if 0 == from_google_civic_election_id %}selected="selected"{% endif %}>
-          -- Filter by Election --
-        </option>
-        {% for one_election in election_list %}
-          <option value="{{ one_election.google_civic_election_id }}"
-                  {% if one_election.google_civic_election_id|slugify == from_google_civic_election_id|slugify %} selected="selected"{% endif %}>
-            {% if one_election.state_code %}{{ one_election.state_code }}{% endif %}
-            {{ one_election.election_day_text }}: {{ one_election.election_name }} - {{ one_election.google_civic_election_id }}
-          </option>
-        {% endfor %}
-      </select>
+      {% include "election/election_list_dropdown.html" with election_list=election_list selected_election_id=from_google_civic_election_id select_id="from_google_civic_election_id" select_name="from_google_civic_election_id" %}
     {% endif %}
     {# End of if election_list #}
 
@@ -127,18 +114,7 @@
 
       {% if election_list %}
         Copy To:
-        <select id="to_google_civic_election_id" name="to_google_civic_election_id">
-          <option value="0"
-                  {% if 0 == to_google_civic_election_id %}selected="selected"{% endif %}>
-            -- Filter by Election --
-          </option>
-          {% for election in election_list %}
-            <option value="{{ election.google_civic_election_id }}"
-                    {% if election.google_civic_election_id|slugify == to_google_civic_election_id|slugify %} selected="selected"{% endif %}>
-              {{ election.election_name }} - {{ election.google_civic_election_id }} - {{ election.election_day_text }}
-            </option>
-          {% endfor %}
-        </select>
+        {% include "election/election_list_dropdown.html" with election_list=election_list selected_election_id=to_google_civic_election_id select_id="to_google_civic_election_id" select_name="to_google_civic_election_id" %}
       {% endif %}
       {# End of if election_list #}
       {% if to_google_civic_election_id and from_google_civic_election_id != to_google_civic_election_id %}

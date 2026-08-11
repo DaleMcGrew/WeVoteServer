@@ -9,13 +9,12 @@ import sys
 import django
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings") 
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 django.setup()
 
 from django.db import connection, transaction
 from django.db.models import CharField, TextField
-from django.conf import settings
 from django.apps import apps
 from psycopg2 import sql
 

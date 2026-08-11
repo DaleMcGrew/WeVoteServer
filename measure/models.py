@@ -956,6 +956,8 @@ class ContestMeasureManager(models.Manager):
                     contest_measure.election_day_text = defaults['election_day_text']
                 if 'measure_url' in defaults:
                     contest_measure.measure_url = defaults['measure_url']
+                if 'measure_year' in defaults:
+                    contest_measure.measure_year = convert_to_int(defaults['measure_year'])
                 if 'state_code' in defaults:
                     contest_measure.state_code = defaults['state_code']
                 if positive_value_exists(contest_measure.we_vote_id):
@@ -992,14 +994,14 @@ class ContestMeasureManager(models.Manager):
             measure_we_vote_id,
             defaults):
         """
-            Update ContestMeasure table entry with matching we_vote_id 
-        :param measure_title: 
-        :param measure_subtitle: 
-        :param measure_text: 
-        :param state_code: 
-        :param ctcl_uuid: 
-        :param google_civic_election_id: 
-        :param measure_we_vote_id:  
+            Update ContestMeasure table entry with matching we_vote_id
+        :param measure_title:
+        :param measure_subtitle:
+        :param measure_text:
+        :param state_code:
+        :param ctcl_uuid:
+        :param google_civic_election_id:
+        :param measure_we_vote_id:
         :param defaults:
         :return:
         """

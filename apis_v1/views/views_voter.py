@@ -21,7 +21,7 @@ from apis_v1.views import views_voter_utils
 from ballot.controllers import choose_election_and_prepare_ballot_data, voter_ballot_items_retrieve_for_api, \
     voter_ballot_list_retrieve_for_api
 from ballot.models import BallotItemListManager, BallotReturnedManager, find_best_previously_stored_ballot_returned, \
-    OFFICE, CANDIDATE, MEASURE, POLITICIAN, VoterBallotSavedManager
+    OFFICE, CANDIDATE, MEASURE, VoterBallotSavedManager
 from bookmark.controllers import voter_all_bookmarks_status_retrieve_for_api, voter_bookmark_off_save_for_api, \
     voter_bookmark_on_save_for_api, voter_bookmark_status_retrieve_for_api
 from config.environment_variable_functions import get_environment_variable
@@ -30,7 +30,7 @@ from email_outbound.controllers import voter_email_address_retrieve_for_api, vot
     voter_email_address_verify_for_api
 from email_outbound.models import EmailManager
 from follow.controllers import voter_issue_follow_for_api
-from follow.models import FOLLOWING, FollowIssue, FollowIssueList
+from follow.models import FOLLOWING, FollowIssue
 from geoip.controllers import voter_location_retrieve_from_ip_for_api
 from image.controllers import TWITTER, FACEBOOK, cache_master_and_resized_image, create_resized_images
 from import_export_ballotpedia.controllers import voter_ballot_items_retrieve_from_ballotpedia_for_api_v4
@@ -38,8 +38,8 @@ from import_export_facebook.controllers import voter_facebook_sign_in_retrieve_f
     voter_facebook_sign_in_save_auth_for_api, voter_facebook_save_to_current_account_for_api
 from import_export_google_civic.controllers import voter_ballot_items_retrieve_from_google_civic_for_api
 from import_export_twitter.controllers import voter_twitter_save_to_current_account_for_api
-from issue.models import Issue, IssueManager
-from organization.models import INDIVIDUAL, Organization, OrganizationManager
+from issue.models import Issue
+from organization.models import INDIVIDUAL, OrganizationManager
 from position.controllers import voter_all_positions_retrieve_for_api, \
     voter_position_retrieve_for_api, voter_position_comment_save_for_api, voter_position_visibility_save_for_api
 from sms.controllers import voter_sms_phone_number_retrieve_for_api, voter_sms_phone_number_save_for_api
@@ -136,7 +136,8 @@ def unsubscribe_instant_view(request, subscription_secret_key='', unsubscribe_mo
     from voter.models import NOTIFICATION_FRIEND_MESSAGES_EMAIL, NOTIFICATION_FRIEND_OPINIONS_OTHER_REGIONS_EMAIL, \
         NOTIFICATION_FRIEND_OPINIONS_YOUR_BALLOT_EMAIL, NOTIFICATION_FRIEND_REQUEST_RESPONSES_EMAIL, \
         NOTIFICATION_FRIEND_REQUESTS_EMAIL, NOTIFICATION_LOGIN_EMAIL, NOTIFICATION_NEWSLETTER_OPT_IN, \
-        NOTIFICATION_SUGGESTED_FRIENDS_EMAIL, NOTIFICATION_VOTER_DAILY_SUMMARY_EMAIL
+        NOTIFICATION_SUGGESTED_FRIENDS_EMAIL, NOTIFICATION_VOTER_DAILY_SUMMARY_EMAIL, \
+        NOTIFICATION_WEVOTE_POLITICIAN_CAMPAIGN_EMAIL
     # NOTIFICATION_VOTER_DAILY_SUMMARY_EMAIL = 1024  # When a friend posts something - dailyfriendactivity
     # NOTIFICATION_FRIEND_REQUEST_RESPONSES_EMAIL = 4096  # "Show me responses to my friend requests" - friendaccept
     # NOTIFICATION_FRIEND_REQUESTS_EMAIL = 2  # "New friend requests" - friendinvite
@@ -146,6 +147,7 @@ def unsubscribe_instant_view(request, subscription_secret_key='', unsubscribe_mo
     # NOTIFICATION_LOGIN_EMAIL = 16384  # "Show me email login requests" - login
     # NOTIFICATION_NEWSLETTER_OPT_IN = 1  # "I would like to receive the We Vote newsletter" - newsletter
     # NOTIFICATION_SUGGESTED_FRIENDS_EMAIL = 8  # "Suggestions of people you may know" - suggestedfriend
+    # NOTIFICATION_WEVOTE_POLITICIAN_CAMPAIGN_EMAIL = 524288  # "As a politician, would you like to update your info?" - politiciancampaign
     if unsubscribe_modifier == 'dailyfriendactivity':
         notification_flag_integer_to_unset = NOTIFICATION_VOTER_DAILY_SUMMARY_EMAIL
     elif unsubscribe_modifier == 'friendaccept':
@@ -164,6 +166,8 @@ def unsubscribe_instant_view(request, subscription_secret_key='', unsubscribe_mo
         notification_flag_integer_to_unset = NOTIFICATION_NEWSLETTER_OPT_IN
     elif unsubscribe_modifier == 'suggestedfriend':
         notification_flag_integer_to_unset = NOTIFICATION_SUGGESTED_FRIENDS_EMAIL
+    elif unsubscribe_modifier == 'politiciancampaign':
+        notification_flag_integer_to_unset = NOTIFICATION_WEVOTE_POLITICIAN_CAMPAIGN_EMAIL
 
     if not positive_value_exists(notification_flag_integer_to_unset):
         status += "UNSUBSCRIBE_MODIFIER_NOT_VALID "

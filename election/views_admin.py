@@ -9,8 +9,7 @@ from analytics.models import AnalyticsManager
 from ballot.models import BallotItem, BallotItemListManager, \
     BallotReturned, BallotReturnedListManager, BallotReturnedManager, \
     VoterBallotSaved, VoterBallotSavedManager
-from candidate.models import CandidateCampaign, CandidateListManager, CandidateManager, \
-    CandidateToOfficeLink
+from candidate.models import CandidateCampaign, CandidateListManager, CandidateToOfficeLink
 from config.environment_variable_functions import get_environment_variable
 import copy
 from datetime import datetime, timedelta
@@ -38,16 +37,14 @@ from import_export_google_civic.models import GoogleCivicApiCounter, GoogleCivic
     GoogleCivicApiCounterWeeklySummary, GoogleCivicApiCounterMonthlySummary
 from import_export_vote_smart.models import VoteSmartApiCounter, VoteSmartApiCounterDailySummary, \
     VoteSmartApiCounterWeeklySummary, VoteSmartApiCounterMonthlySummary
-from measure.models import ContestMeasure, ContestMeasureListManager
+from measure.models import ContestMeasure
 from office.models import ContestOffice, ContestOfficeListManager, ContestOfficeManager
 from pledge_to_vote.models import PledgeToVoteManager
 from polling_location.models import PollingLocation, PollingLocationManager
 from position.models import PositionEntered, PositionForFriends, PositionListManager
-import pytz
 from quick_info.models import QuickInfoManager
 from voter.models import VoterAddressManager, VoterDeviceLink, voter_has_authority
-from voter_guide.models import VoterGuide, VoterGuidePossibility, \
-    VoterGuideListManager
+from voter_guide.models import VoterGuide, VoterGuideListManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists, \
     STATE_CODE_MAP, STATE_GEOGRAPHIC_CENTER
@@ -882,7 +879,7 @@ def election_list_view(request):
     office_manager = ContestOfficeManager()
 
     election_list_query = Election.objects.all()  # Cannot be readonly because we save stats below
-    election_list_query = election_list_query.order_by('election_day_text', 'election_name')
+    election_list_query = election_list_query.order_by('election_day_text', 'election_name', 'state_code')
     election_list_query = election_list_query.exclude(google_civic_election_id=2000)
     if positive_value_exists(show_ignored_elections):
         # Do not filter out ignored elections
@@ -1308,7 +1305,7 @@ def nationwide_election_list_view(request):
 
     data_stale_if_older_than = now() - timedelta(days=30)
     if is_national_election:
-        from election.models import fetch_next_election_for_state, fetch_prior_election_for_state
+        from election.models import fetch_next_election_for_state
         state_list = STATE_CODE_MAP
         election_list = []
         cached_national_election_list = False

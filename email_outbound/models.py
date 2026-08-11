@@ -470,6 +470,7 @@ class EmailCampaignRecipient(models.Model):
     recipient_full_name = models.CharField(max_length=255, null=True)
     recipient_last_name = models.CharField(max_length=255, null=True)
     recipient_email_subscription_secret_key = models.CharField(max_length=255, null=True)
+    # politician_email_subscription_secret_key = models.CharField(max_length=255)
     recipient_email_we_vote_id = models.CharField(max_length=255, null=True)
     recipient_voter_we_vote_id = models.CharField(max_length=255, null=True)
     sender_email = models.CharField(max_length=255, null=True)
@@ -1669,11 +1670,11 @@ class EmailManager(models.Manager):
                 status += "SEND_SCHEDULED_ADD_HEADER_ERROR: " + str(e) + " "
                 print(status)
             if positive_value_exists(email_scheduled.sender_voter_name):
-                from_email = "{sender_voter_name} via We Vote <email_address>" \
+                from_email = "{sender_voter_name} via We Vote <{email_address}>" \
                              "".format(email_address='info@wevote.us',
                                        sender_voter_name=email_scheduled.sender_voter_name)
             else:
-                from_email = "We Vote <email_address>" \
+                from_email = "We Vote <{email_address}>" \
                              "".format(email_address='info@wevote.us')
             # For some reason the default Emailbackend doesn't have access to environment_variables.json directly
             connection = get_connection(

@@ -642,15 +642,39 @@
                value="True"
                {% if filter_selected_to_review %}checked{% endif %} />
         <label for="filter_selected_to_review_id"
-               style="font-weight: normal !important">To Review</label>
+               style="font-weight: normal !important">Draft</label>
       </span>
 
+      &nbsp;&nbsp;&nbsp;
+      <span class="u-no-break">
+        <input type="checkbox"
+               name="done_needs_verification"
+               id="done_needs_verification_id"
+               value="True"
+               {% if done_needs_verification %}checked{% endif %} />
+        <label for="done_needs_verification_id"
+               style="font-weight: normal !important">To Verify</label>
+      </span>
+
+      &nbsp;&nbsp;&nbsp;
+      <span class="u-no-break">
+        <input type="checkbox"
+               name="done_verified"
+               id="done_verified_id"
+               value="True"
+               {% if done_verified %}checked{% endif %} />
+        <label for="done_verified_id" style="font-weight: normal !important;">Completed</label>
+      </span>
+
+    <br />
+    Labels (Disabled For Now):
       &nbsp;&nbsp;&nbsp;
       <span class="u-no-break">
         <input type="checkbox"
                name="from_prior_election"
                id="from_prior_election_id"
                value="True"
+               disabled
                {% if from_prior_election %}checked{% endif %} />
         <label for="from_prior_election_id" style="font-weight: normal !important;">Past Year</label>
       </span>
@@ -661,6 +685,7 @@
                name="cannot_find_endorsements"
                id="cannot_find_endorsements_id"
                value="True"
+               disabled
                {% if cannot_find_endorsements %}checked{% endif %} />
         <label for="cannot_find_endorsements_id"
                style="font-weight: normal !important">Not Available Yet</label>
@@ -672,6 +697,7 @@
                name="capture_detailed_comments"
                id="capture_detailed_comments_id"
                value="True"
+               disabled
                {% if capture_detailed_comments %}checked{% endif %} />
         <label for="capture_detailed_comments_id"
                style="font-weight: normal !important">Capture Comments</label>
@@ -683,6 +709,7 @@
                name="candidates_missing_from_we_vote"
                id="candidates_missing_from_we_vote_id"
                value="True"
+               disabled
                {% if candidates_missing_from_we_vote %}checked{% endif %} />
         <label for="candidates_missing_from_we_vote_id"
                style="font-weight: normal !important">Candidates Missing</label>
@@ -691,30 +718,10 @@
       &nbsp;&nbsp;&nbsp;
       <span class="u-no-break">
         <input type="checkbox"
-               name="done_needs_verification"
-               id="done_needs_verification_id"
-               value="True"
-               {% if done_needs_verification %}checked{% endif %} />
-        <label for="done_needs_verification_id"
-               style="font-weight: normal !important">Done-To Verify</label>
-      </span>
-
-      &nbsp;&nbsp;&nbsp;
-      <span class="u-no-break">
-        <input type="checkbox"
-               name="done_verified"
-               id="done_verified_id"
-               value="True"
-               {% if done_verified %}checked{% endif %} />
-        <label for="done_verified_id" style="font-weight: normal !important;">Done-Verified</label>
-      </span>
-
-      &nbsp;&nbsp;&nbsp;
-      <span class="u-no-break">
-        <input type="checkbox"
                name="hide_from_active_review"
                id="hide_from_active_review_id"
                value="True"
+               disabled
                {% if hide_from_active_review %}checked{% endif %} />
         <label for="hide_from_active_review_id"
                style="font-weight: normal !important">Archive</label>
@@ -726,6 +733,7 @@
                name="ignore_this_source"
                id="ignore_this_source_id"
                value="True"
+               disabled
                {% if ignore_this_source %}checked{% endif %} />
         <label for="ignore_this_source_id" style="font-weight: normal !important;">Ignore</label>
       </span>
