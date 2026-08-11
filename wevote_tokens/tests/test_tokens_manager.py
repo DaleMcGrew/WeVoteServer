@@ -2,12 +2,13 @@ from django.test import TestCase
 from unittest.mock import patch, MagicMock
 from django.test import RequestFactory
 from wevote_tokens.models.single_use_tokens import SingleUseTokenManager, Scope
-from wevote_tokens.enums import TokenHeaders, TokenTypes, TokenResponse
+from wevote_tokens.enums import TokenHeaders, TokenTypes, TokenResponse, TokenResponseStatus
 import json
 from wevote_tokens.utils import TokensManager
 from django.utils import timezone
 from datetime import timedelta
 from django.http import HttpResponse, StreamingHttpResponse
+
 
 class TestTokensManager(TestCase):
     # TODO: Add tests for convert_headers_to_dict
@@ -114,22 +115,76 @@ class TestTokensManager(TestCase):
             self.assertNotEqual(response.headers, self.request.headers, "Response Headers Should Not Be the Same as the Request Headers")
 
     def test_wrapper_invalid_token_type(self):
-        request_token_info = self.request_token_info
-        request_token_info['token_type'] = 'invalid'
-        
+        request_token_info = {**self.request_token_info, 'token_type': 'invalid'}
 
         with patch.object(self.manager, "get_request_token_info", return_value=request_token_info) as mock_get_request_token_info, \
-             patch.object(self.manager, "token_authentication", return_value=None) as mock_token_authentication, \
-             patch.object(self.manager, "token_creation", return_value=None) as mock_token_creation:
-
+            patch.object(self.manager, "token_authentication") as mock_token_authentication, \
+            patch.object(self.manager, "token_creation") as mock_token_creation:
+            
             mock_view_func = MagicMock()
             mock_view_func.return_value = HttpResponse(status=200)
             response = self.manager.__call__(mock_view_func)(self.request)
-
+            
             mock_get_request_token_info.assert_called_once_with(self.request)
             mock_token_authentication.assert_not_called()
             mock_token_creation.assert_not_called()
-            mock_view_func.assert_called_once_with(self.request)
+            mock_view_func.assert_not_called()
+            self.assertEqual(response.status_code, 401)
+
+    def test_wrapper_invalid_authentication_arguments_returns_401(self):
+        # Requires utils.py to use INVALID_AUTHENTICATION_ARGUMENTS (not INVALID_ARGUMENTS)
+        request_token_info = {
+            **self.request_token_info,
+            'error_message': 'Authorization and token key are required',
+        }
+        with patch.object(self.manager, "get_request_token_info", return_value=request_token_info), \
+            patch.object(self.manager, "token_authentication") as mock_token_authentication, \
+            patch.object(self.manager, "token_creation") as mock_token_creation:
+
+            mock_view_func = MagicMock(return_value=HttpResponse(status=200))
+            response = self.manager.__call__(mock_view_func)(self.request)
+
+            mock_token_authentication.assert_not_called()
+            mock_token_creation.assert_not_called()
+            mock_view_func.assert_not_called()
+            self.assertEqual(response.status_code, 401)
+
+    def test_wrapper_authentication_processing_error_returns_500(self):
+        token_authentication_info = {
+            'success': False,
+            'status': TokenResponseStatus.AUTHENTICATION_PROCESSING_ERROR.value,
+            'error_message': 'Processing error',
+            'token_info': None,
+        }
+        with patch.object(self.manager, "get_request_token_info", return_value=self.request_token_info), \
+            patch.object(self.manager, "token_authentication", return_value=token_authentication_info), \
+            patch.object(self.manager, "token_creation") as mock_token_creation:
+
+            mock_view_func = MagicMock(return_value=HttpResponse(status=200))
+            response = self.manager.__call__(mock_view_func)(self.request)
+
+            mock_token_creation.assert_not_called()
+            mock_view_func.assert_not_called()
+            self.assertEqual(response.status_code, 500)
+            
+    def test_wrapper_invalid_credentials_returns_403(self):
+        # Covers the else branch (e.g. INVALID_CREDENTIALS)
+        token_authentication_info = {
+            'success': False,
+            'status': TokenResponseStatus.INVALID_CREDENTIALS.value,
+            'error_message': 'Invalid credentials',
+            'token_info': None,
+        }
+        with patch.object(self.manager, "get_request_token_info", return_value=self.request_token_info), \
+            patch.object(self.manager, "token_authentication", return_value=token_authentication_info), \
+            patch.object(self.manager, "token_creation") as mock_token_creation:
+
+            mock_view_func = MagicMock(return_value=HttpResponse(status=200))
+            response = self.manager.__call__(mock_view_func)(self.request)
+
+            mock_token_creation.assert_not_called()
+            mock_view_func.assert_not_called()
+            self.assertEqual(response.status_code, 403)
 
     #########################################################
     # test get_request_token_info
@@ -312,7 +367,7 @@ class TestTokensManager(TestCase):
         response = self.manager.token_authentication(request_token_info)
 
         self.assertFalse(response['success'], "Success Should Be False")
-        self.assertIsNone(response['status'], "Status Should Be None")
+        self.assertEqual(response['status'], TokenResponseStatus.INVALID_CREDENTIALS.value, "Status Should Be INVALID_CREDENTIALS")
         self.assertIsNotNone(response['error_message'], "There should be an error when invalid token keys are provided")
         self.assertIsNone(response['token_info'], "Token Info Should Be None")
 
