@@ -32,13 +32,24 @@ class TokensManager():
                 if request_token_info['error_message']:
                     token_response['token_authentication'] = {
                         'success': False,
-                        'status': TokenResponseStatus.INVALID_AUTHENTICATION_ARGUMENTS.value,
+                        'status': TokenResponseStatus.ERROR_RETRIEVING_DATA.value,
                         'error_message': request_token_info['error_message'],
                         'token_info': None
                     }
 
                     TokensManager.test_log_to_cloudwatch('get_request_token_info',
                                                          request_token_info, process_success, token_response)
+
+                # If headers does not have needed info
+                if self.missing_minimum_required_headers(request_token_info):
+                    token_response['token_authentication'] = {
+                        'success': False,
+                        'status': TokenResponseStatus.INVALID_AUTHENTICATION_ARGUMENTS.value,
+                        'error_message': "Missing required headers",
+                        'token_info': None
+                    }
+
+                    TokensManager.test_log_to_cloudwatch('missing_minimum_required_headers', request_token_info, process_success, token_response)
 
                 # Check token type
                 if not request_token_info['error_message'] and \
@@ -85,6 +96,8 @@ class TokensManager():
                 elif token_response['token_authentication']['status'] == TokenResponseStatus.INVALID_AUTHENTICATION_ARGUMENTS.value:
                     response = HttpResponse(status=401)
                 elif token_response['token_authentication']['status'] == TokenResponseStatus.AUTHENTICATION_PROCESSING_ERROR.value:
+                    response = HttpResponseServerError()
+                elif token_response['token_authentication']['status'] == TokenResponseStatus.ERROR_RETRIEVING_DATA.value:
                     response = HttpResponseServerError()
                 else:
                     response = HttpResponseForbidden()
@@ -135,6 +148,12 @@ class TokensManager():
             'new_token_key': new_token_key,
             'error_message': None
         }
+
+    def missing_minimum_required_headers(self, request_token_info):
+        return (not request_token_info['user_id'] and \
+        not request_token_info['token_type'] and \
+        not request_token_info['authorization'] and \
+        not request_token_info['token_key'])
 
     @staticmethod
     def format_request_headers(user_id=None, token_type=None, authorization=None, create_token=None, token_key=None, new_token_key=None):
