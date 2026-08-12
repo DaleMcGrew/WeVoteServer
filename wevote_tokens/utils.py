@@ -149,6 +149,7 @@ class TokensManager():
             'error_message': None
         }
 
+    @staticmethod
     def missing_minimum_required_headers(self, request_token_info):
         return (not request_token_info['user_id'] and \
         not request_token_info['token_type'] and \
@@ -362,8 +363,8 @@ class TokensManager():
 
         try:
             headers = dict(headers)
-        except:
-            raise ValueError("headers must be a dict or convertable to a dict")
+        except Exception as e:
+            raise ValueError(f"headers must be a dict or convertable to a dict: {e}")
 
         result = {}
 
