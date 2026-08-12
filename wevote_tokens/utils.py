@@ -150,7 +150,7 @@ class TokensManager():
         }
 
     @staticmethod
-    def missing_minimum_required_headers(self, request_token_info):
+    def missing_minimum_required_headers(request_token_info):
         return (not request_token_info['user_id'] and \
         not request_token_info['token_type'] and \
         not request_token_info['authorization'] and \
