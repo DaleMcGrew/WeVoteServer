@@ -8,7 +8,7 @@
             {% if 0 == selected_election_id|convert_to_int %}selected="selected"{% endif %}>
       {{ default_option_text|default:"-- Filter by Election --" }}
     </option>
-    {% for one_election in election_list %}
+    {% for one_election in election_list|dictsort:"state_code"|dictsort:"election_day_text" %}
       <option value="{{ one_election.google_civic_election_id }}"
               {% if one_election.google_civic_election_id|slugify == selected_election_id|slugify %} selected="selected"{% endif %}>
         {% if one_election.state_code %}{{ one_election.election_day_text}} {% endif %}
