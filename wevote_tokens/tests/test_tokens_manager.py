@@ -131,11 +131,11 @@ class TestTokensManager(TestCase):
             mock_view_func.assert_not_called()
             self.assertEqual(response.status_code, 401)
 
-    def test_wrapper_invalid_authentication_arguments_returns_401(self):
-        # Requires utils.py to use INVALID_AUTHENTICATION_ARGUMENTS (not INVALID_ARGUMENTS)
+    def test_wrapper_error_retrieving_data_returns_500(self):
+        # error_message with required headers present -> ERROR_RETRIEVING_DATA -> 500
         request_token_info = {
             **self.request_token_info,
-            'error_message': 'Authorization and token key are required',
+            'error_message': 'Error getting request token info: boom',
         }
         with patch.object(self.manager, "get_request_token_info", return_value=request_token_info), \
             patch.object(self.manager, "token_authentication") as mock_token_authentication, \
@@ -144,6 +144,63 @@ class TestTokensManager(TestCase):
             mock_view_func = MagicMock(return_value=HttpResponse(status=200))
             response = self.manager.__call__(mock_view_func)(self.request)
 
+            mock_token_authentication.assert_not_called()
+            mock_token_creation.assert_not_called()
+            mock_view_func.assert_not_called()
+            self.assertEqual(response.status_code, 500)
+            auth_header = json.loads(response.headers.get(TokenHeaders.TOKEN_AUTHENTICATION.value))
+            self.assertEqual(auth_header['status'], TokenResponseStatus.ERROR_RETRIEVING_DATA.value)
+            self.assertEqual(auth_header['error_message'], request_token_info['error_message'])
+            self.assertFalse(auth_header['success'])
+
+    def test_wrapper_missing_minimum_required_headers_returns_401(self):
+        # Isolate the missing-headers branch: keep a valid token_type so it is not
+        # overwritten by INVALID_TOKEN_TYPE before the response is built.
+        request_token_info = {**self.request_token_info}
+        with patch.object(self.manager, "get_request_token_info", return_value=request_token_info), \
+            patch.object(self.manager, "missing_minimum_required_headers", return_value=True), \
+            patch.object(self.manager, "token_authentication") as mock_token_authentication, \
+            patch.object(self.manager, "token_creation") as mock_token_creation:
+
+            mock_view_func = MagicMock(return_value=HttpResponse(status=200))
+            response = self.manager.__call__(mock_view_func)(self.request)
+
+            mock_token_authentication.assert_not_called()
+            mock_token_creation.assert_not_called()
+            mock_view_func.assert_not_called()
+            self.assertEqual(response.status_code, 401)
+            auth_header = json.loads(response.headers.get(TokenHeaders.TOKEN_AUTHENTICATION.value))
+            self.assertEqual(auth_header['status'], TokenResponseStatus.INVALID_AUTHENTICATION_ARGUMENTS.value)
+            self.assertEqual(auth_header['error_message'], "Missing required headers")
+            self.assertFalse(auth_header['success'])
+
+    def test_wrapper_all_required_headers_missing_returns_401(self):
+        # When parsing succeeds but all required header values are empty,
+        # missing_minimum_required_headers is True; with no error_message the
+        # invalid-token-type check then also runs and wins (same 401 status).
+        request_token_info = {
+            'user_id': None,
+            'token_type': None,
+            'authorization': None,
+            'create_token': False,
+            'token_key': None,
+            'new_token_key': None,
+            'error_message': None,
+        }
+        with patch.object(self.manager, "get_request_token_info", return_value=request_token_info) as mock_get, \
+            patch.object(
+                self.manager,
+                "missing_minimum_required_headers",
+                wraps=self.manager.missing_minimum_required_headers,
+            ) as mock_missing, \
+            patch.object(self.manager, "token_authentication") as mock_token_authentication, \
+            patch.object(self.manager, "token_creation") as mock_token_creation:
+
+            mock_view_func = MagicMock(return_value=HttpResponse(status=200))
+            response = self.manager.__call__(mock_view_func)(self.request)
+
+            mock_get.assert_called_once_with(self.request)
+            mock_missing.assert_called_once_with(request_token_info)
             mock_token_authentication.assert_not_called()
             mock_token_creation.assert_not_called()
             mock_view_func.assert_not_called()
@@ -216,6 +273,68 @@ class TestTokensManager(TestCase):
             self.assertIn('create_token', response, "Create Token Should Be in Response")
             self.assertIn('token_key', response, "Token Key Should Be in Response")
             self.assertIn('new_token_key', response, "New Token Key Should Be in Response")
+
+    def test_get_request_token_info_missing_headers_returns_nones(self):
+        request = RequestFactory().get('https://example.com')
+
+        response = self.manager.get_request_token_info(request)
+
+        self.assertIsNone(response['user_id'])
+        self.assertIsNone(response['token_type'])
+        self.assertIsNone(response['authorization'])
+        self.assertFalse(response['create_token'])
+        self.assertIsNone(response['token_key'])
+        self.assertIsNone(response['new_token_key'])
+        self.assertIsNone(response['error_message'])
+
+    def test_get_request_token_info_parse_error_returns_error_message(self):
+        request = RequestFactory().get('https://example.com')
+        request.META['HTTP_AUTHORIZATION'] = 'not-a-bearer-token'
+
+        response = self.manager.get_request_token_info(request)
+
+        self.assertIsNone(response['user_id'])
+        self.assertIsNone(response['token_type'])
+        self.assertIsNone(response['authorization'])
+        self.assertIsNone(response['create_token'])
+        self.assertIsNone(response['token_key'])
+        self.assertIsNone(response['new_token_key'])
+        self.assertIsNotNone(response['error_message'])
+        self.assertIn('Error getting request token info:', response['error_message'])
+
+    #########################################################
+    # test missing_minimum_required_headers
+    #########################################################
+    def test_missing_minimum_required_headers_true_when_all_missing(self):
+        request_token_info = {
+            'user_id': None,
+            'token_type': None,
+            'authorization': None,
+            'create_token': False,
+            'token_key': None,
+            'new_token_key': None,
+            'error_message': None,
+        }
+
+        self.assertTrue(self.manager.missing_minimum_required_headers(request_token_info))
+
+    def test_missing_minimum_required_headers_false_when_any_present(self):
+        base = {
+            'user_id': None,
+            'token_type': None,
+            'authorization': None,
+            'create_token': False,
+            'token_key': None,
+            'new_token_key': None,
+            'error_message': None,
+        }
+
+        for field in ('user_id', 'token_type', 'authorization', 'token_key'):
+            request_token_info = {**base, field: 'present'}
+            self.assertFalse(
+                self.manager.missing_minimum_required_headers(request_token_info),
+                f"Expected False when {field} is present",
+            )
 
     #########################################################
     # test format_request_headers
