@@ -197,6 +197,28 @@ USE_TZ = True
 # Described here: https://docs.djangoproject.com/en/1.8/topics/auth/customizing/#a-full-example
 AUTH_USER_MODEL = 'voter.Voter'
 
+# Password rules, applied wherever a password is set, including the password reset flow.
+# See admin_tools/views_password_reset.py
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 12},
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# How long a password reset link stays usable. Django's default is 3 days, which is a long time
+# for a link that can take over a staff account.
+PASSWORD_RESET_TIMEOUT = 60 * 60  # one hour
+
 # Static files (CSS, JavaScript, Images) Django 5+
 STATIC_URL = 'static/'      # April 2024, don't think this is correct, but can't run without it
 STATICFILES_DIRS = [
