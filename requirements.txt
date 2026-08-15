@@ -42,6 +42,8 @@ pandas~=2.2.3           # recommend engine - comment out if initial installation
 jira>=3.5               # JIRA API client for JiraUtil integration
 langdetect==1.0.9
 openpyxl>=3.1           # required by pandas for .xlsx support
+opentelemetry-api==1.37.0
+opentelemetry-instrumentation==0.58b0
 phonenumbers==8.13.26
 pillow==12.3.0
 pip-tools==7.4.1
