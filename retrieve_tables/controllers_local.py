@@ -11,8 +11,14 @@ import psycopg2
 import requests
 import sqlalchemy as sa
 from django.http import HttpResponse, HttpResponseServerError
-from opentelemetry import context as otel_context
-from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+try:
+    from opentelemetry import context as otel_context
+    from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+    OTEL_AVAILABLE = True
+except ImportError:
+    otel_context = None
+    _SUPPRESS_INSTRUMENTATION_KEY = None
+    OTEL_AVAILABLE = False
 
 import wevote_functions.admin
 from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
@@ -374,11 +380,14 @@ def fetch_data_from_api(url, params, token_headers, max_retries=1000, timeout=8)
         try:
             verify = not DEBUG_FASTLOAD_SINGLE_SERVER  # verify is True for normal operation
             #Strip otel tokens so a new trace is tracked in production
-            token = otel_context.attach(otel_context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
+            token = None
+            if OTEL_AVAILABLE:
+                token = otel_context.attach(otel_context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
             try:
                 response = requests.get(url, params=params, headers=token_headers, verify=verify, timeout=timeout)
             finally:
-                otel_context.detach(token)
+                if token is not None:
+                    otel_context.detach(token)
             if response.status_code == 200:
                 return response
             elif 400 <= response.status_code < 500:
