@@ -21,16 +21,47 @@ phases:
     on-failure: ABORT
     commands:
       - echo Build started at $(date)
-      - docker build -f docker/Dockerfile.lambda-worker -t wevote-sqs-worker:latest .
+      - docker build -f docker/Dockerfile.lambda-worker -t $LAMBDA_REPO_URI:$IMAGE_TAG .
   post_build:
     on-failure: ABORT
     commands:
-      - echo Tagging and pushing Lambda image
-      - docker tag wevote-sqs-worker:latest $LAMBDA_REPO_URI:$IMAGE_TAG
-      - docker tag wevote-sqs-worker:latest $LAMBDA_REPO_URI:latest
+      - echo Pushing Lambda image
       - docker push $LAMBDA_REPO_URI:$IMAGE_TAG
-      - docker push $LAMBDA_REPO_URI:latest
       - echo Updating Lambda function to image $LAMBDA_REPO_URI:$IMAGE_TAG
-      - aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --image-uri $LAMBDA_REPO_URI:$IMAGE_TAG
+      - echo "Attempting to update Lambda function code..."
+      - |
+        MAX_ATTEMPTS=5
+        ATTEMPT=1
+        SLEEP_TIME=15
+
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+          echo "Deployment attempt $ATTEMPT..."
+
+          # Capture both the output and the exit code of the CLI command
+          UPDATE_OUTPUT=$(aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_NAME" --image-uri "$LAMBDA_REPO_URI:$IMAGE_TAG" 2>&1)
+          EXIT_CODE=$?
+
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "Successfully initiated Lambda update!"
+            break
+          fi
+
+          # Check if the failure was due to an account/resource conflict lock
+          if echo "$UPDATE_OUTPUT" | grep -qE "ResourceConflictException|TooManyRequestsException"; then
+            echo "Account level lock hit. Another pipeline is mutating Lambda resources."
+            echo "Waiting $SLEEP_TIME seconds before retrying..."
+            sleep $SLEEP_TIME
+            ATTEMPT=$((ATTEMPT + 1))
+            SLEEP_TIME=$((SLEEP_TIME * 2)) # Exponential backoff
+          else
+            echo "Fatal deployment error: $UPDATE_OUTPUT"
+            exit 1
+          fi
+        done
+
+        if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+          echo "Error: Timed out waiting for AWS Lambda control plane lock to clear."
+          exit 1
+        fi
       - aws lambda wait function-updated --function-name $LAMBDA_FUNCTION_NAME
       - echo Lambda update complete
