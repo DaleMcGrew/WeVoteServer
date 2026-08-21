@@ -28,7 +28,6 @@ phases:
       - echo Pushing Lambda image
       - docker push $LAMBDA_REPO_URI:$IMAGE_TAG
       - echo Updating Lambda function to image $LAMBDA_REPO_URI:$IMAGE_TAG
-      - echo "Attempting to update Lambda function code..."
       - |
         MAX_ATTEMPTS=5
         ATTEMPT=1
