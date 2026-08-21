@@ -146,7 +146,7 @@ class SingleUseTokenManager(models.Manager):
     @staticmethod
     def get_tokens_by_user_id(user_id, scope):
         try:
-            return list(SingleUseToken.objects.filter(_user_id=user_id, _scope=scope).values('pk'))
+            return list(SingleUseToken.objects.filter(_user_id=user_id, _scope=scope, _expiration_datetime__gt=timezone.now()).values('pk'))
         except Exception as e:
             return 'ERROR GETTING TOKENS BY USER ID'
 
