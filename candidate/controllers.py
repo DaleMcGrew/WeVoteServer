@@ -2543,9 +2543,10 @@ def fetch_ballotpedia_urls_to_retrieve_for_links_count(
         if not default_year_if_empty:
             return 0
         # Only look at candidates for this year
+        this_year = get_current_year_as_integer()
         candidate_list_manager = CandidateListManager()
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(
-            year_list=[2024])
+            year_list=[this_year])
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
 
     try:
@@ -2576,9 +2577,10 @@ def fetch_ballotpedia_urls_to_retrieve_for_photos_count(
         if not default_year_if_empty:
             return 0
         # Only look at candidates for this year
+        this_year = get_current_year_as_integer()
         candidate_list_manager = CandidateListManager()
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(
-            year_list=[2024])
+            year_list=[this_year])
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
 
     try:

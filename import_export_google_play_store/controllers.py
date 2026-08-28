@@ -4,6 +4,7 @@
 
 from config.environment_variable_functions import get_environment_variable
 import wevote_functions.admin
+from wevote_functions.functions_date import get_current_year_as_integer
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 
@@ -29,6 +30,7 @@ def build_service():
 def get_crash_rate(service, package_name):
   """Fetches crash rate data for the specified package."""
   try:
+    this_year = get_current_year_as_integer()
     request_body = {
         # "dimensions": ["versionCode"],
         "metrics": ["crashRate", "crashRate7dUserWeighted", "crashRate28dUserWeighted", "distinctUsers"],
@@ -37,7 +39,7 @@ def get_crash_rate(service, package_name):
             "endTime": {
                 "day": 30,
                 "month": 11,
-                "year": 2024
+                "year": this_year
             },
             "startTime": {
                 "day": 1,
