@@ -5240,10 +5240,11 @@ def create_us_house_candidates_view(request):
 
     # Are there any upcoming CandidateCampaigns with politician_we_vote_ids
     #  in politician_we_vote_id_list_to_create_candidate? If so, don't recreate CandidateCampaign entries.
+    this_year = get_current_year_as_integer()
     candidate_list_manager = CandidateListManager()
     results = candidate_list_manager.retrieve_candidate_list(
         politician_we_vote_id_list=politician_we_vote_id_list_to_create_candidate,
-        candidate_year_list=[2024])  # Upgrade this to match incoming election year
+        candidate_year_list=[this_year])  # Upgrade this to match incoming election year
     if results['candidate_list_found']:
         existing_candidate_list = results['candidate_list']
         for existing_candidate in existing_candidate_list:

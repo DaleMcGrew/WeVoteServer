@@ -398,12 +398,7 @@ def populate_contest_office_data(
             if candidate_to_office_link.candidate_we_vote_id not in candidates_to_update_we_vote_id_list:
                 candidates_to_update_we_vote_id_list.append(candidate_to_office_link.candidate_we_vote_id)
 
-    try:
-        datetime_now = datetime.now()
-        date_string = datetime_now.strftime('%Y%m%d')
-        date_int = int(date_string)
-    except Exception as e:
-        date_int = 20240101
+    date_int = get_current_date_as_integer()
 
     try:
         queryset = CandidateCampaign.objects.all()

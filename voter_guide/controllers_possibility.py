@@ -1140,11 +1140,7 @@ def process_organization_endorsing_candidates_input_form(
 
     # Now look for candidate possibilities that have states attached, so we can add them to the database
     if len(possible_endorsement_list):
-        try:
-            current_year = get_current_year_as_integer()
-        except Exception as e:
-            status += "FAILED_TO_GET_CURRENT_YEAR: " + str(e) + " "
-            current_year = 2024
+        current_year = get_current_year_as_integer()
         adjusted_possible_endorsement_list = []
         for one_possible_endorsement in possible_endorsement_list:
             if 'candidate_we_vote_id' in one_possible_endorsement \

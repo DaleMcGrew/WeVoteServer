@@ -55,7 +55,8 @@ from wevote_functions.functions import convert_to_int, convert_to_political_part
     normalize_bluesky_handle, normalize_threads_handle, \
     normalize_tiktok_url, positive_value_exists, STATE_CODE_MAP, display_full_name_with_correct_capitalization
 from wevote_functions.functions_date import convert_date_to_we_vote_date_string, \
-    convert_we_vote_date_string_to_date_as_integer, generate_localized_datetime_from_obj, DATE_FORMAT_YMD_HMS
+    convert_we_vote_date_string_to_date_as_integer, generate_localized_datetime_from_obj, get_current_date_as_integer, \
+    DATE_FORMAT_YMD_HMS
 from wevote_settings.constants import IS_BATTLEGROUND_YEARS_AVAILABLE
 from .controllers import add_twitter_handle_to_next_politician_spot, \
     figure_out_politician_conflict_values, \
@@ -679,7 +680,8 @@ def politician_list_view(request):
                     politician_query = politician_query.filter(final_filters)
 
         if positive_value_exists(was_candidate_recently):
-            politician_query = politician_query.filter(politician_ultimate_election_date__gte=20240101)
+            current_date = get_current_date_as_integer()
+            politician_query = politician_query.filter(politician_ultimate_election_date__gte=current_date)
 
         politician_list_count = politician_query.count()
 

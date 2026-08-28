@@ -1308,7 +1308,7 @@ def voter_ballot_items_retrieve_for_api(  # voterBallotItemsRetrieve
 
             # Brute force override for 2026 elections
             election_description_text = "2026 General Election"
-            election_day_text = "2026-11-03"  # Displays as "Nov 5th, 2024"
+            election_day_text = "2026-11-03"  # Displays as "Nov 3rd, 2026"
             json_data = {
                 'status':                               status,
                 'success':                              True,
