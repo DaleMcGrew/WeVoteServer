@@ -5,13 +5,13 @@
 from .models import QuickInfo, QuickInfoManager, QuickInfoMasterManager
 from ballot.models import OFFICE, CANDIDATE, POLITICIAN, MEASURE
 from candidate.models import CandidateManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.contrib import messages
 from django.http import HttpResponse
 from exception.models import handle_record_not_found_exception, handle_record_not_saved_exception
 from organization.models import OrganizationManager
 import json
-from voter.models import fetch_voter_id_from_voter_device_link, VoterManager
+from voter.models import VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, is_voter_device_id_valid, positive_value_exists
 
@@ -309,7 +309,7 @@ def quick_info_retrieve_for_api(kind_of_ballot_item, ballot_item_we_vote_id):
     ballot_item_we_vote_id = ballot_item_we_vote_id.strip().lower()
 
     if not positive_value_exists(kind_of_ballot_item) and \
-            not kind_of_ballot_item in (OFFICE, CANDIDATE, POLITICIAN, MEASURE):
+            kind_of_ballot_item not in (OFFICE, CANDIDATE, POLITICIAN, MEASURE):
         json_data = {
             'status':                           "QUICK_INFO_RETRIEVE_KIND_OF_BALLOT_ITEM_NOT_SPECIFIED",
             'success':                          False,

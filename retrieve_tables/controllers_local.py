@@ -1,9 +1,9 @@
 # retrieve_tables/controllers_local.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-
 import json
 import os
+import re
 import subprocess
 import time
 
@@ -11,13 +11,21 @@ import psycopg2
 import requests
 import sqlalchemy as sa
 from django.http import HttpResponse, HttpResponseServerError
+try:
+    from opentelemetry import context as otel_context
+    from opentelemetry.instrumentation.utils import _SUPPRESS_INSTRUMENTATION_KEY
+    OTEL_AVAILABLE = True
+except ImportError:
+    otel_context = None
+    _SUPPRESS_INSTRUMENTATION_KEY = None
+    OTEL_AVAILABLE = False
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from retrieve_tables.retrieve_common import allowable_tables
 from wevote_functions.functions import get_voter_api_device_id, positive_value_exists, server_is_source_of_truth
-from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
 from wevote_tokens.enums import TokenCookies, TokenHeaders, TokenTypes
+from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
 from wevote_tokens.utils import TokensManager
 
 logger = wevote_functions.admin.get_logger(__name__)
@@ -25,6 +33,13 @@ logger = wevote_functions.admin.get_logger(__name__)
 global_stats = {}
 dummy_unique_id = 10000000
 LOCAL_TMP_PATH = '/tmp/'
+
+# EXTENDED_FASTLOAD_LOGGING is only used by developers for debugging, set it on the local, and then it is sent in
+# the API requests to the master, and the resulting logging can be monitored in CloudWatch
+EXTENDED_FASTLOAD_LOGGING = get_environment_variable_default("EXTENDED_FASTLOAD_LOGGING", False)
+# DEBUG_FASTLOAD_SINGLE_SERVER is only used by developers for debugging, where you have downloaded a copy of the
+# production database, and are using the local server as both local and master.  See docs/DebuggingFastLoadPython.md
+DEBUG_FASTLOAD_SINGLE_SERVER = get_environment_variable_default("DEBUG_FASTLOAD_SINGLE_SERVER", False)
 
 
 def update_fast_load_db(host, voter_api_device_id, table_name, additional_records):
@@ -45,9 +60,9 @@ def update_fast_load_db(host, voter_api_device_id, table_name, additional_record
                                         'voter_api_device_id': voter_api_device_id,
                                         })
 
-        # print('update_fast_load_db ', response.status_code, response.url, voter_api_device_id)
-        # print(response.request.url)
-        print('update_fast_load_db ', response.status_code, response.url, voter_api_device_id)
+        # print('update_fast_load_db ', response.status_code, response.url, voter_api_device_id, flush=True)
+        # print(response.request.url, flush=True)
+        print('update_fast_load_db ', response.status_code, response.url, voter_api_device_id, flush=True)
     except Exception as e:
         logger.error('update_fast_load_db caught: ', str(e))
 
@@ -56,20 +71,11 @@ def retrieve_sql_files_from_master_server(request):
     results = {}
 
     # ONLY CHANGE host to 'wevotedeveloper.com' while debugging the fast load code, where Master and Client are the same
-    # host = 'https://wevotedeveloper.com:8000'
-    host = 'https://api.wevoteusa.org'
+    host = 'https://wevotedeveloper.com:8000' if DEBUG_FASTLOAD_SINGLE_SERVER else 'https://api.wevoteusa.org'
     voter_api_device_id = get_voter_api_device_id(request)
 
     try:
-        # hack, call master from local...
-        # results = backup_one_table_to_s3_controller('id', 'ballot_ballotitem')
-        # ballot_ballotitem has 40,999,358 records in December 2024 and takes about 69 seconds to dump and 10 more to
-        # upload on the master servers (simulated on my fast Mac with fast Internet).  These s3 files are set to expire
-        # in a day
-        # Example: https://wevote-images.s3.amazonaws.com/backup-ballot_ballotitem-2024-12-06T13:25:13.backup
-        # This same backup file takes 21 seconds to download to a local tempfile, and then 3 seconds to pg_restore
-
-        if server_is_source_of_truth():
+        if server_is_source_of_truth() and not DEBUG_FASTLOAD_SINGLE_SERVER:
             raise Exception('Server may be a source of truth. Not allowed to Fast Load to maintain data integrity.')
 
         token_headers = {
@@ -99,24 +105,26 @@ def retrieve_sql_files_from_master_server(request):
             global_stats['elapsed'] = int(time.time()- global_stats['global_t0'])
             print(f"{global_stats['count']} -- Retrieving table {table_name}")
             url = f'{host}/apis/v1/backupOneTableToS3/'
-            params = {'table_name': table_name, 'voter_api_device_id': voter_api_device_id}
+            params = {'table_name': table_name, 'voter_api_device_id': voter_api_device_id,
+                      'extended_fastload_logging': EXTENDED_FASTLOAD_LOGGING}
             fetch_data_response = fetch_data_from_api(url, params, token_headers, 100, 180)  # 3 min timeout for ballot_i
 
             response_headers = TokensManager.convert_headers_to_dict(fetch_data_response.headers)
             if 'token_authentication' in response_headers:
                 token_authentication = response_headers['token_authentication']
-                print(f"Token authentication: {token_authentication}")
+                # print(f"Token authentication: {token_authentication}")
                 if token_authentication['success']:
                     token_creation = response_headers['token_creation']
-                    print(f"Token creation: {token_creation}")
+                    # print(f"Token creation: {token_creation}")
                     if token_creation['success']:
                         token_headers[TokenHeaders.AUTHORIZATION.value] = f"Bearer {token_creation['token_info']['token_pk']}"
                         token_headers[TokenHeaders.TOKEN_KEY.value] = token_headers[TokenHeaders.TOKEN_NEW_KEY.value]
                         token_headers[TokenHeaders.TOKEN_NEW_KEY.value] = SingleUseTokenManager.generate_encryption_key()
                 else:
-                    print(f"Token authentication failed: {token_authentication['error_message']}")
+                    if not DEBUG_FASTLOAD_SINGLE_SERVER:
+                        print(f"Token authentication failed: {token_authentication['error_message']}")
             else:
-                print(f"Token authentication not found in response headers.")
+                print("Token authentication not found in response headers.")
 
             structured_json = fetch_data_response.json()
             aws_s3_file_url = structured_json['aws_s3_file_url']
@@ -124,7 +132,7 @@ def retrieve_sql_files_from_master_server(request):
                   f"received at {int(time.time()-global_stats['global_t0'])} seconds")
 
             global_stats['table_name_text'] = ('<b>Loading</b>&nbsp;&nbsp;<i>' + table_name +
-                                          '</i>&nbsp;&nbsp;from s3 on the <b>local</b> server')
+                                          '</i>&nbsp;&nbsp;from local disk to the <b>local</b> server')
             # restore_one_file_to_local_server(aws_s3_file_url, 'ballot_ballotitem')
             restore_one_file_to_local_server(aws_s3_file_url, table_name)
             global_stats['step'] += 1
@@ -147,7 +155,13 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
         'success': False
     }
 
-    tf = tempfile.NamedTemporaryFile(mode='r+b')
+    if EXTENDED_FASTLOAD_LOGGING:
+        tf = tempfile.NamedTemporaryFile(delete=False, mode='r+b')
+        full_path = tf.name
+        print(f"Full Path of tempfile: {full_path}")
+    else:
+        tf = tempfile.NamedTemporaryFile(mode='r+b')
+
     try:
         diff_t0 = int((time.time() - global_stats['global_t0']))
         print(f"About to download {table_name} from S3 at {diff_t0} seconds")
@@ -157,34 +171,47 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
             # Process in 1MB chunks
             for chunk in response.iter_content(chunk_size=(1024*1024)):
                 if chunk:
+                    # print(f"Chunk: {chunk}")
                     tf.write(chunk)
-        # Force the python buffer to be written to the file            
+        # Force the python buffer to be written to the file
         tf.flush()
         if tf.tell() != global_stats['table_size']:
             raise Exception(f"Downloaded {int(tf.tell()/1024)} Kb, expected {int(global_stats['table_size']/1024)} Kb")
 
         print("Downloaded", tf.name)
+
+        # if EXTENDED_FASTLOAD_LOGGING:
+        #     with os.scandir('/tmp') as entries:
+        #         text = 'Ok: fastload Local after: '
+        #         for entry in entries:
+        #             if entry.is_file():
+        #                 # Get statistics for each file
+        #                 info = entry.stat()
+        #                 text += f"{entry.name} ({info.st_size}) {datetime.fromtimestamp(info.st_mtime)}, "
+        #         logger.error(text)
+
         diff_t0 = int(time.time() - global_stats['global_t0'])
         print(f"Done with download from S3 at {diff_t0} seconds")
     except Exception as e:
-        print("!!Problem occurred Downloading file:", e)
+        print("!!Problem occurred Downloading file: ", str(e))
         results['success'] = False,
         results['error string'] = str(e)
         tf.close()
         return results
 
     try:
+        in_docker = get_environment_variable_default('RUNNING_IN_DOCKER', False)
         db_name = get_environment_variable("DATABASE_NAME")
         db_user = get_environment_variable('DATABASE_USER')
-        db_host = get_environment_variable('DATABASE_HOST')
-        db_port = get_environment_variable('DATABASE_PORT')
+        db_password = get_environment_variable('DATABASE_PASSWORD')
+        db_host = 'db' if in_docker else get_environment_variable_default('DATABASE_HOST', 'db')
+        db_port = get_environment_variable_default('DATABASE_PORT', '5432')
         db_pass = get_environment_variable('DATABASE_PASSWORD')
 
         diff_t0 = int(time.time() - global_stats['global_t0'])
-        print(f"About to TRUNCATE {table_name} at {diff_t0} seconds")
-        # # engine = connect_to_db()
+        print(f"About to TRUNCATE {table_name} at {diff_t0} seconds", flush=True)
     except Exception as e:
-        print("!!Problem occurred getting variables for db:", e)
+        print("!!Problem occurred getting variables for db:", str(e), flush=True)
         results['success'] = False,
         results['error string'] = str(e)
         tf.close()
@@ -196,37 +223,88 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
             raise Exception(f"Truncate table {table_name} failed: {table_truncated}")
 
         diff_t0 = int((time.time() - global_stats['global_t0']))
-        print(f"About to sync data from tempfile at {diff_t0} seconds")
+        print(f"About to sync data from tempfile at {diff_t0} seconds", flush=True)
 
-        command_list = ['pg_restore',
-                        '-v', 
-                        '--data-only', 
-                        '--disable-triggers',
-                        '--no-password',
-                        '-U', db_user]
-        command_list.extend(['-h', db_host] if positive_value_exists(db_host) else [])
-        command_list.extend(['-p', db_port] if positive_value_exists(db_port) else [])
-        command_list.extend(['-d', db_name,
-                            '-t', table_name,
-                            tf.name])
+        # Sanity check to prove that that pg_dump can be run in controllers_local -- never need this
+        # command_args = ["pg_dump",
+        #                 # f'postgresql://{db_user}:{db_password}@db:{db_port}/wevoteserverdb',
+        #                 # "-d",
+        #                 "\'postgresql://postgres:admin@db:5432/wevoteserverdb\'",
+        #                 "--format=c",
+        #                 "--table=voter_voteraddress",
+        #                 "--file=/tmp/steve25",
+        #                 "--disable-triggers"]
+        #
+        # # print('pg_dump command:', ' '.join(command_args))
+        # print('pg_dump command WARMUP1:')
+        # try:
+        #     result2 = subprocess.run(command_args, capture_output=True, text=True)
+        #     print('pg_dump command WARMUP2 result2:' + str(result2))
+        # except Exception as e:
+        #     print("pg_dump ERROR: " + str(e))
+        # print('pg_dump command WARMUP3: done')
+        #
+
+        print(f"Ok. Running in_docker: {in_docker}", flush=True)
+        if in_docker:
+            pgurl = f'\'postgresql://{db_user}:{db_password}@{db_host}:5432/{db_name}\''
+            command_list = f"pg_restore -c -v --disable-triggers --no-password --no-owner --no-acl -U postgres -d {pgurl} -t {table_name} < {tf.name}"
+            print('Ok. command in Docker:   ' + command_list, flush=True)
+        else:
+            command_list = ['pg_restore',
+                            '-v',
+                            '--data-only',
+                            '--disable-triggers',
+                            '--no-password',
+                            '--no-owner',
+                            '--no-acl',
+                            '-U', db_user]
+            command_list.extend(['-h', db_host] if positive_value_exists(db_host) else [])
+            command_list.extend(['-p', db_port] if positive_value_exists(db_port) else [])
+            command_list.extend(['-d', db_name,
+                                 '-t', table_name,
+                                 tf.name])
+            print(f"Ok. Not running in Docker, command: {command_list}", flush=True)
 
         # Get password and set environment. If no password, don't set the environment variable.
-        # Pssing 'None' to the environment variable will cause the command to fail.
+        # Passing 'None' to the environment variable will cause the command to fail.
         env = os.environ.copy()
         if db_pass:
             env['PGPASSWORD'] = db_pass
 
-        table_restore_result = subprocess.run(command_list, env=env, capture_output=True, text=True)
+        # env_in_container = subprocess.run(["env"], env=env, capture_output=True, text=True)
+        # print(f"pg_restore env: {env_in4_container.stdout}")
+        # script_path = os.path.join("/tmp", tf.name)
+        # print(f"script_path: {script_path}")
+        # env_in_container = subprocess.run(['ls', '-la', script_path], env=env, capture_output=True, text=True)
+        # print(f"ls -la {script_path}:  {env_in_container.stdout}")
+
+        # The Docker branch builds a shell string (uses "< file" redirection) so it needs shell=True.
+        # The non-Docker branch builds an argument list, which must run with shell=False, otherwise
+        # only "pg_restore" is executed and its arguments are dropped.
+        table_restore_result = subprocess.run(command_list, shell=in_docker, env=env,
+                                              capture_output=True, text=True)
+
         # Any return code other than 0 is an error
         if table_restore_result.returncode != 0:
-            raise RuntimeError(f"pg_restore failed: {table_restore_result.stderr}")
+            logger.error(f"pg_restore failed: {table_restore_result.stderr}")
 
         diff_t0 = int((time.time() - global_stats['global_t0']))
-        print(f"Restore completed at {diff_t0} seconds")
+        print(f"Restore completed at {diff_t0} seconds", flush=True)
         results['success'] = True
+
+        if EXTENDED_FASTLOAD_LOGGING:     # Double check
+            try:
+                query = f"SELECT count(*) FROM public.\"{table_name}\""
+                command_list = ['psql', '-h', db_host, '-U', 'postgres', '-d',  db_name, '-c', query]
+                count_result = subprocess.run(command_list, env=env, capture_output=True, text=True)
+                numbers = re.findall(r"\d+", count_result.stdout)
+                print(f"pg_restore successfully restored {table_name} with row count: {numbers[0]}", flush=True)
+            except Exception as e:
+                logger.error("pg_restore count(*) failed" + str(e))
+
     except Exception as e:
-        print("!!Problem occurred 2!!", e)
-        logger.error("Problem occurred in pg_restore step: ", e)
+        logger.error("Problem occurred in pg_restore step 2: ", str(e))
         results['success'] = False,
         results['error string'] = str(e)
     tf.close()
@@ -236,7 +314,7 @@ def restore_one_file_to_local_server(aws_s3_file_url, table_name):
 
 # noinspection PyUnusedLocal
 def get_local_fast_load_status(request):
-    # print("Getting local fast load status", global_stats)
+    # print("Getting local fast load status", global_stats, flush=True)
     return HttpResponse(json.dumps(global_stats), content_type='application/json')
 
 
@@ -272,7 +350,7 @@ def truncate_table_psycopg2(table_name):
         cur = conn.cursor()
         statement = f"TRUNCATE TABLE {table_name}"
         ret = cur.execute(statement)
-        # print(f"TRUNCATE TABLE {table_name} re {str(ret)}")
+        # print(f"TRUNCATE TABLE {table_name} re {str(ret)}", flush=True)
     except Exception as e:
         logger.error(f'FAILED_TABLE_TRUNCATE: {table_name} -- {str(e)}')
         return e
@@ -289,7 +367,7 @@ def drop_table(engine, table_name):
         try:
             # Drop the table
             conn.execute(sa.text(f"DROP TABLE {table_name}"))
-            print(f"RUNNING: DROP TABLE {table_name} ")
+            print(f"RUNNING: DROP TABLE {table_name} ", flush=True)
         except Exception as e:
             logger.error(f'FAILED_TABLE_DROP: {table_name} -- {str(e)}')
 
@@ -302,11 +380,24 @@ def fetch_data_from_api(url, params, token_headers, max_retries=1000, timeout=8)
     :return:
     """
     for attempt in range(max_retries):
-        # print(f'Attempt {attempt} of {max_retries} attempts to fetch data from api')
+        # print(f'Attempt {attempt} of {max_retries} attempts to fetch data from api', flush=True)
         try:
-            response = requests.get(url, params=params, headers=token_headers, verify=True, timeout=timeout)
+            verify = not DEBUG_FASTLOAD_SINGLE_SERVER  # verify is True for normal operation
+            #Strip otel tokens so a new trace is tracked in production
+            token = None
+            if OTEL_AVAILABLE:
+                token = otel_context.attach(otel_context.set_value(_SUPPRESS_INSTRUMENTATION_KEY, True))
+            try:
+                response = requests.get(url, params=params, headers=token_headers, verify=verify, timeout=timeout)
+            finally:
+                if token is not None:
+                    otel_context.detach(token)
             if response.status_code == 200:
                 return response
+            elif 400 <= response.status_code < 500:
+                logger.warning(f"\nAPI request failed with status code {response.status_code}. \
+                Authentication error entountered. Try passing login info to the master server and retrying.")
+                break
             else:
                 logger.warning(f"\nAPI request failed with status code {response.status_code}, retrying...")
         except requests.Timeout:

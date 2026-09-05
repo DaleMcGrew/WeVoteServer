@@ -1,11 +1,12 @@
 from django.test import TestCase
-from voter.models import VoterManager
 from wevote_tokens.models.single_use_tokens import SingleUseToken, SingleUseTokenManager, Scope
 from cryptography.fernet import Fernet
 import json
 from datetime import timedelta
 from django.utils import timezone
 import time
+from unittest.mock import patch
+
 
 # Only used to test SingleUseToken model
 class TestSingleUseToken(TestCase):
@@ -51,7 +52,7 @@ class TestSingleUseToken(TestCase):
             "_validation Not Set Correctly")
         self.assertEqual(
             json.loads(self.test_cipher.decrypt(token._json_data_encrypted).decode('utf-8')),
-            json_data, 
+            json_data,
             "_json_data_encrypted Not Set Correctly")
         self.assertLessEqual(
             (timezone.now() + timedelta(seconds=expiration_seconds)) - token._expiration_datetime,
@@ -395,3 +396,81 @@ class TestSingleUseTokenManager(TestCase):
             message_addon)
         self._assert_is_not_none(token_info, ['expiration_datetime'], message_addon)
         self._assert_true(token_info, ['success'], message_addon)
+
+    def test_get_tokens_by_user_id_all_unexpired(self):
+        voter = self.test_voter
+        scope = self.test_scope
+        message_addon = "All Unexpired Tokens Returned"
+
+        token_pk_1 = self._get_test_token_pk(voter=voter, scope=scope)
+        token_pk_2 = self._get_test_token_pk(voter=voter, scope=scope)
+        token_pk_3 = self._get_test_token_pk(voter=voter, scope=scope)
+
+        tokens = SingleUseTokenManager.get_tokens_by_user_id(voter, scope)
+        returned_pks = sorted([token['pk'] for token in tokens])
+
+        self._assert_equal(
+            {'returned_pks': returned_pks, 'count': len(returned_pks)},
+            ['returned_pks', 'count'],
+            [sorted([token_pk_1, token_pk_2, token_pk_3]), 3],
+            message_addon)
+
+    def test_get_tokens_by_user_id_mixed_expiration(self):
+        voter = self.test_voter
+        scope = self.test_scope
+        message_addon = "Only Unexpired Token Returned"
+
+        expired_pk_1 = self._get_test_token_pk(voter=voter, scope=scope, expiration_seconds=0)
+        expired_pk_2 = self._get_test_token_pk(voter=voter, scope=scope, expiration_seconds=0)
+        time.sleep(1)
+        unexpired_pk = self._get_test_token_pk(voter=voter, scope=scope)
+
+        tokens = SingleUseTokenManager.get_tokens_by_user_id(voter, scope)
+        returned_pks = [token['pk'] for token in tokens]
+
+        self._assert_equal(
+            {'returned_pks': returned_pks, 'count': len(returned_pks)},
+            ['returned_pks', 'count'],
+            [[unexpired_pk], 1],
+            message_addon)
+        self.assertNotIn(expired_pk_1, returned_pks, message_addon)
+        self.assertNotIn(expired_pk_2, returned_pks, message_addon)
+
+    def test_get_tokens_by_user_id_equal_expiration(self):
+        voter = self.test_voter
+        scope = self.test_scope
+        message_addon = "Equal Expiration Token Not Returned"
+
+        token_pk = self._get_test_token_pk(voter=voter, scope=scope, expiration_seconds=0)
+        token = SingleUseToken.objects.get(pk=token_pk)
+
+        with patch(
+            'wevote_tokens.models.single_use_tokens.timezone.now',
+            return_value=token._expiration_datetime):
+            tokens = SingleUseTokenManager.get_tokens_by_user_id(voter, scope)
+
+        self._assert_equal(
+            {'tokens': tokens, 'count': len(tokens)},
+            ['tokens', 'count'],
+            [[], 0],
+            message_addon)
+        self._assert_true(
+            {'exists': SingleUseToken.objects.filter(pk=token_pk).exists()},
+            ['exists'],
+            message_addon)
+
+    def test_get_tokens_by_user_id_exception(self):
+        voter = self.test_voter
+        scope = self.test_scope
+        message_addon = "Get Tokens By User ID Exception"
+
+        with patch(
+            'wevote_tokens.models.single_use_tokens.SingleUseToken.objects.filter',
+            side_effect=Exception('db error')):
+            tokens = SingleUseTokenManager.get_tokens_by_user_id(voter, scope)
+
+        self._assert_equal(
+            {'tokens': tokens},
+            ['tokens'],
+            ['ERROR GETTING TOKENS BY USER ID'],
+            message_addon)

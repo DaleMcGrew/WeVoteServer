@@ -4,10 +4,12 @@
 
 from .models import Election, ElectionManager
 from ballot.models import BallotReturned, BallotReturnedListManager
-from config.base import get_environment_variable
+from office.models import ContestOffice
+from config.environment_variable_functions import get_environment_variable
 # from import_export_google_civic.controllers import retrieve_from_google_civic_api_election_query, \
 #     store_results_from_google_civic_api_election_query
 from datetime import datetime, timedelta
+from django.db.models import Count
 from django.utils.timezone import now
 from import_export_batches.models import BatchProcess
 import json
@@ -348,7 +350,19 @@ def elections_retrieve_for_api():  # electionsRetrieve
 
     ballot_returned_list_manager = BallotReturnedListManager()
     election_list_raw = list(election_list_query)
+    # Figure out the office count for all election
+    google_civic_election_id_list = [election.google_civic_election_id for election in election_list_raw]
+    queryset = ContestOffice.objects.using('readonly')
+    queryset = queryset.filter(google_civic_election_id__in=google_civic_election_id_list)
+    # Return the count (i.e., the number of) office rows associated with each google_civic_election_id
+    office_count_query = queryset.values('google_civic_election_id').annotate(Count('google_civic_election_id'))
+    office_count_dict = {
+        convert_to_int(row['google_civic_election_id']): row['google_civic_election_id__count']
+        for row in office_count_query
+    }
+
     for election in election_list_raw:
+        office_count = 0
         state_code_list = []
         try:
             ballot_location_list = []
@@ -358,11 +372,6 @@ def elections_retrieve_for_api():  # electionsRetrieve
             ballot_returned_query = ballot_returned_query.filter(ballot_location_display_option_on=True)
             ballot_returned_query = ballot_returned_query.order_by('ballot_location_display_name')
             ballot_returned_list = list(ballot_returned_query)
-
-            # ballot_returned_count_query = BallotReturned.objects.using('readonly')
-            # ballot_returned_count_query = ballot_returned_count_query.filter(
-            #     google_civic_election_id=election.google_civic_election_id)
-            # ballot_returned_count = ballot_returned_count_query.count()
 
             for ballot_returned in ballot_returned_list:
                 ballot_location_display_option = {
@@ -384,6 +393,9 @@ def elections_retrieve_for_api():  # electionsRetrieve
             # if results['success']:
             #     state_code_list = results['state_code_list']
 
+            if google_civic_election_id in office_count_dict:
+                office_count = office_count_dict[google_civic_election_id]
+
             election_json = {
                 'ballot_location_list':         ballot_location_list,
                 # 'ballot_returned_count':        ballot_returned_count,
@@ -393,6 +405,7 @@ def elections_retrieve_for_api():  # electionsRetrieve
                 'google_civic_election_id':     google_civic_election_id,
                 'get_election_state':           election.get_election_state(),
                 'ocd_division_id':              election.ocd_division_id,
+                'office_count':                 office_count,
                 'state_code':                   election.state_code,
                 'state_code_list':              state_code_list,
             }

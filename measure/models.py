@@ -55,6 +55,11 @@ CONTEST_MEASURE_UNIQUE_IDENTIFIERS = [
     'wikipedia_photo_url',
 ]
 
+CONTEST_MEASURE_UNIQUE_ATTRIBUTES_TO_BE_CLEARED = [
+    'maplight_id',
+    'vote_smart_id',
+]
+
 
 # The measure that is on the ballot (equivalent to ContestOffice)
 class ContestMeasure(models.Model):
@@ -951,6 +956,8 @@ class ContestMeasureManager(models.Manager):
                     contest_measure.election_day_text = defaults['election_day_text']
                 if 'measure_url' in defaults:
                     contest_measure.measure_url = defaults['measure_url']
+                if 'measure_year' in defaults:
+                    contest_measure.measure_year = convert_to_int(defaults['measure_year'])
                 if 'state_code' in defaults:
                     contest_measure.state_code = defaults['state_code']
                 if positive_value_exists(contest_measure.we_vote_id):
@@ -987,14 +994,14 @@ class ContestMeasureManager(models.Manager):
             measure_we_vote_id,
             defaults):
         """
-            Update ContestMeasure table entry with matching we_vote_id 
-        :param measure_title: 
-        :param measure_subtitle: 
-        :param measure_text: 
-        :param state_code: 
-        :param ctcl_uuid: 
-        :param google_civic_election_id: 
-        :param measure_we_vote_id:  
+            Update ContestMeasure table entry with matching we_vote_id
+        :param measure_title:
+        :param measure_subtitle:
+        :param measure_text:
+        :param state_code:
+        :param ctcl_uuid:
+        :param google_civic_election_id:
+        :param measure_we_vote_id:
         :param defaults:
         :return:
         """
@@ -1064,6 +1071,47 @@ class ContestMeasureManager(models.Manager):
             }
         return results
 
+    @staticmethod
+    def update_or_create_measures_are_not_duplicates(measure1_we_vote_id, measure2_we_vote_id):
+        """
+        Either update or create a measure entry.
+        """
+        exception_multiple_object_returned = False
+        success = False
+        new_measures_are_not_duplicates_created = False
+        measures_are_not_duplicates = None
+        status = ""
+
+        if positive_value_exists(measure1_we_vote_id) and positive_value_exists(measure2_we_vote_id):
+            try:
+                updated_values = {
+                    'contest_measure1_we_vote_id':    measure1_we_vote_id,
+                    'contest_measure2_we_vote_id':    measure2_we_vote_id,
+                }
+                measures_are_not_duplicates, new_measures_are_not_duplicates_created = \
+                    ContestMeasuresAreNotDuplicates.objects.update_or_create(
+                        contest_measure1_we_vote_id__exact=measure1_we_vote_id,
+                        contest_measure2_we_vote_id=measure2_we_vote_id,
+                        defaults=updated_values)
+                success = True
+                status += "MEASURES_ARE_NOT_DUPLICATES_UPDATED_OR_CREATED "
+            except ContestMeasuresAreNotDuplicates.MultipleObjectsReturned as e:
+                success = False
+                status += 'MULTIPLE_MATCHING_MEASURES_ARE_NOT_DUPLICATES_FOUND_BY_MEASURE_WE_VOTE_ID '
+                exception_multiple_object_returned = True
+            except Exception as e:
+                status += 'EXCEPTION_UPDATE_OR_CREATE_MEASURES_ARE_NOT_DUPLICATES ' \
+                         '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
+                success = False
+
+        results = {
+            'success':                                      success,
+            'status':                                       status,
+            'MultipleObjectsReturned':                      exception_multiple_object_returned,
+            'new_measures_are_not_duplicates_created':      new_measures_are_not_duplicates_created,
+            'measures_are_not_duplicates':                  measures_are_not_duplicates,
+        }
+        return results
 
 class ContestMeasureListManager(models.Manager):
     """
@@ -1915,11 +1963,29 @@ class ContestMeasuresAreNotDuplicates(models.Model):
     When checking for duplicates, there are times when we want to explicitly mark two contest measures as NOT duplicates
     """
     contest_measure1_we_vote_id = models.CharField(
-        verbose_name="first contest measure we are tracking", max_length=255, null=True, unique=False, db_index=True)
+        verbose_name="first contest measure we are tracking", max_length=255, null=True, unique=False)
     contest_measure2_we_vote_id = models.CharField(
-        verbose_name="second contest measure we are tracking", max_length=255, null=True, unique=False, db_index=True)
+        verbose_name="second contest measure we are tracking", max_length=255, null=True, unique=False)
 
-    def fetch_other_office_we_vote_id(self, one_we_vote_id):
+    def fetch_other_contest_measure_we_vote_id(self, one_we_vote_id):
+        if one_we_vote_id == self.contest_measure1_we_vote_id:
+            return self.contest_measure2_we_vote_id
+        elif one_we_vote_id == self.contest_measure2_we_vote_id:
+            return self.contest_measure1_we_vote_id
+        else:
+            # If the we_vote_id passed in wasn't found, don't return another we_vote_id
+            return ""
+
+
+class ContestMeasuresArePossibleDuplicates(models.Model):
+    """
+    When checking for duplicates, there are times when we want to explicitly mark two measures as possible duplicates
+    """
+    contest_measure1_we_vote_id = models.CharField(max_length=255, null=True, unique=False)
+    contest_measure2_we_vote_id = models.CharField(max_length=255, null=True, unique=False)
+    state_code = models.CharField(max_length=2, null=True)
+
+    def fetch_other_contest_measure_we_vote_id(self, one_we_vote_id):
         if one_we_vote_id == self.contest_measure1_we_vote_id:
             return self.contest_measure2_we_vote_id
         elif one_we_vote_id == self.contest_measure2_we_vote_id:

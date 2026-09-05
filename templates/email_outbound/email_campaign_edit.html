@@ -163,14 +163,21 @@
           <div>
               <label class="form-label">Add Audience ID</label>
               <div class="d-flex gap-2 mb-2">
-                <input type="text"
-                       id="audience_builder_id_id"
-                       name="audience_builder_id"
-                       class="form-control"
-                       value="{% if email_campaign and email_campaign.audience_builder_id != 0 %}{{ email_campaign.audience_builder_id|default_if_none:"" }}{% endif %}"
-                       placeholder="ID of Audience Builder..." style="flex: 1;"
-                >
+                <select id="audience_builder_id_id"
+                        name="audience_builder_id"
+                        class="form-select btn border bg-transparent text-start"
+                        style="flex: 1; height: 34px; text-align: left;">
+                  <option value="0"{% if not email_campaign or email_campaign.audience_builder_id == 0 %} selected{% endif %}>
+                    0 - Manual recipients only
+                  </option>
+                  {% for audience_builder in audience_builder_list %}
+                    <option value="{{ audience_builder.id }}"{% if email_campaign and email_campaign.audience_builder_id == audience_builder.id %} selected{% endif %}>
+                      {{ audience_builder.id }} - {{ audience_builder.audience_builder_name }}
+                    </option>
+                  {% endfor %}
+                </select>
               </div>
+              <div id="audience_builder_recipient_count_status" class="text-muted small" style="min-height: 18px;"></div>
           </div>
        {% if not emails_sent %}
           <div class="col-md-4">
@@ -217,6 +224,20 @@
              value="{% if email_campaign %}{{ email_campaign.email_subject_template_raw|default_if_none:"" }}{% endif %}"
              placeholder="Enter email subject"
              required>
+    <!-- Include footer checkbox -->
+      <div class="d-flex align-items-center gap-2" style="margin-left: 12px; white-space: nowrap;">
+        <input type="checkbox" 
+               class="form-control" 
+               id="include_footer_id" 
+               name="include_footer" 
+               value="1"
+               {% if not email_campaign or email_campaign.include_footer %}checked{% endif %}>
+      &nbsp;
+        <label for="include_footer_id" class="form-label mb-0 d-flex align-items-center gap-2">
+          Include Footer
+        </label>
+        <small class="text-muted" style="margin-left: 4px;">Includes open tracking and unsubscribe link</small>
+      </div>
     </div>
 
     <!-- Email Preview/Editor -->
@@ -307,6 +328,54 @@
     const addSelectedBtn = document.getElementById('add_selected_btn');
     const clearAllBtn = document.getElementById('clear_all_btn');
     const sendButtonClicked = document.getElementById('send_button_clicked_id');
+    const audienceBuilderSelect = document.getElementById('audience_builder_id_id');
+    const audienceBuilderRecipientCountStatus = document.getElementById('audience_builder_recipient_count_status');
+    const audienceBuilderRecipientCountUrl = "{% url 'email_outbound:audience_builder_recipient_count' %}";
+    let audienceBuilderRecipientCountRequestId = 0;
+
+    function clearAudienceBuilderRecipientCount() {
+       if (audienceBuilderRecipientCountStatus) {
+         audienceBuilderRecipientCountStatus.textContent = '';
+       }
+     }
+
+     async function loadAudienceBuilderRecipientCount() {
+       if (!audienceBuilderSelect || !audienceBuilderRecipientCountStatus) return;
+       const audienceBuilderId = audienceBuilderSelect.value;
+       const requestId = ++audienceBuilderRecipientCountRequestId;
+
+       if (!audienceBuilderId || audienceBuilderId === '0') {
+         clearAudienceBuilderRecipientCount();
+         return;
+       }
+
+       audienceBuilderRecipientCountStatus.textContent = 'Calculating audience count...';
+       try {
+         const response = await fetch(`${audienceBuilderRecipientCountUrl}?audience_builder_id=${encodeURIComponent(audienceBuilderId)}`, {
+           method: 'GET',
+           headers: {
+             'X-Requested-With': 'XMLHttpRequest',
+             'Accept': 'application/json',
+           },
+           credentials: 'same-origin'
+         });
+         const data = await response.json();
+         if (requestId !== audienceBuilderRecipientCountRequestId) return;
+
+         if (response.ok && data.success) {
+          audienceBuilderRecipientCountStatus.textContent = `Audience count: ${data.recipient_count} recipients`;
+        } else {
+          audienceBuilderRecipientCountStatus.textContent = 'Audience count unavailable';
+        }
+      } catch (error) {
+        if (requestId !== audienceBuilderRecipientCountRequestId) return;
+        audienceBuilderRecipientCountStatus.textContent = 'Audience count unavailable';
+      }
+    }
+
+    if (audienceBuilderSelect) {
+      audienceBuilderSelect.addEventListener('change', loadAudienceBuilderRecipientCount);
+    }
 
     // Handle recipient search
     searchBtn.addEventListener('click', performSearch);

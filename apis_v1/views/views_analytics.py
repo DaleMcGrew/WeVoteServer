@@ -5,7 +5,7 @@
 from analytics.controllers import save_analytics_action_for_api
 from analytics.models import ACTION_BALLOT_VISIT, ACTION_ELECTIONS, ACTION_POLITICIAN_PAGE_VISIT, \
     ACTION_VOTER_GUIDE_VISIT, ACTIONS_THAT_REQUIRE_ORGANIZATION_IDS, AnalyticsAction
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 import json
 from organization.models import OrganizationManager
@@ -13,8 +13,7 @@ import robot_detection
 from django_user_agents.utils import get_user_agent
 from voter.models import Voter, VoterDeviceLinkManager, voter_has_authority, VoterManager
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, get_voter_device_id, is_voter_device_id_valid, \
-    positive_value_exists, STATE_CODE_MAP
+from wevote_functions.functions import convert_to_int, get_voter_device_id, positive_value_exists, STATE_CODE_MAP
 
 logger = wevote_functions.admin.get_logger(__name__)
 

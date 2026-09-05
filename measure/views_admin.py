@@ -3,17 +3,18 @@
 # -*- coding: UTF-8 -*-
 
 
-from .controllers import fetch_duplicate_measure_count, figure_out_measure_conflict_values, \
+from .controllers import add_contest_measure_title_to_next_spot, figure_out_measure_conflict_values, \
     find_duplicate_contest_measure, \
-    measures_import_from_master_server
+    measures_import_from_master_server, merge_if_duplicate_measures
 from .models import ContestMeasure, ContestMeasureListManager, ContestMeasureManager, \
-    CONTEST_MEASURE_UNIQUE_IDENTIFIERS
+    CONTEST_MEASURE_UNIQUE_IDENTIFIERS, ContestMeasuresArePossibleDuplicates
 from admin_tools.views import redirect_to_sign_in_page
 from ballot.controllers import move_ballot_items_to_another_measure
 from bookmark.models import BookmarkItemList
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.core.exceptions import ObjectDoesNotExist
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
@@ -21,12 +22,13 @@ from django.db.models import Q
 from django.shortcuts import render
 from election.models import Election, ElectionManager
 from exception.models import handle_record_found_more_than_one_exception,\
-    handle_record_not_found_exception, handle_record_not_saved_exception
+    handle_record_not_found_exception
 from position.controllers import move_positions_to_another_measure, update_all_position_details_from_contest_measure
 from position.models import OPPOSE, PositionEntered, PositionListManager, SUPPORT
-from voter.models import voter_has_authority
+from volunteer_task.models import VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION, VolunteerTaskManager
+from voter.models import voter_has_authority, fetch_voter_from_voter_device_link
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP
+from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP, get_voter_api_device_id
 from wevote_functions.functions_date import DATE_FORMAT_DAY_TWO_DIGIT, get_current_year_as_integer
 from django.http import HttpResponse
 import json
@@ -137,77 +139,169 @@ def find_and_merge_duplicate_measures_view(request):
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
 
-    contest_measure_list = []
-    ignore_measure_we_vote_id_list = []
-    find_number_of_duplicates = request.GET.get('find_number_of_duplicates', 0)
-    google_civic_election_id = request.GET.get('google_civic_election_id', 0)
-    google_civic_election_id = convert_to_int(google_civic_election_id)
-    contest_measure_manager = ContestMeasureManager()
+    state_code = request.GET.get('state_code', "")
+    status = ""
 
-    # We only want to process if a google_civic_election_id comes in
-    if not positive_value_exists(google_civic_election_id):
-        messages.add_message(request, messages.ERROR, "Google Civic Election ID required.")
-        return HttpResponseRedirect(reverse('measure:measure_list', args=()))
+    results = find_and_merge_duplicate_measures(state_code=state_code)
+    if results['measures_merged_found']:
+        measures_merged_list = results['measures_merged_list']
+        for measure in measures_merged_list:
+            messages.add_message(request, messages.INFO,
+                                 "Measure {measure_name} automatically merged."
+                                 "".format(measure_name=measure.measure_name))
+    else:
+        status += "No measures found to merge."
 
+    return HttpResponseRedirect(reverse('measure:duplicates_list', args=()) +
+                                "?state_code={state_code}"
+                                "".format(state_code=state_code))
+
+
+def find_and_merge_duplicate_measures(state_code=''):
+    duplicate_check_complete_measure_we_vote_id_list = []
+    contestmeasure_manager = ContestMeasureManager()
+    measures_merged_found = False
+    measures_merged_list = []
+    reset_duplicate_check_last_completed_we_vote_id_list = []
+    status = ""
+    success = True
+    error_results = {
+        "duplicate_check_complete_measure_we_vote_id_list": [],
+        "measures_merged_found": measures_merged_found,
+        "measures_merged_list": measures_merged_list,
+        "reset_duplicate_check_last_completed_measure_we_vote_id_list": reset_duplicate_check_last_completed_we_vote_id_list,
+        "status": status,
+        "success": False,
+    }
+    # ################################
+    # Assemble a list of measures that we already think might be duplicates
     try:
-        # We sort by ID so that the entry which was saved first becomes the "master"
-        contest_measure_query = ContestMeasure.objects.order_by('id')
-        contest_measure_query = contest_measure_query.filter(google_civic_election_id=google_civic_election_id)
-        contest_measure_list = list(contest_measure_query)
-    except ContestMeasure.DoesNotExist:
-        pass
+        queryset = ContestMeasuresArePossibleDuplicates.objects.using('readonly').all()
+        if positive_value_exists(state_code):
+            queryset = queryset.filter(state_code__iexact=state_code)
+        queryset = queryset.exclude(contest_measure1_we_vote_id=None)
+        queryset = queryset.exclude(contest_measure2_we_vote_id=None)
+        queryset_measure1 = queryset.values_list('contest_measure1_we_vote_id', flat=True).distinct()
+        exclude_measure1_we_vote_id_list = list(queryset_measure1)
+        queryset_measure2 = queryset.values_list('contest_measure2_we_vote_id', flat=True).distinct()
+        exclude_measure2_we_vote_id_list = list(queryset_measure2)
+        exclude_measure_we_vote_id_list = \
+            list(set(exclude_measure1_we_vote_id_list + exclude_measure2_we_vote_id_list))
+    except Exception as e:
+        status += f"COULD_NOT_RETRIEVE_POSSIBLE_DUPLICATES: {str(e)} "
+        error_results['status'] = status
+        return error_results
 
-    # Loop through all the measures in this election to see how many have possible duplicates
-    if positive_value_exists(find_number_of_duplicates):
-        duplicate_measure_count = 0
-        for contest_measure in contest_measure_list:
-            # Note that we don't reset the ignore_measure_we_vote_id_list, so we don't search for a duplicate
-            # both directions
-            ignore_measure_we_vote_id_list.append(contest_measure.we_vote_id)
-            duplicate_measure_count_temp = fetch_duplicate_measure_count(contest_measure,
-                                                                         ignore_measure_we_vote_id_list)
-            duplicate_measure_count += duplicate_measure_count_temp
+    # ################################
+    # Retrieve list of measures to compare
+    try:
+        measure_query = ContestMeasure.objects.using('readonly').all()
+        if exclude_measure_we_vote_id_list and len(exclude_measure_we_vote_id_list) > 0:
+            measure_query = measure_query.exclude(we_vote_id__in=exclude_measure_we_vote_id_list)
+        if positive_value_exists(state_code):
+            measure_query = measure_query.filter(state_code__iexact=state_code)
+        measure_list = list(measure_query)
+    except Exception as e:
+        status += f"COULD_NOT_RETRIEVE_MEASURES: {str(e)} "
+        error_results['status'] = status
+        return error_results
 
-        if positive_value_exists(duplicate_measure_count):
-            messages.add_message(request, messages.INFO, "There are approximately {duplicate_measure_count} "
-                                                         "possible duplicates."
-                                                         "".format(duplicate_measure_count=duplicate_measure_count))
+    # ################################
+    # Loop through all the measures in this state
+    try:
+        for we_vote_measure in measure_list:
+            if we_vote_measure.we_vote_id in exclude_measure_we_vote_id_list:
+                continue
+            # Start ignore list with entries already reviewed
+            ignore_measure_id_list = exclude_measure_we_vote_id_list.copy()
+            # Add current entry to ignore list
+            ignore_measure_id_list.append(we_vote_measure.we_vote_id)
+            # Now check for others we have already labeled as "not a duplicate" of this particular measure
+            duplicates_results = \
+                contestmeasure_manager.retrieve_measures_are_not_duplicates_list(we_vote_measure.we_vote_id)
+            if duplicates_results['success']:
+                not_a_duplicate_list = duplicates_results['contest_measures_are_not_duplicates_list_we_vote_ids']
+                # Add current entry to ignore list
+                ignore_measure_id_list += not_a_duplicate_list
+            else:
+                status += f"COULD_NOT_RETRIEVE_MEASURES_ARE_NOT_DUPLICATES: {duplicates_results['status']} "
 
-    # Loop through all the contest measures in this election
-    ignore_measure_we_vote_id_list = []
-    for contest_measure in contest_measure_list:
-        # Add current contest measure entry to the ignore list
-        ignore_measure_we_vote_id_list.append(contest_measure.we_vote_id)
-        # Now check to for other contest measures we have labeled as "not a duplicate"
-        not_a_duplicate_list = contest_measure_manager.fetch_measures_are_not_duplicates_list_we_vote_ids(
-            contest_measure.we_vote_id)
+            results = find_duplicate_contest_measure(we_vote_measure, ignore_measure_id_list)
 
-        ignore_measure_we_vote_id_list += not_a_duplicate_list
+            # If we find measures to merge, store them for review
+            if results['contest_measure_merge_possibility_found']:
+                measure_option1_for_template = we_vote_measure
+                measure_option2_for_template = results['contest_measure_merge_possibility']
 
-        results = find_duplicate_contest_measure(contest_measure, ignore_measure_we_vote_id_list)
-        ignore_measure_we_vote_id_list = []
+                # Can we automatically merge these measures?
+                merge_results = merge_if_duplicate_measures(
+                    measure_option1_for_template,
+                    measure_option2_for_template,
+                    results['contest_measure_merge_conflict_values'])
+                
+                if not state_code:
+                    state_code = we_vote_measure.state_code
 
-        # If we find contest measures to merge, stop and ask for confirmation
-        if results['contest_measure_merge_possibility_found']:
-            contest_measure_option1_for_template = contest_measure
-            contest_measure_option2_for_template = results['contest_measure_merge_possibility']
+                if merge_results['measures_merged']:
+                    measure = merge_results['measure']
+                    if measure.we_vote_id not in exclude_measure_we_vote_id_list:
+                        exclude_measure_we_vote_id_list.append(measure.we_vote_id)
+                    if we_vote_measure.we_vote_id not in exclude_measure_we_vote_id_list:
+                        exclude_measure_we_vote_id_list.append(we_vote_measure.we_vote_id)
+                    ContestMeasuresArePossibleDuplicates.objects.create(
+                        contest_measure1_we_vote_id=we_vote_measure.we_vote_id,
+                        contest_measure2_we_vote_id=None,
+                        state_code=state_code,
+                    )
+                    ContestMeasuresArePossibleDuplicates.objects.create(
+                        contest_measure1_we_vote_id=we_vote_measure.we_vote_id,
+                        contest_measure2_we_vote_id=measure.we_vote_id,
+                        state_code=state_code,
+                    )
+                    measures_merged_list.append(measure)
+                    measures_merged_found = True
+                    if measure.we_vote_id not in reset_duplicate_check_last_completed_we_vote_id_list:
+                        reset_duplicate_check_last_completed_we_vote_id_list.append(measure.we_vote_id)
+                else:
+                    # Add an entry showing that this is a possible match
+                    status += (
+                        f"[Measure {we_vote_measure.measure_title} "
+                        f"({we_vote_measure.we_vote_id}) has possible match.] "
+                    )
+                    ContestMeasuresArePossibleDuplicates.objects.create(
+                        contest_measure1_we_vote_id=we_vote_measure.we_vote_id,
+                        contest_measure2_we_vote_id=measure_option2_for_template.we_vote_id,
+                        state_code=state_code,
+                    )
+                    if measure_option2_for_template.we_vote_id not in exclude_measure_we_vote_id_list:
+                        exclude_measure_we_vote_id_list.append(measure_option2_for_template.we_vote_id)
+                    if we_vote_measure.we_vote_id not in reset_duplicate_check_last_completed_we_vote_id_list:
+                        reset_duplicate_check_last_completed_we_vote_id_list.append(we_vote_measure.we_vote_id)
+                    if measure_option2_for_template.we_vote_id not in \
+                            reset_duplicate_check_last_completed_we_vote_id_list:
+                        reset_duplicate_check_last_completed_we_vote_id_list.append(
+                            measure_option2_for_template.we_vote_id)
+            else:
+                # No matches found
+                ContestMeasuresArePossibleDuplicates.objects.create(
+                    contest_measure1_we_vote_id=we_vote_measure.we_vote_id,
+                    contest_measure2_we_vote_id=None,
+                    state_code=state_code,
+                )
+                if we_vote_measure.we_vote_id not in duplicate_check_complete_measure_we_vote_id_list:
+                    duplicate_check_complete_measure_we_vote_id_list.append(we_vote_measure.we_vote_id)
+    except Exception as e:
+        status += f"CRASHED_IN_MEASURE_LIST_LOOP: {str(e)} "
+        # Fall through to exit function
 
-            # This view function takes us to displaying a template
-            remove_duplicate_process = True  # Try to find another measure to merge after finishing
-            return render_contest_measure_merge_form(request, contest_measure_option1_for_template,
-                                                     contest_measure_option2_for_template,
-                                                     results['contest_measure_merge_conflict_values'],
-                                                     remove_duplicate_process)
-
-    message = "Google Civic Election ID: {election_id}, " \
-              "No duplicate contest measures found for this election." \
-              "".format(election_id=google_civic_election_id)
-
-    messages.add_message(request, messages.INFO, message)
-
-    return HttpResponseRedirect(reverse('measure:measure_list', args=()) + "?google_civic_election_id={var}"
-                                                                           "".format(var=google_civic_election_id))
-
+    return {
+        "duplicate_check_complete_measure_we_vote_id_list": duplicate_check_complete_measure_we_vote_id_list,
+        "measures_merged_found": measures_merged_found,
+        "measures_merged_list": measures_merged_list,
+        "reset_duplicate_check_last_completed_we_vote_id_list": reset_duplicate_check_last_completed_we_vote_id_list,
+        "status": status,
+        "success": success,
+    }
 
 # This page does not need to be protected.
 # class MeasuresSyncOutView(APIView):
@@ -441,31 +535,6 @@ def measure_merge_process_view(request):
 
     return HttpResponseRedirect(reverse('measure:measure_edit', args=(contest_measure1_on_stage.id,)))
 
-
-def add_contest_measure_title_to_next_spot(contest_measure_to_update, google_civic_measure_title_to_add):
-    if not positive_value_exists(google_civic_measure_title_to_add):
-        return contest_measure_to_update
-
-    if not positive_value_exists(contest_measure_to_update.google_civic_measure_title):
-        contest_measure_to_update.google_civic_measure_title = google_civic_measure_title_to_add
-    elif google_civic_measure_title_to_add == contest_measure_to_update.google_civic_measure_title:
-        pass
-    elif not positive_value_exists(contest_measure_to_update.google_civic_measure_title2):
-        contest_measure_to_update.google_civic_measure_title2 = google_civic_measure_title_to_add
-    elif google_civic_measure_title_to_add == contest_measure_to_update.google_civic_measure_title2:
-        pass
-    elif not positive_value_exists(contest_measure_to_update.google_civic_measure_title3):
-        contest_measure_to_update.google_civic_measure_title3 = google_civic_measure_title_to_add
-    elif google_civic_measure_title_to_add == contest_measure_to_update.google_civic_measure_title3:
-        pass
-    elif not positive_value_exists(contest_measure_to_update.google_civic_measure_title4):
-        contest_measure_to_update.google_civic_measure_title4 = google_civic_measure_title_to_add
-    elif google_civic_measure_title_to_add == contest_measure_to_update.google_civic_measure_title4:
-        pass
-    elif not positive_value_exists(contest_measure_to_update.google_civic_measure_title5):
-        contest_measure_to_update.google_civic_measure_title5 = google_civic_measure_title_to_add
-    return contest_measure_to_update
-
 @login_required
 def measure_list_view(request):
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
@@ -666,6 +735,176 @@ def measure_new_view(request):
     }
     return render(request, 'measure/measure_edit.html', template_values)
 
+@login_required
+def measure_duplicates_list_view(request):
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    messages_on_stage = get_messages(request)
+    state_code = request.GET.get('state_code', '')
+    measure_search = request.GET.get('measure_search', '')
+    google_civic_election_id = convert_to_int(request.GET.get('google_civic_election_id', 0))
+    show_all = positive_value_exists(request.GET.get('show_all', False))
+
+    duplicates_list = []
+    duplicates_list_count = 0
+    possible_duplicates_count = 0
+    state_list = STATE_CODE_MAP
+    sorted_state_list = sorted(state_list.items())
+
+    try:
+        queryset = ContestMeasuresArePossibleDuplicates.objects.using('readonly').all()
+        if positive_value_exists(state_code):
+            queryset = queryset.filter(state_code__iexact=state_code)
+        duplicates_list_count = queryset.count()
+        queryset = queryset.exclude(
+            Q(contest_measure2_we_vote_id__isnull=True) | Q(contest_measure2_we_vote_id=''))
+        possible_duplicates_count = queryset.count()
+        if positive_value_exists(show_all):
+            duplicates_list = list(queryset)
+        else:
+            duplicates_list = list(queryset[:1000])
+    except ObjectDoesNotExist:
+        # This is fine
+        pass
+
+    measures_dict = {}
+    measures_to_display_we_vote_id_list = []
+    for one_duplicate in duplicates_list:
+        if positive_value_exists(one_duplicate.contest_measure1_we_vote_id):
+            measures_to_display_we_vote_id_list.append(one_duplicate.contest_measure1_we_vote_id)
+        if positive_value_exists(one_duplicate.contest_measure2_we_vote_id):
+            measures_to_display_we_vote_id_list.append(one_duplicate.contest_measure2_we_vote_id)
+    try:
+        queryset = ContestMeasure.objects.using('readonly').all()
+        queryset = queryset.filter(we_vote_id__in=measures_to_display_we_vote_id_list)
+        measure_data_list = list(queryset)
+        for one_measure in measure_data_list:
+            measures_dict[one_measure.we_vote_id] = one_measure
+    except Exception as e:
+        pass
+
+    duplicates_list_modified = []
+    for one_duplicate in duplicates_list:
+        if positive_value_exists(one_duplicate.contest_measure1_we_vote_id) \
+                and one_duplicate.contest_measure1_we_vote_id in measures_dict \
+                and positive_value_exists(one_duplicate.contest_measure2_we_vote_id) \
+                and one_duplicate.contest_measure2_we_vote_id in measures_dict:
+            one_duplicate.measure1 = measures_dict[one_duplicate.contest_measure1_we_vote_id]
+            one_duplicate.measure2 = measures_dict[one_duplicate.contest_measure2_we_vote_id]
+            duplicates_list_modified.append(one_duplicate)
+        else:
+            possible_duplicates_count -= 1
+
+    if measure_search:
+        search_words = measure_search.split()
+        filtered_duplicates = []
+
+        for duplicate in duplicates_list_modified:
+            match_found = False
+            for word in search_words:
+                word_lower = word.lower()
+                # Check measure1
+                if duplicate.measure1 and duplicate.measure1.measure_title and word_lower in duplicate.measure1.measure_title.lower():
+                    match_found = True
+                # Check measure2
+                if duplicate.measure2 and duplicate.measure2.measure_title and word_lower in duplicate.measure2.measure_title.lower():
+                    match_found = True
+            if match_found:
+                filtered_duplicates.append(duplicate)
+
+        duplicates_list_modified = filtered_duplicates
+
+    messages.add_message(request, messages.INFO,
+                         "Measures analyzed: {duplicates_list_count:,}. "
+                         "Possible duplicate measures found: {possible_duplicates_count:,}. "
+                         "State: {state_code}"
+                         "".format(
+                             duplicates_list_count=duplicates_list_count,
+                             possible_duplicates_count=possible_duplicates_count,
+                             state_code=state_code))
+
+    template_values = {
+        'messages_on_stage':            messages_on_stage,
+        'google_civic_election_id':     google_civic_election_id,
+        'duplicates_list':              duplicates_list_modified,
+        'measure_search':               measure_search,
+        'show_all':                     show_all,
+        'state_code':                   state_code,
+        'state_list':                   sorted_state_list,
+    }
+    return render(request, 'measure/measure_duplicates_list.html', template_values)
+
+@login_required
+def measure_delete_all_duplicates_view(request):
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    state_code = request.GET.get('state_code', '')
+    if positive_value_exists(state_code):
+        queryset = ContestMeasuresArePossibleDuplicates.objects.filter(
+            state_code__iexact=state_code,
+        )
+        queryset.delete()
+        messages.add_message(request, messages.INFO, 'Duplicate measure data deleted.')
+    else:
+        messages.add_message(request, messages.INFO, 'Duplicate measure data NOT deleted. State code missing.')
+    return HttpResponseRedirect(reverse('measure:duplicates_list', args=()) +
+                                "?state_code=" + str(state_code))
+
+@login_required
+def measures_not_duplicates_view(request):
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    measure1_we_vote_id = request.GET.get('contest_measure1_we_vote_id', '')
+    measure2_we_vote_id = request.GET.get('contest_measure2_we_vote_id', '')
+    state_code = request.GET.get('state_code', '')
+    status = ""
+    volunteer_task_manager = VolunteerTaskManager()
+    voter_id = 0
+    voter_we_vote_id = ""
+    voter_device_id = get_voter_api_device_id(request)
+    if positive_value_exists(voter_device_id):
+        voter = fetch_voter_from_voter_device_link(voter_device_id)
+        if hasattr(voter, 'we_vote_id'):
+            voter_id = voter.id
+            voter_we_vote_id = voter.we_vote_id
+
+    contestmeasure_manager = ContestMeasureManager()
+    results = contestmeasure_manager.update_or_create_measures_are_not_duplicates(
+        measure1_we_vote_id, measure2_we_vote_id)
+    if results['success']:
+        queryset = ContestMeasuresArePossibleDuplicates.objects.filter(
+            contest_measure1_we_vote_id=measure1_we_vote_id,
+            contest_measure2_we_vote_id=measure2_we_vote_id,
+        )
+        queryset.delete()
+        messages.add_message(request, messages.INFO, 'Two measures marked as not duplicates.')
+        if positive_value_exists(voter_we_vote_id):
+            try:
+                # Give the volunteer who entered this credit
+                task_results = volunteer_task_manager.create_volunteer_task_completed(
+                    action_constant=VOLUNTEER_ACTION_POLITICIAN_DEDUPLICATION,
+                    voter_id=voter_id,
+                    voter_we_vote_id=voter_we_vote_id,
+                )
+            except Exception as e:
+                status += 'FAILED_TO_CREATE_VOLUNTEER_TASK_COMPLETED-DEDUPLICATION: ' \
+                          '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
+
+    else:
+        messages.add_message(request, messages.ERROR,
+                             'Could not save measures_are_not_duplicates entry: ' +
+                             results['status'])
+    return HttpResponseRedirect(reverse('measure:duplicates_list', args=()) +
+                                "?state_code=" + str(state_code))
 
 @login_required
 def measure_edit_view(request, measure_id=0, measure_we_vote_id=""):
@@ -760,6 +999,7 @@ def measure_edit_process_view(request):
     measure_year = request.POST.get('measure_year', False)
     maplight_id = request.POST.get('maplight_id', False)
     vote_smart_id = request.POST.get('vote_smart_id', False)
+    vote_usa_measure_id = request.POST.get('vote_usa_measure_id', False)
     state_code = request.POST.get('state_code', False)
 
     # Check to see if this measure exists
@@ -824,6 +1064,8 @@ def measure_edit_process_view(request):
                     measure_on_stage.maplight_id = maplight_id
                 if vote_smart_id is not False:
                     measure_on_stage.vote_smart_id = vote_smart_id
+                if vote_usa_measure_id is not False:
+                    measure_on_stage.vote_usa_measure_id = vote_usa_measure_id
                 if state_code is not False:
                     measure_on_stage.state_code = state_code
 
@@ -856,6 +1098,7 @@ def measure_edit_process_view(request):
                     state_code=state_code,
                     maplight_id=maplight_id,
                     vote_smart_id=vote_smart_id,
+                    vote_usa_measure_id=vote_usa_measure_id,
                 )
                 if ballotpedia_district_id is not False:
                     if ballotpedia_district_id == '':

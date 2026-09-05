@@ -6,10 +6,10 @@ from .models import convert_position_object_to_dict, PositionEntered, PositionFo
     PositionManager, PositionListManager, ANY_STANCE, \
     FRIENDS_AND_PUBLIC, FRIENDS_ONLY, PUBLIC_ONLY, SHOW_PUBLIC, THIS_ELECTION_ONLY, ALL_OTHER_ELECTIONS, \
     ALL_ELECTIONS, SUPPORT, OPPOSE, INFORMATION_ONLY, NO_STANCE
-from ballot.models import OFFICE, CANDIDATE, MEASURE, POLITICIAN
+from ballot.models import OFFICE, CANDIDATE, MEASURE
 from candidate.models import CandidateCampaign, CandidateManager, CandidateListManager, \
     CandidateToOfficeLink
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.db.models import Q
 from django.http import HttpResponse
 from election.models import ElectionManager, fetch_election_state
@@ -1972,7 +1972,7 @@ def position_save_for_api(  # positionSave
     if not unique_identifier_found:
         results = {
             'date_entered':             '',
-            'status':                   "POSITION_REQUIRED_UNIQUE_IDENTIFIER_VARIABLES_MISSING",
+            'status':                   "POSITION_SAVE_REQUIRED_UNIQUE_IDENTIFIER_VARIABLES_MISSING ",
             'success':                  False,
             'voter_device_id':          voter_device_id,
             'position_we_vote_id':      position_we_vote_id,
@@ -4211,6 +4211,11 @@ def voter_position_comment_save_for_api(  # voterPositionCommentSave
         statement_html='',
         visibility_setting=False,
         ):
+    # print("voter_position_comment_save_for_api called candidate_we_vote_id: ", candidate_we_vote_id,
+    #       ', politician_we_vote_id: ', politician_we_vote_id,
+    #       ', measure_we_vote_id: ', measure_we_vote_id,
+    #       ', stance: ', stance,
+    #       ', visibility_setting: ', visibility_setting)
     status = ""
     final_results_dict = {
         'status': status,

@@ -3,15 +3,16 @@
 # -*- coding: UTF-8 -*-
 
 from .models import ContestMeasure, ContestMeasureListManager, ContestMeasureManager, \
-    CONTEST_MEASURE_UNIQUE_IDENTIFIERS
+    CONTEST_MEASURE_UNIQUE_IDENTIFIERS, CONTEST_MEASURE_UNIQUE_ATTRIBUTES_TO_BE_CLEARED
 from ballot.models import MEASURE
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 from election.models import ElectionManager
+from ballot.controllers import move_ballot_items_to_another_measure
 import json
-from position.controllers import update_all_position_details_from_contest_measure
+from position.controllers import move_positions_to_another_measure, update_all_position_details_from_contest_measure
 import wevote_functions.admin
-from wevote_functions.functions import convert_state_code_to_state_text, convert_to_int, MEASURE_TITLE_SYNONYMS, \
+from wevote_functions.functions import convert_state_code_to_state_text, MEASURE_TITLE_SYNONYMS, \
     positive_value_exists, process_request_from_master, strip_html_tags
 from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
 
@@ -526,3 +527,258 @@ def add_measure_name_alternatives_to_measure_list_light(measure_list_light):
         'measure_list_light':   measure_list_light_modified,
     }
     return results
+
+def merge_if_duplicate_measures(measure1, measure2, conflict_values):
+    """
+    See also figure_out_measure_conflict_values
+    :param measure1:
+    :param measure2:
+    :param conflict_values:
+    :return:
+    """
+    success = True
+    status = "MERGE_IF_DUPLICATE_MEASURES"
+    measures_merged = False
+    decisions_required = False
+    measure1_we_vote_id = measure1.we_vote_id
+    measure2_we_vote_id = measure2.we_vote_id
+
+    # Are there any comparisons that require admin intervention?
+    merge_choices = {}
+    clear_these_attributes_from_measure2 = []
+    for attribute in CONTEST_MEASURE_UNIQUE_IDENTIFIERS:
+        if attribute == "ballotpedia_id" or attribute == "maplight_id" or attribute == "vote_smart_id":
+            if positive_value_exists(getattr(measure1, attribute)):
+                # We can proceed because measure1 has a valid attribute, so we can default to choosing that one
+                if attribute in CONTEST_MEASURE_UNIQUE_ATTRIBUTES_TO_BE_CLEARED:
+                    clear_these_attributes_from_measure2.append(attribute)
+            elif positive_value_exists(getattr(measure2, attribute)):
+                # If we are here, measure1 does NOT have a valid attribute, but measure2 does
+                merge_choices[attribute] = getattr(measure2, attribute)
+                if attribute in CONTEST_MEASURE_UNIQUE_ATTRIBUTES_TO_BE_CLEARED:
+                    clear_these_attributes_from_measure2.append(attribute)
+        else:
+            conflict_value = conflict_values.get(attribute, None)
+            if conflict_value == "CONFLICT":
+                if attribute == "measure_title":
+                    # If the lower case versions of the name attribute are identical, choose the name
+                    #  that has upper and lower case letters, and do not require a decision
+                    measure1_attribute_value = getattr(measure1, attribute)
+                    try:
+                        measure1_attribute_value_lower_case = measure1_attribute_value.lower()
+                    except Exception:
+                        measure1_attribute_value_lower_case = None
+                    measure2_attribute_value = getattr(measure2, attribute)
+                    try:
+                        measure2_attribute_value_lower_case = measure2_attribute_value.lower()
+                    except Exception:
+                        measure2_attribute_value_lower_case = None
+                    if positive_value_exists(measure1_attribute_value_lower_case) \
+                            and measure1_attribute_value_lower_case == measure2_attribute_value_lower_case:
+                        # Give preference to value with both upper and lower case letters (as opposed to all uppercase)
+                        if any(char.isupper() for char in measure1_attribute_value) \
+                                and any(char.islower() for char in measure1_attribute_value):
+                            merge_choices[attribute] = getattr(measure1, attribute)
+                        else:
+                            merge_choices[attribute] = getattr(measure2, attribute)
+                    else:
+                        decisions_required = True
+                        break
+                else:
+                    decisions_required = True
+                    break
+            elif conflict_value == "CONTEST_MEASURE2":
+                merge_choices[attribute] = getattr(measure2, attribute)
+                if attribute in CONTEST_MEASURE_UNIQUE_ATTRIBUTES_TO_BE_CLEARED:
+                    clear_these_attributes_from_measure2.append(attribute)
+
+    if not decisions_required:
+        status += "NO_DECISIONS_REQUIRED "
+        merge_results = merge_these_two_measures(
+            measure1_we_vote_id,
+            measure2_we_vote_id,
+            merge_choices,
+            clear_these_attributes_from_measure2
+        )
+
+        if not merge_results['success']:
+            success = False
+            status += merge_results['status']
+        elif merge_results['measures_merged']:
+            measures_merged = True
+        else:
+            status += "NOT_MERGED "
+
+    results = {
+        'success':              success,
+        'status':               status,
+        'measures_merged':      measures_merged,
+        'decisions_required':   decisions_required,
+        'measure':              measure1,
+    }
+    return results
+
+
+def merge_these_two_measures(
+        measure1_we_vote_id,
+        measure2_we_vote_id,
+        admin_merge_choices={},
+        clear_these_attributes_from_measure2=[]):
+    """
+    Process the merging of two measures
+    :param measure1_we_vote_id:
+    :param measure2_we_vote_id:
+    :param admin_merge_choices: Dictionary with the attribute name as the key, and the chosen value as the value
+    :param clear_these_attributes_from_measure2:
+    :return:
+    """
+    status = ""
+    measure_manager = ContestMeasureManager()
+
+    # Measure 1 is the one we keep, and Measure 2 is the one we will merge into Measure 1
+    measure1_results = measure_manager.retrieve_contest_measure(measure_we_vote_id=measure1_we_vote_id)
+    if measure1_results['contest_measure_found']:
+        measure1 = measure1_results['contest_measure']
+        contest_measure1_id = measure1.id
+    else:
+        results = {
+            'success': False,
+            'status': "MERGE_THESE_TWO_MEASURES-COULD_NOT_RETRIEVE_MEASURE1 ",
+            'measures_merged': False,
+            'measure': None,
+        }
+        return results
+
+    measure2_results = measure_manager.retrieve_contest_measure(measure_we_vote_id=measure2_we_vote_id)
+    if measure2_results['contest_measure_found']:
+        measure2 = measure2_results['contest_measure']
+        contest_measure2_id = measure2.id
+    else:
+        results = {
+            'success': False,
+            'status': "MERGE_THESE_TWO_MEASURES-COULD_NOT_RETRIEVE_MEASURE2 ",
+            'measures_merged': False,
+            'measure': None,
+        }
+        return results
+
+    # Merge attribute values chosen by the admin
+    for attribute in CONTEST_MEASURE_UNIQUE_IDENTIFIERS:
+        try:
+            if attribute in admin_merge_choices:
+                setattr(measure1, attribute, admin_merge_choices[attribute])
+        except Exception as e:
+            # Don't completely fail if in attribute can't be saved.
+            status += "ATTRIBUTE_SAVE_FAILED (" + str(attribute) + ") " + str(e) + " "
+    
+    # Preserve unique google_civic_measure_title, _title2, _title3, _title4 and _title5
+    if positive_value_exists(measure2.google_civic_measure_title):
+        measure1 = add_contest_measure_title_to_next_spot(
+            measure1, measure2.google_civic_measure_title)
+    if positive_value_exists(measure2.google_civic_measure_title2):
+        measure1 = add_contest_measure_title_to_next_spot(
+            measure1, measure2.google_civic_measure_title2)
+    if positive_value_exists(measure2.google_civic_measure_title3):
+        measure1 = add_contest_measure_title_to_next_spot(
+            measure1, measure2.google_civic_measure_title3)
+    if positive_value_exists(measure2.google_civic_measure_title4):
+        measure1 = add_contest_measure_title_to_next_spot(
+            measure1, measure2.google_civic_measure_title4)
+    if positive_value_exists(measure2.google_civic_measure_title5):
+        measure1 = add_contest_measure_title_to_next_spot(
+            measure1, measure2.google_civic_measure_title5)
+
+     # Merge ballot item's measure details
+    ballot_items_results = move_ballot_items_to_another_measure(contest_measure2_id, measure2_we_vote_id,
+                                                                contest_measure1_id, measure1_we_vote_id,
+                                                                measure1)
+    if not ballot_items_results['success']:
+        status += ballot_items_results['status']
+        status += "COULD_NOT_MOVE_BALLOT_ITEMS_TO_MEASURE1 "
+        results = {
+            'success': False,
+            'status': status,
+            'measures_merged': False,
+            'measure': None,
+        }
+        return results
+
+    # Merge public positions
+    public_positions_results = move_positions_to_another_measure(contest_measure2_id, measure2_we_vote_id,
+                                                                 contest_measure1_id, measure1_we_vote_id,
+                                                                 True)
+    if not public_positions_results['success']:
+        status += public_positions_results['status']
+        status += "COULD_NOT_MOVE_PUBLIC_POSITIONS_TO_MEASURE1 "
+        results = {
+            'success': False,
+            'status': status,
+            'measures_merged': False,
+            'measure': None,
+        }
+        return results
+
+
+    # Merge friends-only positions
+    friends_positions_results = move_positions_to_another_measure(contest_measure2_id, measure2_we_vote_id,
+                                                                  contest_measure1_id, measure1_we_vote_id,
+                                                                  False)
+    if not friends_positions_results['success']:
+        status += friends_positions_results['status']
+        status += "COULD_NOT_MOVE_FRIENDS_POSITIONS_TO_MEASURE1 "
+        results = {
+            'success': False,
+            'status': status,
+            'measures_merged': False,
+            'measure': None,
+        }
+        return results
+
+    # Clear 'unique=True' fields in measure2, which need to be Null before measure1 can be saved
+    #  with updated values
+    measure2_updated = False
+    for attribute in clear_these_attributes_from_measure2:
+        setattr(measure2, attribute, None)
+        measure2_updated = True
+    if measure2_updated:
+        measure2.save()
+
+    # Note: wait to wrap in try/except block
+    measure1.save()
+    # 2021-10-16 Uses image data from master table which we aren't updating with the merge yet
+    # refresh_measure_data_from_master_tables(measure1.we_vote_id)
+
+    # Remove measure 2
+    measure2.delete()
+
+    results = {
+        'success': True,
+        'status': status,
+        'measures_merged': True,
+        'measure': measure1,
+    }
+    return results
+
+def add_contest_measure_title_to_next_spot(contest_measure_to_update, google_civic_measure_title_to_add):
+    if not positive_value_exists(google_civic_measure_title_to_add):
+        return contest_measure_to_update
+
+    if not positive_value_exists(contest_measure_to_update.google_civic_measure_title):
+        contest_measure_to_update.google_civic_measure_title = google_civic_measure_title_to_add
+    elif google_civic_measure_title_to_add == contest_measure_to_update.google_civic_measure_title:
+        pass
+    elif not positive_value_exists(contest_measure_to_update.google_civic_measure_title2):
+        contest_measure_to_update.google_civic_measure_title2 = google_civic_measure_title_to_add
+    elif google_civic_measure_title_to_add == contest_measure_to_update.google_civic_measure_title2:
+        pass
+    elif not positive_value_exists(contest_measure_to_update.google_civic_measure_title3):
+        contest_measure_to_update.google_civic_measure_title3 = google_civic_measure_title_to_add
+    elif google_civic_measure_title_to_add == contest_measure_to_update.google_civic_measure_title3:
+        pass
+    elif not positive_value_exists(contest_measure_to_update.google_civic_measure_title4):
+        contest_measure_to_update.google_civic_measure_title4 = google_civic_measure_title_to_add
+    elif google_civic_measure_title_to_add == contest_measure_to_update.google_civic_measure_title4:
+        pass
+    elif not positive_value_exists(contest_measure_to_update.google_civic_measure_title5):
+        contest_measure_to_update.google_civic_measure_title5 = google_civic_measure_title_to_add
+    return contest_measure_to_update

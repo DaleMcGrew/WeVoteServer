@@ -4,7 +4,7 @@
 import base64
 import uuid
 from bs4 import BeautifulSoup
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from .models import CAMPAIGNX_FRIEND_HAS_SUPPORTED_TEMPLATE, CAMPAIGNX_NEWS_ITEM_TEMPLATE, \
     CAMPAIGNX_SUPER_SHARE_ITEM_TEMPLATE, CAMPAIGNX_SUPPORTER_INITIAL_RESPONSE_TEMPLATE, \
     FRIEND_ACCEPTED_INVITATION_TEMPLATE, FRIEND_INVITATION_TEMPLATE, LINK_TO_SIGN_IN_TEMPLATE, \
@@ -229,27 +229,24 @@ def convert_html_to_plain_text(html_content):
         plain_text = re.sub(r'\s+', ' ', plain_text)
         return plain_text.strip()
 
+
 # S3 functions
 # create s3 bucket
 def _s3_client_bucket():
-    # Works with env keys or IAM role
-    AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
     AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
     AWS_STORAGE_BUCKET_NAME = get_environment_variable("AWS_STORAGE_BUCKET_NAME")
-    AWS_STORAGE_SERVICE = "s3"
 
-    session = boto3.session.Session(region_name=AWS_REGION_NAME,
-                                  aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-    s3 = session.resource(AWS_STORAGE_SERVICE)
+    session = boto3.session.Session(region_name=AWS_REGION_NAME)
+    s3 = session.resource("s3")
     return s3.Bucket(AWS_STORAGE_BUCKET_NAME)
+
 
 # make filename safe
 def _safe_filename(name: str) -> str:
   # basic sanitize; you can harden this if needed
   name = (name or "file").replace("\\", "/").split("/")[-1]
   return "".join(ch for ch in name if ch.isalnum() or ch in (" ", ".", "_", "-", "(", ")", "[", "]")).strip() or "file"
+
 
 # build s3 key
 def build_s3_key(*, campaign_id: int | None, template_id: int | None, draft_uuid: None, original_filename: str) -> str:
@@ -265,6 +262,7 @@ def build_s3_key(*, campaign_id: int | None, template_id: int | None, draft_uuid
   u = uuid.uuid4().hex
   return f"email/{owner}/attachments/{u}-{clean}"
 
+
 # Uploads a Django InMemoryUploadedFile / TemporaryUploadedFile to S3.
 #   Returns size in bytes.
 def upload_fileobj_to_s3(*, fileobj, key: str, content_type: str = "") -> int:
@@ -279,16 +277,19 @@ def upload_fileobj_to_s3(*, fileobj, key: str, content_type: str = "") -> int:
 
   return int(size or 0)
 
+
 # stream and prepare file from s3 for download
 def download_bytes_from_s3(*, key: str) -> bytes:
   bucket = _s3_client_bucket()
   obj = bucket.Object(key).get()
   return obj["Body"]
 
+
 # delete file from s3
 def delete_from_s3(*, key: str) -> None:
   bucket = _s3_client_bucket()
   bucket.Object(key).delete()
+
 
 # move file location from old key to new key in s3
 def move_s3_object(*, old_key: str, new_key: str) -> None:
@@ -301,6 +302,7 @@ def move_s3_object(*, old_key: str, new_key: str) -> None:
 
     # Delete old key
     bucket.Object(old_key).delete()
+
 
 # prepare attachments to send via sendgrid
 # expects: email_body (html str), email campaign object
@@ -362,6 +364,7 @@ def build_prepared_campaign_attachments(body: str, email_campaign):
     final_body = str(soup)
     return final_body, prepared_attachments
 
+
 # get inline attachment ids for cleanup
 def get_inline_attachment_ids_from_html(html: str) -> set[int]:
     if not html:
@@ -369,6 +372,7 @@ def get_inline_attachment_ids_from_html(html: str) -> set[int]:
 
     matches = re.findall(r'attachments/render/(\d+)/', html)
     return {int(x) for x in matches}
+
 
 # cleanup attachments that are not part of inline body anymore
 # expects html body and email campaign object or email template object related to body
@@ -403,7 +407,6 @@ def cleanup_unused_inline_attachments(html: str, email_campaign=None, email_temp
                 elif att_count == 1:
                     att.delete()
                     delete_from_s3(key=att.s3_key)
-
 
     except ValueError as e:
         print(f"Caught an error: {e}")

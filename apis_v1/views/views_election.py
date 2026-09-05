@@ -1,12 +1,12 @@
 # apis_v1/views/views_election.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 from election.controllers import elections_retrieve_for_api, elections_sync_out_list_for_api
 import json
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, get_voter_device_id, positive_value_exists
+from wevote_functions.functions import get_voter_device_id
 
 logger = wevote_functions.admin.get_logger(__name__)
 
