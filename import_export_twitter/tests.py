@@ -4,6 +4,5 @@
 
 # See also WeVoteServer/twitter/tests.py for routines that manage internal twitter data
 
-from django.test import TestCase
 
 # Create your tests here.

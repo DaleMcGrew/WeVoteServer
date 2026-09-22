@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 from candidate.models import CandidateManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from elasticsearch import Elasticsearch
 from organization.models import OrganizationManager
 from politician.models import PoliticianManager

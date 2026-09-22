@@ -1,11 +1,17 @@
 {
   "_comment":                       "Please see Password and Access key document for details about how to reset.",
 
-  "_comment":                       "Note that WE_VOTE_SERVER_ROOT_URL should end without slash",
-  "WE_VOTE_SERVER_ROOT_URL":        "http://localhost:8000",
+  "_comment":                       "Set WE_VOTE_SERVER_PROTOCOL to http or https, always http for production",
+  "WE_VOTE_SERVER_PROTOCOL":        "http",
+  "WE_VOTE_SERVER_DOMAIN_HTTP":     "localhost",
+  "WE_VOTE_SERVER_DOMAIN_HTTPS":    "wevotedeveloper.com",
+  "_comment":                       "Note that WE_VOTE_SERVER_PORT can be undefined if not needed",
+  "WE_VOTE_SERVER_PORT":            "8000",
+
   "WEB_APP_ROOT_URL":               "http://localhost:3000",
   "CAMPAIGNS_ROOT_URL":             "http://localhost:3000",
   "CHALLENGES_ROOT_URL":            "http://localhost:3000",
+
   "_comment":                       "Valid timezone options include: US/Eastern (EST), US/Pacific, etc.",
   "TIME_ZONE":                      "US/Pacific",
   "SERVER_IS_SOURCE_OF_TRUTH":      false,
@@ -17,7 +23,7 @@
   "DATABASE_USER":                  "postgres",
   "DATABASE_PASSWORD":              "admin",
   "DATABASE_HOST":                  "",
-  "DATABASE_PORT":                  "",
+  "DATABASE_PORT":                  "5678",
 
   "_comment":                       "read-only database settings for local.py",
   "DATABASE_ENGINE_READONLY":       "django.db.backends.postgresql_psycopg2",
@@ -25,7 +31,12 @@
   "DATABASE_USER_READONLY":         "postgres",
   "DATABASE_PASSWORD_READONLY":     "admin",
   "DATABASE_HOST_READONLY":         "",
-  "DATABASE_PORT_READONLY":         "",
+  "DATABASE_PORT_READONLY":         "5678",
+
+  "_comment":                       "Docker Developer Settings",
+  "DEV_SERVER_SSL_CERT":            "cert/wevotedeveloper.com.crt",
+  "DEV_SERVER_SSL_KEY":             "cert/wevotedeveloper.com_key.txt",
+  "DEV_VOTER_INITIAL_USER":         "Samuel Adams samuel@adams.com ale",
 
   "_comment":                       "analytics database settings for local.py",
   "DATABASE_ENGINE_ANALYTICS":      "django.db.backends.postgresql_psycopg2",
@@ -33,7 +44,22 @@
   "DATABASE_USER_ANALYTICS":        "postgres",
   "DATABASE_PASSWORD_ANALYTICS":    "admin",
   "DATABASE_HOST_ANALYTICS":        "",
-  "DATABASE_PORT_ANALYTICS":        "",
+  "DATABASE_PORT_ANALYTICS":        "5678",
+  
+  "_comment":                       "cache database settings for local.py",
+  "DATABASE_ENGINE_CACHE":          "django.core.cache.backends.db.DatabaseCache",
+  "DATABASE_CACHE_LOCATION":        "dev_wevote_server",
+
+  "_comment":                       "profile for pgadmin",
+  "PG_ADMIN_EMAIL":                 "fake_email@wevoteeducation.org",
+  "PG_ADMIN_PASSWORD":              "admin",
+
+  "_comment":                       "Docker Settings",
+  "DEV_SERVER_DOMAIN":              "wevotedeveloper.com",
+  "DEV_SERVER_PORT":                "8000",
+  "DEV_SERVER_SSL_CERT":            "cert/wevotedeveloper.com.crt",
+  "DEV_SERVER_SSL_KEY":             "cert/wevotedeveloper.com_key.txt",
+  "DEV_VOTER_INITIAL_USER":         "Samuel Adams samuel@adams.com ale",
 
   "_comment":                       "The connection string for Elastic Search database",
   "ELASTIC_SEARCH_CONNECTION_STRING": "",
@@ -57,11 +83,14 @@
   "EMAIL_USE_TLS":                  "True",
 
   "_comment":                       "sendgrid-django API settings",
-  "EMAIL_BACKEND":                  "sgbackend.SendGridBackend",
+  "EMAIL_BACKEND":                  "sendgrid_backend.SendgridBackend",
   "SENDGRID_API_KEY_ID":            "API Key ID: reference id provided by SendGrid",
   "SENDGRID_API_KEY":               "SENDGRID_API_KEY Private API Key",
   "SENDGRID_EMAIL_VALIDATION_API_KEY_ID": "API Key ID: reference id provided by SendGrid",
   "SENDGRID_EMAIL_VALIDATION_API_KEY": "SENDGRID_EMAIL_VALIDATION_API_KEY Private API Key",
+  "SENDGRID_SANDBOX_MODE":          false,
+  "SENDGRID_SANDBOX_MODE_IN_DEBUG": false,
+  "SYSTEM_SENDER_EMAIL_ADDRESS":    "info@wevote.us",
 
   "_comment":                       "emails separated by spaces for error alerts",
   "ADMIN_EMAIL_ADDRESSES":          "",
@@ -161,6 +190,7 @@
   "SOCIAL_AUTH_FACEBOOK_KEY":         "",
   "SOCIAL_AUTH_FACEBOOK_SECRET":      "",
   "SOCIAL_AUTH_FACEBOOK_TOKEN":       "",
+
   "_comment":                       "Search_Google_Drive_for_TWITTER_CONSUMER_KEY_for_more_details",
   "_comment":                       "SOCIAL_AUTH_TWITTER_KEY == TWITTER_CONSUMER_KEY",
   "_comment":                       "SOCIAL_AUTH_TWITTER_SECRET == TWITTER_CONSUMER_SECRET",
@@ -239,10 +269,14 @@
   "POSITIONS_SYNC_URL":             "https://api.wevoteusa.org/apis/v1/positionsSyncOut/",
   "QUICK_INFO_URL":                 "https://api.wevoteusa.org/import_export/quick_info/",
   "VOTER_GUIDES_SYNC_URL":          "https://api.wevoteusa.org/apis/v1/voterGuidesSyncOut/",
+  "MANAGEMENT_API_KEY":             "",
 
   "_comment":                       "Directory path to store temporary files",
   "PATH_FOR_TEMP_FILES":            "/tmp",
   "DATA_UPLOAD_MAX_MEMORY_SIZE":    "20000000",
+
+  "_comment":                       "Apache Tika server, used to convert PDFs to HTML",
+  "TIKA_SERVER_ENDPOINT":           "http://tika:9998/tika",
 
   "_comment":                       "Settings for running Selenium tests on BrowserStack",
   "BROWSERSTACK_USERNAME":          "",

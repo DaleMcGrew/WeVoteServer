@@ -5,7 +5,7 @@
 from django.db import models
 from django.db.models import Q
 from django.utils.timezone import now
-from datetime import datetime, timedelta
+from datetime import timedelta
 from election.models import Election
 from exception.models import print_to_log
 from follow.models import FollowOrganizationList

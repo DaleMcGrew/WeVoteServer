@@ -15,7 +15,7 @@ import re
 
 import wevote_functions.admin
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime, timedelta
 from election.models import ElectionManager
 from follow.models import FOLLOW_DISLIKE, FOLLOWING, FollowOrganizationManager
@@ -2531,7 +2531,6 @@ def repair_ocd_id_mismatch_damage_view(request):
         campaignx_list = list(queryset[:100])
         campaignx_list_count = len(campaignx_list)
         campaignx_list_remaining_count = queryset.count() - campaignx_list_count
-        from campaign.controllers import update_campaignx_from_politician
         politician_manager = PoliticianManager()
         for one_campaignx in campaignx_list:
             save_campaignx_changes = True  # Default to saving

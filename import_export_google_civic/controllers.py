@@ -12,7 +12,7 @@ from .models import GoogleCivicApiCounterManager
 from ballot.models import BallotItemManager, BallotItemListManager, BallotReturned, BallotReturnedManager, \
     VoterBallotSavedManager
 from candidate.models import CandidateCTCLAlternateMap, CandidateManager, CandidateListManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.utils.timezone import localtime, now
 from election.models import ElectionManager
 from geopy.geocoders import get_geocoder_for_service
@@ -24,9 +24,9 @@ import requests
 from voter.models import fetch_voter_id_from_voter_device_link, VoterAddressManager
 from wevote_functions.functions import augment_vote_usa_office_id, \
     convert_district_scope_to_ballotpedia_race_office_level, \
-    convert_level_to_race_office_level, convert_state_text_to_state_code, convert_to_int, \
+    convert_state_text_to_state_code, convert_to_int, \
     extract_district_id_label_when_district_id_exists_from_ocd_id, extract_district_id_from_ocd_division_id, \
-    extract_facebook_username_from_text_string, extract_instagram_handle_from_text_string, \
+    extract_instagram_handle_from_text_string, \
     extract_state_code_from_address_string, extract_state_from_ocd_division_id, \
     extract_twitter_handle_from_text_string, extract_vote_usa_measure_id, extract_vote_usa_office_id, \
     is_voter_device_id_valid, logger, positive_value_exists, STATE_CODE_MAP
@@ -310,7 +310,7 @@ def groom_and_store_google_civic_ballot_json_2021(
         else:
             google_civic_election_id_from_json = one_ballot_json['election']['id']
 
-    if 'electionDay' in one_ballot_json['election']:
+    if not positive_value_exists(election_day_text) and 'electionDay' in one_ballot_json['election']:
         election_day_text = one_ballot_json['election']['electionDay']
     # We may not need this
     election_description_text = ''
@@ -392,6 +392,7 @@ def groom_and_store_google_civic_ballot_json_2021(
                     process_contest_results = groom_and_store_google_civic_measure_json_2021(
                         ballot_item_dict_list=ballot_item_dict_list,
                         election_day_text=election_day_text,
+                        measure_year=election_year_integer,
                         existing_measure_objects_dict=existing_measure_objects_dict,
                         google_civic_election_id=google_civic_election_id,
                         local_ballot_order=local_ballot_order,
@@ -2515,6 +2516,10 @@ def store_ballot_item_dict_list(
                 if 'yes_vote_description' in one_ballot_item_dict else ''
             defaults['no_vote_description'] = one_ballot_item_dict['no_vote_description'] \
                 if 'no_vote_description' in one_ballot_item_dict else ''
+            defaults['referendum_con'] = one_ballot_item_dict['referendum_con'] \
+                if 'referendum_con' in one_ballot_item_dict else ''
+            defaults['referendum_pro'] = one_ballot_item_dict['referendum_pro'] \
+                if 'referendum_pro' in one_ballot_item_dict else ''
 
             if positive_value_exists(voter_id):
                 results = ballot_item_manager.update_or_create_ballot_item_for_voter(
@@ -3113,13 +3118,29 @@ def process_contest_referendum_from_structured_json(
         'referendumTitle' in one_contest_referendum_structured_json else ''
     referendum_subtitle = one_contest_referendum_structured_json['referendumSubtitle'] if \
         'referendumSubtitle' in one_contest_referendum_structured_json else ''
-    if not positive_value_exists(referendum_subtitle):
-        referendum_subtitle = one_contest_referendum_structured_json['referendumBrief'] if \
-            'referendumBrief' in one_contest_referendum_structured_json else ''
     referendum_url = one_contest_referendum_structured_json['referendumUrl'] if \
         'referendumUrl' in one_contest_referendum_structured_json else ''
     referendum_text = one_contest_referendum_structured_json['referendumText'] if \
         'referendumText' in one_contest_referendum_structured_json else ''
+    if not positive_value_exists(referendum_text):
+        referendum_text = one_contest_referendum_structured_json['referendumBrief'] if \
+            'referendumBrief' in one_contest_referendum_structured_json else ''
+    if 'noVoteDescription' in one_contest_referendum_structured_json:
+        no_vote_description = one_contest_referendum_structured_json['noVoteDescription']
+    elif 'referendumDetailForNo' in one_contest_referendum_structured_json:
+        no_vote_description = one_contest_referendum_structured_json['referendumDetailForNo']
+    else:
+        no_vote_description = ''
+    if 'yesVoteDescription' in one_contest_referendum_structured_json:
+        yes_vote_description = one_contest_referendum_structured_json['yesVoteDescription']
+    elif 'referendumDetailForYes' in one_contest_referendum_structured_json:
+        yes_vote_description = one_contest_referendum_structured_json['referendumDetailForYes']
+    else:
+        yes_vote_description = ''
+    referendum_con = one_contest_referendum_structured_json['referendumDetailCon'] if \
+        'referendumDetailCon' in one_contest_referendum_structured_json else ''
+    referendum_pro = one_contest_referendum_structured_json['referendumDetailPro'] if \
+        'referendumDetailPro' in one_contest_referendum_structured_json else ''
 
     # These following fields exist for both candidates and referendum
     results = process_contest_common_fields_from_structured_json(one_contest_referendum_structured_json)
@@ -3169,6 +3190,14 @@ def process_contest_referendum_from_structured_json(
             updated_contest_measure_values['primary_party'] = primary_party
         if positive_value_exists(district_scope):
             updated_contest_measure_values['district_scope'] = district_scope
+        if positive_value_exists(no_vote_description):
+            updated_contest_measure_values['ballotpedia_no_vote_description'] = no_vote_description
+        if positive_value_exists(yes_vote_description):
+            updated_contest_measure_values['ballotpedia_yes_vote_description'] = yes_vote_description
+        if positive_value_exists(referendum_con):
+            updated_contest_measure_values['referendum_con'] = referendum_con
+        if positive_value_exists(referendum_pro):
+            updated_contest_measure_values['referendum_pro'] = referendum_pro
 
         measure_manager = ContestMeasureManager()
         update_or_create_contest_measure_results = measure_manager.update_or_create_contest_measure(
@@ -3226,6 +3255,7 @@ def groom_and_store_google_civic_measure_json_2021(
         existing_measure_objects_dict={},
         google_civic_election_id='',
         local_ballot_order=0,
+        measure_year=0,
         new_measure_we_vote_ids_list=[],
         one_contest_json={},
         polling_location_we_vote_id='',
@@ -3264,16 +3294,53 @@ def groom_and_store_google_civic_measure_json_2021(
     elif positive_value_exists(use_vote_usa):
         raw_vote_usa_measure_id = one_contest_json['id']
         vote_usa_measure_id = extract_vote_usa_measure_id(raw_vote_usa_measure_id)
+        # These are the current Vote-USA columns of data we have on Referendums DB.
+        # Everything marked with * is what gets outputted in JSON currently.
+        # Id 							int AI PK
+        # ElectionKey 					varchar(18)
+        # ReferendumKey 				varchar(150) *
+        # ElectionKeyState 				varchar(12)
+        # StateCode 					char(2)
+        # CountyCode 					varchar(3)
+        # LocalKey 					varchar(5)
+        # OrderOnBallot 				int
+        # ReferendumTitle 				longtext *
+        # ReferendumDesc 				longtext *
+        # ReferendumDetail 				longtext *
+        # ReferendumDetailCon 			longtext *
+        # ReferendumDetailPro			longtext *
+        # ReferendumDetailUrl 			longtext *
+        # ReferendumFullText 			longtext *
+        # ReferendumFullTextUrl 			longtext *
+        # IsReferendumTagForDeletion 	tinyint(1)
+        # IsPassed 					tinyint(1)
+        # IsResultRecorded 				tinyint(1)
 
     referendum_subtitle = one_contest_json['referendumSubtitle'] if \
         'referendumSubtitle' in one_contest_json else ''
-    if not positive_value_exists(referendum_subtitle):
-        referendum_subtitle = one_contest_json['referendumBrief'] if \
-            'referendumBrief' in one_contest_json else ''
     referendum_url = one_contest_json['referendumUrl'] if \
         'referendumUrl' in one_contest_json else ''
     referendum_text = one_contest_json['referendumText'] if \
         'referendumText' in one_contest_json else ''
+    if not positive_value_exists(referendum_text):
+        referendum_text = one_contest_json['referendumBrief'] if \
+            'referendumBrief' in one_contest_json else ''
+    if 'noVoteDescription' in one_contest_json:
+        no_vote_description = one_contest_json['noVoteDescription']
+    elif 'referendumDetailForNo' in one_contest_json:
+        no_vote_description = one_contest_json['referendumDetailForNo']
+    else:
+        no_vote_description = ''
+    if 'yesVoteDescription' in one_contest_json:
+        yes_vote_description = one_contest_json['yesVoteDescription']
+    elif 'referendumDetailForYes' in one_contest_json:
+        yes_vote_description = one_contest_json['referendumDetailForYes']
+    else:
+        yes_vote_description = ''
+    referendum_con = one_contest_json['referendumDetailCon'] if \
+        'referendumDetailCon' in one_contest_json else ''
+    referendum_pro = one_contest_json['referendumDetailPro'] if \
+        'referendumDetailPro' in one_contest_json else ''
 
     # These following fields exist for both candidates and referendum
     results = process_contest_common_fields_from_structured_json(one_contest_json, is_ctcl=use_ctcl)
@@ -3453,6 +3520,8 @@ def groom_and_store_google_civic_measure_json_2021(
                 updated_contest_measure_values['district_id'] = district_id
             if positive_value_exists(district_name):
                 updated_contest_measure_values['district_name'] = district_name
+            if positive_value_exists(election_day_text):
+                updated_contest_measure_values['election_day_text'] = election_day_text
             if positive_value_exists(referendum_title):
                 updated_contest_measure_values['measure_title'] = referendum_title
                 # We store the literal spelling here so we can match in the future, even if we customize measure_title
@@ -3463,20 +3532,22 @@ def groom_and_store_google_civic_measure_json_2021(
                 updated_contest_measure_values['measure_url'] = referendum_url
             if positive_value_exists(referendum_text):
                 updated_contest_measure_values['measure_text'] = referendum_text
+            if positive_value_exists(measure_year):
+                updated_contest_measure_values['measure_year'] = convert_to_int(measure_year)
             if positive_value_exists(measure_ocd_division_id):
                 updated_contest_measure_values['ocd_division_id'] = measure_ocd_division_id
             if positive_value_exists(primary_party):
                 updated_contest_measure_values['primary_party'] = primary_party
             if positive_value_exists(district_scope):
                 updated_contest_measure_values['district_scope'] = district_scope
-            if 'yes_vote_description' in one_contest_json and \
-                    positive_value_exists(one_contest_json['yes_vote_description']):
-                updated_contest_measure_values['ballotpedia_yes_vote_description'] = \
-                    one_contest_json['yes_vote_description']
-            if 'no_vote_description' in one_contest_json and \
-                    positive_value_exists(one_contest_json['no_vote_description']):
-                updated_contest_measure_values['ballotpedia_no_vote_description'] = \
-                    one_contest_json['no_vote_description']
+            if yes_vote_description:
+                updated_contest_measure_values['ballotpedia_yes_vote_description'] = yes_vote_description
+            if no_vote_description:
+                updated_contest_measure_values['ballotpedia_no_vote_description'] = no_vote_description
+            if referendum_con:
+                updated_contest_measure_values['referendum_con'] = referendum_con
+            if referendum_pro:
+                updated_contest_measure_values['referendum_pro'] = referendum_pro
 
             if positive_value_exists(proceed_to_create_measure):
                 update_or_create_contest_measure_results = measure_manager.create_measure_row_entry(
@@ -3540,10 +3611,14 @@ def groom_and_store_google_civic_measure_json_2021(
             'contest_measure_url':          contest_measure.measure_url,
             'contest_measure_we_vote_id':   contest_measure.we_vote_id,
             'contest_measure_id':           contest_measure.id,
-            'election_day_text':            election_day_text,
+            'election_day_text':            contest_measure.election_day_text \
+                if positive_value_exists(contest_measure.election_day_text) else election_day_text,
             'local_ballot_order':           local_ballot_order,
+            'measure_year':                 contest_measure.measure_year,
             'no_vote_description':          contest_measure.ballotpedia_no_vote_description,
             'polling_location_we_vote_id':  polling_location_we_vote_id,
+            'referendum_con':               contest_measure.referendum_con,
+            'referendum_pro':               contest_measure.referendum_pro,
             'state_code':                   state_code,
             'voter_id':                     voter_id,
             'yes_vote_description':         contest_measure.ballotpedia_yes_vote_description,

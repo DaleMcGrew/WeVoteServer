@@ -4,9 +4,9 @@
 # -*- coding: UTF-8 -*-
 
 from .models import GoogleCivicApiCounterManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime
-from django.utils.timezone import localtime, now
+from django.utils.timezone import now
 from exception.models import handle_exception
 import json
 from office_held.models import OfficeHeldManager
@@ -15,13 +15,11 @@ from polling_location.models import KIND_OF_LOG_ENTRY_ADDRESS_PARSE_ERROR, KIND_
     KIND_OF_LOG_ENTRY_REPRESENTATIVES_RECEIVED, PollingLocationManager
 from representative.models import RepresentativeManager
 import requests
-from wevote_functions.functions import convert_district_scope_to_ballotpedia_race_office_level, \
-    convert_level_to_race_office_level, convert_state_text_to_state_code, convert_to_int, \
+from wevote_functions.functions import convert_level_to_race_office_level, convert_to_int, \
     extract_district_id_label_when_district_id_exists_from_ocd_id, extract_district_id_from_ocd_division_id, \
-    extract_facebook_username_from_text_string, extract_instagram_handle_from_text_string, \
-    extract_state_code_from_address_string, extract_state_from_ocd_division_id, \
-    extract_twitter_handle_from_text_string, extract_vote_usa_measure_id, extract_vote_usa_office_id, \
-    is_voter_device_id_valid, logger, positive_value_exists, STATE_CODE_MAP
+    extract_instagram_handle_from_text_string, \
+    extract_twitter_handle_from_text_string, extract_vote_usa_office_id, \
+    logger, positive_value_exists, STATE_CODE_MAP
 
 GEOCODE_TIMEOUT = 10
 GOOGLE_CIVIC_API_KEY = get_environment_variable("GOOGLE_CIVIC_API_KEY")

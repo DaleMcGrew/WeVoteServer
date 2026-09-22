@@ -1,1 +1,1 @@
-from .single_use_tokens import SingleUseToken
+from .single_use_tokens import SingleUseToken as SingleUseToken

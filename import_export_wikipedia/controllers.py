@@ -3,37 +3,22 @@
 # -*- coding: UTF-8 -*-
 
 from bs4 import BeautifulSoup
-import json
 
 from django.contrib import messages
 
 
-from ballot.models import BallotItemListManager, BallotItemManager, BallotReturned, BallotReturnedManager, \
-    VoterBallotSavedManager
 from candidate.controllers import save_image_to_candidate_table
-from candidate.models import CandidateManager, CandidateListManager, fetch_candidate_count_for_office, \
-    PROFILE_IMAGE_TYPE_BALLOTPEDIA, PROFILE_IMAGE_TYPE_UNKNOWN, PROFILE_IMAGE_TYPE_WIKIPEDIA
-from config.base import get_environment_variable
-from electoral_district.models import ElectoralDistrict, ElectoralDistrictManager
-from election.models import BallotpediaElection, ElectionManager, Election
-from exception.models import handle_exception
-from geopy.geocoders import get_geocoder_for_service
-from image.controllers import IMAGE_SOURCE_BALLOTPEDIA, \
-    organize_object_photo_fields_based_on_image_type_currently_active, IMAGE_SOURCE_WIKIPEDIA
+from candidate.models import PROFILE_IMAGE_TYPE_UNKNOWN, PROFILE_IMAGE_TYPE_WIKIPEDIA
+from image.controllers import organize_object_photo_fields_based_on_image_type_currently_active, IMAGE_SOURCE_WIKIPEDIA
 from organization.controllers import save_image_to_organization_table
-from measure.models import ContestMeasureListManager, ContestMeasureManager
-from office.models import ContestOfficeListManager, ContestOfficeManager
-from polling_location.models import PollingLocationManager
-import requests
-from voter.models import fetch_voter_id_from_voter_device_link, VoterAddressManager
 import wevote_functions.admin
 
 from organization.models import Organization
 import re
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, extract_state_code_from_address_string, positive_value_exists
-from wevote_settings.models import RemoteRequestHistory, RemoteRequestHistoryManager, \
-    RETRIEVE_POSSIBLE_BALLOTPEDIA_PHOTOS, RETRIEVE_POSSIBLE_WIKIPEDIA_PHOTOS
+from wevote_functions.functions import positive_value_exists
+from wevote_settings.models import RemoteRequestHistoryManager, \
+    RETRIEVE_POSSIBLE_WIKIPEDIA_PHOTOS
 
 import wikipedia  # https://pypi.python.org/pypi/wikipedia
 

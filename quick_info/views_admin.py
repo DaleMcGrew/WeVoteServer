@@ -4,9 +4,8 @@
 
 from .models import LANGUAGE_CHOICES, QuickInfo, QuickInfoManager, \
     QuickInfoMaster, QuickInfoMasterManager, \
-    SPANISH, ENGLISH, TAGALOG, VIETNAMESE, CHINESE, \
-    NOT_SPECIFIED
-from ballot.models import OFFICE, CANDIDATE, POLITICIAN, MEASURE, KIND_OF_BALLOT_ITEM_CHOICES
+    ENGLISH, NOT_SPECIFIED
+from ballot.models import OFFICE, CANDIDATE, MEASURE, KIND_OF_BALLOT_ITEM_CHOICES
 from admin_tools.views import redirect_to_sign_in_page
 from candidate.models import CandidateCampaign, CandidateManager
 from django.http import HttpResponseRedirect

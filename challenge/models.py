@@ -11,13 +11,12 @@ from django.utils.timezone import now
 import wevote_functions.admin
 from exception.models import handle_record_found_more_than_one_exception, \
     handle_record_not_found_exception
-from organization.models import Organization, OrganizationManager, OrganizationTeamMember
+from organization.models import OrganizationManager, OrganizationTeamMember
 from politician.models import Politician
 from wevote_functions.functions import convert_to_int, \
-    extract_first_name_from_full_name, extract_middle_name_from_full_name, \
-    extract_last_name_from_full_name, \
+    extract_first_name_from_full_name, extract_last_name_from_full_name, \
     positive_value_exists
-from wevote_functions.functions_date import generate_date_as_integer
+from wevote_functions.functions_date import generate_date_as_integer, get_current_year_as_integer
 from wevote_settings.models import fetch_next_we_vote_id_challenge_integer, \
     fetch_next_we_vote_id_challenge_news_item_integer, fetch_site_unique_id_prefix
 
@@ -61,8 +60,9 @@ CHALLENGE_UNIQUE_IDENTIFIERS = [
 CHALLENGE_UNIQUE_ATTRIBUTES_TO_BE_CLEARED = [
     'seo_friendly_path',
 ]
+this_year = get_current_year_as_integer()
 CHALLENGE_INVITE_TEXT_DEFAULT = (
-    "The 2024 elections are almost here! "
+    f"The {this_year} elections are almost here! "
     "I've joined WeVote's nonpartisan challenge: [challenge_title]. It's "
     "all about getting people to vote—because friends "
     "make sure friends vote! Whether you're voting early, by mail, or on November 5th, "

@@ -5,7 +5,7 @@
 from django.db.models import Q
 from django.utils.timezone import localtime, now
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from organization.models import Organization
 from politician.models import Politician
 import wevote_functions.admin

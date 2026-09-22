@@ -4,9 +4,8 @@
 
 from ballot.models import BallotItem
 from election.models import ElectionManager
-from exception.models import handle_exception
 from office.models import ContestOffice
-from office_held.models import OfficeHeld, OfficeHeldManager
+from office_held.models import OfficeHeldManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists
 
@@ -53,6 +52,7 @@ def generate_ballot_data_from_offices_held(
             'substituted_address_state':    substituted_address_state,
             'substituted_address_zip':      substituted_address_zip,
             'text_for_map_search':          text_for_map_search,
+            'use_election_without_ballot_data': False,
             'use_office_held_ballot':       False,
             'voter_ballot_saved':           None,
             'voter_ballot_saved_found':     False,
@@ -105,6 +105,7 @@ def generate_ballot_data_from_offices_held(
             'substituted_address_state':    substituted_address_state,
             'substituted_address_zip':      substituted_address_zip,
             'text_for_map_search':          text_for_map_search,
+            'use_election_without_ballot_data': False,
             'use_office_held_ballot':       False,
             'voter_ballot_saved_found':     False,
             'voter_ballot_saved':           None,
@@ -159,6 +160,7 @@ def generate_ballot_data_from_offices_held(
         'substituted_address_state':            substituted_address_state,
         'substituted_address_zip':              substituted_address_zip,
         'text_for_map_search':                  text_for_map_search,
+        'use_election_without_ballot_data':     False,
         'use_office_held_ballot':               use_office_held_ballot,
         'voter_ballot_saved':                   None,
         'voter_ballot_saved_found':             False,

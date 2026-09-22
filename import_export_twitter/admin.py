@@ -4,6 +4,5 @@
 
 # See also WeVoteServer/twitter/admin.py for routines that manage internal twitter data
 
-from django.contrib import admin
 
 # Register your models here.

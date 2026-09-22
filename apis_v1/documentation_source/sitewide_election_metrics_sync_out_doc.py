@@ -13,13 +13,13 @@ def sitewide_election_metrics_sync_out_doc_template_values(url_root):
             'value':        'string (from post, cookie, or get (in that order))',  # boolean, integer, long, string
             'description':  'The unique key provided to any organization using the WeVoteServer APIs',
         },
-        {
-            'name': 'voter_device_id',
-            'value': 'string',  # boolean, integer, long, string
-            'description': 'An 88 character unique identifier linked to a voter record on the server. '
-                           'If not provided, a new voter_device_id (and voter entry) '
-                           'will be generated, and the voter_device_id will be returned.',
-        },
+        # {
+        #     'name': 'voter_device_id',
+        #     'value': 'string',  # boolean, integer, long, string
+        #     'description': 'An 88 character unique identifier linked to a voter record on the server. '
+        #                    'If not provided, a new voter_device_id (and voter entry) '
+        #                    'will be generated, and the voter_device_id will be returned.',
+        # },
     ]
     optional_query_parameter_list = [
         {
@@ -49,8 +49,19 @@ def sitewide_election_metrics_sync_out_doc_template_values(url_root):
     api_response = '[{\n' \
                    '  "id": integer,\n' \
                    '  "authenticated_visitors_total": integer,\n' \
-                   '  "date_as_integer": integer,\n' \
-                   '  "election_day_text": integer,\n' \
+                   '  "candidate_count": integer,\n' \
+                   '  "candidate_count_claimed": integer, How many candidates claimed profile,\n' \
+                   '  "candidate_dislikes_count": integer, Total signed in dislikes across all candidates,\n' \
+                   '  "candidate_dislikes_count_claimed": integer, Total signed in dislikes across claimed candidates,\n' \
+                   '  "candidate_favorites_count": integer, Total signed in favorites across all candidates,\n' \
+                   '  "candidate_favorites_count_claimed": integer, Total signed in favorites across claimed candidates,\n' \
+                   '  "candidates_chosen_count": integer, Number of chosen voter/candidate pairs,\n' \
+                   '  "candidates_chosen_count_claimed": integer, Number of chosen voter/claimed-candidate pairs,\n' \
+                   '  "candidates_opposed_count": integer, Number of oppose voter/candidate pairs,\n' \
+                   '  "candidates_opposed_count_claimed": integer, Number of opposed voter/claimed-candidate pairs,\n' \
+                   '  "date_as_integer": integer, ex/ YYYYMMDD,\n' \
+                   '  "election_day_text": string, ex/ YYYY-MM-DD,\n' \
+                   '  "election_name": string, ex/ "General Election",\n' \
                    '  "entered_full_address": integer,\n' \
                    '  "friends_only_positions": integer,\n' \
                    '  "friends_only_positions_with_comments": integer,\n' \
@@ -59,6 +70,8 @@ def sitewide_election_metrics_sync_out_doc_template_values(url_root):
                    '  "individuals_with_positions": integer,\n' \
                    '  "individuals_with_public_positions": integer,\n' \
                    '  "issues_followed": integer,\n' \
+                   '  "measure_count": integer,\n' \
+                   '  "office_count": integer,\n' \
                    '  "organization_public_positions": integer,\n' \
                    '  "organizations_auto_followed": integer,\n' \
                    '  "organizations_followed": integer,\n' \
@@ -66,6 +79,7 @@ def sitewide_election_metrics_sync_out_doc_template_values(url_root):
                    '  "organizations_with_positions": integer,\n' \
                    '  "public_positions": integer,\n' \
                    '  "public_positions_with_comments": integer,\n' \
+                   '  "state_code": integer,\n' \
                    '  "unique_voters_that_auto_followed_organizations": integer,\n' \
                    '  "unique_voters_that_followed_organizations": integer,\n' \
                    '  "visitors_total": integer,\n' \

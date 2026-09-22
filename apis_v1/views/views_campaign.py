@@ -4,7 +4,7 @@
 from campaign.controllers import campaignx_list_retrieve_for_api, campaignx_news_item_save_for_api, \
     campaignx_retrieve_for_api, campaignx_save_for_api, \
     campaignx_supporter_retrieve_for_api, campaignx_supporter_save_for_api
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django_user_agents.utils import get_user_agent

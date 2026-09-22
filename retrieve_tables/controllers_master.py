@@ -8,12 +8,11 @@ import re
 import subprocess
 import time
 from datetime import datetime, timezone, timedelta
-from io import StringIO
 
 from django.http import HttpResponse
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from retrieve_tables.models import RetrieveTableState
 from retrieve_tables.retrieve_common import get_psycopg2_connection, allowable_tables
 from wevote_functions.functions import positive_value_exists, convert_to_int, get_voter_api_device_id
@@ -60,106 +59,107 @@ def get_total_row_count():
                 cnt = int(row[0])
             else:
                 cnt = 0
-            print('get_total_row_count of table ', table_name, ' is ', cnt)
+            print('get_total_row_count of table ', table_name, ' is ', cnt, flush=True)
             rows += cnt
 
-    print('get_total_row_count is ', rows)
+    print('get_total_row_count is ', rows, flush=True)
 
     conn.close()
     return rows
 
 
 # noinspection PyUnusedLocal
-def retrieve_sql_tables_as_csv(voter_api_device_id, table_name, start, end):
-    """
-    Extract one of the approximately 21 allowable database tables to CSV (pipe delimited) and send it to the
-    developer's local WeVoteServer instance
-    limit is used to specify a number of rows to return (this is the SQL LIMIT clause), non-zero or ignored
-    offset is used to specify the first row to return (this is the SQL OFFSET clause), non-zero or ignored
-    Note July 2022, re Joe:  This call to `https://api.wevoteusa.org/apis/v1/retrieveSQLTables/` has been moved from a
-    "normal" API server (which was timing out) to a "process" API server with an 1800-second timeout.
-    """
-    t0 = time.time()
-
-    status = ''
-
-    csv_files = {}
-    try:
-        conn = get_psycopg2_connection()
-
-        # logger.debug("retrieve_sql_tables_as_csv psycopg2 Connected to DB")
-
-        print('retrieve_sql_tables_as_csv "', table_name + '"')
-        print('retrieve_sql_tables_as_csv if table_name in allowable_tables ' + str(table_name in allowable_tables))
-        if table_name in allowable_tables:
-            try:
-                cur = conn.cursor()
-                file = StringIO()  # Empty file
-
-                # logger.error("experiment: REAL FILE ALLOWED FOR file: " + table_name)
-                if positive_value_exists(end):
-                    sql = "COPY (SELECT * FROM public." + table_name + " WHERE id BETWEEN " + start + " AND " + \
-                          end + " ORDER BY id) TO STDOUT WITH DELIMITER '|' CSV HEADER NULL '\\N'"
-                else:
-                    sql = "COPY " + table_name + " TO STDOUT WITH DELIMITER '|' CSV HEADER NULL '\\N'"
-                # logger.error("experiment: retrieve_tables sql: " + sql)
-                cur.copy_expert(sql, file, size=8192)
-                # logger.error("experiment: after cur.copy_expert ")
-                file.seek(0)
-                # logger.error("experiment: retrieve_tables file contents: " + file.readline().strip())
-                file.seek(0)
-                csv_files[table_name] = file.read()
-                # table_st = csv_files[table_name]
-                # for i in range(0, 100000, 150):    # c type for loop for(i=0; i < 10000; i+= 150)
-                #     print(table_str[i:i+150])
-
-                file.close()
-                # logger.error("experiment: after file close, status " + status)
-                if "exported" not in status:
-                    status += "exported "
-                status += table_name + "(" + start + "," + end + "), "
-                # logger.error("experiment: after status +=, " + status)
-                # logger.error("experiment: before conn.commit")
-                conn.commit()
-                # logger.error("experiment: after conn.commit ")
-                conn.close()
-                # logger.error("experiment: after conn.close ")
-                dt = time.time() - t0
-                logger.error('Extracting the "' + table_name + '" table took ' + "{:.3f}".format(dt) +
-                             ' seconds.  start = ' + start + ', end = ' + end)
-            except Exception as e:
-                logger.error("Real exception in retrieve_sql_tables_as_csv(): " + str(e) + " ")
-        else:
-            status = "the table_name '" + table_name + "' is not in the table list, therefore no table was returned"
-            logger.error(status)
-
-        # logger.error("experiment: before results")
-        results = {
-            'success': True,
-            'status': status,
-            'files': csv_files,
-        }
-
-        # logger.error("experiment: results returned")
-        return results
-
-    # run `pg_dump -f /dev/null wevotedev` on the server to evaluate for a corrupted file
-    except Exception as e:
-        status += "retrieve_tables export_sync_files_to_csv caught " + str(e)
-        logger.error(status)
-        logger.error("retrieve_tables export_sync_files_to_csv caught " + str(e))
-        results = {
-            'success': False,
-            'status': status,
-        }
-        return results
+# def retrieve_sql_tables_as_csv(voter_api_device_id, table_name, start, end):
+#     """
+#     June 2026: I think this has been abandoned in favor of the pg_dump/pg_restore approach
+#     Extract one of the approximately 21 allowable database tables to CSV (pipe delimited) and send it to the
+#     developer's local WeVoteServer instance
+#     limit is used to specify a number of rows to return (this is the SQL LIMIT clause), non-zero or ignored
+#     offset is used to specify the first row to return (this is the SQL OFFSET clause), non-zero or ignored
+#     Note July 2022, re Joe:  This call to `https://api.wevoteusa.org/apis/v1/retrieveSQLTables/` has been moved from a
+#     "normal" API server (which was timing out) to a "process" API server with an 1800-second timeout.
+#     """
+#     t0 = time.time()
+#
+#     status = ''
+#
+#     csv_files = {}
+#     try:
+#         conn = get_psycopg2_connection()
+#
+#         # logger.debug("retrieve_sql_tables_as_csv psycopg2 Connected to DB")
+#
+#         print('retrieve_sql_tables_as_csv "', table_name + '"')
+#         print('retrieve_sql_tables_as_csv if table_name in allowable_tables ' + str(table_name in allowable_tables))
+#         if table_name in allowable_tables:
+#             try:
+#                 cur = conn.cursor()
+#                 file = StringIO()  # Empty file
+#
+#                 # logger.error("experiment: REAL FILE ALLOWED FOR file: " + table_name)
+#                 if positive_value_exists(end):
+#                     sql = "COPY (SELECT * FROM public." + table_name + " WHERE id BETWEEN " + start + " AND " + \
+#                           end + " ORDER BY id) TO STDOUT WITH DELIMITER '|' CSV HEADER NULL '\\N'"
+#                 else:
+#                     sql = "COPY " + table_name + " TO STDOUT WITH DELIMITER '|' CSV HEADER NULL '\\N'"
+#                 # logger.error("experiment: retrieve_tables sql: " + sql)
+#                 cur.copy_expert(sql, file, size=8192)
+#                 # logger.error("experiment: after cur.copy_expert ")
+#                 file.seek(0)
+#                 # logger.error("experiment: retrieve_tables file contents: " + file.readline().strip())
+#                 file.seek(0)
+#                 csv_files[table_name] = file.read()
+#                 # table_st = csv_files[table_name]
+#                 # for i in range(0, 100000, 150):    # c type for loop for(i=0; i < 10000; i+= 150)
+#                 #     print(table_str[i:i+150])
+#
+#                 file.close()
+#                 # logger.error("experiment: after file close, status " + status)
+#                 if "exported" not in status:
+#                     status += "exported "
+#                 status += table_name + "(" + start + "," + end + "), "
+#                 # logger.error("experiment: after status +=, " + status)
+#                 # logger.error("experiment: before conn.commit")
+#                 conn.commit()
+#                 # logger.error("experiment: after conn.commit ")
+#                 conn.close()
+#                 # logger.error("experiment: after conn.close ")
+#                 dt = time.time() - t0
+#                 logger.error('Extracting the "' + table_name + '" table took ' + "{:.3f}".format(dt) +
+#                              ' seconds.  start = ' + start + ', end = ' + end)
+#             except Exception as e:
+#                 logger.error("Real exception in retrieve_sql_tables_as_csv(): " + str(e) + " ")
+#         else:
+#             status = "the table_name '" + table_name + "' is not in the table list, therefore no table was returned"
+#             logger.error(status)
+#
+#         # logger.error("experiment: before results")
+#         results = {
+#             'success': True,
+#             'status': status,
+#             'files': csv_files,
+#         }
+#
+#         # logger.error("experiment: results returned")
+#         return results
+#
+#     # run `pg_dump -f /dev/null wevotedev` on the server to evaluate for a corrupted file
+#     except Exception as e:
+#         status += "retrieve_tables export_sync_files_to_csv caught " + str(e)
+#         logger.error(status)
+#         logger.error("retrieve_tables export_sync_files_to_csv caught " + str(e))
+#         results = {
+#             'success': False,
+#             'status': status,
+#         }
+#         return results
 
 
 def dump_row_col_labels_and_errors(table_name, header, row, index):
     if row[0] == index:
         cnt = 0
         for element in header:
-            print(table_name + "." + element + " [" + str(cnt) + "]: " + row[cnt])
+            print(table_name + "." + element + " [" + str(cnt) + "]: " + row[cnt], flush=True)
             cnt += 1
 
 
@@ -168,7 +168,7 @@ def check_for_non_ascii(table_name, row):
     for field in row:
         if (re.sub('[ -~]', '', field)) != "":
             print("check_for_non_ascii - table: " + table_name + ", row id:  " + str(row[0]) + ", field no: " +
-                  str(field_no))
+                  str(field_no), flush=True)
         field_no += 1
 
 
@@ -259,7 +259,7 @@ def fast_load_status_update(request):
     chunk = convert_to_int(request.GET.get('chunk', None))
     total_records = convert_to_int(request.GET.get('total_records', None))
     is_running = positive_value_exists(request.GET.get('is_running', True))
-    print('fast_load_status_update ENTRY table_name', table_name, chunk, 'no row yet', additional_records)
+    print('FastLoad: fast_load_status_update ENTRY table_name: ', table_name, chunk, 'no row yet', additional_records, flush=True)
 
     success = True
     response_string = "error"
@@ -282,7 +282,7 @@ def fast_load_status_update(request):
                            f"table_name {row.table_name}, chunk {row.chunk}, current_record {row.current_record}, "
                            f"total_records {row.total_records}, voter_api_device_id {row.voter_api_device_id}, "
                            f"additional_records {additional_records}")
-        print(response_string)
+        print(response_string, flush=True)
 
     except Exception as e:
         logger.error("fast_load_status_update caught exception: " + str(e))
@@ -298,6 +298,46 @@ def fast_load_status_update(request):
     }
 
     return HttpResponse(json.dumps(results), content_type='application/json')
+
+# Similar to getPostgresTableStatistics in weconnect-server
+def fast_load_table_statistics(request):
+    logger.error("fast_load_table_statistics entrypoint: " + str(request))
+    # breakpoint()
+    conn = get_psycopg2_connection()
+    with (conn.cursor() as cursor):
+        sql = 'SELECT schemaname, relname AS table_name, n_live_tup AS estimated_row_count FROM pg_stat_user_tables ORDER BY n_live_tup DESC;'
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+        try:
+            html = (
+                '<!DOCTYPE html>'
+                '<html>'
+                '<head>'
+                    '<title>Postgres DB Row Counts</title>'
+                    '<style>'
+                        'table { border-collapse: collapse; width: 34%; margin-left: 20px }'
+                        'th, td { border: 1px solid black; padding: 2px; text-align: left; }'
+                        ':link, :visited { color: #039be5; outline: 0; text-decoration: none; padding-left: 20px; }'
+                    '</style>'
+                '</head>'
+                '<body>'
+                    '<a href="/apis/v1/docs/" >&lt; back to index</a>'
+                    '<div style="height: 20px;"></div>'
+                    '<table>'
+                        '<tr>'
+                            '<th>Table</th>'
+                            '<th style="text-align: right;">Row Count</th>'
+                        '</tr>')
+            for row in rows:
+                number = f"{row[2]:,}"
+                html += '<tr><td>%s</td><td style="text-align: right;">%s</td></tr>' %  (row[1], number)
+            html += '</table></body></html>'
+        except Exception as e:
+            html = e
+            logger.error(e)
+    conn.close()
+    return HttpResponse(html)
+
 
 
 def make_filename_and_command(table_name):
@@ -315,6 +355,7 @@ def make_filename_and_command(table_name):
 
     tmp_file_name = f"/tmp/backup-{table_name}-{time.strftime('%Y-%m-%dT%H:%M:%S')}.backup"
     pgurl = f'postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
+    # print('pgurl for pg_dump:', pgurl, flush=True)
 
 
     command_args = ["pg_dump",
@@ -324,10 +365,12 @@ def make_filename_and_command(table_name):
                     f"--file={tmp_file_name}",
                     "--disable-triggers"]
 
+    print('pg_dump command:', ' '.join(command_args), flush=True)
+
     return tmp_file_name, command_args
 
 
-def dump_full_postgres_table_to_tmp(table_name):
+def dump_full_postgres_table_to_tmp(table_name, extended_fastload_logging):
     results = {
         'success': False,
     }
@@ -339,28 +382,38 @@ def dump_full_postgres_table_to_tmp(table_name):
         temp_file_name, command_args = make_filename_and_command(table_name)
 
         try:
-            # logger.error('experiment: subprocess.run pg_dump command_args: %s', str(command_args))
+            if extended_fastload_logging:
+                print('FastLoad: subprocess.run pg_dump command_args: %s', str(command_args))
             result = subprocess.run(command_args, capture_output=True)  # , shell=False
-            # logger.error('experiment: subprocess.run pg_dump returncode: %s', str(result.returncode))
-            # logger.error('experiment: subprocess.run pg_dump stdout: %s', result.stdout)
-            # logger.error('experiment: subprocess.run pg_dump stderr: %s', result.stderr)
-            print('Dump completed')
+            if extended_fastload_logging:
+                print('FastLoad: subprocess.run pg_dump returncode: %s', str(result.returncode))
+                print('FastLoad: subprocess.run pg_dump stdout: %s', result.stdout)
+                print('FastLoad: subprocess.run pg_dump stderr: %s', result.stderr)
+                # with os.scandir('/tmp') as entries:
+                #     text = 'Ok: fastload Master: '
+                #     for entry in entries:
+                #         if entry.is_file():
+                #             info = entry.stat()
+                #             text += f"{entry.name} ({info.st_size}) {datetime.fromtimestamp(info.st_mtime)}, "
+                #     logger.error(text)
+            print(f"FastLoad: Dump completed for {table_name}", flush=True)
             results['pg_dump_returncode'] = result.returncode
             results['success'] = True
             results['temp_file_name'] = temp_file_name
             results['status'] = f"tmp file {temp_file_name} created"
-            logger.error('Ok: subprocess.run pg_dump temp_file_name : %s', temp_file_name)
+            if extended_fastload_logging:
+                print('FastLoad: subprocess.run pg_dump temp_file_name : %s', temp_file_name, flush=True)
         except Exception as e:
-            logger.error('subprocess.run pg_dump error : %s', str(e))
-            print("!!Problem occurred!!", e)
+            logger.error('fastload: subprocess.run pg_dump error : %s', str(e))
+            print("!!Problem occurred!!", e, flush=True)
             results['success'] = False,
             results['error string'] = str(e)
-    # logger.error('experiment: subprocess.run pg_dump results : %s', json.dumps(results))
+    # print('FastLoad: subprocess.run pg_dump results : %s', json.dumps(results), flush=True)
     return results
 
 
 # noinspection PyUnusedLocal
-def backup_one_table_to_s3_controller(voter_api_device_id, table_name):
+def backup_one_table_to_s3_controller(voter_api_device_id, table_name, extended_fastload_logging):
     t0 = time.time()
     results = {
         'success': True,
@@ -375,20 +428,15 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name):
         # command_str, filename = make_filename_and_command(table_name)
         try:
             import boto3
-            AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
-            AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
             AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
             AWS_STORAGE_BUCKET_NAME = get_environment_variable("AWS_STORAGE_BUCKET_NAME")
-            AWS_STORAGE_SERVICE = "s3"
 
-            session = boto3.session.Session(region_name=AWS_REGION_NAME,
-                                            aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                            aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-            s3 = session.resource(AWS_STORAGE_SERVICE)
+            session = boto3.session.Session(region_name=AWS_REGION_NAME)
+            s3 = session.resource("s3")
 
             ts = '{:.2f} seconds'.format(time.time() - t0)
-            print(f"About to dump table at {ts} seconds")
-            results = dump_full_postgres_table_to_tmp(table_name)
+            print(f"FastLoad: About to dump table at {ts} seconds", flush=True)
+            results = dump_full_postgres_table_to_tmp(table_name, extended_fastload_logging)
             ts: str = '{:.2f} seconds'.format(time.time() - t0)
             results['dump_table_to_tmp_completed'] = ts
 
@@ -398,21 +446,32 @@ def backup_one_table_to_s3_controller(voter_api_device_id, table_name):
             date_tomorrow_seconds = timedelta(days=2).total_seconds()
 
             ts = '{:.2f} seconds'.format(time.time() - t0)
-            print(f"About to upload to S3 at {ts} seconds")
+            print(f"FastLoad: About to upload to S3 at {ts} seconds", flush=True)
 
             s3.Bucket(AWS_STORAGE_BUCKET_NAME).upload_file(
                 results['temp_file_name'], tail, ExtraArgs={'Expires': date_tomorrow, 'ContentType': 'text/html'})
+
+            if extended_fastload_logging:
+                try:
+                    response = s3.head_object(Bucket=AWS_STORAGE_BUCKET_NAME, Key=results['temp_file_name'])
+                    file_size = response['ContentLength']
+                    print(f"FastLoad: s3 file_name: {results['temp_file_name']} -- size: {file_size} bytes", flush=True)
+                    logger.info(f"Test of Info, fastload: s3 file_name: {results['temp_file_name']} -- size: {file_size} bytes")
+                except Exception as e:
+                    logger.error(f"fastload: s3 file_name size check exception: {e}")
 
             aws_s3_file_url = s3.meta.client.generate_presigned_url(
                                 ClientMethod='get_object',
                                 Params={'Bucket': AWS_STORAGE_BUCKET_NAME, 'Key': tail},
                                 ExpiresIn=date_tomorrow_seconds,
                             )
+            if extended_fastload_logging:
+                print(f"FastLoad: aws_s3_file_url: {aws_s3_file_url}", flush=True)
 
             ts = '{:.2f} seconds'.format(time.time() - t0)
             results['tmp_file_to_s3_completed'] = str(ts)
 
-            print(f"Done with upload to S3 at {ts} seconds")
+            print(f"FastLoad: Done with upload to S3 at {ts} seconds", flush=True)
             results['status'] += ', s3 upload completed'
             results['aws_s3_file_url'] = aws_s3_file_url
 

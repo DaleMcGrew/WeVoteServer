@@ -1,10 +1,8 @@
-from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
 from cryptography.fernet import Fernet, InvalidToken
 import json
-from wevote_functions.functions import positive_value_exists
 from wevote_tokens.enums import TokenInfo
 
 
@@ -148,7 +146,7 @@ class SingleUseTokenManager(models.Manager):
     @staticmethod
     def get_tokens_by_user_id(user_id, scope):
         try:
-            return list(SingleUseToken.objects.filter(_user_id=user_id, _scope=scope).values('pk'))
+            return list(SingleUseToken.objects.filter(_user_id=user_id, _scope=scope, _expiration_datetime__gt=timezone.now()).values('pk'))
         except Exception as e:
             return 'ERROR GETTING TOKENS BY USER ID'
 
@@ -175,7 +173,7 @@ class SingleUseTokenManager(models.Manager):
         try:
             new_token.save(
                 user_id=user_id,
-                validation_key=validation_key, 
+                validation_key=validation_key,
                 scope=scope,
                 expiration_seconds=expiration_seconds,
                 json_data=json_data)

@@ -104,6 +104,57 @@ def voter_update_doc_template_values(url_root):
             'value':        'boolean',  # boolean, integer, long, string
             'description':  'Are we trying to change the voter\'s uploaded photo?',
         },
+        {
+            'name':         'management_api_key',
+            'value':        'string',  # boolean, integer, long, string
+            'description':  'Server-to-server key required to add or remove WeVoteServer staff access rights.',
+        },
+        {
+            'name':         'email_address',
+            'value':        'string',  # boolean, integer, long, string
+            'description':  'Email address used to find a voter account with verified email ownership.',
+        },
+        {
+            'name':         'phone_number',
+            'value':        'string',  # boolean, integer, long, string
+            'description':  'Phone number used to find a voter account with verified SMS ownership.',
+        },
+        {
+            'name':         'create_account',
+            'value':        'boolean',  # boolean, integer, long, string
+            'description':  'If true, create a voter account when no matching voter is found.',
+        },
+        {
+            'name':         'remove_all_staff_access',
+            'value':        'boolean',  # boolean, integer, long, string
+            'description':  'If true, remove all staff access rights supported by this API.',
+        },
+        {
+            'name':         'add_staff_access[]',
+            'value':        'checkboxlist',  # boolean, integer, long, string, checkboxlist
+            'choices':      [
+                'ANALYTICS_ADMIN',
+                'VOTER_MANAGER',
+                'PARTNER_ORGANIZATION',
+                'POLITICAL_DATA_MANAGER',
+                'POLITICAL_DATA_VIEWER',
+                'VERIFIED_VOLUNTEER',
+            ],
+            'description':  'Staff access rights to add. ADMIN is not supported.',
+        },
+        {
+            'name':         'remove_staff_access[]',
+            'value':        'checkboxlist',  # boolean, integer, long, string, checkboxlist
+            'choices':      [
+                'ANALYTICS_ADMIN',
+                'VOTER_MANAGER',
+                'PARTNER_ORGANIZATION',
+                'POLITICAL_DATA_MANAGER',
+                'POLITICAL_DATA_VIEWER',
+                'VERIFIED_VOLUNTEER',
+            ],
+            'description':  'Staff access rights to remove. ADMIN is not supported.',
+        },
     ]
 
     potential_status_codes_list = [
@@ -118,6 +169,18 @@ def voter_update_doc_template_values(url_root):
         {
             'code':         'UPDATED_VOTER',
             'description':  'Successfully saved',
+        },
+        {
+            'code':         'MANAGEMENT_API_KEY_NOT_ACCEPTED',
+            'description':  'The management_api_key did not match the server-side MANAGEMENT_API_KEY.',
+        },
+        {
+            'code':         'INVALID_STAFF_ACCESS',
+            'description':  'One or more requested staff access rights are not supported.',
+        },
+        {
+            'code':         'VOTER_STAFF_ACCESS_UPDATED',
+            'description':  'The requested staff access rights were updated.',
         },
     ]
 
@@ -134,6 +197,13 @@ def voter_update_doc_template_values(url_root):
         'notification_settings_flags': 'False',
         'notification_flag_integer_to_set': 'False',
         'notification_flag_integer_to_unset': 'False',
+        'management_api_key': '',
+        'email_address': '',
+        'phone_number': '',
+        'create_account': 'False',
+        'remove_all_staff_access': 'False',
+        'add_staff_access[]': '',
+        'remove_staff_access[]': '',
     }
 
     # TODO: update api_response with all the variables, such as first_name and last_name

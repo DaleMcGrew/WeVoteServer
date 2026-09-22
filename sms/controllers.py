@@ -4,8 +4,8 @@
 
 from .functions import merge_message_content_with_template
 from .models import GENERIC_SMS_TEMPLATE, SMSPhoneNumber, SMSManager, SMSScheduled, \
-    SENT, SIGN_IN_CODE_SMS_TEMPLATE, TO_BE_PROCESSED, WAITING_FOR_VERIFICATION
-from config.base import get_environment_variable
+    SIGN_IN_CODE_SMS_TEMPLATE, TO_BE_PROCESSED
+from config.environment_variable_functions import get_environment_variable
 import json
 from organization.controllers import transform_web_app_url
 import phonenumbers

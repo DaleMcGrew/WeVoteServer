@@ -11,7 +11,7 @@
 # from django.http import HttpResponse
 # # from background_task import background
 #
-# from config.base import get_environment_variable, get_environment_variable_default
+# from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 # from scheduled_tasks.models import BackgroundTaskOutputManager
 # from scheduled_tasks.task_models import WeTask
 # from scheduled_tasks.task_models_completed import WeTaskCompleted

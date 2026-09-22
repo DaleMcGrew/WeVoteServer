@@ -6,7 +6,7 @@ import json
 import psycopg2
 from django.db import models
 from django.db.models import Q
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from email_outbound.models import EmailManager
 from voter.models import VoterManager
 from wevote_functions.functions import positive_value_exists

@@ -2,87 +2,16 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-import json
 import os
+import re
 
-from django.core.exceptions import ImproperlyConfigured
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default, \
+    get_we_vote_server_root_url, convert_logging_level
+from wevote_functions.functions import positive_value_exists
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Override in local.py for development
 DEBUG = False
-
-# Load JSON-based environment_variables if available
-json_environment_variables = {}
-try:
-    with open("config/environment_variables.json") as f:
-        json_environment_variables = json.loads(f.read())
-except Exception as e:
-    pass
-    # print "base.py: environment_variables.json missing"
-    # Can't use logger in the settings file due to loading sequence
-
-
-def get_environment_variable(var_name, json_environment_vars=json_environment_variables, no_exception=False):
-    """
-    Get the environment variable or return exception. Don't return exception if no_exception is True
-    """
-    try:
-        # Environment variables can be set with this for example: export GOOGLE_CIVIC_API_KEY=<API KEY HERE>
-        val = os.environ[var_name]
-        # handle boolean variables; return bool value when string is "true" or "false"
-        try:
-            if val.lower() == 'true':
-                return True
-            elif val.lower() == 'false':
-                return False
-        except Exception as e:
-            pass
-        return val
-    except KeyError:
-        pass
-
-    if json_environment_vars:
-        if var_name in json_environment_vars:
-            val = json_environment_vars[var_name]
-            # handle boolean variables; return bool value when string is "true" or "false"
-            try:
-                if val.lower() == 'true':
-                    return True
-                elif val.lower() == 'false':
-                    return False
-            except Exception as e:
-                pass
-            return val
-        else:
-            variable_not_found = True
-    else:
-        variable_not_found = True
-
-    if variable_not_found:
-        # Can't use logger in the settings file due to loading sequence
-        error_message = "ERROR: Unable to set the {} variable from os.environ or JSON file".format(var_name)
-        try:
-            import logging
-            logging.error(error_message)
-        except Exception as e:
-            pass
-        if no_exception:
-            return ''
-        else:
-            raise ImproperlyConfigured(error_message)
-    else:
-        return ''
-
-
-def get_environment_variable_default(var_name, default_value):
-    if var_name in json_environment_variables:
-        return json_environment_variables[var_name]
-
-    try:
-        return os.environ[var_name]
-    except KeyError:
-        return default_value
-
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -182,7 +111,7 @@ INSTALLED_APPS = (
     'representative',
     'rest_framework',    # Jan 2019, looks abandoned
     'retrieve_tables',
-    # 'scheduled_tasks',  # April 2024, Disabled for Python 11, could be revived
+    # 'scheduled_tasks', # April 2024, Disabled for Python 11, could be revived
     'search',
     'share',
     'sms',
@@ -197,7 +126,7 @@ INSTALLED_APPS = (
     'wevote_functions',
     'wevote_settings',
     'wevote_social',
-    'wevote_tokens', # Used for token authentication
+    'wevote_tokens',  # Used for token authentication
 )
 
 MIDDLEWARE = [
@@ -268,6 +197,28 @@ USE_TZ = True
 
 # Described here: https://docs.djangoproject.com/en/1.8/topics/auth/customizing/#a-full-example
 AUTH_USER_MODEL = 'voter.Voter'
+
+# Password rules, applied wherever a password is set, including the password reset flow.
+# See admin_tools/views_password_reset.py
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 12},
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# How long a password reset link stays usable. Django's default is 3 days, which is a long time
+# for a link that can take over a staff account.
+PASSWORD_RESET_TIMEOUT = 60 * 60  # one hour
 
 # Static files (CSS, JavaScript, Images) Django 5+
 STATIC_URL = 'static/'      # April 2024, don't think this is correct, but can't run without it
@@ -385,14 +336,51 @@ SOCIAL_AUTH_FACEBOOK_SCOPE = ['email']  # , 'user_friends'
 SOCIAL_AUTH_TWITTER_KEY = get_environment_variable("SOCIAL_AUTH_TWITTER_KEY")
 SOCIAL_AUTH_TWITTER_SECRET = get_environment_variable("SOCIAL_AUTH_TWITTER_SECRET")
 
-SOCIAL_AUTH_LOGIN_ERROR_URL = get_environment_variable("SOCIAL_AUTH_LOGIN_ERROR_URL")
-SOCIAL_AUTH_LOGIN_REDIRECT_URL = get_environment_variable("SOCIAL_AUTH_LOGIN_REDIRECT_URL")
-SOCIAL_AUTH_LOGIN_URL = get_environment_variable("SOCIAL_AUTH_LOGIN_URL")
+
+def convert_to_https_dev_url_if_configured(env_var_value):
+    try:
+        # Production runs in HTTP and takes care of itself, but if running in developer mode, and the default value of a
+        # variable (probably from environment_variables-template.json) in http:// is pulled in, this converts them to
+        # https if we are running in https mode, (which is the default).
+        RUNNING_IN_DEVELOPER_MODE = get_environment_variable_default("RUNNING_IN_DEVELOPER_MODE", False)
+        if RUNNING_IN_DEVELOPER_MODE:
+            protocol = get_environment_variable('WE_VOTE_SERVER_PROTOCOL', 'https')
+            if protocol == 'https' and not env_var_value.startswith('https'):
+                pattern = r"http.*?0+(.*?)$"
+                match = re.search(pattern, env_var_value)
+                if match:
+                    path = match.group(1)
+                    url_new = f"{get_we_vote_server_root_url()}{path}"
+                    # print('url_new', url_new)
+                    return url_new
+                else:
+                    print('Error parsing ' + env_var_value)
+                    return env_var_value
+    except Exception as e:
+        print('Error in convert_to_https_dev_url_if_configured: ' + str(e))
+    # print('HTTP Passing on  ' + env_var_value)
+    return env_var_value
+
+
+os.environ["WE_VOTE_SERVER_ROOT_URL"] = get_we_vote_server_root_url()
+
+SOCIAL_AUTH_LOGIN_ERROR_URL = \
+    convert_to_https_dev_url_if_configured(get_environment_variable("SOCIAL_AUTH_LOGIN_ERROR_URL"))
+os.environ["SOCIAL_AUTH_LOGIN_ERROR_URL"] = SOCIAL_AUTH_LOGIN_ERROR_URL
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = \
+    convert_to_https_dev_url_if_configured(get_environment_variable("SOCIAL_AUTH_LOGIN_REDIRECT_URL"))
+os.environ["SOCIAL_AUTH_LOGIN_REDIRECT_URL"] = SOCIAL_AUTH_LOGIN_REDIRECT_URL
+SOCIAL_AUTH_LOGIN_URL = convert_to_https_dev_url_if_configured(get_environment_variable("SOCIAL_AUTH_LOGIN_URL"))
+os.environ["SOCIAL_AUTH_LOGIN_URL"] = SOCIAL_AUTH_LOGIN_URL
 SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
 
-LOGIN_REDIRECT_URL = get_environment_variable("LOGIN_REDIRECT_URL")
-LOGIN_ERROR_URL = get_environment_variable("LOGIN_ERROR_URL")
-LOGIN_URL = get_environment_variable("LOGIN_URL")
+LOGIN_REDIRECT_URL = convert_to_https_dev_url_if_configured(get_environment_variable("LOGIN_REDIRECT_URL"))
+os.environ["LOGIN_REDIRECT_URL"] = LOGIN_REDIRECT_URL
+LOGIN_ERROR_URL = convert_to_https_dev_url_if_configured(get_environment_variable("LOGIN_ERROR_URL"))
+os.environ["LOGIN_ERROR_URL"] = LOGIN_ERROR_URL
+LOGIN_URL = convert_to_https_dev_url_if_configured(get_environment_variable("LOGIN_URL"))
+os.environ["LOGIN_URL"] = LOGIN_URL
+
 
 SOCIAL_AUTH_URL_NAMESPACE = 'social'
 
@@ -423,34 +411,17 @@ SOCIAL_AUTH_FACEBOOK_EXTRA_DATA = [
 
 EMAIL_BACKEND = get_environment_variable("EMAIL_BACKEND")
 SENDGRID_API_KEY = get_environment_variable("SENDGRID_API_KEY")
+SENDGRID_SANDBOX_MODE = \
+    positive_value_exists(get_environment_variable("SENDGRID_SANDBOX_MODE", no_exception=True))
+SENDGRID_SANDBOX_MODE_IN_DEBUG = \
+    positive_value_exists(get_environment_variable("SENDGRID_SANDBOX_MODE_IN_DEBUG", no_exception=True))
+SYSTEM_SENDER_EMAIL_ADDRESS = get_environment_variable("SYSTEM_SENDER_EMAIL_ADDRESS", no_exception=True)
 # ADMIN_EMAIL_ADDRESSES = get_environment_variable("ADMIN_EMAIL_ADDRESSES")
 # # Expecting a space delimited string of emails like "jane@wevote.us" or "jane@wevote.us bill@wevote.us"
 # ADMIN_EMAIL_ADDRESSES_ARRAY = []
 # if ADMIN_EMAIL_ADDRESSES:
 #     # ADMINS is used by lib/python3.6/lib/site-packages/django/core/mail/INIT.py
 #     ADMINS = [[email.split('@')[0], email] for email in ADMIN_EMAIL_ADDRESSES.split()]
-
-
-# ########## Logging configurations ###########
-#   LOG_STREAM          Boolean     True will turn on stream handler and write to command line.
-#   LOG_FILE            String      Path to file to write to. Make sure executing
-#                                   user has permissions.
-#   LOG_STREAM_LEVEL    Integer     Log level of stream handler: CRITICAL, ERROR, INFO, WARN, DEBUG
-#   LOG_FILE_LEVEL      Integer     Log level of file handler: CRITICAL, ERROR, INFO, WARN, DEBUG
-#   NOTE: These should be set in the environment_variables.json file
-def convert_logging_level(log_level_text_descriptor):
-    import logging
-    # Assume error checking has been done and that the string is a valid logging level
-    if log_level_text_descriptor == "CRITICAL":
-        return logging.CRITICAL
-    if log_level_text_descriptor == "ERROR":
-        return logging.ERROR
-    if log_level_text_descriptor == "INFO":
-        return logging.INFO
-    if log_level_text_descriptor == "WARN":
-        return logging.WARN
-    if log_level_text_descriptor == "DEBUG":
-        return logging.DEBUG
 
 
 def lookup_logging_level(log_level_text_descriptor, log_level_default="ERROR"):

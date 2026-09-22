@@ -7,7 +7,7 @@ Run this script to test the core functionality without needing PostgreSQL runnin
 import sys
 import os
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, MagicMock
 
 # Add the project directory to the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,12 +21,11 @@ sys.modules['wevote_functions'] = MagicMock()
 sys.modules['wevote_functions.functions'] = MagicMock()
 
 from datetime import datetime
-import pandas as pd
 
 # Import the modules we're testing
 from import_export_jira.controllers import (
     format_date, sanitize_jira_label, JiraSubTask, JiraStory, JiraEpic,
-    retry_on_jira_error, MAX_RETRIES
+    retry_on_jira_error
 )
 from jira.exceptions import JIRAError
 

@@ -1,7 +1,7 @@
 # apis_v1/views/views_facebook.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 from import_export_facebook.controllers import facebook_disconnect_for_api, \
     voter_facebook_save_to_current_account_for_api, facebook_friends_action_for_api

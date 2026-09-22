@@ -63,6 +63,7 @@ Test with this command: Before testing make sure to Set up Environment to avoid 
     
     (WeVoteServer3.11) $ python manage.py makemigrations
     (WeVoteServer3.11) $ python manage.py migrate
+    (WeVoteServer3.11) $ python manage.py createcachetable
     (WeVoteServer3.11) $ python3 manage.py runserver
 
 

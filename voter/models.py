@@ -19,7 +19,7 @@ from geopy import get_geocoder_for_service
 
 import wevote_functions.admin
 from apple.models import AppleUser
-from config.base import get_environment_variable, get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from exception.models import handle_exception, handle_record_found_more_than_one_exception, \
     handle_record_not_saved_exception
 from import_export_facebook.models import FacebookManager
@@ -71,6 +71,9 @@ NOTIFICATION_LOGIN_EMAIL = 16384  # Email: "Show me email login requests" - logi
 NOTIFICATION_LOGIN_SMS = 32768  # SMS: "Show me SMS login requests"
 NOTIFICATION_FRIEND_MESSAGES_EMAIL = 65536  # Email: "Show me messages from friends" - friendmessage
 NOTIFICATION_FRIEND_MESSAGES_SMS = 131072  # SMS: "Show me messages from friends"
+NOTIFICATION_WEVOTE_VOTING_REMINDER_EMAIL = 262144  # Email: "Remind me to vote on We Vote"
+NOTIFICATION_WEVOTE_POLITICIAN_CAMPAIGN_EMAIL = 524288  # Email: "As a politician, would you like to update your info?"
+# NEXT BITS AVAILABLE: 1048576, 2097152, 4194304, 8388608
 
 # Default to set for new voters
 NOTIFICATION_SETTINGS_FLAGS_DEFAULT = \
@@ -4913,7 +4916,7 @@ class VoterAddressManager(models.Manager):
                 success = True
                 status += "UPDATE_OR_CREATE_SUCCESSFUL "
             except Exception as e:
-                status += f'CRASHING_GOOGLE_GEOCODER: '
+                status += 'CRASHING_GOOGLE_GEOCODER: '
 
             except VoterAddress.MultipleObjectsReturned as e:
                 handle_record_found_more_than_one_exception(e, logger=logger)

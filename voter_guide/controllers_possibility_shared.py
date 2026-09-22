@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 import copy
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from candidate.models import CandidateListManager, CandidateManager
 from office.models import ContestOfficeManager
 import wevote_functions.admin

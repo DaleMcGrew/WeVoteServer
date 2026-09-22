@@ -231,40 +231,8 @@
   </div>
 
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const searchInput = document.getElementById('search-recipients');
-
-  // Search — scoped to active tab only
-  searchInput.addEventListener('input', function(e) {
-    filterCampaigns(e.target.value.toLowerCase());
-  });
-
-  function filterCampaigns(searchTerm) {
-    const activeTab = document.querySelector('.tab-content.active');
-    if (!activeTab) return;
-    activeTab.querySelectorAll('.recipient-row').forEach(row => {
-      const name = row.dataset.name || '';
-      row.style.display = name.includes(searchTerm) ? '' : 'none';
-    });
-  }
-
-  // Dropdown (kebab menu on each row)
-  document.querySelectorAll('.js-dd').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const wrap = btn.closest('.wv-dropdown');
-      document.querySelectorAll('.wv-dropdown').forEach(d => {
-        if (d !== wrap) d.classList.remove('open');
-      });
-      wrap.classList.toggle('open');
-    });
-  });
-
-  document.addEventListener('click', () => {
-    document.querySelectorAll('.wv-dropdown').forEach(d => d.classList.remove('open'));
-  });
-});
-</script>
+{# Search and kebab-dropdown behavior is wired up via event delegation in #}
+{# email_outbound/js/_audience_builder_drawer_js.html, because this preview HTML is #}
+{# injected into the drawer with innerHTML and inline scripts do not execute. #}
 
 {% endblock %}

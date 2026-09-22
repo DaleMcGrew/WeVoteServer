@@ -7,7 +7,7 @@ import json
 import requests
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from exception.models import handle_exception
 from organization.controllers import transform_web_app_url
 from organization.models import OrganizationManager, INDIVIDUAL

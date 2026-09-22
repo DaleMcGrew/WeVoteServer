@@ -4,7 +4,7 @@
 
 from django.db import models
 from twilio.rest import Client
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from wevote_functions.functions import generate_random_string, positive_value_exists
 from wevote_settings.models import fetch_next_we_vote_id_sms_integer, fetch_site_unique_id_prefix
 

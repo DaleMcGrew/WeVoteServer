@@ -1,7 +1,6 @@
 # import_export_vertex/controllers.py
 # Brought to you by We Vote. Be good.
 import json
-import urllib.request
 from socket import timeout
 from time import time
 import os
@@ -9,7 +8,7 @@ import vertexai
 from google.oauth2 import service_account
 from vertexai.language_models import TextGenerationModel
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from wevote_functions.functions import positive_value_exists
 from wevote_functions.utils import scrape_url
 

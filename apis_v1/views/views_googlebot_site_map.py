@@ -8,7 +8,7 @@ import requests
 from django.http import HttpResponse
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from googlebot_site_map.views_admin import log_request, get_googlebot_map_file_body, get_googlebot_map_xml_body
 from politician.models import Politician
 from wevote_functions.functions import positive_value_exists

@@ -23,6 +23,7 @@ from django.urls import include, re_path
 from django.contrib.auth import views as auth_views
 
 from admin_tools.views import login_we_vote, logout_we_vote
+from admin_tools.views_password_reset import WeVotePasswordResetConfirmView, WeVotePasswordResetView
 from config import startup, views
 
 urlpatterns = [
@@ -124,6 +125,16 @@ urlpatterns = [
     re_path(r'^logout/$', auth_views.auth_logout, name="logout"),
     re_path(r'^login_we_vote/$', login_we_vote, name="login_we_vote"),
     re_path(r'^logout_we_vote/$', logout_we_vote, name="logout_we_vote"),
+    # Password reset for staff, developers and volunteers. There is deliberately no sign up here.
+    # See admin_tools/views_password_reset.py
+    re_path(r'^password_reset/$',
+            WeVotePasswordResetView.as_view(), name="password_reset"),
+    re_path(r'^password_reset/sent/$',
+            auth_views.PasswordResetDoneView.as_view(
+                template_name='registration/password_reset_done.html'),
+            name="password_reset_done"),
+    re_path(r'^password_reset/confirm/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$',
+            WeVotePasswordResetConfirmView.as_view(), name="password_reset_confirm"),
     # This line provides the following patterns:
     # login, logout, password_reset, password_reset_done, password_reset_confirm, password_reset_complete
     re_path('', include(('social_django.urls', 'social'), namespace="social")),

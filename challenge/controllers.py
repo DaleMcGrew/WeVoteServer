@@ -4,21 +4,19 @@
 
 from .controllers_participant import generate_challenge_participant_dict_from_challenge_participant_object
 from .models import Challenge, ChallengeListedByOrganization, ChallengeManager, ChallengeNewsItem, ChallengeOwner, \
-    ChallengePolitician, ChallengeParticipant, CHALLENGE_UNIQUE_ATTRIBUTES_TO_BE_CLEARED, CHALLENGE_UNIQUE_IDENTIFIERS, \
+    ChallengeParticipant, CHALLENGE_UNIQUE_ATTRIBUTES_TO_BE_CLEARED, CHALLENGE_UNIQUE_IDENTIFIERS, \
     FINAL_ELECTION_DATE_COOL_DOWN
 import base64
 import copy
-from django.contrib import messages
-from django.db.models import Q
 from image.controllers import cache_image_object_to_aws, create_resized_images
 import json
 from io import BytesIO
 from PIL import Image, ImageOps
 import re
-from voter.models import Voter, VoterManager
+from voter.models import VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
-from wevote_functions.functions_date import generate_date_as_integer, get_current_date_as_integer, DATE_FORMAT_YMD_HMS
+from wevote_functions.functions_date import generate_date_as_integer, DATE_FORMAT_YMD_HMS
 
 logger = wevote_functions.admin.get_logger(__name__)
 

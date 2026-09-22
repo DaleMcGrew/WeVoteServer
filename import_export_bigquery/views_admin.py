@@ -6,26 +6,15 @@
 from admin_tools.views import redirect_to_sign_in_page
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.timezone import localtime, now
-from django.db.models import Q
-from django.db.models.functions import Length
-from office_held.models import OfficeHeld, OfficeHeldManager
-from election.models import Election
-from politician.models import Politician, PoliticianManager
 from voter.models import voter_has_authority
 import wevote_functions.admin
-from wevote_functions.functions_date import generate_localized_datetime_from_obj, DATE_FORMAT_YMD_HMS
-from wevote_settings.constants import IS_BATTLEGROUND_YEARS_AVAILABLE, OFFICE_HELD_YEARS_AVAILABLE
+from wevote_settings.constants import OFFICE_HELD_YEARS_AVAILABLE
 
 
-from config.base import get_environment_variable
-from django.http import HttpResponse, HttpResponseRedirect
-from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
 from django.shortcuts import render
-import json
-import requests
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP
 from .models import BigQueryEvent

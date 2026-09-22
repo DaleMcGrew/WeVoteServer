@@ -17,9 +17,15 @@ def obfuscate_email(email):
     elif len(local_part) <= 4:
         # For short local parts, keep the first two characters and obfuscate the rest
         obfuscated_local_part = local_part[:2] + '*' * (len(local_part) - 2)
+    elif len(local_part) <= 5:
+        # For short local parts, keep the first two characters, the last character, and obfuscate the rest
+        obfuscated_local_part = local_part[:2] + ('*' * (len(local_part) - 3)) + local_part[-1:]
     else:
-        # For longer local parts, keep the first three characters, last character and obfuscate the rest
-        obfuscated_local_part = local_part[:3] + '*' * (len(local_part) - 4) + local_part[-1]
+        # For longer local parts, keep the first three characters, last two characters and obfuscate the rest
+        # Also remove additional '*' characters if there are more than a sequence of 5.
+        # So "ver*************rt" would become "ver*****rt"
+        number_of_stars = min(5, max(0, len(local_part) - 5))
+        obfuscated_local_part = local_part[:3] + ('*' * number_of_stars) + local_part[-2:]
 
     domain_parts = domain.split('.')
     domain_name = domain_parts[0]
@@ -28,9 +34,13 @@ def obfuscate_email(email):
     if len(domain_name) <= 3:
         # For short domain names, keep the first character and obfuscate the rest
         obfuscated_domain_name = domain_name[0] + '*' * (len(domain_name) - 1)
+    if len(domain_name) <= 5:
+        # keep the first two characters, the last character, and obfuscate the rest
+        obfuscated_domain_name = domain_name[:2] + ('*' * (len(domain_name) - 3)) + domain_name[-1]
     else:
-        # For longer domain names, keep the first and last character
-        obfuscated_domain_name = domain_name[0] + '*' * (len(domain_name) - 2) + domain_name[-1]
+        # For longer domain names, keep the first characters and last two character
+        number_of_stars = min(5, max(0, len(domain_name) - 5))
+        obfuscated_domain_name = domain_name[:3] + ('*' * number_of_stars) + domain_name[-2:]
 
     return f"{obfuscated_local_part}@{obfuscated_domain_name}.{top_level_domain}"
 

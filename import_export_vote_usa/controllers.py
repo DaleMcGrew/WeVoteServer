@@ -5,14 +5,13 @@
 from .models import VoteUSAApiCounterManager
 from ballot.models import BallotReturnedManager
 from candidate.models import PROFILE_IMAGE_TYPE_UNKNOWN, PROFILE_IMAGE_TYPE_VOTE_USA
-from config.base import get_environment_variable
-from exception.models import handle_exception, handle_record_found_more_than_one_exception
+from config.environment_variable_functions import get_environment_variable
+from exception.models import handle_exception
 from image.controllers import cache_master_and_resized_image, IMAGE_SOURCE_VOTE_USA
 from import_export_batches.controllers_vote_usa import store_vote_usa_json_response_to_import_batch_system
 import json
 from polling_location.models import KIND_OF_LOG_ENTRY_ADDRESS_PARSE_ERROR, KIND_OF_LOG_ENTRY_API_END_POINT_CRASH, \
-    KIND_OF_LOG_ENTRY_BALLOT_RECEIVED, KIND_OF_LOG_ENTRY_NO_CONTESTS, KIND_OF_LOG_ENTRY_NO_BALLOT_JSON, \
-    PollingLocationManager
+    KIND_OF_LOG_ENTRY_BALLOT_RECEIVED, KIND_OF_LOG_ENTRY_NO_CONTESTS, PollingLocationManager
 import requests
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
@@ -25,6 +24,7 @@ VOTE_USA_CANDIDATE_QUERY_URL = "https://vote-usa.org/api/v1.asmx/candidatesQuery
 VOTE_USA_ELECTION_QUERY_URL = "https://vote-usa.org/api/v1.asmx/electionQuery"
 VOTE_USA_VOTER_INFO_URL = "https://vote-usa.org/api/v1.asmx/voterInfoQuery"
 VOTE_USA_VOTER_INFO_QUERY_TYPE = "voterinfo"
+VOTE_USA_CANDIDATE_QUERY_TYPE = "candidatequery"
 
 HEADERS_FOR_VOTE_USA_API_CALL = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -96,11 +96,14 @@ def retrieve_from_vote_usa_api_election_query():
         }
         return results
 
+    include_pre_release_elections = 'Y'
     response = requests.get(
         VOTE_USA_ELECTION_QUERY_URL,
         headers=HEADERS_FOR_VOTE_USA_API_CALL,
         params={
             "accessKey": VOTE_USA_API_KEY,
+            "preRelease": include_pre_release_elections,
+            "seeAll": include_pre_release_elections,
         })
 
     # Use API call counter to track the number of queries we are doing each day
@@ -706,6 +709,7 @@ def store_results_from_vote_usa_api_election_query(structured_json):
             election_day_text=one_election['electionDay'],
             election_name=one_election['name'],
             election_name_do_not_override=True,
+            include_in_list_for_voters=True,
             state_code=one_election['state'],
             use_vote_usa_as_data_source=True,
             vote_usa_election_id=election_id_base,

@@ -12,7 +12,7 @@ import pytz
 import stripe
 
 from campaign.models import CampaignXManager
-from config.base import get_environment_variable, get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from stripe_donations.models import StripeManager, StripeDispute
 from voter.models import VoterManager
 from wevote_functions.admin import get_logger

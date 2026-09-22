@@ -8,9 +8,8 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
-from voter.models import retrieve_voter_authority, voter_has_authority, VoterManager
-from wevote_functions.functions import convert_to_int, extract_twitter_handle_from_text_string, positive_value_exists, \
-    STATE_CODE_MAP
+from voter.models import voter_has_authority, VoterManager
+from wevote_functions.functions import positive_value_exists
 import wevote_functions.admin
 
 logger = wevote_functions.admin.get_logger(__name__)

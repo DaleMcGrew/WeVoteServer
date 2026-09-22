@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 from datetime import datetime
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from office_held.models import OfficeHeldManager
 from wevote_functions.functions import positive_value_exists, process_request_from_master
 

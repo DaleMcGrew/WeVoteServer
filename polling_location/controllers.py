@@ -3,13 +3,10 @@
 # -*- coding: UTF-8 -*-
 
 from .models import PollingLocationManager
-from config.base import get_environment_variable
-from django.contrib import messages
+from config.environment_variable_functions import get_environment_variable
 import glob
-import json
-import requests
 import wevote_functions.admin
-from wevote_functions.functions import positive_value_exists, process_request_from_master
+from wevote_functions.functions import positive_value_exists
 import xml.etree.ElementTree as MyElementTree
 
 logger = wevote_functions.admin.get_logger(__name__)

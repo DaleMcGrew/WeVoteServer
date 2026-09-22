@@ -95,7 +95,12 @@ class WeVoteSettingsManager(models.Manager):
     def fetch_setting_results(setting_name, read_only=True):
         status = ""
         success = True
-        setting_name = setting_name.strip()
+        try:
+            if positive_value_exists(setting_name):
+                setting_name = setting_name.strip()
+        except Exception as e:
+            setting_name = ''
+            status += "FETCH_SETTING_RESULTS_SETTING_NAME_NOT_PROVIDED: " + str(e) + ' '
         try:
             if setting_name != '':
                 if positive_value_exists(read_only):
@@ -258,7 +263,10 @@ def fetch_batch_process_system_on():
 
 def fetch_batch_process_system_on_by_process_name(batch_process_name=''):
     we_vote_settings_manager = WeVoteSettingsManager()
-    results = we_vote_settings_manager.fetch_setting_results(batch_process_name, read_only=True)
+    try:
+        results = we_vote_settings_manager.fetch_setting_results(batch_process_name, read_only=True)
+    except Exception as e:
+        return False
     if results['success']:
         if results['we_vote_setting_found']:
             return results['setting_value']
@@ -593,14 +601,14 @@ class RemoteRequestHistoryManager(models.Manager):
             status=''):
         """
         Create a new entry for twitter link search request in the RemoteRequestHistory
-        :param kind_of_action: 
-        :param google_civic_election_id: 
-        :param candidate_campaign_we_vote_id: 
-        :param organization_we_vote_id: 
+        :param kind_of_action:
+        :param google_civic_election_id:
+        :param candidate_campaign_we_vote_id:
+        :param organization_we_vote_id:
         :param representative_we_vote_id:
         :param number_of_results:
-        :param status: 
-        :return: 
+        :param status:
+        :return:
         """
 
         success = False
