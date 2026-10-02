@@ -5,7 +5,7 @@
 from django.urls import re_path
 
 from . import views_admin
-
+app_name = 'measure'
 urlpatterns = [
     # views_admin
     re_path(r'^$', views_admin.measure_list_view, name='measure_list',),
@@ -13,6 +13,10 @@ urlpatterns = [
         views_admin.compare_two_measures_for_merge_view, name='compare_two_measures_for_merge'),
     re_path(r'^duplicate_measures/$',
         views_admin.find_and_merge_duplicate_measures_view, name='find_and_merge_duplicate_measures'),
+    re_path(r'^duplicates_list/$', views_admin.measure_duplicates_list_view, name='duplicates_list'),
+    re_path(r'^not_duplicates/$', views_admin.measures_not_duplicates_view, name='not_duplicates'),
+    re_path(r'^delete_all_duplicates/$',
+            views_admin.measure_delete_all_duplicates_view, name='delete_all_duplicates'),
     re_path(r'^edit_process/$', views_admin.measure_edit_process_view, name='measure_edit_process'),
     # re_path(r'^export/', views_admin.MeasuresSyncOutView.as_view(), name='measures_export'),
     re_path(r'^import/$',

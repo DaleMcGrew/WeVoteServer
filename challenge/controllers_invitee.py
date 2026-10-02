@@ -5,12 +5,12 @@
 from .models import Challenge, ChallengeManager, ChallengeInvitee
 from django.contrib import messages
 from django.db.models import Q
-from position.models import OPPOSE, SUPPORT
+from position.models import SUPPORT
 from share.models import ShareManager
-from voter.models import Voter, VoterManager
+from voter.models import VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import generate_random_string, positive_value_exists
-from wevote_functions.functions_date import generate_date_as_integer, get_current_date_as_integer, DATE_FORMAT_YMD_HMS
+from wevote_functions.functions_date import get_current_date_as_integer, DATE_FORMAT_YMD_HMS
 
 logger = wevote_functions.admin.get_logger(__name__)
 

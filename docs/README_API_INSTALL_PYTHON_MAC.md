@@ -81,6 +81,7 @@ Test with these commands:
     
     (WeVoteServer) $ python manage.py makemigrations
     (WeVoteServer) $ python manage.py migrate
+    (WeVoteServer) $ python manage.py createcachetable
     (WeVoteServer) $ python manage.py runserver
     
 Note if you get a **Is the server running locally and accepting connections on Unix domain socket "/tmp/.s.PGSQL.5433"?**

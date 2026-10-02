@@ -12,7 +12,7 @@ from candidate.models import CandidateManager, PROFILE_IMAGE_TYPE_BALLOTPEDIA, P
     PROFILE_IMAGE_TYPE_LINKEDIN, \
     PROFILE_IMAGE_TYPE_TWITTER, PROFILE_IMAGE_TYPE_UNKNOWN, \
     PROFILE_IMAGE_TYPE_UPLOADED, PROFILE_IMAGE_TYPE_VOTE_USA, PROFILE_IMAGE_TYPE_WIKIPEDIA
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from import_export_facebook.models import FacebookManager
 from issue.models import IssueManager
 from organization.models import OrganizationManager
@@ -1100,7 +1100,7 @@ def cache_image_locally(
         if not image_stored_to_aws:
             error_results = {
                 'success':                      success,
-                'status':                       status + " IMAGE_NOT_STORED_TO_AWS ",
+                'status':                       status + " IMAGE_NOT_STORED_TO_AWS-CACHE_IMAGE_LOCALLY ",
                 'we_vote_image_created':        we_vote_image_created,
                 'image_url_valid':              image_url_valid,
                 'image_stored_from_source':     image_stored_from_source,
@@ -1109,7 +1109,7 @@ def cache_image_locally(
                 'image_url_https':              '',
             }
             delete_we_vote_image_results = we_vote_image_manager.delete_we_vote_image(we_vote_image)
-            log_and_time_cache_action(False, time0, 'cache_image_locally -- IMAGE_NOT_STORED_TO_AWS problem')
+            log_and_time_cache_action(False, time0, 'cache_image_locally -- IMAGE_NOT_STORED_TO_AWS-CACHE_IMAGE_LOCALLY problem')
             return error_results
         we_vote_image_url = "https://{bucket_name}.s3.amazonaws.com/{we_vote_image_file_location}" \
                             "".format(bucket_name=AWS_STORAGE_BUCKET_NAME,
@@ -2161,7 +2161,7 @@ def cache_image_object_to_aws(
     if not image_stored_to_aws:
         error_results = {
             'success':                      success,
-            'status':                       status + " IMAGE_NOT_STORED_TO_AWS ",
+            'status':                       status + " IMAGE_NOT_STORED_TO_AWS-CACHE_IMAGE_OBJECT ",
             'we_vote_image_created':        we_vote_image_created,
             'image_url_valid':              image_url_valid,
             'image_stored_from_source':     image_stored_from_source,
@@ -2415,7 +2415,7 @@ def cache_voter_master_uploaded_image(
     if not image_stored_to_aws:
         error_results = {
             'success':                      success,
-            'status':                       status + " IMAGE_NOT_STORED_TO_AWS ",
+            'status':                       status + " IMAGE_NOT_STORED_TO_AWS-CACHE_VOTER_MASTER ",
             'we_vote_image_created':        we_vote_image_created,
             'image_url_valid':              image_url_valid,
             'image_stored_from_source':     image_stored_from_source,
@@ -3440,7 +3440,7 @@ def cache_resized_image_locally(
             we_vote_image_file_location=we_vote_image_file_location,
             image_format=image_format_filtered)
         if not image_stored_to_aws:
-            status += " IMAGE_NOT_STORED_TO_AWS "
+            status += " IMAGE_NOT_STORED_TO_AWS-CACHE_RESIZED_IMAGE "
             error_results = {
                 'success':                      success,
                 'status':                       status,
@@ -4539,7 +4539,7 @@ def cache_issue_image_master(google_civic_election_id, issue_image_file, issue_w
     if not image_stored_to_aws:
         error_results = {
             'success':                      success,
-            'status':                       status + " IMAGE_NOT_STORED_TO_AWS",
+            'status':                       status + " IMAGE_NOT_STORED_TO_AWS-CACHE_ISSUE_IMAGE_MASTER",
             'we_vote_image_created':        we_vote_image_created,
             'image_url_valid':              image_url_valid,
             'image_stored_from_source':     image_stored_from_source,
@@ -4757,7 +4757,7 @@ def cache_organization_sharing_image(
     if not image_stored_to_aws:
         error_results = {
             'success':                      success,
-            'status':                       status + " IMAGE_NOT_STORED_TO_AWS ",
+            'status':                       status + " IMAGE_NOT_STORED_TO_AWS-CACHE_ORGANIZATION_SHARING_IMAGE ",
             'we_vote_image_created':        we_vote_image_created,
             'image_url_valid':              image_url_valid,
             'image_stored_from_source':     image_stored_from_source,

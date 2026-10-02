@@ -2,9 +2,9 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 from representative.controllers import representatives_query_for_api
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, positive_value_exists
+from wevote_functions.functions import convert_to_int
 
 logger = wevote_functions.admin.get_logger(__name__)
 

@@ -8,7 +8,7 @@ from django.db.models import F, Q
 from django.utils.timezone import localtime, now
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from email_outbound.controllers import schedule_email_with_email_outbound_description, schedule_verification_email
 from email_outbound.models import EmailAddress, EmailManager, EMAIL_SECRET_KEY_LENGTH, \
     FRIEND_ACCEPTED_INVITATION_TEMPLATE, \
@@ -78,7 +78,7 @@ def delete_friend_invitations_for_voter(voter_to_delete_we_vote_id):
         friend_invitation_entries_not_deleted += 1
 
     # RECIPIENT entries
-    # FROM RECIPIENT: Invitations sent TO the voter_to_delete from others            
+    # FROM RECIPIENT: Invitations sent TO the voter_to_delete from others
     try:
         number_deleted, details = FriendInvitationVoterLink.objects\
             .filter(recipient_voter_we_vote_id=voter_to_delete_we_vote_id, )\

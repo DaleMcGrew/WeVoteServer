@@ -4,7 +4,7 @@
 from ballot.controllers import all_ballot_items_retrieve_for_api, ballot_item_highlights_retrieve_for_api, \
     ballot_item_options_retrieve_for_api, ballot_items_search_retrieve_for_api
 from candidate.controllers import candidate_retrieve_for_api
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 import json
 from measure.controllers import measure_retrieve_for_api

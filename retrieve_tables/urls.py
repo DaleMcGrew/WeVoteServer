@@ -5,7 +5,6 @@
 from django.urls import re_path
 
 from retrieve_tables.controllers_local import retrieve_sql_files_from_master_server, get_local_fast_load_status
-from retrieve_tables.controllers_master import fast_load_status_retrieve
 
 urlpatterns = [
     # views_admin

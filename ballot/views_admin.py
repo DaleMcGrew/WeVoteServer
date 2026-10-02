@@ -7,7 +7,7 @@ from .controllers import ballot_items_import_from_master_server, ballot_returned
 from .models import BallotItem, BallotItemListManager, BallotItemManager, BallotReturned, BallotReturnedManager
 from admin_tools.views import redirect_to_sign_in_page
 from candidate.models import CandidateListManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages

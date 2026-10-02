@@ -3,14 +3,12 @@
 # -*- coding: UTF-8 -*-
 
 import boto3
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 import logging
 import requests
 from wevote_functions.functions import positive_value_exists
 
-AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
 AWS_HOSTED_ZONE_ID = get_environment_variable("AWS_HOSTED_ZONE_ID")
-AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
 AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
 FASTLY_API_HOSTNAME = get_environment_variable("FASTLY_API_HOSTNAME")
 FASTLY_API_SERVICE_ID = get_environment_variable("FASTLY_API_SERVICE_ID")
@@ -30,9 +28,9 @@ def get_current_fastly_config_version():
         logging.warning("Unable to get list of versions: %s", response.content)
         return None
     versions = response.json()
-    for v in versions:
-        if v['active'] == True:
-            return v['number']
+    for version in versions:
+        if version['active']:
+            return version['number']
     return None
 
 
@@ -215,13 +213,25 @@ def activate_new_fastly_config_version(new_fastly_version_number):
     return json_results
 
 
+def route53_record_exists(domain_name):
+    client = boto3.client('route53')
+    response = client.list_resource_record_sets(
+        HostedZoneId=AWS_HOSTED_ZONE_ID,
+        StartRecordName=domain_name,
+        MaxItems='1',
+    )
+    for record in response.get('ResourceRecordSets', []):
+        if record['Name'].rstrip('.') == domain_name:
+            return True
+    return False
+
+
 def route53_request(new_domain, action):
     status = ""
     success = True
     status += "ADDING_ROUTE53_FOR_DOMAIN: " + str(new_domain) + " " + str(action) + " "
     try:
-        client = boto3.client('route53',
-                              aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+        client = boto3.client('route53')
         response = client.change_resource_record_sets(
             HostedZoneId=AWS_HOSTED_ZONE_ID,
             ChangeBatch={
@@ -257,6 +267,9 @@ def route53_request(new_domain, action):
 def add_subdomain_route53_record(new_subdomain):
     new_full_domain = "{new_subdomain}.wevote.us".format(new_subdomain=new_subdomain)
     logging.info("Adding DNS record for domain [%s]", new_full_domain)
+    if route53_record_exists(new_full_domain):
+        logging.warning("DNS record already exists for domain [%s]", new_full_domain)
+        return {'status': "ROUTE53_RECORD_ALREADY_EXISTS ", 'success': False}
     results = route53_request(new_full_domain, 'CREATE')
     logging.info(results['status'])
     json_status = {
@@ -349,10 +362,10 @@ def delete_wevote_subdomain_from_fastly(subdomain):
         logging.error("Unable to get current version")
         return
     new_version = clone_current_fastly_config_version(current_version)
-    if del_fastly_domain(new_version, subdomain) != True:
+    if not del_fastly_domain(new_version, subdomain):
         logging.error("Unable to remove domain from service")
         return
-    if activate_new_fastly_config_version(new_version) != True:
+    if not activate_new_fastly_config_version(new_version):
         logging.error("Unable to activate new version of service")
         return
     logging.info("Domain %s removed from Fastly service", subdomain)

@@ -403,6 +403,10 @@ On the left pane "Object Explorer" right click on "Databases" and add the "WeVot
 3. Run 'migrate'.  Django "migrate is responsible for applying and un-applying migrations."
 
     `(venv3.13.2) $ python manage.py migrate`
+
+4. Run 'createcachetable'.  Django "createcachetable" is responsible for applying a local cache table.
+
+     `(venv3.13.2) $ python manage.py createcachetable`
  
 ## Set up a PyCharm run configuration
 

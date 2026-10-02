@@ -23,7 +23,7 @@ import json
 import firebase_admin
 from firebase_admin import messaging, credentials
 import os
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 
 # Create a real environment variable, from our cached configuration element
 try:

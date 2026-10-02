@@ -1,7 +1,6 @@
 # import_export_twitter/views_admin.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-import time
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,7 +11,7 @@ import wevote_functions.admin
 import wevote_functions.admin
 from admin_tools.views import redirect_to_sign_in_page
 from candidate.models import CandidateManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from image.controllers import delete_cached_images_for_voter, delete_cached_images_for_candidate, \
     delete_cached_images_for_organization, delete_stored_images_for_voter
 from organization.controllers import update_social_media_statistics_in_other_tables

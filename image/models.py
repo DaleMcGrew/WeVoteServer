@@ -2,13 +2,14 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
+from copy import deepcopy
 from datetime import date
 from django.db import models
 from exception.models import handle_record_found_more_than_one_exception, handle_exception, \
     handle_record_not_saved_exception, handle_record_not_deleted_exception
 from pathlib import Path
-from PIL import ExifTags, GifImagePlugin, Image, ImageOps
+from PIL import ExifTags, GifImagePlugin, Image, ImageOps, ImageSequence
 from urllib.request import urlretrieve
 from urllib.error import HTTPError
 from wevote_functions.functions import convert_to_int, positive_value_exists
@@ -40,11 +41,18 @@ VOTE_USA_PROFILE_IMAGE_NAME = "vote_usa_profile_image"
 VOTER_UPLOADED_IMAGE_NAME = "voter_uploaded_profile_image"
 WIKIPEDIA_IMAGE_NAME = "wikipedia_image"
 
-AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY")
 AWS_REGION_NAME = get_environment_variable("AWS_REGION_NAME")
 AWS_STORAGE_BUCKET_NAME = get_environment_variable("AWS_STORAGE_BUCKET_NAME")
-AWS_STORAGE_SERVICE = "s3"
+AWS_ACCESS_KEY_ID = get_environment_variable("AWS_ACCESS_KEY_ID", no_exception=True)
+AWS_SECRET_ACCESS_KEY = get_environment_variable("AWS_SECRET_ACCESS_KEY", no_exception=True)
+
+# AWS S3 client
+def _aws_s3_client():
+    kwargs = {'region_name': AWS_REGION_NAME}
+    if positive_value_exists(AWS_ACCESS_KEY_ID) and positive_value_exists(AWS_SECRET_ACCESS_KEY):
+        kwargs['aws_access_key_id'] = AWS_ACCESS_KEY_ID
+        kwargs['aws_secret_access_key'] = AWS_SECRET_ACCESS_KEY
+    return boto3.client('s3', **kwargs)
 
 GifImagePlugin.LOADING_STRATEGY = GifImagePlugin.LoadingStrategy.RGB_ALWAYS
 
@@ -376,9 +384,7 @@ class WeVoteImageManager(models.Manager):
         """
         try:
 
-            client = boto3.client(AWS_STORAGE_SERVICE, region_name=AWS_REGION_NAME,
-                                  aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+            client = _aws_s3_client()
             client.delete_object(Bucket=AWS_STORAGE_BUCKET_NAME, Key=we_vote_image_file_location)
             image_deleted_from_aws = True
         except Exception as e:
@@ -2093,10 +2099,13 @@ class WeVoteImageManager(models.Manager):
         :param image_offset_y:
         :param save_gif_as_webp:
         :return:
-        """        
+        """
         original_image_local_path = "/tmp/" + image_local_path
         converted_image_local_path = "/tmp/"
+        converted_image_format = None
+        frames = []
         image = None
+        media_type = None
         resized_image_created = False
         status = ''
         
@@ -2113,111 +2122,116 @@ class WeVoteImageManager(models.Manager):
             }
             return results
 
-        # We leave gif out of this format_conversion_map because we need to honor incoming save_gif_as_webp switch
-        format_conversion_map = {
-            "svg": "png",
-            "tiff": "png"
-        }
+        # The client converts SVGs and TIFFs to PNGs
+
+        format_conversion_map = {}
+
+        if save_gif_as_webp:
+            format_conversion_map['gif'] = 'webp'
 
         if original_image_format in format_conversion_map:
             converted_image_format = format_conversion_map[original_image_format]
-            image_name = f"{original_image_stem}.{converted_image_format}"
-            converted_image_local_path += image_name
-            if original_image_format == "svg":
-                try:
-                    from cairosvg import svg2png
-                    svg2png(url=original_image_local_path, write_to=converted_image_local_path)
-                except Exception as e:
-                    status += "FAILED_TO_CONVERT_SVG_TO_PNG: " + str(e) + " "
-                    image = Image.open(original_image_local_path)
-                    image.save(converted_image_local_path)
-            else:
-                image = Image.open(original_image_local_path)
-                image.save(converted_image_local_path)
-        elif original_image_format == "gif":
-            if save_gif_as_webp:
-                converted_image_format = "webp"
-                image_name = f"{original_image_stem}.{converted_image_format}"
-                converted_image_local_path += image_name
-                image = Image.open(original_image_local_path)
-                image.save(converted_image_local_path, save_all=True)
-            else:
-                converted_image_format = "gif"
-                converted_image_local_path = original_image_local_path
-                image = Image.open(original_image_local_path)
-                image.save(converted_image_local_path, save_all=True)
-        
+            converted_image_name = f"{original_image_stem}.{converted_image_format}"
+            converted_image_local_path += converted_image_name
         else:
-            converted_image_local_path = original_image_local_path
-            converted_image_format = original_image_format
-        
-        try:
-            image = Image.open(converted_image_local_path)
-        except Exception as e:
-            exception_message = "RESIZE_WE_VOTE_MASTER_IMAGE_FAILED_OPENING: " + str(e) + " "
-            handle_exception(e, logger=logger, exception_message=exception_message)
+            converted_image_local_path = deepcopy(original_image_local_path)
 
         try:
-            # Remove sensitive data
-            # See https://web.mit.edu/Graphics/src/Image-ExifTool-6.99/html/TagNames/GPS.html
-            exif = image.getexif()
-            gps_ifd = exif.get_ifd(ExifTags.IFD.GPSInfo)
-            gps_ifd.clear()
-        except Exception as e:
-            exception_message = "REMOVE_SENSITIVE_DATA_FAILED: " + str(e) + " "
-            handle_exception(e, logger=logger, exception_message=exception_message)
+            image = Image.open(original_image_local_path)
+            media_type = image.get_format_mimetype()
 
-        # Resize
-        centering_x = 0.5
-        if image_type == TWITTER_BACKGROUND_IMAGE_NAME or image_type == TWITTER_BANNER_IMAGE_NAME:
-            image = image.resize((image_width, image_height), Image.Resampling.LANCZOS)
-        elif image_type == FACEBOOK_BACKGROUND_IMAGE_NAME:
-            centering_y = ((image.height - image_offset_y) * 0.5) / image.height
-            image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS,
-                                 centering=(centering_x, centering_y))
-        else:
-            if image_width == image_height:
-                image = crop_to_square(image)
-                image = image.resize((image_width, image_height), Image.Resampling.LANCZOS)
+            # convert()/single-frame resize strips animation. Skip resize only for animated
+            # gif/webp. Static gif/webp use the same crop/resize path as other stills.
+            # Animated frame-by-frame resize (or Fastly Image Optimizer) is a follow-up.
+            # convert()/single-frame resize strips animation. Animated gif/webp are
+            # cropped/resized frame-by-frame; static gif/webp use the still path below.
+            is_animated = (
+                media_type in {'image/gif', 'image/webp'}
+                and (
+                    getattr(image, 'is_animated', False)
+                    or getattr(image, 'n_frames', 1) > 1
+                )
+            )
+
+            if is_animated:
+                target_size = (image_width, image_height)
+                # Build a new frame list at the target size, preserving per-frame timing.
+                frames = []
+                durations = []
+
+                # copy()+convert so we do not mutate iterator buffers; duration is ms/frame.
+                for frame in ImageSequence.Iterator(image):
+                    durations.append(frame.info.get('duration', 100))
+                    frame = frame.copy().convert('RGBA')
+                    if image_type == FACEBOOK_BACKGROUND_IMAGE_NAME:
+                        centering_y = ((frame.height - image_offset_y) * 0.5) / frame.height
+                        frame = ImageOps.fit(
+                            frame, target_size, Image.Resampling.LANCZOS,
+                            centering=(0.5, centering_y))
+                    # Same square logic as still profiles: center-crop, then scale.
+                    elif image_width == image_height:
+                        frame = crop_to_square(frame)
+                        frame = frame.resize(target_size, Image.Resampling.LANCZOS)
+                    else:
+                        frame = ImageOps.contain(frame, target_size, Image.Resampling.LANCZOS)
+                    frames.append(frame)
+
+                save_format = 'WEBP' if media_type == 'image/webp' else 'GIF'
+                
+                # Reassemble animation; save_all keeps all frames (not just the first).
+                frames[0].save(
+                    converted_image_local_path,
+                    format=save_format,
+                    save_all=True,
+                    append_images=frames[1:],
+                    duration=durations,
+                    loop=image.info.get('loop', 0),
+                )
+                resized_image_created = True
             else:
-                # Calculate the aspect ratio
-                aspect_ratio = image.width / image.height
-                target_ratio = image_width / image_height
-
-                if aspect_ratio > target_ratio:
-                    # Image is wider, scale based on width
-                    new_width = image_width
-                    new_height = int(new_width / aspect_ratio)
+                # Color conversion (safe for non-animated formats)
+                if image.has_transparency_data:
+                    image = image.convert('RGBA')
                 else:
-                    # Image is taller, scale based on height
-                    new_height = image_height
-                    new_width = int(new_height * aspect_ratio)
+                    image = image.convert('RGB')
+                # GPS EXIF stripping (not all formats have EXIF/GPS)
+                try:
+                    exif = image.getexif()
+                    gps_ifd = exif.get_ifd(ExifTags.IFD.GPSInfo)
+                    gps_ifd.clear()
+                except Exception:
+                    pass
+                # Resize
+                centering_x = 0.5
+                target_size = (image_width, image_height)
+                if image_type == FACEBOOK_BACKGROUND_IMAGE_NAME:
+                    centering_y = ((image.height - image_offset_y) * 0.5) / image.height
+                    centering = (centering_x, centering_y)
+                    image = ImageOps.fit(image, target_size, Image.Resampling.LANCZOS, centering)
+                elif image_width == image_height:
+                    image = crop_to_square(image)
+                    image = image.resize(target_size, Image.Resampling.LANCZOS)
+                else:
+                    image = ImageOps.contain(image, target_size, Image.Resampling.LANCZOS)
+                if media_type == 'image/jpeg':
+                    image.save(converted_image_local_path, quality=95, subsampling=0)
+                else:
+                    image.save(converted_image_local_path)
+                resized_image_created = True
 
-                # Resize the image while maintaining aspect ratio
-                # image.thumbnail((new_width, new_height), Image.Resampling.LANCZOS)
-                image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            # else:
-            #     centering_y = centering_x
-            #     image = ImageOps.fit(image, (image_width, image_height), Image.Resampling.LANCZOS,
-            #                          centering=(centering_x, centering_y))
-        
-        try:
-            if converted_image_format.lower() in {'jpeg', 'jpg', 'jpe', 'jif', 'jfif', 'jfi'}:
-                image = image.convert('RGB')
-                image.save(converted_image_local_path, quality=95, subsampling=0)
-            elif converted_image_format.lower() in {'gif', 'webp'}:
-                image.save(converted_image_local_path, save_all=True)
-            else:
-                image.save(converted_image_local_path)
-
-            resized_image_created = True
         except Exception as e:
-            status += "IMAGE_SAVE_FAILED: " + str(e) + " "
-            resized_image_created = False
+            exception_message = "FAILED_TO_RESIZE_IMAGE: " + str(e) + " "
+            handle_exception(e, logger=logger, exception_message=exception_message)
+
+        finally:
+            if image:
+                image.close()
+
         results = {
             'status':                   status,
             'resized_image_created':    resized_image_created,
         }
+        
         return results
 
     @staticmethod
@@ -2254,9 +2268,16 @@ class WeVoteImageManager(models.Manager):
         """
         try:
             image_local_path = "/tmp/" + image_local_path
-            python_image_library_image.save(image_local_path, format=python_image_library_image.format)
+            image_format = python_image_library_image.format
+
+            # Preserve animation frames for GIF and WEBP
+            if image_format and image_format.lower() in {'gif', 'webp'}:
+                python_image_library_image.save(image_local_path, format=image_format, save_all=True)
+            else:
+                python_image_library_image.save(image_local_path, format=image_format)
+
             image_stored = True
-        except HTTPError as error:  # something wrong with url
+        except HTTPError as error:
             image_stored = False
             exception_message = "store_image_locally failed because of http error"
             handle_exception(error, logger=logger, exception_message=exception_message)
@@ -2277,9 +2298,7 @@ class WeVoteImageManager(models.Manager):
         :return:
         """
         try:
-            client = boto3.client(AWS_STORAGE_SERVICE, region_name=AWS_REGION_NAME,
-                                  aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+            client = _aws_s3_client()
             upload_image_from_location = "/tmp/" + we_vote_image_file_name
             # print('-------------- temp file upload to aws ' +  upload_image_from_location)
             content_type = "image/{image_format}".format(image_format=image_format)
@@ -2302,10 +2321,12 @@ class WeVoteImageManager(models.Manager):
         :return:
         """
         try:
-            session = boto3.session.Session(region_name=AWS_REGION_NAME,
-                                            aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                            aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-            s3 = session.resource(AWS_STORAGE_SERVICE)
+            session_kwargs = {'region_name': AWS_REGION_NAME}
+            if positive_value_exists(AWS_ACCESS_KEY_ID) and positive_value_exists(AWS_SECRET_ACCESS_KEY):
+                session_kwargs['aws_access_key_id'] = AWS_ACCESS_KEY_ID
+                session_kwargs['aws_secret_access_key'] = AWS_SECRET_ACCESS_KEY
+            session = boto3.session.Session(**session_kwargs)
+            s3 = session.resource("s3")
             s3.Bucket(AWS_STORAGE_BUCKET_NAME).put_object(Key=we_vote_image_file_location,
                                                           Body=image_file)
             image_stored_to_aws = True
@@ -2324,9 +2345,7 @@ class WeVoteImageManager(models.Manager):
         :return:
         """
         try:
-            client = boto3.client(AWS_STORAGE_SERVICE, region_name=AWS_REGION_NAME,
-                                  aws_access_key_id=AWS_ACCESS_KEY_ID,
-                                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+            client = _aws_s3_client()
             download_image_at_location = "/tmp/" + we_vote_image_file_location
             client.download_file(AWS_STORAGE_BUCKET_NAME, we_vote_image_file_location, download_image_at_location)
             image_retrieved_from_aws = True

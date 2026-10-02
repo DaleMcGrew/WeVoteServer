@@ -23,7 +23,7 @@ def pdf_to_html_retrieve_view(url_root):
         {
             'name': 'version',
             'value': 'boolean',  # boolean, integer, long, string
-            'description': 'report the version of pdf2htmlEX',
+            'description': 'report the version of the Tika server doing the PDF to HTML conversion',
         },
     ]
 
@@ -37,8 +37,8 @@ def pdf_to_html_retrieve_view(url_root):
             'description':  'The API call has returned a URL to a new HTML page in S3',
         },
         {
-            'code':         'PDF2HTMLEX_VERSION',
-            'description':  'The version of the installed instance of pdf2htmlEX',
+            'code':         'TIKA_SERVER_VERSION',
+            'description':  'The version of the Tika server used to convert the PDF',
         },
     ]
 

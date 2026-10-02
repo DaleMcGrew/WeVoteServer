@@ -1043,11 +1043,11 @@ class ContestOfficeManager(models.Manager):
             state_code='',
             defaults={}):
         """
-        Create ContestOffice table entry with ContestOffice details 
-        :param contest_office_name: 
+        Create ContestOffice table entry with ContestOffice details
+        :param contest_office_name:
         :param contest_office_votes_allowed:
         :param contest_office_number_elected:
-        :param google_civic_election_id: 
+        :param google_civic_election_id:
         :param state_code:
         :param defaults:
         :return:
@@ -1144,10 +1144,10 @@ class ContestOfficeManager(models.Manager):
             state_code,
             defaults):
         """
-        Update ContestOffice table entry with matching we_vote_id 
-        :param contest_office_name: 
+        Update ContestOffice table entry with matching we_vote_id
+        :param contest_office_name:
         :param contest_office_votes_allowed:
-        :param ctcl_uuid: 
+        :param ctcl_uuid:
         :param contest_office_number_elected:
         :param contest_office_we_vote_id:
         :param google_civic_election_id:
@@ -1244,8 +1244,8 @@ class ContestOfficeManager(models.Manager):
     def count_contest_offices_for_election(google_civic_election_id):
         """
         Return count of contest offices found for a given election
-        :param google_civic_election_id: 
-        :return: 
+        :param google_civic_election_id:
+        :return:
         """
         contest_offices_count = 0
         success = False

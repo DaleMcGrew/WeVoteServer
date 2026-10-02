@@ -1369,7 +1369,7 @@ class VoterGuideListManager(models.Manager):
         voter_guide_list_found = False
         status = ''
 
-        if not type(organization_we_vote_ids_followed_by_voter) is list:
+        if type(organization_we_vote_ids_followed_by_voter) is not list:
             status += 'NO_VOTER_GUIDES_FOUND_MISSING_ORGANIZATION_LIST '
             success = False
             results = {

@@ -11,9 +11,7 @@ from admin_tools.views import redirect_to_sign_in_page
 from datetime import date
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.contrib.messages import get_messages
 from django.db.models import Q
-from django.utils.timezone import now
 from django.urls import reverse
 from django.http import HttpResponseRedirect, HttpResponse
 from exception.models import handle_exception
@@ -21,11 +19,10 @@ from import_export_google_civic.controllers import REPRESENTATIVES_BY_ADDRESS_UR
 import json
 from polling_location.models import KIND_OF_LOG_ENTRY_REPRESENTATIVES_RECEIVED, PollingLocation, PollingLocationManager
 import random
-import requests
 from representative.models import RepresentativeManager
 from voter.models import voter_has_authority
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP
+from wevote_functions.functions import positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 

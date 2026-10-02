@@ -62,7 +62,7 @@ class BallotpediaElection(models.Model):
         today_date_as_integer = convert_date_to_date_as_integer(today)
         election_date_as_simple_string = self.election_day_text.replace("-", "")
         this_election_date_as_integer = convert_to_int(election_date_as_simple_string)
-        if this_election_date_as_integer > today_date_as_integer:
+        if this_election_date_as_integer >= today_date_as_integer:
             return True
         return False
 
@@ -140,7 +140,7 @@ class Election(models.Model):
         today_date_as_integer = convert_date_to_date_as_integer(today)
         election_date_as_simple_string = self.election_day_text.replace("-", "")
         this_election_date_as_integer = convert_to_int(election_date_as_simple_string)
-        if this_election_date_as_integer > today_date_as_integer:
+        if this_election_date_as_integer >= today_date_as_integer:
             return True
         return False
 
@@ -335,7 +335,6 @@ class ElectionManager(models.Manager):
         if success and not election_found:
             try:
                 updated_values = {
-                    # 'ctcl_uuid':          ctcl_uuid,  # Added below
                     'election_day_text':    election_day_text,
                 }
                 if positive_value_exists(state_code):
@@ -1277,8 +1276,8 @@ class ElectionManager(models.Manager):
             read_only=True):
         """
         Retrieve elections using election_day_text
-        :param election_day_text: 
-        :param include_test_election: 
+        :param election_day_text:
+        :param include_test_election:
         :param read_only:
         :return:
         """
@@ -1362,8 +1361,8 @@ class ElectionManager(models.Manager):
         """
           Retrieve elections using state_code and election_day_text
         :param state_code:
-        :param election_day_text: 
-        :param include_test_election: 
+        :param election_day_text:
+        :param include_test_election:
         :param read_only:
         :return:
         """

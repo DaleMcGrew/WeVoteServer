@@ -1,7 +1,7 @@
 # apis_v1/views/views_position.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 import json
 from ballot.controllers import figure_out_google_civic_election_id_voter_is_watching
@@ -18,7 +18,7 @@ from support_oppose_deciding.controllers import position_oppose_count_for_ballot
     position_public_oppose_count_for_ballot_item_for_api, \
     position_public_support_count_for_ballot_item_for_api
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_bool, get_voter_device_id,  \
+from wevote_functions.functions import get_voter_device_id,  \
     is_speaker_type_organization, is_speaker_type_public_figure, positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)

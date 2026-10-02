@@ -1,0 +1,30 @@
+<!-- Message Sent Drawer Component -->
+<!-- Overlay backdrop - click to close -->
+<div id="messageSentOverlay"
+     class="ms-drawer-overlay"
+     onclick="closeMessageSentDrawer()"></div>
+
+<!-- Main drawer container -->
+<div id="messageSentDrawer" class="message-sent-drawer">
+  <!-- Fixed header section -->
+  <div class="ms-drawer-header">
+    <div class="ms-drawer-title-row">
+      <div>
+        <h1 class="ms-drawer-title">Message Sent</h1>
+        <p class="ms-drawer-subtitle" id="messageSentDrawerSubtitle"></p>
+      </div>
+      <div class="ms-drawer-actions">
+        <button class="btn btn-default"
+                onclick="closeMessageSentDrawer()"
+                type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content area: the assembled email body is injected here -->
+  <div class="ms-drawer-content" id="messageSentDrawerHTML">
+    <p class="ms-drawer-content-placeholder">
+      <em>Email content will be added here...</em>
+    </p>
+  </div>
+</div>

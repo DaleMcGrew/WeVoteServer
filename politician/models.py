@@ -21,6 +21,16 @@ from wevote_functions.functions import candidate_party_display, convert_to_int, 
 from wevote_functions.functions_date import convert_date_to_date_as_integer
 from wevote_settings.models import fetch_next_we_vote_id_politician_integer, fetch_site_unique_id_prefix
 
+
+MANUAL_ENTRY = 'MANUAL_ENTRY'
+IMPORT_FROM_CSV = 'IMPORT_FROM_CSV'
+IMPORT_FROM_TEXT_LIST = 'IMPORT_FROM_TEXT_LIST'
+ADDED_VIA_OPTIONS = (
+    (IMPORT_FROM_CSV,       'CSV import'),
+    (IMPORT_FROM_TEXT_LIST, 'Text import'),
+    (MANUAL_ENTRY, 'Manual entry'),
+)
+
 FEMALE = 'F'
 GENDER_NEUTRAL = 'N'
 MALE = 'M'
@@ -406,6 +416,7 @@ class Politician(models.Model):
     politician_email = models.CharField(max_length=255, null=True, unique=False)
     politician_email2 = models.CharField(max_length=255, null=True, unique=False)
     politician_email3 = models.CharField(max_length=255, null=True, unique=False)
+    politician_email_subscription_secret_key = models.CharField(max_length=255, null=True, blank=True, unique=True)
     # The date of the last election this candidate relates to, converted to integer, ex/ 20201103
     politician_ultimate_election_date = models.PositiveIntegerField(default=None, null=True)
     bluesky_handle = models.TextField(blank=True, null=True)
@@ -572,10 +583,14 @@ class PoliticianSupporter(models.Model):
     def __unicode__(self):
         return "PoliticianSupporter"
 
+    added_by_name = models.CharField(default=None, max_length=255, null=True)
+    added_by_voter_we_vote_id = models.CharField(max_length=255, null=True, db_index=True)
+    added_via = models.CharField(max_length=24, choices=ADDED_VIA_OPTIONS, default=MANUAL_ENTRY, db_index=True)
     email = models.EmailField(max_length=255, null=True)
     date_email_invite_sent = models.DateTimeField(null=True, db_index=True)
     date_imported = models.DateTimeField(null=True, auto_now_add=True, db_index=True)
     date_sms_invite_sent = models.DateTimeField(null=True, db_index=True)
+    date_supporter_opted_out = models.DateTimeField(null=True, db_index=True)
     email_invite_sent = models.BooleanField(default=False)
     # This "email_ownership_is_verified" is a copy of the master data in EmailAddress.email_ownership_is_verified
     email_ownership_is_verified = models.BooleanField(default=False)
@@ -588,8 +603,15 @@ class PoliticianSupporter(models.Model):
     sms_ownership_is_verified = models.BooleanField(default=False)
     sms_we_vote_id = models.CharField(max_length=255, null=True, blank=True, unique=True, db_index=True)
     stance = models.CharField(max_length=15, choices=POSITION_CHOICES, default=INFORMATION_ONLY, db_index=True)
-    supporter_name = models.CharField(default=None, max_length=255, null=True)
+    # Subscription secret key for this supporter, when we don't have a voter record yet.
+    supporter_email_subscription_secret_key = models.CharField(max_length=255, null=True)
     supporter_endorsement = models.TextField(null=True)
+    supporter_name = models.CharField(default=None, max_length=255, null=True)
+    supporter_opted_out = models.BooleanField(default=False)
+    # Voter subscription secret key for this supporter, once we have tied the supporter to a Voter record.
+    # When PoliticianSupporter is tied to a Voter, we use voter_subscription_secret_key
+    #  instead of supporter_email_subscription_secret_key
+    voter_email_subscription_secret_key = models.CharField(max_length=255, null=True)
     voter_we_vote_id = models.CharField(max_length=255, null=True, db_index=True)
     we_vote_hosted_profile_image_url_medium = models.TextField(null=True)
     we_vote_hosted_profile_image_url_tiny = models.TextField(null=True)

@@ -7,8 +7,8 @@ from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 from api_internal_cache.models import ApiInternalCacheManager
-from position.models import FRIENDS_AND_PUBLIC, FRIENDS_ONLY, PUBLIC_ONLY
-from voter.models import VoterAddress, VoterAddressManager, VoterDeviceLinkManager, VoterManager
+from position.models import FRIENDS_AND_PUBLIC
+from voter.models import VoterAddressManager, VoterDeviceLinkManager, VoterManager
 from voter_guide.controllers import voter_guide_possibility_highlights_retrieve_for_api, \
     voter_guide_possibility_retrieve_for_api, \
     voter_guide_possibility_position_save_for_api, \

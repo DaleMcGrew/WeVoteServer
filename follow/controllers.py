@@ -15,10 +15,10 @@ from campaign.controllers import refresh_campaignx_supporters_count_in_all_child
 from campaign.models import CampaignXManager
 from friend.models import FriendManager
 from organization.models import Organization, OrganizationManager
-from politician.models import Politician, PoliticianManager
+from politician.models import Politician
 from position.models import OPPOSE, PositionEntered, PositionForFriends, SUPPORT
 from twitter.models import TwitterUserManager
-from voter.models import VoterManager, fetch_voter_we_vote_id_from_voter_device_link
+from voter.models import VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import is_voter_device_id_valid, positive_value_exists
 

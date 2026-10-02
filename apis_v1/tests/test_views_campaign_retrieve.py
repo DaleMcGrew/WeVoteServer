@@ -5,12 +5,11 @@
 from django.urls import reverse
 from django.test import TransactionTestCase
 from django.test import Client
-from voter.models import VoterDeviceLink
  
 import json
 
 # Inheriting from TransactionTestCase enables test mirror to redirect
-# queries from 'readonly' database to 'default'. 
+# queries from 'readonly' database to 'default'.
 
 
 class WeVoteAPIsV1TestsCampaignRetrieve(TransactionTestCase):
@@ -92,7 +91,7 @@ class WeVoteAPIsV1TestsCampaignRetrieve(TransactionTestCase):
 
         self.assertEqual(json_data1['success'],
                          True,
-                         "success = {success} Expected success".format(success=json_data1['success']))                         
+                         "success = {success} Expected success".format(success=json_data1['success']))
 
         voter_device_id = json_data1['voter_device_id'] if 'voter_device_id' in json_data1 else ''
         
@@ -188,7 +187,7 @@ class WeVoteAPIsV1TestsCampaignRetrieve(TransactionTestCase):
                          True,
                          "success = {success} Expected success".format(success=json_data5['success']))
 
-        self.assertEqual(len(json_data5["campaignx_owner_list"]), 
+        self.assertEqual(len(json_data5["campaignx_owner_list"]),
                          1,
                          "Expected position_list to have length 1, "
                          "actual length = {length}".format(length=len(json_data5["campaignx_owner_list"])))
@@ -207,7 +206,7 @@ class WeVoteAPIsV1TestsCampaignRetrieve(TransactionTestCase):
 
         self.assertEqual(json_data6['success'],
                          True,
-                         "success = {success} Expected success".format(success=json_data6['success']))                         
+                         "success = {success} Expected success".format(success=json_data6['success']))
 
         self.assertEqual(json_data6['voter_can_send_updates_to_campaignx'],
                          True,
@@ -247,11 +246,11 @@ class WeVoteAPIsV1TestsCampaignRetrieve(TransactionTestCase):
 
         self.assertEqual(json_data9['success'],
                          True,
-                         "success = {success} Expected success".format(success=json_data9['success']))                         
+                         "success = {success} Expected success".format(success=json_data9['success']))
 
         self.assertEqual(json_data9['voter_can_send_updates_to_campaignx'],
                          False,
-                         "voter_can_send_updates_to_campaignx = {voter_can_send_updates_to_campaignx} Expected false".format(voter_can_send_updates_to_campaignx=json_data9['voter_can_send_updates_to_campaignx']))        
+                         "voter_can_send_updates_to_campaignx = {voter_can_send_updates_to_campaignx} Expected false".format(voter_can_send_updates_to_campaignx=json_data9['voter_can_send_updates_to_campaignx']))
 
 
 
@@ -270,7 +269,7 @@ class WeVoteAPIsV1TestsCampaignRetrieve(TransactionTestCase):
                          True,
                          "success = {success} Expected success".format(success=json_data10['success']))
 
-        self.assertEqual(len(json_data10["campaignx_owner_list"]), 
+        self.assertEqual(len(json_data10["campaignx_owner_list"]),
                          0,
                          "Expected position_list to have length 0, "
                          "actual length = {length}".format(length=len(json_data10["campaignx_owner_list"])))
@@ -281,7 +280,7 @@ class WeVoteAPIsV1TestsCampaignRetrieve(TransactionTestCase):
         # Allows views of the 'readonly' database to compare against
         # the 'default' database views used in the rest of the code:
 
-        # The explanation for .using() is here: 
+        # The explanation for .using() is here:
         # https://docs.djangoproject.com/en/dev/topics/db/multi-db/#manually-selecting-a-database
         
         # device_entry = VoterDeviceLink.objects.using('readonly').all().values()

@@ -13,7 +13,7 @@ from .models import ACTIVITY_NOTICE_PROCESS, API_REFRESH_REQUEST, \
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_ORGANIZATIONS, BATCH_IMPORT_KEYS_ACCEPTED_FOR_POLITICIANS, \
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_POSITIONS, BATCH_IMPORT_KEYS_ACCEPTED_FOR_BALLOT_ITEMS, \
     BATCH_SET_SOURCE_IMPORT_BALLOTPEDIA_BALLOT_ITEMS, BATCH_SET_SOURCE_IMPORT_CTCL_BALLOT_ITEMS, \
-    BATCH_SET_SOURCE_IMPORT_GOOGLE_CIVIC_REPRESENTATIVES, BATCH_SET_SOURCE_IMPORT_VOTE_USA_BALLOT_ITEMS, \
+    BATCH_SET_SOURCE_IMPORT_VOTE_USA_BALLOT_ITEMS, \
     IMPORT_CREATE, IMPORT_DELETE, IMPORT_ALREADY_DELETED, IMPORT_ADD_TO_EXISTING, IMPORT_POLLING_LOCATION, \
     IMPORT_VOTER, REFRESH_BALLOT_ITEMS_FROM_POLLING_LOCATIONS, \
     REFRESH_BALLOT_ITEMS_FROM_VOTERS, RETRIEVE_BALLOT_ITEMS_FROM_POLLING_LOCATIONS, \
@@ -41,12 +41,11 @@ from exception.models import handle_exception
 from import_export_ballotpedia.controllers import groom_ballotpedia_data_for_processing, \
     process_ballotpedia_voter_districts, BALLOTPEDIA_API_SAMPLE_BALLOT_RESULTS_URL
 from import_export_ctcl.controllers import CTCL_VOTER_INFO_URL
-from import_export_google_civic.controllers import REPRESENTATIVES_BY_ADDRESS_URL
 from import_export_vote_usa.controllers import VOTE_USA_VOTER_INFO_URL
+from import_export_vote_usa.controllers_candidates import update_existing_candidates_from_candidates_api
 import json
 import math
-from polling_location.models import KIND_OF_LOG_ENTRY_BALLOT_RECEIVED, KIND_OF_LOG_ENTRY_REPRESENTATIVES_RECEIVED, \
-    MAP_POINTS_RETRIEVED_EACH_BATCH_CHUNK, PollingLocation, PollingLocationManager
+from polling_location.models import KIND_OF_LOG_ENTRY_BALLOT_RECEIVED, MAP_POINTS_RETRIEVED_EACH_BATCH_CHUNK, PollingLocation, PollingLocationManager
 from position.models import POSITION
 import random
 import requests
@@ -55,7 +54,6 @@ from voter.models import voter_has_authority
 from voter_guide.models import ORGANIZATION_WORD
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, get_voter_api_device_id, positive_value_exists, STATE_CODE_MAP
-import pytz
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -725,7 +723,7 @@ def batch_action_list_export_view(request):
 
     # create response for csv file
     response = export_csv(batch_row_list, header_list, row_field_names, batch_description)
-    
+
     return response
 
 
@@ -1153,7 +1151,7 @@ def batch_header_mapping_process_view(request):
 def batch_action_list_assign_election_to_rows_process_view(request):
     """
     :param request:
-    :return: 
+    :return:
     """
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
     authority_required = {'verified_volunteer'}
@@ -2161,6 +2159,7 @@ def import_ballot_items_for_location_view(request):
             'create_candidates':    True,
             'create_offices':       True,
             'create_measures':      True,
+            'reset_photos_on_update': True,
             'update_candidates':    False,
             'update_offices':       False,
             'update_measures':      False,
@@ -2333,7 +2332,7 @@ def batch_process_log_entry_list_view(request):
     items_per_page = 25  # Number of items per page
     hide_pagination = False
     has_previous_page = False
-    has_next_page = False 
+    has_next_page = False
 
     election_manager = ElectionManager()
     if positive_value_exists(show_all_elections):
@@ -2521,7 +2520,7 @@ def batch_process_log_entry_list_view(request):
         hide_pagination = True
         has_previous_page = False
         has_next_page = False
-     
+
     # Make sure we always include the current election in the election_list, even if it is older
     if positive_value_exists(google_civic_election_id):
         this_election_found = False
@@ -3451,6 +3450,14 @@ def retrieve_ballots_for_polling_locations_api_v4_view(request):
         status += 'FAILED_TO_CREATE_VOLUNTEER_TASK_COMPLETED: ' \
                   '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
 
+    if positive_value_exists(google_civic_election_id) and positive_value_exists(state_code):
+        update_candidates_results = update_existing_candidates_from_candidates_api(
+            google_civic_election_id=google_civic_election_id,
+            state_code=state_code)
+        if not update_candidates_results['success']:
+            status += 'UPDATE_EXISTING_CANDIDATES_FROM_CANDIDATES_API_FAILED: '
+            status += update_candidates_results.get('status', '')
+
     if positive_value_exists(use_batch_process):
         from import_export_batches.controllers_batch_process import \
             schedule_retrieve_ballots_for_polling_locations_api_v4
@@ -3948,6 +3955,7 @@ def retrieve_ballots_for_polling_locations_api_v4_internal_view(
         'create_candidates':    True,
         'create_offices':       True,
         'create_measures':      True,
+        'reset_photos_on_update': True,
         'update_candidates':    False,
         'update_offices':       False,
         'update_measures':      False,
@@ -4119,3 +4127,47 @@ def retrieve_ballots_for_polling_locations_api_v4_internal_view(
             'batch_process_ballot_item_chunk':  batch_process_ballot_item_chunk,
         }
         return results
+
+
+@login_required
+def retrieve_candidates_from_source_view(request):
+    """
+    :param request:
+    :return:
+    """
+    status = "STARTING_RETRIEVE_CANDIDATES_FROM_SOURCE "
+
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager'}
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(request, authority_required)
+
+    google_civic_election_id = convert_to_int(request.GET.get('google_civic_election_id', 0))
+    state_code = request.GET.get('state_code', '')
+
+    try:
+        # Give the volunteer who entered this credit
+        volunteer_task_manager = VolunteerTaskManager()
+        task_results = volunteer_task_manager.create_volunteer_task_completed(
+            action_constant=VOLUNTEER_ACTION_ELECTION_RETRIEVE_STARTED,
+            request=request,
+        )
+    except Exception as e:
+        status += 'FAILED_TO_CREATE_VOLUNTEER_TASK_COMPLETED: ' \
+                  '{error} [type: {error_type}]'.format(error=e, error_type=type(e))
+
+    if positive_value_exists(google_civic_election_id) and positive_value_exists(state_code):
+        update_candidates_results = update_existing_candidates_from_candidates_api(
+            google_civic_election_id=google_civic_election_id,
+            state_code=state_code)
+        if not update_candidates_results['success']:
+            status += 'UPDATE_EXISTING_CANDIDATES_FROM_CANDIDATES_API_FAILED: '
+        status += update_candidates_results.get('status', '')
+
+    messages.add_message(request, messages.INFO, 'status: {status}'.format(status=status))
+
+    return HttpResponseRedirect(
+        reverse('candidate:candidate_list', args=()) +
+        '?google_civic_election_id=' + str(google_civic_election_id) +
+        '&state_code=' + str(state_code)
+        )
