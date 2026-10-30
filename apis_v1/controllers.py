@@ -6,11 +6,11 @@ from django.http import HttpResponse
 from exception.models import handle_exception
 from follow.models import FOLLOW_DISLIKE, FOLLOW_IGNORE, FOLLOWING, STOP_DISLIKING, STOP_FOLLOWING, STOP_IGNORING
 import json
-from organization.models import Organization, OrganizationManager
+from organization.models import Organization
 from organization.controllers import organization_follow_or_unfollow_or_ignore
-from voter.models import fetch_voter_id_from_voter_device_link, Voter, VoterManager, VoterMetricsManager
+from voter.models import VoterMetricsManager
 import wevote_functions.admin
-from wevote_functions.functions import is_voter_device_id_valid, positive_value_exists
+from wevote_functions.functions import positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -85,7 +85,14 @@ def organization_dislike(  # organizationDislike
 
     save_oppose_position = False
     if positive_value_exists(make_position_update) and positive_value_exists(politician_we_vote_id):
-        save_oppose_position = True
+        # WV-2664: Honor the docstring intent above ("create an Oppose position IFF a position
+        # doesn't already exist"). Without this check, clicking the dislike icon on a candidate
+        # the voter has already Chosen would silently flip their position to Oppose.
+        from position.models import PositionListManager
+        existing_position_exists = PositionListManager().positions_exist_for_voter_and_politician(
+            voter_id=voter_id, politician_we_vote_id=politician_we_vote_id)
+        if not existing_position_exists:
+            save_oppose_position = True
     if save_oppose_position:
         from support_oppose_deciding.controllers import voter_opposing_save
         position_results = voter_opposing_save(
@@ -229,7 +236,14 @@ def organization_follow(  # organizationFollow
 
     save_support_position = False
     if positive_value_exists(make_position_update) and positive_value_exists(politician_we_vote_id):
-        save_support_position = True
+        # WV-2664: Honor the docstring intent above ("create a Support position IFF a position
+        # doesn't already exist"). Without this check, clicking the heart on a candidate the
+        # voter has already Opposed would silently flip their position to Support.
+        from position.models import PositionListManager
+        existing_position_exists = PositionListManager().positions_exist_for_voter_and_politician(
+            voter_id=voter_id, politician_we_vote_id=politician_we_vote_id)
+        if not existing_position_exists:
+            save_support_position = True
     if save_support_position:
         from support_oppose_deciding.controllers import voter_supporting_save
         position_results = voter_supporting_save(

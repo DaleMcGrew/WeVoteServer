@@ -60,7 +60,7 @@ for row in rows:
 	bulk_data.append({
 		'index' : { "_index" : "candidates", "_type" : "candidate", "_id" : row[7] }
 	})
-	bulk_data.append({ 
+	bulk_data.append({
 		"candidate_name": row[0],
 		"candidate_twitter_handle": row[1],
 		"twitter_name": row[2],
@@ -73,7 +73,8 @@ for row in rows:
 
 logging.info("Bulk indexing candidate data")
 bulk_data_json = "\n".join(map(json.dumps,bulk_data))
-if bulk_data_json: es.bulk(body = bulk_data_json)
+if bulk_data_json:
+	es.bulk(body = bulk_data_json)
 bulk_data = []
 
 # index measure_contestmeasure table
@@ -84,7 +85,7 @@ for row in rows:
 	bulk_data.append({
 		'index' : { "_index" : "measures", "_type" : "measure", "_id" : row[0] }
 	})
-	bulk_data.append({ 
+	bulk_data.append({
 		"we_vote_id": row[1],
 		"measure_subtitle": row[2],
 		"measure_text": row[3],
@@ -96,7 +97,8 @@ for row in rows:
 
 logging.info("Bulk indexing measure data")
 bulk_data_json = "\n".join(map(json.dumps,bulk_data))
-if bulk_data_json: es.bulk(body = bulk_data_json)
+if bulk_data_json:
+	es.bulk(body = bulk_data_json)
 bulk_data = []
 
 # index office_contestoffice table
@@ -107,7 +109,7 @@ for row in rows:
 	bulk_data.append({
 		'index' : { "_index" : "offices", "_type" : "office", "_id" : row[0] }
 	})
-	bulk_data.append({ 
+	bulk_data.append({
 		"we_vote_id": row[1],
 		"office_name": row[2],
 		"google_civic_election_id": row[3],
@@ -117,7 +119,8 @@ for row in rows:
 
 logging.info("Bulk indexing office data")
 bulk_data_json = "\n".join(map(json.dumps,bulk_data))
-if bulk_data_json: es.bulk(body = bulk_data_json)
+if bulk_data_json:
+	es.bulk(body = bulk_data_json)
 bulk_data = []
 
 # index politician_politician table
@@ -128,7 +131,7 @@ bulk_data = []
 #	bulk_data.append({
 #		'index' : { "_index" : "politicians", "_type" : "politician", "_id" : row[0] }
 #	})
-#	bulk_data.append({ 
+#	bulk_data.append({
 #		"first_name": row[1],
 #		"middle_name": row[2],
 #		"last_name": row[3],
@@ -149,7 +152,7 @@ for row in rows:
 	bulk_data.append({
 		'index' : { "_index" : "organizations", "_type" : "organization", "_id" : row[0] }
 	})
-	bulk_data.append({ 
+	bulk_data.append({
 		"we_vote_id": row[1],
 		"organization_name": row[2],
 		"organization_twitter_handle": row[3],
@@ -161,5 +164,6 @@ for row in rows:
 
 logging.info("Bulk indexing organization data")
 bulk_data_json = "\n".join(map(json.dumps,bulk_data))
-if bulk_data_json: es.bulk(body = bulk_data_json)
+if bulk_data_json:
+	es.bulk(body = bulk_data_json)
 bulk_data = []

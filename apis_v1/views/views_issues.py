@@ -2,14 +2,14 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 from issue.models import *
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 import json
 from issue.controllers import retrieve_issues_not_linked_to_organization_for_api, \
     retrieve_issues_linked_to_organization_for_api
 from issue.models import LINKED_BY_ORGANIZATION, BLOCKED_BY_ORGANIZATION
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, get_voter_device_id, positive_value_exists
+from wevote_functions.functions import positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 

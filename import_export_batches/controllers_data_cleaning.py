@@ -5,7 +5,6 @@
 from django.utils.timezone import now
 import pytz
 
-from wevote_functions.functions import positive_value_exists
 from wevote_functions.functions_date import convert_date_to_date_as_integer, get_current_year_as_integer
 
 

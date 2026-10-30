@@ -4,7 +4,7 @@
 
 import math
 
-from .models import Challenge, ChallengeManager, ChallengeParticipant
+from .models import ChallengeManager, ChallengeParticipant
 import wevote_functions.admin
 from wevote_functions.functions import positive_value_exists
 

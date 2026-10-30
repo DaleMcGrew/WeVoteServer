@@ -2,11 +2,13 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from .base import *
+from .base import *  # Needed to bring in settings like: settings.ROOT_URLCONF
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
+from wevote_functions.functions import positive_value_exists
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = get_environment_variable('SERVER_IN_DEBUG_MODE')
+DEBUG = positive_value_exists(get_environment_variable('SERVER_IN_DEBUG_MODE'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
@@ -51,7 +53,20 @@ DATABASES = {
     }
 }
 
-ALLOWED_HOSTS = ['*']
+if DEBUG:
+    cache_backend_name = get_environment_variable_default('DATABASE_ENGINE_CACHE', 'django.core.cache.backends.db.DatabaseCache')
+    cache_table_name = 'cache_table_debug_' + get_environment_variable_default('DATABASE_CACHE_LOCATION', 'dev_wevote_server')
+    ALLOWED_HOSTS = ['*']
+else:
+    cache_backend_name = get_environment_variable('DATABASE_ENGINE_CACHE')
+    cache_table_name = get_environment_variable('DATABASE_CACHE_LOCATION')
+
+CACHES = {
+    "default": {
+        "BACKEND": cache_backend_name,
+        "LOCATION": cache_table_name,
+    }
+}
 
 # ########## Logging configurations ###########
 # Logging is configured in the config/environment_variables.json file

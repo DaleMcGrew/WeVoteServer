@@ -15,7 +15,6 @@ from django.utils.timezone import now
 from election.models import Election
 from exception.models import handle_exception, handle_record_found_more_than_one_exception,\
     handle_record_not_found_exception, handle_record_not_saved_exception, print_to_log
-from follow.models import FollowOrganizationManager, FollowOrganizationList
 from friend.models import FriendManager
 from measure.models import ContestMeasure, ContestMeasureManager
 from office.models import ContestOffice, ContestOfficeManager
@@ -1083,6 +1082,30 @@ class PositionListManager(models.Manager):
     #     return outgoing_position_list
 
     @staticmethod
+    def positions_exist_for_voter_and_politician(voter_id=0, politician_we_vote_id=''):
+        """
+        WV-2664: Does this voter already have a position (public or friends-only) for this
+        politician? Used so a heart / dislike click does not silently flip an existing Choose/Oppose.
+        Reads the primary DB, not 'readonly', to avoid replica lag right after a write.
+        """
+        if not positive_value_exists(voter_id) or not positive_value_exists(politician_we_vote_id):
+            return False
+        try:
+            return (
+                PositionEntered.objects.using('default').filter(
+                    voter_id=voter_id, politician_we_vote_id=politician_we_vote_id,
+                ).exists()
+                or PositionForFriends.objects.using('default').filter(
+                    voter_id=voter_id, politician_we_vote_id=politician_we_vote_id,
+                ).exists()
+            )
+        except Exception:
+            # WV-2664: Fail closed. This guard exists to PREVENT a heart/dislike click from silently
+            # flipping an existing position, so on an unexpected DB error assume a position exists
+            # rather than allowing the flip.
+            return True
+
+    @staticmethod
     def calculate_positions_followed_by_voter(
             voter_id,
             all_positions_list,
@@ -1414,7 +1437,7 @@ class PositionListManager(models.Manager):
 
             position_query = position_on_stage_starter.objects.using('readonly').all()
             position_query = position_query.filter(candidate_campaign_we_vote_id__in=candidate_we_vote_id_list)
-            
+
             # As of Aug 2018 we are no longer using PERCENT_RATING
             # position_query = position_query.exclude(stance__iexact=PERCENT_RATING)
 
@@ -1511,9 +1534,9 @@ class PositionListManager(models.Manager):
     def remove_positions_unrelated_to_issues(positions_list, organizations_related_to_issue):
         """
         We filter the list of organizations whose we_vote_id is present in organizations_related_to_issue
-        :param positions_list: 
-        :param organizations_related_to_issue: 
-        :return: 
+        :param positions_list:
+        :param organizations_related_to_issue:
+        :return:
         """
         positions_related_to_organization = []
         for position in positions_list:
@@ -8894,7 +8917,7 @@ class PositionManager(models.Manager):
     def count_positions_for_election(google_civic_election_id, retrieve_public_positions=True):
         """
         Return count of positions for a given election
-        :param google_civic_election_id: 
+        :param google_civic_election_id:
         :param retrieve_public_positions:
         :return:
         """

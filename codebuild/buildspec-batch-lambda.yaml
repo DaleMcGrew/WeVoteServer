@@ -1,0 +1,66 @@
+version: 0.2
+
+# BuildSpec for the Batch Processor Lambda image.
+# Environment variables injected by the CDK CodeBuild project:
+#   BATCH_LAMBDA_REPO_URI       — ECR repository URI for the Lambda image
+#   BATCH_LAMBDA_FUNCTION_NAME  — Lambda function name to update after push
+#   AWS_DEFAULT_REGION          — AWS region
+
+env:
+  shell: bash
+phases:
+  pre_build:
+    on-failure: ABORT
+    commands:
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=build}
+      - ECR_LOGIN_HOST=$(echo $BATCH_LAMBDA_REPO_URI | sed 's#/.*##')
+      - echo Logging into ECR
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_LOGIN_HOST
+  build:
+    on-failure: ABORT
+    commands:
+      - echo Build started at $(date)
+      - docker build -f docker/Dockerfile.lambda-batch -t $BATCH_LAMBDA_REPO_URI:$IMAGE_TAG .
+  post_build:
+    on-failure: ABORT
+    commands:
+      - echo Pushing batch processor Lambda image
+      - docker push $BATCH_LAMBDA_REPO_URI:$IMAGE_TAG
+      - echo Updating Lambda function to image $BATCH_LAMBDA_REPO_URI:$IMAGE_TAG
+      - |
+        MAX_ATTEMPTS=5
+        ATTEMPT=1
+        SLEEP_TIME=7
+
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+          echo "Deployment attempt $ATTEMPT..."
+
+          # Capture both the output and the exit code of the CLI command
+          UPDATE_OUTPUT=$(aws lambda update-function-code --function-name "$BATCH_LAMBDA_FUNCTION_NAME" --image-uri "$BATCH_LAMBDA_REPO_URI:$IMAGE_TAG" 2>&1)
+          EXIT_CODE=$?
+
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "Successfully initiated Lambda update!"
+            break
+          fi
+
+          # Check if the failure was due to an account/resource conflict lock
+          if echo "$UPDATE_OUTPUT" | grep -qE "ResourceConflictException|TooManyRequestsException"; then
+            echo "Account level lock hit. Another pipeline is mutating Lambda resources."
+            echo "Waiting $SLEEP_TIME seconds before retrying..."
+            sleep $SLEEP_TIME
+            ATTEMPT=$((ATTEMPT + 1))
+            SLEEP_TIME=$((SLEEP_TIME * 2)) # Exponential backoff
+          else
+            echo "Fatal deployment error: $UPDATE_OUTPUT"
+            exit 1
+          fi
+        done
+
+        if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+          echo "Error: Timed out waiting for AWS Lambda control plane lock to clear."
+          exit 1
+        fi
+      - aws lambda wait function-updated --function-name $BATCH_LAMBDA_FUNCTION_NAME
+      - echo Lambda update complete

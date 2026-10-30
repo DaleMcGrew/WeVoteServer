@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 from candidate.models import PROFILE_IMAGE_TYPE_UNKNOWN, PROFILE_IMAGE_TYPE_UPLOADED
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime
 from django.db.models import Q
 from django.http import HttpResponse

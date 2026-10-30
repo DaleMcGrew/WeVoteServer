@@ -12,7 +12,7 @@ from .models import CurrentFriend, FriendManager
 import wevote_functions.admin
 from admin_tools.views import redirect_to_sign_in_page
 from wevote_functions.functions import convert_to_int, positive_value_exists
-from voter.models import Voter, voter_has_authority, VoterManager, voter_setup
+from voter.models import Voter, voter_has_authority, VoterManager
 
 logger = wevote_functions.admin.get_logger(__name__)
 

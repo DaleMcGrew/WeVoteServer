@@ -12,7 +12,7 @@ from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotFoun
 from django.views.decorators.csrf import csrf_exempt
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from geoip.controllers import voter_location_retrieve_from_ip_for_api
 from stripe_donations.controllers import donation_active_paid_plan_retrieve, donation_with_stripe_for_api, \
     donation_process_stripe_webhook_event, \

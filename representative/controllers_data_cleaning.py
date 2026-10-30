@@ -1,18 +1,15 @@
 # representative/controllers_data_cleaning.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-from datetime import datetime
 
 from django.db.models import Q
-from config.base import get_environment_variable
-from django.db.models.functions import Length
+from config.environment_variable_functions import get_environment_variable
 
 from office_held.models import OfficeHeld
 from politician.models import PoliticianManager
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, positive_value_exists
-from wevote_functions.functions_date import convert_we_vote_date_string_to_date_as_integer, \
-    generate_localized_datetime_from_obj, get_current_year_as_integer
+from wevote_functions.functions import positive_value_exists
+from wevote_functions.functions_date import generate_localized_datetime_from_obj
 from .models import Representative
 
 logger = wevote_functions.admin.get_logger(__name__)

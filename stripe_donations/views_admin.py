@@ -11,7 +11,7 @@ from django.utils.timezone import now
 
 import wevote_functions.admin
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from donate.models import DonationManager
 from stripe_donations.models import StripeDispute, StripePayments
 from voter.models import voter_has_authority

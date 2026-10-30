@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 import json
 
 from voter.models import VoterManager
@@ -218,7 +218,7 @@ def campaignx_news_item_send(  # CAMPAIGNX_NEWS_ITEM_TEMPLATE
         we_vote_hosted_campaign_photo_large_url=''):
     from campaign.models import CampaignXManager
     from email_outbound.controllers import schedule_email_with_email_outbound_description
-    from email_outbound.models import EmailManager, CAMPAIGNX_NEWS_ITEM_TEMPLATE, CAMPAIGNX_SUPER_SHARE_ITEM_TEMPLATE
+    from email_outbound.models import EmailManager, CAMPAIGNX_NEWS_ITEM_TEMPLATE
     status = ""
 
     campaignx_manager = CampaignXManager()

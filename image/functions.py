@@ -5,7 +5,7 @@
 from exception.models import handle_exception
 from io import BytesIO
 from PIL import Image, ImageOps
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 import urllib
 import requests
 import wevote_functions.admin

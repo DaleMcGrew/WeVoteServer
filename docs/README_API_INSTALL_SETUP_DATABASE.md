@@ -28,6 +28,7 @@ a previous step, but it doesn't hurt anything to do this twice):
     (WeVoteServer3.11) $ pip install psycopg2 
     (WeVoteServer3.11) $ python manage.py makemigrations
     (WeVoteServer3.11) $ python manage.py migrate
+    (WeVoteServer3.11) $ python manage.py createcachetable
 
 When prompted for a super user, enter your email address and a simple password. This admin account is only used in development.
 
@@ -94,8 +95,6 @@ allow_create = True
 Find admin tools here:
 
     http://localhost:8000/admin
-
-Now you will need to authenticate as an admin. You can log in with Email or Twitter account or Facebook account.
 
 Login with Email:
 If you created superuser with this command "python manage.py createsuperuser" during Setup - Database Creation step,

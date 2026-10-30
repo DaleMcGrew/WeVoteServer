@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from ballot.models import CANDIDATE, MEASURE, OFFICE, POLITICIAN
+from ballot.models import CANDIDATE, MEASURE, POLITICIAN
 from candidate.models import CandidateManager
 from friend.models import FriendManager
 from measure.models import ContestMeasureManager
@@ -10,8 +10,8 @@ from politician.models import PoliticianManager
 from django.http import HttpResponse
 from follow.models import FollowOrganizationList
 import json
-from position.models import ANY_STANCE, convert_position_object_to_dict, FRIENDS_ONLY, NO_STANCE, OPPOSE, \
-    PositionManager, PositionListManager, PUBLIC_ONLY, SUPPORT
+from position.models import convert_position_object_to_dict, NO_STANCE, OPPOSE, \
+    PositionManager, PositionListManager, SUPPORT
 from voter.models import fetch_voter_id_from_voter_device_link, VoterManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, is_voter_device_id_valid, positive_value_exists
@@ -610,23 +610,32 @@ def voter_opposing_save(  # voterOpposingSave
         positive_value_exists(politician_we_vote_id) and \
         (positive_value_exists(organization_id) and positive_value_exists(organization_we_vote_id))
     if politician_organization_can_be_followed:
-        # Now dislike the organization
-        from apis_v1.controllers import organization_dislike
-        org_results = organization_dislike(
-            make_position_update=False,
-            organization_id=organization_id,
-            organization_we_vote_id=organization_we_vote_id,
-            politician_we_vote_id=politician_we_vote_id,
-            user_agent_string=user_agent_string,
-            user_agent_object=user_agent_object,
-            voter=voter,
-            voter_device_id=voter_device_id,
-            voter_id=voter_id,
-        )
-        status += org_results['status']
-        final_results_dict['status'] = status
-        if not org_results['success']:
-            final_results_dict['success'] = False
+        # WV-2664: Preserve "first-action-wins" for the heart icon. Only auto-dislike if the
+        # voter has no active heart preference yet (no FOLLOWING / FOLLOW_DISLIKE record).
+        # Without this guard, Oppose -> un-Oppose -> Choose would silently flip the dislike
+        # icon to a heart, since this internal organization_dislike call would overwrite
+        # the voter's prior FOLLOW_DISLIKE record with FOLLOWING.
+        from follow.models import FollowOrganizationManager
+        voter_already_has_heart_preference = FollowOrganizationManager().voter_has_active_heart_preference(
+            voter_id=voter_id, organization_we_vote_id=organization_we_vote_id)
+        if not voter_already_has_heart_preference:
+            # Now dislike the organization
+            from apis_v1.controllers import organization_dislike
+            org_results = organization_dislike(
+                make_position_update=False,
+                organization_id=organization_id,
+                organization_we_vote_id=organization_we_vote_id,
+                politician_we_vote_id=politician_we_vote_id,
+                user_agent_string=user_agent_string,
+                user_agent_object=user_agent_object,
+                voter=voter,
+                voter_device_id=voter_device_id,
+                voter_id=voter_id,
+            )
+            status += org_results['status']
+            final_results_dict['status'] = status
+            if not org_results['success']:
+                final_results_dict['success'] = False
 
     return final_results_dict
 
@@ -1074,21 +1083,30 @@ def voter_supporting_save(  # voterSupportingSave
         positive_value_exists(politician_we_vote_id) and \
         (positive_value_exists(organization_id) and positive_value_exists(organization_we_vote_id))
     if politician_organization_can_be_followed:
-        # Now follow the organization
-        from apis_v1.controllers import organization_follow
-        org_results = organization_follow(
-            make_position_update=False,
-            organization_id=organization_id,
-            organization_we_vote_id=organization_we_vote_id,
-            politician_we_vote_id=politician_we_vote_id,
-            user_agent_string=user_agent_string,
-            user_agent_object=user_agent_object,
-            voter=voter,
-            voter_device_id=voter_device_id,
-            voter_id=voter_id,
-        )
-        status += org_results['status']
-        final_results_dict['status'] = status
-        if not org_results['success']:
-            final_results_dict['success'] = False
+        # WV-2664: Preserve "first-action-wins" for the heart icon. Only auto-follow if the
+        # voter has no active heart preference yet (no FOLLOWING / FOLLOW_DISLIKE record).
+        # Without this guard, Choose -> un-Choose -> Oppose would silently flip the heart from
+        # red to dislike, since this internal organization_follow call would overwrite the
+        # voter's prior FOLLOWING record with FOLLOW_DISLIKE.
+        from follow.models import FollowOrganizationManager
+        voter_already_has_heart_preference = FollowOrganizationManager().voter_has_active_heart_preference(
+            voter_id=voter_id, organization_we_vote_id=organization_we_vote_id)
+        if not voter_already_has_heart_preference:
+            # Now follow the organization
+            from apis_v1.controllers import organization_follow
+            org_results = organization_follow(
+                make_position_update=False,
+                organization_id=organization_id,
+                organization_we_vote_id=organization_we_vote_id,
+                politician_we_vote_id=politician_we_vote_id,
+                user_agent_string=user_agent_string,
+                user_agent_object=user_agent_object,
+                voter=voter,
+                voter_device_id=voter_device_id,
+                voter_id=voter_id,
+            )
+            status += org_results['status']
+            final_results_dict['status'] = status
+            if not org_results['success']:
+                final_results_dict['success'] = False
     return final_results_dict

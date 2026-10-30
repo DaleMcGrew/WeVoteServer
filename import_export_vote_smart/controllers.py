@@ -13,7 +13,7 @@ from .models import VoteSmartApiCounterManager, VoteSmartCandidate, VoteSmartCan
     VoteSmartState, vote_smart_state_filter
 from .votesmart_local import votesmart, VotesmartApiError
 from candidate.models import CandidateManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 import copy
 from exception.models import handle_record_found_more_than_one_exception
 from image.controllers import VOTE_SMART, cache_master_and_resized_image

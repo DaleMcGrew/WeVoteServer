@@ -1,9 +1,7 @@
 import os
-import gzip
-import urllib
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.conf import settings
 
 

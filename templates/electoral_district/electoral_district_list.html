@@ -1,104 +1,122 @@
 {# templates/electoral_district/electoral_district_list.html #}
 {% extends "template_base.html" %}
 
-{% block title %}{% if state_code%}{{ state_code }} {% endif %}Electoral Districts{% if polling_location_we_vote_id %} for Map Point {{ polling_location_we_vote_id }} {% endif %}{% endblock %}
+{% block title %}
+  {% if state_code %}{{ state_code }}{% endif %}
+  Electoral Districts
+  {% if polling_location_we_vote_id %}for Map Point {{ polling_location_we_vote_id }}{% endif %}
+{% endblock %}
 
-{%  block content %}
+{% block content %}
 
-<h1>{% if state_code %}{{ state_code }} {% endif %}Electoral Districts{% if polling_location_we_vote_id %} for Map Point {{ polling_location_we_vote_id }} {% endif %}</h1>
+  <h1>
+    {% if state_code %}{{ state_code }}{% endif %}
+    Electoral Districts
+    {% if polling_location_we_vote_id %}for Map Point {{ polling_location_we_vote_id }}{% endif %}
+  </h1>
 
 
-<a href="{% url 'ballotpedia:refresh_ballotpedia_districts_for_polling_locations' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}"
-   target="_blank">Refresh Ballotpedia Districts for "{{ state_code }}" <span class="glyphicon glyphicon-new-window"></span></a>
+  <a href="{% url 'ballotpedia:refresh_ballotpedia_districts_for_polling_locations' %}?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}"
+     target="_blank">Refresh Ballotpedia Districts for "{{ state_code }}" <span class="glyphicon glyphicon-new-window"></span></a>
 
-<form name="electoral_district_search_form" method="get" action="{% url 'electoral_district:electoral_district_list' %}">
+  <form name="electoral_district_search_form"
+        method="get"
+        action="{% url 'electoral_district:electoral_district_list' %}">
     {% csrf_token %}
 
-{% if state_list %}
-    <select id="state_code" name="state_code">
-        <option value="" {% if '' == state_code %} selected="selected"{% endif %}>
-            -- Filter by State --</option>
-    {% for key, state in state_list %}
-        <option value="{{ key }}"
-                {% if key|lower == state_code|lower %} selected="selected"{% endif %}>
-            {{ state }}</option>
-    {% endfor %}
-    </select>
-{% endif %}{# End of if state_list #}
-
-
-{% if electoral_district_search or issues_selected %}
-    <a href="{% url 'electoral_district:electoral_district_list' %}?state_code={{ state_code }}">
-         clear search</a>&nbsp;
-{% endif %}
-    <input type="text" name="electoral_district_search" id="electoral_district_id" value="{{ electoral_district_search|default_if_none:"" }}" />
-    <input type="submit" value="Search for Electoral District" />&nbsp;&nbsp;&nbsp;
-    {% if polling_location_we_vote_id %}
-    <a href="{% url 'electoral_district:electoral_district_list' %}?state_code={{ state_code }}">
-         clear map point</a>&nbsp;
+    {% if state_list %}
+      <select id="state_code" name="state_code">
+        <option value="" {% if '' == state_code %}selected="selected"{% endif %}>-- Filter by State --</option>
+        {% for key, state in state_list %}
+          <option value="{{ key }}"
+                  {% if key|lower == state_code|lower %}selected="selected"{% endif %}>{{ state }}</option>
+        {% endfor %}
+      </select>
     {% endif %}
+    {# End of if state_list #}
 
-</form>
 
-{% if electoral_district_list %}
-    <table class="table table-condensed">
-    <thead>
-        <tr>
-            <th></th>
-            <th>Name</th>
-            <th>Ballotpedia District Id</th>
-            <th>Type (Google / Ballotpedia)</th>
-            <th>State</th>
-            <th>we_vote_id</th>
-            <th>lat/long</th>
-        </tr>
-    </thead>
+    {% if electoral_district_search or issues_selected %}
+      <a href="{% url 'electoral_district:electoral_district_list' %}?state_code={{ state_code }}">clear search</a>&nbsp;
+      {% endif %}
+      <input type="text"
+             name="electoral_district_search"
+             id="electoral_district_id"
+             value="{{ electoral_district_search|default_if_none:"" }}" />
+      <input type="submit" value="Search for Electoral District" />
+      &nbsp;&nbsp;&nbsp;
+      {% if polling_location_we_vote_id %}
+        <a href="{% url 'electoral_district:electoral_district_list' %}?state_code={{ state_code }}">clear map point</a>&nbsp;
+        {% endif %}
 
-    {% for electoral_district in electoral_district_list %}
-        <tr>
-            <td>{{ forloop.counter }}</td>
-            <td><a href="{% url 'electoral_district:electoral_district_summary' %}?electoral_district_we_vote_id={{ electoral_district.we_vote_id }}&google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
-            {% if electoral_district.electoral_district_name %}{{ electoral_district.electoral_district_name }}{% else %}(missing electoral district name)&nbsp;&nbsp;{% endif %}</a>
-            </td>
-            <td>
-              {% if electoral_district.ballotpedia_district_url %}
-                <a href="{{ electoral_district.ballotpedia_district_url|default_if_none:"" }}" target="_blank">{{ electoral_district.ballotpedia_district_id|default_if_none:"" }}</a>
-              {% else %}
-                {{ electoral_district.ballotpedia_district_id|default_if_none:"" }}
-              {% endif %}
-            </td>
-            <td>
+      </form>
+
+      {% if electoral_district_list %}
+        <table class="table table-condensed">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Name</th>
+              <th>Ballotpedia District Id</th>
+              <th>Type (Google / Ballotpedia)</th>
+              <th>State</th>
+              <th>we_vote_id</th>
+              <th>lat/long</th>
+            </tr>
+          </thead>
+
+          {% for electoral_district in electoral_district_list %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>
+                <a href="{% url 'electoral_district:electoral_district_summary' %}?electoral_district_we_vote_id={{ electoral_district.we_vote_id }}&google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">
+                  {% if electoral_district.electoral_district_name %}
+                    {{ electoral_district.electoral_district_name }}
+                  {% else %}
+                    (missing electoral district name)&nbsp;&nbsp;
+                  {% endif %}
+                </a>
+              </td>
+              <td>
+                {% if electoral_district.ballotpedia_district_url %}
+                  <a href="{{ electoral_district.ballotpedia_district_url|default_if_none:"" }}"
+                     target="_blank">{{ electoral_district.ballotpedia_district_id|default_if_none:"" }}</a>
+                {% else %}
+                  {{ electoral_district.ballotpedia_district_id|default_if_none:"" }}
+                {% endif %}
+              </td>
+              <td>
                 {{ electoral_district.electoral_district_type|default_if_none:"" }} / {{ electoral_district.ballotpedia_district_type|default_if_none:"" }}
-            </td>
-            <td>
-                {{ electoral_district.state_code|default_if_none:""|upper }}
-            </td>
-            <td>
+              </td>
+              <td>{{ electoral_district.state_code|default_if_none:""|upper }}</td>
+              <td>
                 {% if electoral_district.we_vote_id %}&nbsp;&nbsp;&nbsp;{{ electoral_district.we_vote_id }}{% endif %}
-            </td>
-            <td>{% if electoral_district.ballotpedia_district_latitude %}&nbsp;&nbsp;Lat/Long: yes{% endif %}</td>
-        </tr>
-    {% endfor %}
-    </table>
+              </td>
+              <td>
+                {% if electoral_district.ballotpedia_district_latitude %}&nbsp;&nbsp;Lat/Long: yes{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </table>
 
 
 
-    {% if show_all %}
-        <a href="?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">show fewer</a>
-    {% else %}
-        <a href="?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&show_all=1">show all</a>
-    {% endif %}
+        {% if show_all %}
+          <a href="?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}">show fewer</a>
+        {% else %}
+          <a href="?google_civic_election_id={{ google_civic_election_id }}&state_code={{ state_code }}&show_all=1">show all</a>
+        {% endif %}
 
-{% else %}
-    <p>(no electoral_districts found)</p>
-{% endif %}
-<br />
-    <script>
+      {% else %}
+        <p>(no electoral_districts found)</p>
+      {% endif %}
+      <br />
+      <script>
         $(function() {
             $('#state_code').change(function() {
                 this.form.submit();
             });
         });
-    </script>
+      </script>
 
-{% endblock %}
+    {% endblock %}

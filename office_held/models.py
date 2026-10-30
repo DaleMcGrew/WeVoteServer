@@ -2,9 +2,9 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.db import models
-from django.db.models import F, Q, Count, FloatField, ExpressionWrapper, Func
+from django.db.models import F, Q, FloatField, ExpressionWrapper, Func
 from geopy.geocoders import get_geocoder_for_service
 from geopy.exc import GeocoderQuotaExceeded
 from exception.models import handle_exception, handle_record_found_more_than_one_exception
@@ -680,8 +680,8 @@ class OfficeHeldManager(models.Manager):
             office_held_name,
             defaults={}):
         """
-        Create OfficeHeld table entry with OfficeHeld details 
-        :param office_held_name: 
+        Create OfficeHeld table entry with OfficeHeld details
+        :param office_held_name:
         :param defaults:
         :return:
         """
@@ -782,10 +782,10 @@ class OfficeHeldManager(models.Manager):
             office_held_we_vote_id='',
             defaults={}):
         """
-            Update OfficeHeld table entry with matching we_vote_id 
+            Update OfficeHeld table entry with matching we_vote_id
         :param office_held_we_vote_id:
         :param defaults:
-        :return: 
+        :return:
         """
         success = False
         status = ""

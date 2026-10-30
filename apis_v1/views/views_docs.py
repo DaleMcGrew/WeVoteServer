@@ -90,10 +90,10 @@ from apis_v1.documentation_source import \
     voter_stop_supporting_save_doc, voter_supporting_save_doc, voter_twitter_save_to_current_account_doc, \
     voter_update_doc, voter_verify_secret_code_doc, email_ballot_data_doc, backup_one_table_to_s3_doc, \
     voter_reviewed_app_doc
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from voter.models import voter_setup
 from wevote_functions.functions import get_voter_api_device_id, set_voter_api_device_id, positive_value_exists
-from wevote_functions.utils import get_git_commit_date
+from wevote_functions.utils import get_git_params
 
 WE_VOTE_SERVER_ROOT_URL = get_environment_variable("WE_VOTE_SERVER_ROOT_URL")
 
@@ -161,10 +161,12 @@ def apis_index_doc_view(request):
     store_new_voter_api_device_id_in_cookie = results['store_new_voter_api_device_id_in_cookie']
 
     messages_on_stage = get_messages(request)
+    git_params = get_git_params()
+    date = git_params['date']
     template_values = {
         'next': next,
         'messages_on_stage': messages_on_stage,
-        'git_commit_date':   get_git_commit_date(),
+        'git_commit_date':  date,
     }
     response = render(request, 'apis_v1/apis_index.html', template_values)
 
@@ -758,7 +760,7 @@ def issues_sync_out_doc_view(request):
 
 def issues_linked_to_organization_doc_view(request):
     """
-    Show Documentation about issuesLinkedToOrganization 
+    Show Documentation about issuesLinkedToOrganization
     """
     url_root = WE_VOTE_SERVER_ROOT_URL
     template_values = issues_linked_to_organization_doc.issues_linked_to_organization_doc_template_values(url_root)
@@ -768,7 +770,7 @@ def issues_linked_to_organization_doc_view(request):
 
 def issues_to_link_to_for_organization_doc_view(request):
     """
-    Show Documentation about issuesToLinkToForOrganization 
+    Show Documentation about issuesToLinkToForOrganization
     """
     url_root = WE_VOTE_SERVER_ROOT_URL
     template_values = issues_to_link_to_for_organization_doc.\
@@ -1170,15 +1172,23 @@ def retrieve_issues_to_follow_doc_view(request):
     return render(request, 'apis_v1/api_doc_page.html', template_values)
 
 
-def retrieve_sql_tables_row_count_doc_view(request):
+# def retrieve_sql_tables_row_count_doc_view(request):
+#     """
+#     Show documentation about retrieveSQLTablesRowCount
+#     """
+#     url_root = WE_VOTE_SERVER_ROOT_URL
+#     template_values = retrieve_issues_to_follow_doc. \
+#         retrieve_issues_to_follow_doc_template_values(url_root)
+#     return render(request, 'apis_v1/api_doc_page.html', template_values)
+
+def fast_load_table_statistics_view(request):
     """
-    Show documentation about retrieveSQLTablesRowCount
+    Show documentation about retrieveFastLoadTableStatistics
     """
     url_root = WE_VOTE_SERVER_ROOT_URL
     template_values = retrieve_issues_to_follow_doc. \
-        retrieve_issues_to_follow_doc_template_values(url_root)
+        retrieve_fast_load_table_statistics_doc_template_values(url_root)
     return render(request, 'apis_v1/api_doc_page.html', template_values)
-
 
 def save_analytics_action_doc_view(request):
     """

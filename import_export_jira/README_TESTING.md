@@ -68,7 +68,7 @@ Our test suite includes:
 - `FormatDateTests` - Date formatting utilities (3 tests)
 - `SanitizeJiraLabelTests` - Label sanitization (5 tests)
 - `JiraDataClassTests` - Dataclass serialization (3 tests)
-- `JiraExcelLoaderTests` - Excel parsing validation (3 tests)
+- `JiraExcelLoaderTests` - File parsing validation, CSV support, dynamic subtasks (11 tests)
 - `RetryLogicTests` - Retry/backoff logic (3 tests)
 
 ### Integration Tests (Database Required)
@@ -79,14 +79,14 @@ Our test suite includes:
 
 When all tests pass, you should see:
 ```
-Found 26 test(s).
+Found 34 test(s).
 Creating test database for alias 'default'...
 test_format_datetime (import_export_jira.tests.FormatDateTests) ... ok
 test_format_none (import_export_jira.tests.FormatDateTests) ... ok
 test_format_string (import_export_jira.tests.FormatDateTests) ... ok
 [... more tests ...]
 ----------------------------------------------------------------------
-Ran 26 tests in X.XXXs
+Ran 34 tests in X.XXXs
 
 OK
 Destroying test database for alias 'default'...
@@ -132,18 +132,34 @@ To manually test the JIRA import functionality:
 
 3. Navigate to: http://localhost:8000/import_export_jira/import_jira_elections/
 
-4. Upload an Excel file and test the preview/import functionality
+4. Upload an Excel (.xlsx) or CSV (.csv) file
+
+5. Configure subtask count and names in the UI (0-4 subtasks per story)
+
+6. Preview or Import
+
+## Dynamic Subtasks
+
+The UI lets you configure 0-4 subtasks per story:
+1. Set the number of subtasks (0-4)
+2. For each subtask, enter a description (e.g., "Research Candidate", "Verify Address")
+3. Subtask URLs are read from columns 14-17 of the data file, mapped positionally to the configured names
+4. Only non-empty URL columns create actual subtask objects
+
+## File Format Support
+
+Both **Excel (.xlsx, .xls)** and **CSV (.csv)** files are supported. Format is auto-detected from the file extension. Use `file_format='csv'` or `file_format='excel'` to override.
 
 ## Test Data
 
-For Excel loader tests, you can create a test file with this structure:
-- Row 1-2: Headers
-- Row 3+: Data with columns:
+For loader tests, you can create a test file with this structure:
+- Row 1-2: Headers (ignored)
+- Row 3+: Data with 14+ columns:
   - Column 0: Election Date
   - Column 1: Epic Title
   - Column 2: Election Name
-  - Column 3: Election ID
-  - [... see COL_* constants in controllers.py]
+  - Columns 3-13: Other metadata (see `COL_*` constants in `controllers.py`)
+  - Columns 14-17: Subtask URLs (mapped to user-configured subtask names)
 
 Example test file creation:
 ```python
@@ -156,4 +172,5 @@ data = [
 ]
 df = pd.DataFrame(data)
 df.to_excel('test_election_data.xlsx', index=False, header=False)
+df.to_csv('test_election_data.csv', index=False, header=False)
 ```

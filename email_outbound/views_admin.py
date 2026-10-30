@@ -1,16 +1,14 @@
 # email_outbound/views_admin.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-import base64
 import json
 import re
 import uuid
-from datetime import datetime
-import time
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from django.utils import timezone
 from urllib.parse import urlencode
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
@@ -32,10 +30,11 @@ from .functions import build_s3_key, upload_fileobj_to_s3, delete_from_s3, downl
 
 from .controllers_email_campaign import augment_email_campaign_recipient, refresh_email_campaign_data, \
     render_audience_builder_html
-from .controllers_audience_builder import audience_builder_data_retrieve, render_audience_builder_preview_html
+from .controllers_audience_builder import audience_builder_data_retrieve, generate_preview_list_from_audience_builder, \
+    render_audience_builder_preview_html
 from .models import EmailCampaign, EmailTemplate, EmailTemplateFolder, EmailCampaignRecipient, \
     AudienceBuilderFolder, AudienceBuilder, AudienceFilter, AudienceFilterChain, EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS, \
-    OPERATOR_AND, OPERATOR_EXCLUDE, OPERATOR_INCLUDE, OPERATOR_OR
+    OPERATOR_AND, OPERATOR_OR
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -107,6 +106,8 @@ def email_campaign_edit_process_view(request):
     email_body = request.POST.get('email_body', '')
     email_campaign_id = request.POST.get('email_campaign_id', '')
     google_civic_election_id = request.POST.get('google_civic_election_id', 0)
+    include_footer = request.POST.get('include_footer', False)
+    include_footer = positive_value_exists(include_footer)
     recipient_ids = request.POST.get('recipient_ids', '')
     state_code = request.POST.get('state_code', '')
     send_button_clicked = request.POST.get('send_button_clicked', '')
@@ -133,6 +134,7 @@ def email_campaign_edit_process_view(request):
             email_campaign.email_template_id = email_template_id
             email_campaign.email_subject_template_raw = email_subject
             email_campaign.email_body_template_raw = email_body
+            email_campaign.include_footer = include_footer
             email_campaign.scheduled_send_time = scheduled_send_time
             email_campaign.save()
             
@@ -140,7 +142,7 @@ def email_campaign_edit_process_view(request):
             # # TODO: We want to update this to only delete entries below that have been removed from the form
             # deleted_count, result_dict = EmailCampaignRecipient.objects.filter(
             # email_campaign_id=email_campaign.id).delete()
-            status += 'Email campaign updated.'
+            status += 'EMAIL_CAMPAIGN_UPDATED '
         except EmailCampaign.DoesNotExist:
             email_campaign = EmailCampaign.objects.create(
                 audience_builder_id=audience_builder_id,
@@ -174,30 +176,36 @@ def email_campaign_edit_process_view(request):
 
     # if creating an email campaign move attachments from draft to campaign folder
     if draft_uuid and email_campaign and email_campaign_id:
-        with transaction.atomic():
-            qs = EmailAttachments.objects.select_for_update().filter(
-                draft_uuid=draft_uuid,
-                email_campaign__isnull=True,
-                email_template__isnull=True,
-            )
-            for att in qs:
-                new_key = build_s3_key(
-                    campaign_id=int(email_campaign_id),
-                    template_id=None,
-                    draft_uuid=None,
-                    original_filename=att.original_name,
+        try:
+            with transaction.atomic():
+                qs = EmailAttachments.objects.select_for_update().filter(
+                    draft_uuid=draft_uuid,
+                    email_campaign__isnull=True,
+                    email_template__isnull=True,
                 )
-                if EmailAttachments.objects.filter(s3_key=att.s3_key).count() == 1:
+                for att in qs:
+                    new_key = build_s3_key(
+                        campaign_id=int(email_campaign_id),
+                        template_id=None,
+                        draft_uuid=None,
+                        original_filename=att.original_name,
+                    )
+                    if EmailAttachments.objects.filter(s3_key=att.s3_key).count() == 1:
 
-                    move_s3_object(old_key=att.s3_key, new_key=new_key)
-                    att.s3_key = new_key
+                        move_s3_object(old_key=att.s3_key, new_key=new_key)
+                        att.s3_key = new_key
 
-                att.email_campaign = email_campaign
-                att.draft_uuid = None
-                att.save(update_fields=["s3_key", "email_campaign", "draft_uuid"])
+                    att.email_campaign = email_campaign
+                    att.draft_uuid = None
+                    att.save(update_fields=["s3_key", "email_campaign", "draft_uuid"])
+        except Exception as e:
+            status += f'ERROR_MOVING_DRAFT_ATTACHMENTS: {e} '
 
     # clean up previously saved inline images removed before hitting save
-    cleanup_unused_inline_attachments(html=email_body, email_campaign=email_campaign)
+    try:
+        cleanup_unused_inline_attachments(html=email_body, email_campaign=email_campaign)
+    except Exception as e:
+        status += f'ERROR_CLEANING_UP_INLINE_IMAGES: {e} '
 
     # Find all existing manually entered recipients for this email_campaign so we can remove them if they don't come in
     manually_added_recipients = []
@@ -227,8 +235,6 @@ def email_campaign_edit_process_view(request):
         else:
             status += "SENDER_VOTER_NOT_FOUND "
             messages.add_message(request, messages.ERROR, 'Could not identify sender voter.')
-
-    # TODO: Consider collecting some ids in a pre-processing loop?
 
     campaignx_list_dict = {}
     politicians_dict = {}
@@ -336,13 +342,13 @@ def email_campaign_edit_process_view(request):
                                 if hasattr(recipient_object, field_key):
                                     setattr(recipient_object, field_key, field_value)
                         save_recipient_object = True
-                        status += f"EmailCampaignRecipient updated. "
+                        status += "EmailCampaignRecipient updated. "
                     else:
                         # Create a new EmailCampaignRecipient object
                         recipient_object = EmailCampaignRecipient(**recipient_dict)
                         manually_added_recipients_found = True
                         save_recipient_object = True
-                        status += f"New EmailCampaignRecipient added. "
+                        status += "New EmailCampaignRecipient added. "
                 except Exception as e:
                     status += f"Error saving recipient: {str(e)}. "
 
@@ -362,12 +368,15 @@ def email_campaign_edit_process_view(request):
                     voters_dict=voters_dict)
                 if results['success'] and results['save_changes']:
                     recipient_object = results['email_campaign_recipient']
-                    status += "AUGMENTED_RECIPIENT_SUCCESS "
+                    status += results['status'] + "AUGMENTED_RECIPIENT_SUCCESS "
                     campaignx_list_dict = results['campaignx_list_dict']
                     politicians_dict = results['politicians_dict']
                     voters_dict = results['voters_dict']
 
                     recipient_object.save()
+                    status += "SAVED_RECIPIENT_OBJECT_SUCCESS "
+                else:
+                    status += results['status'] + "AUGMENTED_RECIPIENT_FAILED "
 
                 # And now remove this object from manually_added_recipients. Any manually_added_recipients entries
                 #  that remain after this loop can be deleted from the database.
@@ -397,16 +406,21 @@ def email_campaign_edit_process_view(request):
             generate_results = generate_email_campaign_recipients_from_audience_builder(
                 audience_builder_id=audience_builder_id,
                 email_campaign_id=email_campaign_id)
+            status += generate_results['status']
 
         # Send the email
         from email_outbound.controllers_email_campaign import email_campaign_send
         send_results = email_campaign_send(email_campaign=email_campaign, email_campaign_id=email_campaign_id)
+        emails_scheduled = send_results['emails_scheduled']
+        status += send_results['status']
 
-        if send_results['success']:
-            messages.add_message(request, messages.SUCCESS, 'Email sent!')
+        if positive_value_exists(emails_scheduled):
+            status += "EMAILS_SCHEDULED: " + str(emails_scheduled) + " "
+            status += " Email sent! "
+            messages.add_message(request, messages.SUCCESS, status)
             # email_campaign = send_results['email_campaign']
         else:
-            messages.add_message(request, messages.ERROR, 'Error sending email: ' + send_results['status'])
+            messages.add_message(request, messages.ERROR, 'Error sending email: ' + status)
         redirect_url = reverse('email_outbound:email_campaign_edit') + \
             "?id=" + str(email_campaign_id) + \
             "&google_civic_election_id=" + str(google_civic_election_id) + \
@@ -473,6 +487,11 @@ def email_campaign_edit_view(request):
     # Get list of saved campaigns
     saved_campaigns = EmailCampaign.objects.filter(deleted=False).order_by('-id')[:10]
 
+    audience_builder_list = AudienceBuilder.objects.filter(
+        deleted=False,
+        archived=False,
+    ).order_by('id', 'audience_builder_name')
+
     # Step 1: Get folders that are not deleted
     folder_queryset = EmailTemplateFolder.objects.filter(deleted=False, archived=False).order_by('email_template_name')
 
@@ -534,6 +553,7 @@ def email_campaign_edit_view(request):
         'google_civic_election_id': google_civic_election_id,
         'state_code': state_code,
         'email_campaign': email_campaign,
+        'audience_builder_list': audience_builder_list,
         'saved_campaigns': saved_campaigns,
         'campaign_recipients': json.dumps(campaign_recipients),
         'token_list': EMAIL_TEMPLATE_CUSTOMIZATION_TOKENS,
@@ -541,6 +561,68 @@ def email_campaign_edit_view(request):
     }
 
     return render(request, 'email_outbound/email_campaign_edit.html', template_values)
+
+
+@login_required
+def audience_builder_recipient_count_view(request):
+    authority_required = {'political_data_manager', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return JsonResponse({'success': False, 'status': 'PERMISSION_DENIED'}, status=403)
+
+    audience_builder_id = request.GET.get('audience_builder_id', request.POST.get('audience_builder_id', 0))
+    audience_builder_id = convert_to_int(audience_builder_id)
+    if not positive_value_exists(audience_builder_id):
+        return JsonResponse({
+            'audience_builder_id': audience_builder_id,
+            'recipient_count': 0,
+            'status': 'AUDIENCE_BUILDER_ID_REQUIRED ',
+            'success': False,
+        }, status=400)
+
+    status = ''
+    recipient_count = 0
+    try:
+        audience_builder_results = audience_builder_data_retrieve(audience_builder_id)
+        status += audience_builder_results['status']
+        if audience_builder_results['success']:
+            preview_results = generate_preview_list_from_audience_builder(
+                audience_builder=audience_builder_results['audience_builder'],
+                audience_filter_chain_dict=audience_builder_results['audience_filter_chain_dict'],
+                audience_filter_dict=audience_builder_results['audience_filter_dict'],
+                request=request,
+            )
+            status += preview_results['status']
+            if preview_results['success']:
+                recipient_count = preview_results['preview_list_length']
+            else:
+                return JsonResponse({
+                    'audience_builder_id': audience_builder_id,
+                    'recipient_count': recipient_count,
+                    'status': status,
+                    'success': False,
+                }, status=500)
+        else:
+            return JsonResponse({
+                'audience_builder_id': audience_builder_id,
+                'recipient_count': recipient_count,
+                'status': status,
+                'success': False,
+            }, status=404)
+    except Exception as e:
+        status += f"AUDIENCE_BUILDER_COUNT_ERROR: {audience_builder_id}: {e} "
+        return JsonResponse({
+            'audience_builder_id': audience_builder_id,
+            'recipient_count': recipient_count,
+            'status': status,
+            'success': False,
+        }, status=500)
+
+    return JsonResponse({
+        'audience_builder_id': audience_builder_id,
+        'recipient_count': recipient_count,
+        'status': status,
+        'success': True,
+    })
 
 
 @login_required
@@ -618,6 +700,164 @@ def email_campaign_list_view(request):
     }
     return render(request, 'email_outbound/email_campaign_list.html', template_values)
 
+@login_required
+def email_campaign_analytics_view(request):
+
+    authority_required = {
+        'political_data_manager',
+        'verified_volunteer',
+    }
+    if not voter_has_authority(request, authority_required):
+        return redirect_to_sign_in_page(
+            request,
+            authority_required,
+        )
+
+    campaign_id = convert_to_int(
+        request.GET.get('id', 0)
+    )
+    state_code = request.GET.get('state_code', '')
+    google_civic_election_id = request.GET.get('google_civic_election_id', '')
+
+    email_campaign = get_object_or_404(
+        EmailCampaign,
+        id=campaign_id,
+        deleted=False,
+        emails_sent=True,
+    )
+
+    recipients_queryset = EmailCampaignRecipient.objects.filter(
+        email_campaign_id=campaign_id,
+    )
+
+    total_sends = recipients_queryset.count()
+    open_count = recipients_queryset.filter(open_tracking_count__gt=0).count()
+    open_rate = round((open_count / total_sends) * 100, 2,) if total_sends else 0
+
+    chart_labels = []
+    four_hour_open_counts = [0] * 6
+    four_hour_open_rates = [0] * 6
+    open_rate_chart_subtitle = '24 hours following email send'
+    open_rate_chart_updated = ''
+
+    if email_campaign.date_sent:
+        open_window_start = email_campaign.date_sent
+        open_window_end = (
+            open_window_start + timedelta(hours=24)
+        )
+
+        first_open_times = recipients_queryset.filter(
+            open_tracking_count__gt=0,
+            open_tracking_first_open__gte=open_window_start,
+            open_tracking_first_open__lt=open_window_end,
+        ).values_list(
+            'open_tracking_first_open',
+            flat=True,
+        )
+
+        # Each point represents the percentage of recipients whose
+        # first open occurred during that four-hour interval.
+        for first_open_time in first_open_times:
+            elapsed_seconds = (
+                first_open_time - open_window_start
+            ).total_seconds()
+            bucket_index = int(
+                elapsed_seconds // (4 * 3600)
+            )
+
+            if 0 <= bucket_index < 6:
+                four_hour_open_counts[bucket_index] += 1
+
+        if total_sends:
+            four_hour_open_rates = [
+                round(
+                    (bucket_open_count / total_sends) * 100,
+                    2,
+                )
+                for bucket_open_count in four_hour_open_counts
+            ]
+
+        eastern_timezone = ZoneInfo('America/New_York')
+        local_send_time = open_window_start.astimezone(
+            eastern_timezone
+        )
+        local_window_end = open_window_end.astimezone(
+            eastern_timezone
+        )
+
+        open_rate_chart_subtitle = '{} - {}'.format(
+            local_send_time.strftime('%b %d, %Y %I:%M %p').replace(' 0', ' '),
+            local_window_end.strftime('%b %d, %Y %I:%M %p').replace(' 0', ' '),
+        )
+
+        for bucket_index in range(6):
+            label_time = (
+                local_send_time
+                + timedelta(hours=bucket_index * 4)
+            )
+            chart_labels.append(
+                label_time.strftime(
+                    '%I:%M %p'
+                ).lstrip('0')
+            )
+
+    if email_campaign.date_last_updated:
+        updated_time = email_campaign.date_last_updated.astimezone(
+            ZoneInfo('America/New_York')
+        )
+        open_rate_chart_updated = updated_time.strftime(
+            '%b %d, %Y %I:%M %p'
+        ).replace(' 0', ' ')
+
+    # Open metrics are calculated from recipient records.
+    # Other metrics remain placeholders until their event
+    # tracking is implemented.
+    analytics_data = {
+        'abuse_report_count': 1,
+        'bounce_count': 132,
+        'click_count': 32,
+        'click_rate': 0.48,
+        'conversion_count': 31,
+        'delivered_count': 6427,
+        'open_count': open_count,
+        'open_rate': open_rate,
+        'total_sends': total_sends,
+        'unsubscribe_count': 56,
+        'unsubscribe_rate': 0.86,
+    }
+
+    chart_data = {
+        'click_rates': [
+            0.02, 0.48, 0.14, 0.00, 0.06, 0.03,
+        ],
+        'conversion_counts': [
+            0, 22, 6, 0, 1, 2,
+        ],
+
+        # Open rate for each non-cumulative four-hour interval.
+        'open_rates': four_hour_open_rates,
+
+        'unsubscribe_rates': [
+            0, 0.86, 0.05, 0.10, 0.06, 0,
+        ],
+    }
+
+    template_values = {
+        'analytics_data': analytics_data,
+        'chart_data_json': json.dumps(chart_data),
+        'chart_labels_json': json.dumps(chart_labels),
+        'email_campaign': email_campaign,
+        'google_civic_election_id': google_civic_election_id,
+        'open_rate_chart_subtitle': open_rate_chart_subtitle,
+        'open_rate_chart_updated': open_rate_chart_updated,
+        'state_code': state_code,
+    }
+
+    return render(
+        request,
+        'email_outbound/email_campaign_analytics.html',
+        template_values,
+    )
 
 @login_required
 def email_recipient_list_view(request):
@@ -1551,7 +1791,7 @@ def audience_builder_edit_process_view(request):
                     audience_builder_id=audience_builder_id)
                 audience_filter_dict[audience_filter.id] = audience_filter
                 # Now link the new filter to the first spot in the chain
-                audience_filter_id_attribute = f'filter1_id'
+                audience_filter_id_attribute = 'filter1_id'
                 setattr(audience_filter_chain, audience_filter_id_attribute, audience_filter.id)
                 audience_filter_chain.save()
 
@@ -1943,3 +2183,49 @@ def email_recipient_view(request, email_recipient_id=0):
         'state_code':               state_code,
     }
     return render(request, 'email_outbound/view_recipient_email.html', template_values)
+
+
+def email_recipient_view_html_view(request, email_recipient_id=0):
+    """
+    Returns the assembled email body as an HTML fragment (JSON) for the "Message Sent" drawer,
+    so it can be shown inline instead of opening a new tab.
+    """
+    status = ''
+
+    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+    authority_required = {'political_data_manager', 'verified_volunteer'}
+    if not voter_has_authority(request, authority_required):
+        return JsonResponse({'success': False, 'status': 'PERMISSION_DENIED'}, status=403)
+
+    recipient_full_name = ''
+    try:
+        email_recipient = EmailCampaignRecipient.objects.get(id=email_recipient_id)
+    except EmailCampaignRecipient.DoesNotExist:
+        return JsonResponse({
+            'email_recipient_id':   email_recipient_id,
+            'html':                 '',
+            'recipient_full_name':  recipient_full_name,
+            'status':               'EMAIL_RECIPIENT_NOT_FOUND',
+            'success':              False,
+        }, status=404)
+
+    recipient_full_name = email_recipient.recipient_full_name or ''
+    email_body_assembled = email_recipient.email_body_assembled
+    if email_body_assembled:
+        try:
+            # We want to search for this pattern "/apis/v1/opened/hcRlYMGJCK4yZuz/" in email_body_assembled,
+            #  where hcRlYMGJCK4yZuz could be any random string, and then remove that final random string.
+            # This serves the purpose of NOT marking the email as opened when we view it in our admin tools.
+            email_body_assembled = re.sub(r'/apis/v1/opened/[a-zA-Z0-9]+/', '/apis/v1/opened/DONOTTRACK/',
+                                          email_body_assembled)
+        except Exception as e:
+            email_body_assembled = email_recipient.email_body_assembled
+            status += "ERROR_SUBSTITUTING_EMAIL_BODY_ASSEMBLED: " + str(e) + " "
+
+    return JsonResponse({
+        'email_recipient_id':   email_recipient_id,
+        'html':                 email_body_assembled or '',
+        'recipient_full_name':  recipient_full_name,
+        'status':               status,
+        'success':              True,
+    })

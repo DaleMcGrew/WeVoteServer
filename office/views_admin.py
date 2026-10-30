@@ -12,7 +12,7 @@ from ballot.controllers import move_ballot_items_to_another_office
 from bookmark.models import BookmarkItemList
 from candidate.controllers import create_candidate_from_politician, move_candidates_to_another_office
 from candidate.models import CandidateCampaign, CandidateListManager, CandidateManager, fetch_candidate_count_for_office
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.text import slugify
@@ -20,8 +20,8 @@ from django.utils.timezone import localtime, now
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
-from django.shortcuts import render
-from django.db.models import Q
+from django.shortcuts import redirect, render
+from django.db.models import Count, Q
 from election.models import Election, ElectionManager
 from exception.models import handle_record_found_more_than_one_exception, \
     handle_record_not_found_exception, handle_record_not_saved_exception
@@ -34,7 +34,8 @@ from wevote_functions.functions import convert_to_int, get_voter_api_device_id, 
     extract_first_name_from_full_name, extract_middle_name_from_full_name, extract_last_name_from_full_name, \
     is_candidate_we_vote_id, is_politician_we_vote_id, positive_value_exists, \
     STATE_CODE_MAP
-from wevote_functions.functions_date import convert_we_vote_date_string_to_date_as_integer
+from wevote_functions.functions_date import convert_date_as_integer_to_date, convert_date_to_we_vote_date_string, \
+    convert_we_vote_date_string_to_date_as_integer
 from django.http import HttpResponse
 import json
 
@@ -736,11 +737,36 @@ def office_list_view(request):
 
     if office_list_found:
         position_list_manager = PositionListManager()
+        office_explanation_we_vote_ids = [
+            office.office_explanation_we_vote_id
+            for office in office_list
+            if positive_value_exists(office.office_explanation_we_vote_id)
+        ]
+        office_explanation_dict = {}
+        if office_explanation_we_vote_ids:
+            try:
+                office_explanation_list = OfficeExplanation.objects.using('readonly').filter(
+                    we_vote_id__in=office_explanation_we_vote_ids
+                )
+                office_explanation_dict = {
+                    item.we_vote_id.lower(): item for item in office_explanation_list if item.we_vote_id
+                }
+            except Exception as e:
+                pass
+
         for office in office_list:
             if show_statistics:
                 office.candidate_count = fetch_candidate_count_for_office(office.id)
                 office.positions_count = position_list_manager.fetch_public_positions_count_for_contest_office(
                     office.id, office.we_vote_id)
+
+            if positive_value_exists(office.office_explanation_we_vote_id):
+                office_explanation = office_explanation_dict.get(office.office_explanation_we_vote_id.lower())
+                if office_explanation:
+                    office.office_explanation = office_explanation
+                    office.office_explanation_we_vote_id = office_explanation.we_vote_id
+                else:
+                    office.office_explanation_we_vote_id = None
 
             updated_office_list.append(office)
 
@@ -928,35 +954,35 @@ def office_new_view(request):
 
     messages_on_stage = get_messages(request)
     template_values = {
-        'ballotpedia_office_id_dict':              
+        'ballotpedia_office_id_dict':
         {
             'label':    'Ballotpedia Office Id (Office Held)',
             'id':       'ballotpedia_office_id_id',
             'name':     'ballotpedia_office_id',
             'value':     ballotpedia_office_id
         },
-        'ballotpedia_office_name_dict':              
+        'ballotpedia_office_name_dict':
         {
             'label':    'Office Name (for Ballotpedia matching)',
             'id':       'ballotpedia_office_name_id',
             'name':     'ballotpedia_office_name',
             'value':     ballotpedia_office_name
         },
-        'ballotpedia_race_id_dict':              
+        'ballotpedia_race_id_dict':
         {
             'label':    'Ballotpedia Race Id (Contest Office)',
             'id':       'ballotpedia_race_id_id',
             'name':     'ballotpedia_race_id',
             'value':     ballotpedia_race_id
         },
-        'ctcl_uuid_dict':              
+        'ctcl_uuid_dict':
         {
             'label':    'CTCL UUID',
             'id':       'ctcl_uuid_id',
             'name':     'ctcl_uuid',
             'value':     ctcl_uuid
         },
-        'district_id_dict':              
+        'district_id_dict':
         {
             'label':    'District ID',
             'id':       'district_id_id',
@@ -964,35 +990,35 @@ def office_new_view(request):
             'value':     district_id
         },
         'google_civic_election_id':         google_civic_election_id,
-        'google_civic_office_name_dict':              
+        'google_civic_office_name_dict':
         {
             'label':    'Office Name 1 (for Google Civic matching)',
             'id':       'google_civic_office_name_id',
             'name':     'google_civic_office_name',
             'value':     google_civic_office_name
         },
-        'google_civic_office_name2_dict':              
+        'google_civic_office_name2_dict':
         {
             'label':    'Office Name 2',
             'id':       'google_civic_office_name2_id',
             'name':     'google_civic_office_name2',
             'value':     google_civic_office_name2
         },
-        'google_civic_office_name3_dict':              
+        'google_civic_office_name3_dict':
         {
             'label':    'Office Name 3',
             'id':       'google_civic_office_name3_id',
             'name':     'google_civic_office_name3',
             'value':     google_civic_office_name3
         },
-        'google_civic_office_name4_dict':              
+        'google_civic_office_name4_dict':
         {
             'label':    'Office Name 4',
             'id':       'google_civic_office_name4_id',
             'name':     'google_civic_office_name4',
             'value':     google_civic_office_name4
         },
-        'google_civic_office_name5_dict':              
+        'google_civic_office_name5_dict':
         {
             'label':    'Office Name 5',
             'id':       'google_civic_office_name5_id',
@@ -1000,7 +1026,7 @@ def office_new_view(request):
             'value':     google_civic_office_name5
         },
         'messages_on_stage':        messages_on_stage,
-        'ocd_division_id_dict':              
+        'ocd_division_id_dict':
         {
             'label':    'OCD Division ID',
             'id':       'ocd_division_id_id',
@@ -1034,6 +1060,9 @@ def office_edit_view(request, office_id=0, contest_office_we_vote_id=""):
     google_civic_office_name3 = request.GET.get('google_civic_office_name3', '')
     google_civic_office_name4 = request.GET.get('google_civic_office_name4', '')
     google_civic_office_name5 = request.GET.get('google_civic_office_name5', '')
+
+    office_explanation_search = request.GET.get('office_explanation_search', '').strip()
+    office_explanation_list = []
     
     office_on_stage = ContestOffice()
     office_on_stage_found = False
@@ -1049,18 +1078,37 @@ def office_edit_view(request, office_id=0, contest_office_we_vote_id=""):
         # This is fine, create new
         pass
 
+    office_explanation_list = []
+    if office_explanation_search:
+        linked_office_explanation = list(OfficeExplanation.objects.filter(
+            we_vote_id=office_on_stage.office_explanation_we_vote_id
+        ))
+        office_explanation_list = linked_office_explanation + list(
+            OfficeExplanation.objects.using('readonly').filter(
+              Q(office_explanation_name__icontains=office_explanation_search) |
+              Q(state_code__icontains=office_explanation_search) |
+              Q(we_vote_id__icontains=office_explanation_search)
+        ).exclude(
+            we_vote_id=office_on_stage.office_explanation_we_vote_id
+        ).order_by('office_explanation_name'))
+    elif office_on_stage and office_on_stage.office_explanation_we_vote_id:
+        linked = OfficeExplanation.objects.filter(
+            we_vote_id=office_on_stage.office_explanation_we_vote_id
+        )
+        office_explanation_list = list(linked)
+
     if office_on_stage_found:
         # Was a contest_office_merge_possibility_found?
         office_on_stage.contest_office_merge_possibility_found = True  # TODO DALE Make dynamic
         template_values = {
-            'ballotpedia_office_id_dict':              
+            'ballotpedia_office_id_dict':
             {
                 'label':    'Ballotpedia Office Id (Office Held)',
                 'id':       'ballotpedia_office_id_id',
                 'name':     'ballotpedia_office_id',
                 'value':     ballotpedia_office_id if ballotpedia_office_id else office_on_stage.ballotpedia_office_id
             },
-            'ballotpedia_office_name_dict':              
+            'ballotpedia_office_name_dict':
             {
                 'label':    'Office Name (for Ballotpedia matching)',
                 'id':       'ballotpedia_office_name_id',
@@ -1068,21 +1116,21 @@ def office_edit_view(request, office_id=0, contest_office_we_vote_id=""):
                 'value':     ballotpedia_office_name
                 if ballotpedia_office_name else office_on_stage.ballotpedia_office_name
             },
-            'ballotpedia_race_id_dict':              
+            'ballotpedia_race_id_dict':
             {
                 'label':    'Ballotpedia Race Id (Contest Office)',
                 'id':       'ballotpedia_race_id_id',
                 'name':     'ballotpedia_race_id',
                 'value':     ballotpedia_race_id if ballotpedia_race_id else office_on_stage.ballotpedia_race_id
             },
-            'ctcl_uuid_dict':              
+            'ctcl_uuid_dict':
             {
                 'label':    'CTCL UUID',
                 'id':       'ctcl_uuid_id',
                 'name':     'ctcl_uuid',
                 'value':     ctcl_uuid if ctcl_uuid else office_on_stage.ctcl_uuid
             },
-            'district_id_dict':              
+            'district_id_dict':
             {
                 'label':    'District ID',
                 'id':       'district_id_id',
@@ -1090,7 +1138,7 @@ def office_edit_view(request, office_id=0, contest_office_we_vote_id=""):
                 'value':     district_id if district_id else office_on_stage.district_id
             },
             'google_civic_election_id':         google_civic_election_id,
-            'google_civic_office_name_dict':              
+            'google_civic_office_name_dict':
             {
                 'label':    'Office Name 1 (for Google Civic matching)',
                 'id':       'google_civic_office_name_id',
@@ -1098,7 +1146,7 @@ def office_edit_view(request, office_id=0, contest_office_we_vote_id=""):
                 'value':     google_civic_office_name
                 if google_civic_office_name else office_on_stage.google_civic_office_name
             },
-            'google_civic_office_name2_dict':              
+            'google_civic_office_name2_dict':
             {
                 'label':    'Office Name 2',
                 'id':       'google_civic_office_name2_id',
@@ -1106,7 +1154,7 @@ def office_edit_view(request, office_id=0, contest_office_we_vote_id=""):
                 'value':     google_civic_office_name2
                 if google_civic_office_name2 else office_on_stage.google_civic_office_name2
             },
-            'google_civic_office_name3_dict':              
+            'google_civic_office_name3_dict':
             {
                 'label':    'Office Name 3',
                 'id':       'google_civic_office_name3_id',
@@ -1114,7 +1162,7 @@ def office_edit_view(request, office_id=0, contest_office_we_vote_id=""):
                 'value':     google_civic_office_name3
                 if google_civic_office_name3 else office_on_stage.google_civic_office_name3
             },
-            'google_civic_office_name4_dict':              
+            'google_civic_office_name4_dict':
             {
                 'label':    'Office Name 4',
                 'id':       'google_civic_office_name4_id',
@@ -1122,7 +1170,7 @@ def office_edit_view(request, office_id=0, contest_office_we_vote_id=""):
                 'value':     google_civic_office_name4
                 if google_civic_office_name4 else office_on_stage.google_civic_office_name4
             },
-            'google_civic_office_name5_dict':              
+            'google_civic_office_name5_dict':
             {
                 'label':    'Office Name 5',
                 'id':       'google_civic_office_name5_id',
@@ -1131,7 +1179,7 @@ def office_edit_view(request, office_id=0, contest_office_we_vote_id=""):
                 if google_civic_office_name5 else office_on_stage.google_civic_office_name5
             },
             'messages_on_stage':        messages_on_stage,
-            'ocd_division_id_dict':              
+            'ocd_division_id_dict':
             {
                 'label':    'OCD Division ID',
                 'id':       'ocd_division_id_id',
@@ -1139,11 +1187,15 @@ def office_edit_view(request, office_id=0, contest_office_we_vote_id=""):
                 'value':     ocd_division_id if ocd_division_id else office_on_stage.ocd_division_id
             },
             'office':                   office_on_stage,
+            'office_explanation_search': office_explanation_search,
+            'office_explanation_list': office_explanation_list,
         }
     else:
         template_values = {
             'messages_on_stage':        messages_on_stage,
             'google_civic_election_id': google_civic_election_id,
+            'office_explanation_search': office_explanation_search,
+            'office_explanation_list': office_explanation_list,
         }
     return render(request, 'office/office_edit.html', template_values)
 
@@ -1161,6 +1213,32 @@ def office_edit_process_view(request):
     authority_required = {'verified_volunteer'}
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
+
+    if request.POST.get('link_office_explanation_submit') == '1':
+        contest_office_we_vote_id = (request.POST.get('contest_office_we_vote_id') or '').strip()
+        office_id = request.POST.get('office_id', 0)
+        selected = request.POST.get('selected_office_explanation_we_vote_id', None)
+
+        if selected == "":
+            office_explanation_we_vote_id = None
+        else:
+            office_explanation_we_vote_id = selected.strip()
+
+        try:
+            if contest_office_we_vote_id:
+                contest_office = ContestOffice.objects.get(we_vote_id=contest_office_we_vote_id)
+            else:
+                contest_office = ContestOffice.objects.get(id=int(office_id))
+        except ContestOffice.DoesNotExist:
+            messages.error(request, "Contest office not found.")
+            return HttpResponseRedirect(reverse('office:office_list'))
+
+        ContestOffice.objects.filter(id=contest_office.id).update(
+            office_explanation_we_vote_id=office_explanation_we_vote_id
+        )
+
+        messages.success(request, "Office linked to selected office explanation.")
+        return HttpResponseRedirect(reverse('office:office_edit', args=[contest_office.id]))
 
     ballotpedia_office_id = request.POST.get('ballotpedia_office_id', False)  # Related to office_held
     ballotpedia_race_id = request.POST.get('ballotpedia_race_id', False)  # Related to contest_office
@@ -2319,7 +2397,7 @@ def office_explanations_list_view(request):
 
 
     try:
-        office_explanations = OfficeExplanation.objects.order_by('we_vote_id')
+        office_explanations = OfficeExplanation.objects.order_by('office_explanation_name')
         if positive_value_exists(state_code):
             office_explanations = office_explanations.filter(state_code__iexact=state_code)
         if positive_value_exists(office_search):
@@ -2333,8 +2411,24 @@ def office_explanations_list_view(request):
         office_explanation_list = []
 
     state_codes = STATE_CODE_MAP
+    office_explanation_we_vote_ids = [
+        one_office.we_vote_id for one_office in office_explanation_list if one_office.we_vote_id
+    ]
+    office_links_count_dict = {}
+    if office_explanation_we_vote_ids:
+        contest_office_counts = ContestOffice.objects.filter(
+            office_explanation_we_vote_id__in=office_explanation_we_vote_ids
+        ).values('office_explanation_we_vote_id').annotate(office_count=Count('id'))
+        office_links_count_dict = {
+            item['office_explanation_we_vote_id'].lower(): item['office_count']
+            for item in contest_office_counts
+            if item['office_explanation_we_vote_id']
+        }
+
     state_codes_modified = {}
     for one_office_explanation in office_explanation_list:
+        we_vote_id_key = (one_office_explanation.we_vote_id or '').lower()
+        one_office_explanation.office_links = office_links_count_dict.get(we_vote_id_key, 0)
         if one_office_explanation.state_code not in state_codes_modified:
             state_name = state_codes.get(one_office_explanation.state_code, one_office_explanation.state_code)
             state_codes_modified[one_office_explanation.state_code] = state_name
@@ -2342,10 +2436,10 @@ def office_explanations_list_view(request):
     state_list = sorted(state_codes_modified.items())
 
     template_values = {
-        'office_list': office_explanation_list,
-        'state_list':         state_list,
-        'state_code':         state_code,
-        'office_search':      office_search,
+        'office_list':      office_explanation_list,
+        'state_list':       state_list,
+        'state_code':       state_code,
+        'office_search':    office_search,
     }
 
     return render(request, 'office/office_explanations_list.html', template_values)
@@ -2358,57 +2452,101 @@ def office_explanation_process_view(request):
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
     
+    hide_linked_offices = positive_value_exists(request.POST.get('hide_linked_offices', False))
     office_explanation_name = request.POST.get('office_explanation_name', '')
-    office_explanation = request.POST.get('office_explanation', '')
+    office_explanation_description = request.POST.get('office_explanation_description', '')
+    office_level = request.POST.get('office_level', '')
+    if office_level == 'Missing':
+        office_level_missing = True
+    else:
+        office_level_missing = False
+    if office_level not in ('Federal', 'State', 'Local', 'Missing'):
+        office_level = ''
     office_video_url_horizontal = request.POST.get('video_url_horizontal', '')
     office_video_url_square = request.POST.get('video_url_square', '')
     office_video_url_vertical = request.POST.get('video_url_vertical', '')
+    contest_office_search = request.POST.get('contest_office_search', '')
     we_vote_id = request.POST.get('we_vote_id', '')
 
     office_explanation_found = False
-    office_on_stage = OfficeExplanation()
+    office_explanation = OfficeExplanation()
     error = False
     try:
         if positive_value_exists(we_vote_id):
             office_query = OfficeExplanation.objects.filter(we_vote_id=we_vote_id)
             if len(office_query):
-                office_on_stage = office_query[0]
+                office_explanation = office_query[0]
                 office_explanation_found = True
     except Exception as e:
         messages.add_message(request, messages.ERROR, 'There was an error trying to find this office explanation')
         error = True
 
     state_code = request.POST.get('state_code', '')
+    if request.POST.get('link_contest_offices_submit') == '1':
+        selected_ids = request.POST.getlist('selected_contest_office_we_vote_ids')
+
+        if contest_office_search:
+            # Find the contest offices that were being looked at, minus the ones checked.
+            queryset = ContestOffice.objects.filter(
+                Q(office_name__icontains=contest_office_search) |
+                Q(state_code__icontains=contest_office_search) |
+                Q(we_vote_id__icontains=contest_office_search)
+            )
+            if positive_value_exists(hide_linked_offices):
+                queryset = queryset.exclude(office_explanation_we_vote_id__isnull=False)
+            if office_level_missing:
+                queryset = queryset.filter(
+                    Q(ballotpedia_race_office_level__isnull=True) |
+                    Q(ballotpedia_race_office_level=''))
+            elif positive_value_exists(office_level):
+                queryset = queryset.filter(ballotpedia_race_office_level=office_level)
+            queryset = queryset.exclude(we_vote_id__in=selected_ids)
+            queryset = queryset.order_by('office_name', 'state_code')
+            # limit results to same number on office_explanation_edit_view
+            ids_to_clear = list(queryset.values_list('id', flat=True)[:1000])
+            if len(ids_to_clear) > 0:
+                ContestOffice.objects.filter(id__in=ids_to_clear).update(office_explanation_we_vote_id=None)
+
+        ContestOffice.objects.filter(we_vote_id__in=selected_ids).update(
+            office_explanation_we_vote_id=we_vote_id
+        )
+        return HttpResponseRedirect(reverse('office:office_explanation_edit', args=[we_vote_id]) +
+                                    "?contest_office_search=" + str(contest_office_search) +
+                                    "&hide_linked_offices=" + str(hide_linked_offices) +
+                                    "&office_level=" + str(office_level))
 
     if not error:
         try:
             if not office_explanation_found:
                 # Create new office explanation
-                office_on_stage = OfficeExplanation(
+                office_explanation = OfficeExplanation(
                     office_explanation_name=office_explanation_name,
-                    office_explanation=office_explanation,
+                    office_explanation=office_explanation_description,
                     video_url_horizontal=office_video_url_horizontal,
                     video_url_square=office_video_url_square,
                     video_url_vertical=office_video_url_vertical,
                     state_code=state_code,
                     we_vote_id=None,
                 )
-                office_on_stage.save()
+                office_explanation.save()
                 messages.add_message(request, messages.INFO, 'Office explanation created.')
             else:
                 # Update existing office explanation
-                office_on_stage.office_explanation_name = office_explanation_name
-                office_on_stage.office_explanation = office_explanation
-                office_on_stage.video_url_horizontal = office_video_url_horizontal
-                office_on_stage.video_url_square = office_video_url_square
-                office_on_stage.video_url_vertical = office_video_url_vertical
-                office_on_stage.state_code = state_code
-                office_on_stage.save()
+                office_explanation.office_explanation_name = office_explanation_name
+                office_explanation.office_explanation = office_explanation_description
+                office_explanation.video_url_horizontal = office_video_url_horizontal
+                office_explanation.video_url_square = office_video_url_square
+                office_explanation.video_url_vertical = office_video_url_vertical
+                office_explanation.state_code = state_code
+                office_explanation.save()
                 messages.add_message(request, messages.INFO, 'Office explanation updated.')
         except Exception as e:
             messages.add_message(request, messages.ERROR, 'Could not save office explanation -- exception: ' + str(e))
 
-    return HttpResponseRedirect(reverse('office:office_explanations_list', args=()) + '?state_code=' + str(state_code))
+    return HttpResponseRedirect(reverse('office:office_explanations_list', args=()) +
+                                '?state_code=' + str(state_code) +
+                                "&hide_linked_offices=" + str(hide_linked_offices) +
+                                "&office_level=" + str(office_level))
 
 
 @login_required
@@ -2438,7 +2576,6 @@ def office_explanation_delete_process_view(request, we_vote_id):
 
 @login_required
 def office_explanation_edit_view(request, we_vote_id):
-    
     authority_required = {'verified_volunteer'}
     if not voter_has_authority(request, authority_required):
         return redirect_to_sign_in_page(request, authority_required)
@@ -2454,10 +2591,108 @@ def office_explanation_edit_view(request, we_vote_id):
     state_codes = STATE_CODE_MAP.keys()
     state_codes = sorted(state_codes)
 
+    contest_office_search = request.GET.get("contest_office_search", "").strip()
+    hide_linked_offices = positive_value_exists(request.GET.get('hide_linked_offices', False))
+    office_level = request.GET.get('office_level', '')
+    if office_level == 'Missing':
+        office_level_missing = True
+    else:
+        office_level_missing = False
+    if office_level not in ('Federal', 'State', 'Local', 'Missing'):
+        office_level = ''
+    contest_office_list = []
+
+    if contest_office_search:
+        queryset = ContestOffice.objects.filter(
+            Q(office_name__icontains=contest_office_search) |
+            Q(state_code__icontains=contest_office_search) |
+            Q(we_vote_id__icontains=contest_office_search)
+        )
+        if positive_value_exists(hide_linked_offices):
+            queryset = queryset.exclude(office_explanation_we_vote_id__isnull=False)
+        if office_level_missing:
+            queryset = queryset.filter(
+                Q(ballotpedia_race_office_level__isnull=True) |
+                Q(ballotpedia_race_office_level=''))
+        elif positive_value_exists(office_level):
+            queryset = queryset.filter(ballotpedia_race_office_level=office_level)
+        offices_found_count = queryset.count()
+        queryset = queryset.order_by('office_name', 'state_code')
+        queryset = queryset[:1000]  # limit results
+        contest_office_list = list(queryset)
+
+        # Cycle through contest_office_list and make date easier to read
+        contest_office_list_modified = []
+        for contest_office in contest_office_list:
+            if positive_value_exists(contest_office.election_date_as_integer):
+                try:
+                    as_date = convert_date_as_integer_to_date(contest_office.election_date_as_integer)
+                    contest_office.election_date = convert_date_to_we_vote_date_string(as_date)
+                except Exception:
+                    contest_office.election_date = contest_office.election_date_as_integer
+            else:
+                contest_office.election_date = contest_office.election_date_as_integer
+            contest_office_list_modified.append(contest_office)
+        contest_office_list = contest_office_list_modified
+    else:
+        queryset = ContestOffice.objects.filter(
+            office_explanation_we_vote_id__iexact=we_vote_id
+        )
+        if office_level_missing:
+            queryset = queryset.filter(
+                Q(ballotpedia_race_office_level__isnull=True) |
+                Q(ballotpedia_race_office_level=''))
+        elif positive_value_exists(office_level):
+            queryset = queryset.filter(ballotpedia_race_office_level=office_level)
+        offices_found_count = queryset.count()
+        queryset = queryset.order_by('office_name', 'state_code')
+        queryset = queryset[:1000]  # limit results
+        contest_office_list = list(queryset)
+
+        # Cycle through contest_office_list and make date easier to read
+        contest_office_list_modified = []
+        for contest_office in contest_office_list:
+            if positive_value_exists(contest_office.election_date_as_integer):
+                try:
+                    as_date = convert_date_as_integer_to_date(contest_office.election_date_as_integer)
+                    contest_office.election_date = convert_date_to_we_vote_date_string(as_date)
+                except Exception:
+                    contest_office.election_date = contest_office.election_date_as_integer
+            else:
+                contest_office.election_date = contest_office.election_date_as_integer
+            contest_office_list_modified.append(contest_office)
+        contest_office_list = contest_office_list_modified
+
+    if request.POST.get('link_contest_offices_submit') == '1':
+        selected_contest_office_ids = request.POST.getlist('selected_contest_office_we_vote_ids')
+
+        if not office_explanation:
+            messages.warning(request, "Tried to link contest offices to nonexistent office explanation")
+            return redirect('office:office_explanation_edit', we_vote_id)
+        if not selected_contest_office_ids:
+            messages.warning(request, "No contest offices selected.")
+            return redirect('office:office_explanation_edit', we_vote_id)
+
+        # with transaction.atomic():
+        updated_count = ContestOffice.objects.filter(
+            we_vote_id__in=selected_contest_office_ids
+        ).update(office_explanation_we_vote_id=we_vote_id)
+
+        messages.success(
+            request,
+            f"Linked {updated_count} contest office(s) to this office explanation."
+        )
+        return redirect('office:office_explanation_edit', we_vote_id)
+
     template_values = {
-        'office_explanation': office_explanation,
-        'title':              'Edit Office Explanation',
-        'state_codes':      state_codes,
+        'contest_office_search':    contest_office_search,
+        'contest_office_list':      contest_office_list,
+        'hide_linked_offices':      hide_linked_offices,
+        'office_explanation':       office_explanation,
+        'office_level':             office_level,
+        'offices_found_count':      offices_found_count,
+        'state_codes':              state_codes,
+        'title':                    'Edit Office Explanation',
     }
 
     return render(request, 'office/office_explanation_edit.html', template_values)

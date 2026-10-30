@@ -6,8 +6,8 @@ from .models import BatchManager, BatchDescription, BatchHeaderMap, BatchRow, Ba
     BatchRowActionMeasure, BatchRowActionOfficeHeld, BatchRowActionContestOffice, BatchRowActionPolitician, \
     BatchRowActionCandidate, BatchRowActionPollingLocation, BatchRowActionPosition, BatchRowActionBallotItem, \
     CLEAN_DATA_MANUALLY, POSITION, IMPORT_DELETE, IMPORT_ALREADY_DELETED, \
-    IMPORT_CREATE, IMPORT_ADD_TO_EXISTING, IMPORT_DATA_ALREADY_MATCHING, IMPORT_QUERY_ERROR, \
-    IMPORT_TO_BE_DETERMINED, DO_NOT_PROCESS, BATCH_IMPORT_KEYS_ACCEPTED_FOR_BALLOT_ITEMS, \
+    IMPORT_CREATE, IMPORT_ADD_TO_EXISTING, IMPORT_QUERY_ERROR, \
+    IMPORT_TO_BE_DETERMINED, BATCH_IMPORT_KEYS_ACCEPTED_FOR_BALLOT_ITEMS, \
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_CANDIDATES, BATCH_IMPORT_KEYS_ACCEPTED_FOR_CONTEST_OFFICES, \
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_OFFICES_HELD, BATCH_IMPORT_KEYS_ACCEPTED_FOR_MEASURES, \
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_ORGANIZATIONS, BATCH_IMPORT_KEYS_ACCEPTED_FOR_POLITICIANS, \
@@ -15,7 +15,7 @@ from .models import BatchManager, BatchDescription, BatchHeaderMap, BatchRow, Ba
     BATCH_IMPORT_KEYS_ACCEPTED_FOR_REPRESENTATIVES
 from ballot.models import BallotItem, BallotItemListManager, BallotItemManager, BallotReturnedManager
 from candidate.controllers import retrieve_next_or_most_recent_office_for_candidate
-from candidate.models import CandidateCampaign, CandidateListManager, CandidateManager
+from candidate.models import CandidateListManager, CandidateManager
 # from django.db import transaction
 from django.db.models import Q
 from django.utils.timezone import now
@@ -25,15 +25,14 @@ from election.models import ElectionManager
 from exception.models import handle_exception, print_to_log
 from image.controllers import retrieve_and_save_ballotpedia_candidate_images
 from measure.models import ContestMeasure, ContestMeasureManager, ContestMeasureListManager
-from office.models import ContestOffice, ContestOfficeListManager, ContestOfficeManager
-from organization.models import Organization, OrganizationListManager, OrganizationManager, \
-    NONPROFIT_501C3, NONPROFIT_501C4, POLITICAL_ACTION_COMMITTEE, PUBLIC_FIGURE, \
-    CORPORATION, NEWS_ORGANIZATION, UNKNOWN
+from office.models import ContestOfficeListManager, ContestOfficeManager
+from organization.models import OrganizationListManager, OrganizationManager, \
+    NONPROFIT_501C3, NONPROFIT_501C4, UNKNOWN
 from politician.models import Politician, PoliticianManager
 from polling_location.models import PollingLocationManager
 from position.models import PositionManager, INFORMATION_ONLY, OPPOSE, SUPPORT
 from twitter.models import TwitterUserManager
-from volunteer_task.models import VOLUNTEER_ACTION_CANDIDATE_CREATED, VOLUNTEER_ACTION_POSITION_SAVED, \
+from volunteer_task.models import VOLUNTEER_ACTION_POSITION_SAVED, \
     VolunteerTaskManager
 from voter.models import fetch_voter_from_voter_device_link, VoterManager
 from voter_guide.controllers import refresh_existing_voter_guides
@@ -821,6 +820,10 @@ def create_batch_row_action_measure(batch_description, batch_header_map, one_bat
         "ballotpedia_no_vote_description", batch_header_map, one_batch_row)
     election_day_text = batch_manager.retrieve_value_from_batch_row(
         "election_day_text", batch_header_map, one_batch_row)
+    referendum_con = batch_manager.retrieve_value_from_batch_row(
+        "referendum_con", batch_header_map, one_batch_row)
+    referendum_pro = batch_manager.retrieve_value_from_batch_row(
+        "referendum_pro", batch_header_map, one_batch_row)
     state_code = batch_manager.retrieve_value_from_batch_row(
         "state_code", batch_header_map, one_batch_row)
 
@@ -928,6 +931,8 @@ def create_batch_row_action_measure(batch_description, batch_header_map, one_bat
         batch_row_action_measure.measure_url = measure_url
         batch_row_action_measure.measure_we_vote_id = measure_we_vote_id
         batch_row_action_measure.measure_subtitle = measure_subtitle
+        batch_row_action_measure.referendum_con = referendum_con
+        batch_row_action_measure.referendum_pro = referendum_pro
         batch_row_action_measure.state_code = state_code
         batch_row_action_measure.status = status
         batch_row_action_measure.kind_of_action = kind_of_action
@@ -3017,6 +3022,8 @@ def create_batch_row_action_ballot_item(batch_description,
     contest_measure_url = ""
     yes_vote_description = ""
     no_vote_description = ""
+    referendum_con = ""
+    referendum_pro = ""
 
     if positive_value_exists(one_batch_row.google_civic_election_id):
         google_civic_election_id = str(one_batch_row.google_civic_election_id)
@@ -3210,6 +3217,8 @@ def create_batch_row_action_ballot_item(batch_description,
             contest_measure_url = contest_measure.get_measure_url()
             yes_vote_description = contest_measure.ballotpedia_yes_vote_description
             no_vote_description = contest_measure.ballotpedia_no_vote_description
+            referendum_con = contest_measure.referendum_con
+            referendum_pro = contest_measure.referendum_pro
 
     # check for duplicate entries in the live ballot_item data
     existing_ballot_item_query_completed = False
@@ -3297,6 +3306,8 @@ def create_batch_row_action_ballot_item(batch_description,
                 measure_url=contest_measure_url,
                 no_vote_description=no_vote_description,
                 polling_location_we_vote_id=polling_location_we_vote_id,
+                referendum_con=referendum_con,
+                referendum_pro=referendum_pro,
                 state_code=state_code,
                 status=status,
                 voter_id=voter_id,
@@ -3481,11 +3492,11 @@ def import_office_held_data_from_batch_row_actions(batch_header_id, batch_row_id
     """
     Import batch_rows for office held, IMPORT_CREATE or IMPORT_ADD_TO_EXISTING
     Process batch row entries in order to create or update OfficeHeld entries
-    :param batch_header_id: 
-    :param batch_row_id: 
+    :param batch_header_id:
+    :param batch_row_id:
     :param create_entry_flag: set to True for IMPORT_CREATE
     :param update_entry_flag: set to True for IMPORT_ADD_TO_EXISTING
-    :return: 
+    :return:
     """
     success = False
     status = ""
@@ -3854,12 +3865,12 @@ def import_contest_office_data_from_batch_row_actions(
     """
     Import batch_rows for contest office, IMPORT_CREATE or IMPORT_ADD_TO_EXISTING
     Process batch row entries in order to create or update ContestOffice entries
-    :param batch_header_id: 
-    :param batch_row_id: 
+    :param batch_header_id:
+    :param batch_row_id:
     :param state_code:
     :param create_entry_flag: set to True for IMPORT_CREATE
     :param update_entry_flag: set to True for IMPORT_ADD_TO_EXISTING
-    :return: 
+    :return:
     """
     success = False
     status = ""
@@ -4072,11 +4083,11 @@ def import_measure_data_from_batch_row_actions(batch_header_id, batch_row_id,
     """
     Import batch_rows for measure, IMPORT_CREATE or IMPORT_ADD_TO_EXISTING
     Process batch row entries in order to create or update contestmeasure entries
-    :param batch_header_id: 
-    :param batch_row_id: 
+    :param batch_header_id:
+    :param batch_row_id:
     :param create_entry_flag: set to True for IMPORT_CREATE
     :param update_entry_flag: set to True for IMPORT_ADD_TO_EXISTING
-    :return: 
+    :return:
     """
     success = False
     status = ""
@@ -4203,6 +4214,8 @@ def import_measure_data_from_batch_row_actions(batch_header_id, batch_row_id,
             'ballotpedia_measure_url':      one_batch_row_action.ballotpedia_measure_url,
             'ballotpedia_yes_vote_description': one_batch_row_action.ballotpedia_yes_vote_description,
             'ballotpedia_no_vote_description':  one_batch_row_action.ballotpedia_no_vote_description,
+            'referendum_con':               one_batch_row_action.referendum_con,
+            'referendum_pro':               one_batch_row_action.referendum_pro,
             'state_code':                   one_batch_row_action.state_code,
         }
 
@@ -4274,11 +4287,11 @@ def import_candidate_data_from_batch_row_actions(batch_header_id, batch_row_id, 
     """
     Import batch_rows for candidate, IMPORT_CREATE or IMPORT_ADD_TO_EXISTING
     Process batch row entries in order to create or update CandidateCampaign entries
-    :param batch_header_id: 
-    :param batch_row_id: 
+    :param batch_header_id:
+    :param batch_row_id:
     :param create_entry_flag: set to True for IMPORT_CREATE
     :param update_entry_flag: set to True for IMPORT_ADD_TO_EXISTING
-    :return: 
+    :return:
     """
     success = False
     status = ""
@@ -4554,11 +4567,11 @@ def import_politician_data_from_batch_row_actions(batch_header_id, batch_row_id,
     """
     Import batch_rows for politician, IMPORT_CREATE or IMPORT_ADD_TO_EXISTING
     Process batch row entries in order to create or update Politician entries
-    :param batch_header_id: 
-    :param batch_row_id: 
+    :param batch_header_id:
+    :param batch_row_id:
     :param create_entry_flag: set to True for IMPORT_CREATE
     :param update_entry_flag: set to True for IMPORT_ADD_TO_EXISTING
-    :return: 
+    :return:
     """
     success = False
     status = ""
@@ -5290,11 +5303,11 @@ def import_position_data_from_batch_row_actions(
 
 def import_update_or_create_office_held_entry(batch_header_id, batch_row_id):
     """
-    Either create or update OfficeHeld table entry with batch_row office_held details 
-    
-    :param batch_header_id: 
-    :param batch_row_id: 
-    :return: 
+    Either create or update OfficeHeld table entry with batch_row office_held details
+
+    :param batch_header_id:
+    :param batch_row_id:
+    :return:
     """
     success = False
     status = ""
@@ -5653,7 +5666,7 @@ def import_ballot_item_data_from_batch_row_actions(batch_header_id, batch_row_id
                         one_batch_row_action.save()
                     except Exception as e:
                         success = False
-                        status += "BALLOT_ITEM_RETRIEVE_ERROR: " + str(e) + " "
+                        status += "IMPORT-BALLOT_ITEM_RETRIEVE_ERROR: " + str(e) + " "
                         handle_exception(e, logger=logger, exception_message=status)
                 else:
                     status += results['status']
@@ -6037,9 +6050,9 @@ def import_data_from_batch_row_actions(
 def get_batch_header_id_from_batch_description(batch_set_id, kind_of_batch):
     """
     Look up batch_description table for a given batch_set_id and kind_of_batch
-    :param batch_set_id: 
-    :param kind_of_batch: 
-    :return: 
+    :param batch_set_id:
+    :param kind_of_batch:
+    :return:
     """
     batch_header_id = 0
     try:
@@ -6073,4 +6086,3 @@ def export_voter_list_with_emails():
     }
 
     return export_result
-

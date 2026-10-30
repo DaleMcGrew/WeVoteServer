@@ -1,0 +1,27 @@
+# Lambda image for the batch worker.
+# Uses the AWS-managed Lambda base image which includes the Lambda Runtime
+# Interface Client, so no separate entrypoint wrapper is needed.
+#
+# The AWS Lambda Python 3.12 base uses Amazon Linux 2023.
+# System packages use dnf instead of apt.
+FROM public.ecr.aws/newrelic-lambda-layers-for-docker/newrelic-lambda-layers-python:312 AS newRelic
+
+FROM public.ecr.aws/lambda/python:3.12
+
+# Copy New Relic layer code
+COPY --from=newRelic /opt/ /opt/
+
+# libmagic is required by the python-magic package used in WeVoteServer
+RUN dnf install -y file-libs && dnf clean all
+
+# Install Python dependencies into the Lambda task root
+COPY requirements.txt ${LAMBDA_TASK_ROOT}/
+RUN pip install -r ${LAMBDA_TASK_ROOT}/requirements.txt --no-cache-dir
+
+# Copy the full WeVoteServer codebase — all Django apps must be importable
+COPY . ${LAMBDA_TASK_ROOT}/
+
+ENV NEW_RELIC_LAMBDA_HANDLER=aws.lambda_batch_processor.handler
+ENV NEW_RELIC_APM_LAMBDA_MODE=true
+
+CMD ["newrelic_lambda_wrapper.handler"]

@@ -8,7 +8,7 @@ from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from politician.controllers import politicians_query_for_api, politician_retrieve_for_api, politician_save_for_api
 from politician.controllers_managed_politician import politicians_managed_retrieve_for_api
 from politician.views_admin import politician_change_gender_id_view
