@@ -1,0 +1,91 @@
+// Message Sent Drawer JavaScript
+// Opens the assembled email body in a right-side drawer instead of a new tab.
+
+// Open the drawer and fetch the assembled email body for the given recipient.
+function openMessageSentDrawer(emailRecipientId, googleCivicElectionId = '') {
+    const drawer = document.getElementById('messageSentDrawer');
+    const overlay = document.getElementById('messageSentOverlay');
+    const drawerContent = document.getElementById('messageSentDrawerHTML');
+    const subtitle = document.getElementById('messageSentDrawerSubtitle');
+
+    if (drawer && overlay) {
+        drawer.classList.add('open');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    if (!drawerContent) {
+        return;
+    }
+
+    // Show loading state
+    drawerContent.innerHTML = '<div class="ms-loading-spinner">Loading message...</div>';
+    if (subtitle) {
+        subtitle.textContent = '';
+    }
+
+    // Fetch the assembled email HTML from the server
+    let url = '/email/view_recipient_email_html/' + emailRecipientId + '/';
+    if (googleCivicElectionId) {
+        url += '?google_civic_election_id=' + encodeURIComponent(googleCivicElectionId);
+    }
+
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            if (subtitle && data.recipient_full_name) {
+                subtitle.textContent = data.recipient_full_name;
+            }
+            if (data.html) {
+                drawerContent.innerHTML = '<div class="ms-drawer-email-card">' + data.html + '</div>';
+            } else {
+                drawerContent.innerHTML = '<p class="ms-drawer-content-placeholder"><em>No message body available.</em></p>';
+            }
+        } else {
+            drawerContent.innerHTML = '<div class="ms-error-message">Error loading message: ' + (data.status || 'Unknown error') + '</div>';
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching message HTML:', error);
+        drawerContent.innerHTML = '<div class="ms-error-message">Failed to load message. Please try again.</div>';
+    });
+}
+
+// Close the drawer
+function closeMessageSentDrawer() {
+    const drawer = document.getElementById('messageSentDrawer');
+    const overlay = document.getElementById('messageSentOverlay');
+
+    if (drawer && overlay) {
+        drawer.classList.remove('open');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+// Close drawer on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const drawer = document.getElementById('messageSentDrawer');
+        if (drawer && drawer.classList.contains('open')) {
+            closeMessageSentDrawer();
+        }
+    }
+});
+
+// Expose functions globally
+window.openMessageSentDrawer = openMessageSentDrawer;
+window.closeMessageSentDrawer = closeMessageSentDrawer;

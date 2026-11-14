@@ -8,7 +8,7 @@ import tweepy
 from dateutil.tz import tz
 
 import wevote_functions.admin
-from config.base import get_environment_variable, get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from exception.models import handle_exception
 from twitter.models import create_detailed_counter_entry, mark_detailed_counter_entry
 from wevote_functions.functions import positive_value_exists

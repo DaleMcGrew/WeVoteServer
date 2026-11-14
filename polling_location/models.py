@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.db import models
 from django.db.models import Q
 from exception.models import handle_record_not_found_exception
@@ -138,7 +138,7 @@ class PollingLocationLogEntry(models.Model):
     is_from_ballotpedia = models.BooleanField(default=False, null=True, db_index=True)  # Error from Ballotpedia
     is_from_ctcl = models.BooleanField(default=False, null=True, db_index=True)  # Error from retrieving data from CTCL
     is_from_google_civic = models.BooleanField(default=False, null=True, db_index=True)
-    is_from_vote_usa = models.BooleanField(default=False, null=True, db_index=True)  # Error retrieving from Vote USA
+    is_from_vote_usa = models.BooleanField(default=False, null=True, db_index=True)  # Error retrieving from Vote-USA
     kind_of_log_entry = models.CharField(max_length=50, default=None, null=True, db_index=True)
     log_entry_deleted = models.BooleanField(default=False, db_index=True)
     log_entry_message = models.TextField(null=True)

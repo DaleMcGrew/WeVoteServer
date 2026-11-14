@@ -2,19 +2,8 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from .models import BookmarkItem
 # from star.models import StarItem, StarItemList, StarItemManager
 import wevote_functions.admin
-from voter.models import voter_has_authority
-from admin_tools.views import redirect_to_sign_in_page
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect
-from django.urls import reverse
-from django.shortcuts import render
-from django.contrib.messages import get_messages
-from bookmark.models import ITEM_BOOKMARKED, ITEM_NOT_BOOKMARKED
-from wevote_functions.functions import positive_value_exists
 
 logger = wevote_functions.admin.get_logger(__name__)
 

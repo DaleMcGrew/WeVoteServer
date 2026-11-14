@@ -14,7 +14,7 @@ import wevote_functions.admin
 from apis_v1.controllers import organization_count, organization_dislike, organization_follow, \
     organization_stop_disliking, organization_follow_ignore, \
     organization_stop_following, organization_stop_ignoring
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from donate.models import DonationManager
 from follow.controllers import organization_suggestion_tasks_for_api
 from follow.models import UPDATE_SUGGESTIONS_FROM_TWITTER_IDS_I_FOLLOW, UPDATE_SUGGESTIONS_FROM_WHAT_FRIENDS_FOLLOW, \

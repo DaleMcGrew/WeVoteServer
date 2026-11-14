@@ -1,0 +1,43 @@
+name: djlint
+
+on:
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  djlint:
+    name: djlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed template files
+        id: changed-files
+        run: |
+          git diff --name-only -z --diff-filter=ACMR \
+            "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" \
+            -- 'templates/**/*.html' ':(exclude)templates/email_outbound/**' > changed_template_files.txt
+          if [ -s changed_template_files.txt ]; then
+            echo "any_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.changed-files.outputs.any_changed == 'true'
+        with:
+          python-version: "3.13"
+
+      - name: Install djlint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: pip install djlint
+
+      - name: Lint templates
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: xargs -0 djlint --lint < changed_template_files.txt
+
+      - name: Check template formatting
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: xargs -0 djlint --check < changed_template_files.txt

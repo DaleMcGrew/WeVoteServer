@@ -1,7 +1,7 @@
 # apis_v1/views/views_measure.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 import json
 from measure.controllers import add_measure_name_alternatives_to_measure_list_light, measure_retrieve_for_api, \

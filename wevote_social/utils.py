@@ -9,7 +9,7 @@ from social_django.views import _do_login
 from image.controllers import TWITTER, cache_master_and_resized_image
 from import_export_facebook.models import FacebookManager
 from twitter.models import TwitterUserManager
-from voter.models import Voter, VoterManager
+from voter.models import VoterManager
 import wevote_functions.admin
 
 logger = wevote_functions.admin.get_logger(__name__)

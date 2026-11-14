@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages
@@ -17,7 +17,7 @@ import exception.models
 import json
 from office_held.models import OfficeHeld, OfficeHeldManager, OfficesHeldForLocation
 from politician.controllers import update_parallel_fields_with_years_in_related_objects
-from representative.models import Representative, RepresentativeManager
+from representative.models import Representative
 from voter.models import voter_has_authority
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP, extract_state_from_ocd_division_id
@@ -213,6 +213,7 @@ def office_held_new_view(request):
     office_held_facebook_url = request.GET.get('office_held_facebook_url', "")
     office_held_twitter_handle = request.GET.get('office_held_twitter_handle', "")
     office_held_url = request.GET.get('office_held_url', "")
+    vote_usa_office_id = request.GET.get('vote_usa_office_id', "")
 
     office_held_manager = OfficeHeldManager()
     updated_office_held_list = []
@@ -229,75 +230,82 @@ def office_held_new_view(request):
     template_values = {
         'messages_on_stage':        messages_on_stage,
         'office_held_list':      updated_office_held_list,
-        'district_id_dict':              
+        'district_id_dict':
         {
         'label':    'District ID (Numerical)',
             'id':       'district_id_id',
             'name':     'district_id',
             'value':     district_id
         },
-        'district_name_dict':              
+        'district_name_dict':
         {
             'label':    'District Name',
             'id':       'district_name_id',
             'name':     'district_name',
             'value':     district_name
         },
-        'google_civic_office_held_name_dict':              
+        'google_civic_office_held_name_dict':
         {
             'label':    'Alternate Name (for Google Civic matching)',
             'id':       'google_civic_office_held_name_id',
             'name':     'google_civic_office_held_name',
             'value':     google_civic_office_held_name
         },
-        'google_civic_office_held_name2_dict':              
+        'google_civic_office_held_name2_dict':
         {
             'label':    'Alternate Name 2',
             'id':       'google_civic_office_held_name2_id',
             'name':     'google_civic_office_held_name2',
             'value':     google_civic_office_held_name2
         },
-        'google_civic_office_held_name3_dict':              
+        'google_civic_office_held_name3_dict':
         {
             'label':    'Alternate Name 3',
             'id':       'google_civic_office_held_name3_id',
             'name':     'google_civic_office_held_name3',
             'value':     google_civic_office_held_name3
         },
-            'ocd_division_id_dict':              
+        'ocd_division_id_dict':
         {
             'label':    'Ocd Division Id',
             'id':       'ocd_division_id_id',
             'name':     'ocd_division_id',
-            'value':     ocd_division_id
+            'value':     ocd_division_id,
         },
-        'office_held_facebook_url_dict':              
+        'office_held_facebook_url_dict':
         {
             'label':    'Office Held Facebook',
             'id':       'office_held_facebook_url_id',
             'name':     'office_held_facebook_url',
             'value':     office_held_facebook_url
         },
-        'office_held_twitter_handle_dict':              
+        'office_held_twitter_handle_dict':
         {
             'label':    'Office Held Twitter Handle',
             'id':       'office_held_twitter_handle_id',
             'name':     'office_held_twitter_handle',
             'value':     office_held_twitter_handle
         },
-        'office_held_url_dict':              
+        'office_held_url_dict':
         {
             'label':    'Office Held Website',
             'id':       'office_held_url_id',
             'name':     'office_held_url',
             'value':     office_held_url
         },
-        'state_code_dict':              
+        'state_code_dict':
         {
             'label':    'State Code',
             'id':       'state_code_id',
             'name':     'state_code',
             'value':     state_code
+        },
+        'vote_usa_office_id_dict':
+        {
+            'label':    'Vote-USA Office Id',
+            'id':       'vote_usa_office_id_id',
+            'name':     'vote_usa_office_id',
+            'value':     vote_usa_office_id,
         },
     }
     return render(request, 'office_held/office_held_edit.html', template_values)
@@ -323,6 +331,7 @@ def office_held_edit_view(request, office_held_id=0, office_held_we_vote_id=""):
     office_held_url = request.GET.get('office_held_url', '')
     state_code = request.GET.get('state_code', 0)
     twitter_handle = request.GET.get('twitter_handle', '')
+    vote_usa_office_id = request.GET.get('vote_usa_office_id', '')
 
     office_held = None
     office_held_found = False
@@ -342,35 +351,35 @@ def office_held_edit_view(request, office_held_id=0, office_held_we_vote_id=""):
         # Was office_held_merge_possibility_found?
         office_held.contest_office_merge_possibility_found = True  # TODO DALE Make dynamic
         template_values = {
-            'district_id_dict':              
+            'district_id_dict':
             {
                 'label':    'District ID (Numerical)',
                 'id':       'district_id_id',
                 'name':     'district_id',
                 'value':     district_id if district_id else office_held.district_id
             },
-            'district_name_dict':              
+            'district_name_dict':
             {
                 'label':    'District Name',
                 'id':       'district_name_id',
                 'name':     'district_name',
                 'value':     district_name if district_name else office_held.district_name
             },
-            'google_civic_office_held_name_dict':              
+            'google_civic_office_held_name_dict':
             {
                 'label':    'Alternate Name (for Google Civic matching)',
                 'id':       'google_civic_office_held_name_id',
                 'name':     'google_civic_office_held_name',
                 'value':     google_civic_office_held_name if google_civic_office_held_name else office_held.google_civic_office_held_name
             },
-            'google_civic_office_held_name2_dict':              
+            'google_civic_office_held_name2_dict':
             {
                 'label':    'Alternate Name 2',
                 'id':       'google_civic_office_held_name2_id',
                 'name':     'google_civic_office_held_name2',
                 'value':     google_civic_office_held_name2 if google_civic_office_held_name2 else office_held.google_civic_office_held_name2
             },
-            'google_civic_office_held_name3_dict':              
+            'google_civic_office_held_name3_dict':
             {
                 'label':    'Alternate Name 3',
                 'id':       'google_civic_office_held_name3_id',
@@ -379,7 +388,7 @@ def office_held_edit_view(request, office_held_id=0, office_held_we_vote_id=""):
             },
             'messages_on_stage':    			messages_on_stage,
             'ocd_division_id':    ocd_division_id,
-            'ocd_division_id_dict':              
+            'ocd_division_id_dict':
             {
                 'label':    'Ocd Division Id',
                 'id':       'ocd_division_id_id',
@@ -387,33 +396,40 @@ def office_held_edit_view(request, office_held_id=0, office_held_we_vote_id=""):
                 'value':     ocd_division_id if ocd_division_id else office_held.ocd_division_id
             },
             'office_held':          			office_held,
-            'office_held_facebook_url_dict':              
+            'office_held_facebook_url_dict':
             {
                 'label':    'Office Held Facebook',
                 'id':       'office_held_facebook_url_id',
                 'name':     'office_held_facebook_url',
                 'value':     office_held_facebook_url if office_held_facebook_url else office_held.office_held_facebook_url
             },
-            'office_held_twitter_handle_dict':              
+            'office_held_twitter_handle_dict':
             {
                 'label':    'Office Held Twitter Handle',
                 'id':       'office_held_twitter_handle_id',
                 'name':     'office_held_twitter_handle',
                 'value':     office_held_twitter_handle if office_held_twitter_handle else office_held.office_held_twitter_handle
             },
-            'office_held_url_dict':              
+            'office_held_url_dict':
             {
                 'label':    'Office Held Website',
                 'id':       'office_held_url_id',
                 'name':     'office_held_url',
-                'value':     office_held_url if office_held_url else office_held.office_held_url
+                'value':     office_held_url if office_held_url else office_held.office_held_url,
             },
-            'state_code_dict':              
+            'state_code_dict':
             {
                 'label':    'State Code',
                 'id':       'state_code_id',
                 'name':     'state_code',
-                'value':     state_code if state_code else office_held.state_code
+                'value':     state_code if state_code else office_held.state_code,
+            },
+            'vote_usa_office_id_dict':
+            {
+                'label':    'Vote-USA Office Id',
+                'id':       'vote_usa_office_id_id',
+                'name':     'vote_usa_office_id',
+                'value':     vote_usa_office_id if vote_usa_office_id else office_held.vote_usa_office_id,
             },
         }
     else:
@@ -492,6 +508,7 @@ def office_held_edit_process_view(request):
     office_held_facebook_url = request.POST.get('office_held_facebook_url', False)
     office_held_twitter_handle = request.POST.get('office_held_twitter_handle', False)
     office_held_url = request.POST.get('office_held_url', False)
+    vote_usa_office_id = request.POST.get('vote_usa_office_id', False)
     # is_battleground_race_ values taken in below
 
     office_held_found = False
@@ -552,6 +569,8 @@ def office_held_edit_process_view(request):
                 office_held.office_held_twitter_handle = office_held_twitter_handle
             if office_held_url is not False:
                 office_held.office_held_url = office_held_url
+            if vote_usa_office_id is not False:
+                office_held.vote_usa_office_id = vote_usa_office_id
             is_battleground_years_list = IS_BATTLEGROUND_YEARS_AVAILABLE
             for year in is_battleground_years_list:
                 is_battleground_race_key = 'is_battleground_race_' + str(year)
@@ -943,6 +962,10 @@ def office_held_sync_out_view(request):  # officeHeldSyncOut
             'is_battleground_race_2024',
             'is_battleground_race_2025',
             'is_battleground_race_2026',
+            'is_battleground_race_2027',
+            'is_battleground_race_2028',
+            'is_battleground_race_2029',
+            'is_battleground_race_2030',
             'number_elected',
             'ocd_division_id',
             'office_held_description',
@@ -967,6 +990,10 @@ def office_held_sync_out_view(request):  # officeHeldSyncOut
             'year_with_data_2024',
             'year_with_data_2025',
             'year_with_data_2026',
+            'year_with_data_2027',
+            'year_with_data_2028',
+            'year_with_data_2029',
+            'year_with_data_2030',
         )
         if office_held_list_dict:
             office_held_list_json = list(office_held_list_dict)
@@ -1059,6 +1086,10 @@ def offices_held_for_location_sync_out_view(request):  # officesHeldForLocationS
             'year_with_data_2024',
             'year_with_data_2025',
             'year_with_data_2026',
+            'year_with_data_2027',
+            'year_with_data_2028',
+            'year_with_data_2029',
+            'year_with_data_2030',
         )
         if offices_held_for_location_list_dict:
             modified_list_dict = []

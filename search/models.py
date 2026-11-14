@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 from ballot.models import BallotReturnedManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from candidate.models import CandidateCampaign
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver

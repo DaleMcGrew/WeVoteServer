@@ -11,7 +11,7 @@ from .models import ACTION_BALLOT_VISIT, \
     fetch_action_constant_number_from_constant_string, OrganizationDailyMetrics, OrganizationElectionMetrics, \
     SitewideDailyMetrics, SitewideElectionMetrics, SitewideVoterMetrics
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 import csv
 from datetime import date, timedelta
 from django.http import HttpResponse, HttpResponseRedirect
@@ -19,6 +19,7 @@ from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import render
 from django.utils.timezone import now
@@ -35,6 +36,8 @@ from wevote_functions.functions_date import convert_date_as_integer_to_date, con
 from wevote_settings.models import WeVoteSetting, WeVoteSettingsManager
 
 logger = wevote_functions.admin.get_logger(__name__)
+
+SITEWIDE_ELECTION_METRICS_PER_PAGE = 25
 
 ANALYTICS_ACTION_SYNC_URL = "https://api.wevoteusa.org/apis/v1/analyticsActionSyncOut/"
 ORGANIZATION_ELECTION_METRICS_SYNC_URL = "https://api.wevoteusa.org/apis/v1/organizationElectionMetricsSyncOut/"
@@ -510,6 +513,16 @@ def sitewide_election_metrics_sync_out_view(request):  # sitewideElectionMetrics
 
         metrics_list_dict = metrics_query.values(
             'id', 'authenticated_visitors_total',
+            'candidate_count',
+            'candidate_count_claimed',
+            'candidate_dislikes_count',
+            'candidate_dislikes_count_claimed',
+            'candidate_favorites_count',
+            'candidate_favorites_count_claimed',
+            'candidates_chosen_count',
+            'candidates_chosen_count_claimed',
+            'candidates_opposed_count',
+            'candidates_opposed_count_claimed',
             'election_day_text', 'entered_full_address',
             'friends_only_positions', 'friends_only_positions_with_comments', 'google_civic_election_id',
             'individuals_with_friends_only_positions', 'individuals_with_positions',
@@ -537,6 +550,16 @@ def sitewide_election_metrics_sync_out_view(request):  # sitewideElectionMetrics
                 writer.writerow(
                     [
                         'id', 'authenticated_visitors_total',
+                        'candidate_count',
+                        'candidate_count_claimed',
+                        'candidate_dislikes_count',
+                        'candidate_dislikes_count_claimed',
+                        'candidate_favorites_count',
+                        'candidate_favorites_count_claimed',
+                        'candidates_chosen_count',
+                        'candidates_chosen_count_claimed',
+                        'candidates_opposed_count',
+                        'candidates_opposed_count_claimed',
                         'election_day_text', 'entered_full_address',
                         'friends_only_positions', 'friends_only_positions_with_comments', 'google_civic_election_id',
                         'individuals_with_friends_only_positions', 'individuals_with_positions',
@@ -571,105 +594,106 @@ def sitewide_election_metrics_sync_out_view(request):  # sitewideElectionMetrics
     return HttpResponse(json.dumps(json_data), content_type='application/json')
 
 
-def backup_one_table_to_s3_view(request):  # backupOneTableToS3
-    status = ''
-    success = True
-    # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
-    authority_required = {'analytics_admin'}
-    if not voter_has_authority(request, authority_required):
-        json_data = {
-            'success': False,
-            'status': 'SITEWIDE_ELECTION_METRICS_SYNC_OUT-NOT_ANALYTICS_ADMIN '
-        }
-        return HttpResponse(json.dumps(json_data), content_type='application/json')
-
-    starting_date_as_integer = convert_to_int(request.GET.get('starting_date_as_integer', 0))
-    ending_date_as_integer = convert_to_int(request.GET.get('ending_date_as_integer', 0))
-    return_csv_format = positive_value_exists(request.GET.get('return_csv_format', False))
-
-    if not positive_value_exists(starting_date_as_integer):
-        one_month_ago = now() - timedelta(days=30)
-        starting_date_as_integer = convert_date_to_date_as_integer(one_month_ago)
-
-    if not positive_value_exists(ending_date_as_integer):
-        time_now = now()
-        ending_date_as_integer = convert_date_to_date_as_integer(time_now)
-
-    election_manager = ElectionManager()
-    results = election_manager.retrieve_elections_between_dates(
-        starting_date_as_integer=starting_date_as_integer,
-        ending_date_as_integer=ending_date_as_integer
-    )
-    election_list = results['election_list']
-    google_civic_election_id_list = []
-    for one_election in election_list:
-        google_civic_election_id_list.append(one_election.google_civic_election_id)
-
-    try:
-        metrics_query = SitewideElectionMetrics.objects.all().order_by('-id')
-        metrics_query = metrics_query.filter(google_civic_election_id__in=google_civic_election_id_list)
-
-        metrics_list_dict = metrics_query.values(
-            'id', 'authenticated_visitors_total',
-            'election_day_text', 'entered_full_address',
-            'friends_only_positions', 'friends_only_positions_with_comments', 'google_civic_election_id',
-            'individuals_with_friends_only_positions', 'individuals_with_positions',
-            'individuals_with_public_positions',
-            'issues_followed',
-            'organization_public_positions', 'organizations_auto_followed', 'organizations_followed',
-            'organizations_signed_in', 'organizations_with_positions',
-            'public_positions', 'public_positions_with_comments',
-            'unique_voters_that_auto_followed_organizations', 'unique_voters_that_followed_organizations',
-            'visitors_total', 'voter_guide_entries',
-            'voter_guide_views', 'voter_guides_viewed',
-        )
-        if metrics_list_dict:
-            metrics_list_raw = list(metrics_list_dict)
-            if return_csv_format:
-                # Create the HttpResponse object with the appropriate CSV header.
-                filename = "sitewideElectionMetricsSyncOut"
-                filename += "-" + str(starting_date_as_integer)
-                filename += "-" + str(ending_date_as_integer)
-                filename += ".csv"
-                response = HttpResponse(content_type='text/csv')
-                response['Content-Disposition'] = 'attachment; filename="' + filename + '"'
-
-                writer = csv.writer(response)
-                writer.writerow(
-                    [
-                        'id', 'authenticated_visitors_total',
-                        'election_day_text', 'entered_full_address',
-                        'friends_only_positions', 'friends_only_positions_with_comments', 'google_civic_election_id',
-                        'individuals_with_friends_only_positions', 'individuals_with_positions',
-                        'individuals_with_public_positions',
-                        'issues_followed',
-                        'organization_public_positions', 'organizations_auto_followed', 'organizations_followed',
-                        'organizations_signed_in', 'organizations_with_positions',
-                        'public_positions', 'public_positions_with_comments',
-                        'unique_voters_that_auto_followed_organizations', 'unique_voters_that_followed_organizations',
-                        'visitors_total', 'voter_guide_entries',
-                        'voter_guide_views', 'voter_guides_viewed',
-                    ])
-                for one_dict in metrics_list_raw:
-                    one_row = list(one_dict.values())
-                    writer.writerow(one_row)
-
-                return response
-            else:
-                analytics_action_list_json = []
-                for one_dict in metrics_list_raw:
-                    analytics_action_list_json.append(one_dict)
-                return HttpResponse(json.dumps(analytics_action_list_json), content_type='application/json')
-    except Exception as e:
-        status += 'QUERY_FAILURE: ' + str(e) + ' '
-        success = False
-
-    status += 'SITEWIDE_ELECTION_METRICS_LIST_EMPTY '
-    json_data = {
-        'success': success,
-        'status': status,
-    }
-    return HttpResponse(json.dumps(json_data), content_type='application/json')
+# is this ever used, and why do two functions have the same name?  June 15, 2026, commented out
+# def backup_one_table_to_s3_view(request):  # backupOneTableToS3
+#     status = ''
+#     success = True
+#     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer
+#     authority_required = {'analytics_admin'}
+#     if not voter_has_authority(request, authority_required):
+#         json_data = {
+#             'success': False,
+#             'status': 'SITEWIDE_ELECTION_METRICS_SYNC_OUT-NOT_ANALYTICS_ADMIN '
+#         }
+#         return HttpResponse(json.dumps(json_data), content_type='application/json')
+#
+#     starting_date_as_integer = convert_to_int(request.GET.get('starting_date_as_integer', 0))
+#     ending_date_as_integer = convert_to_int(request.GET.get('ending_date_as_integer', 0))
+#     return_csv_format = positive_value_exists(request.GET.get('return_csv_format', False))
+#
+#     if not positive_value_exists(starting_date_as_integer):
+#         one_month_ago = now() - timedelta(days=30)
+#         starting_date_as_integer = convert_date_to_date_as_integer(one_month_ago)
+#
+#     if not positive_value_exists(ending_date_as_integer):
+#         time_now = now()
+#         ending_date_as_integer = convert_date_to_date_as_integer(time_now)
+#
+#     election_manager = ElectionManager()
+#     results = election_manager.retrieve_elections_between_dates(
+#         starting_date_as_integer=starting_date_as_integer,
+#         ending_date_as_integer=ending_date_as_integer
+#     )
+#     election_list = results['election_list']
+#     google_civic_election_id_list = []
+#     for one_election in election_list:
+#         google_civic_election_id_list.append(one_election.google_civic_election_id)
+#
+#     try:
+#         metrics_query = SitewideElectionMetrics.objects.all().order_by('-id')
+#         metrics_query = metrics_query.filter(google_civic_election_id__in=google_civic_election_id_list)
+#
+#         metrics_list_dict = metrics_query.values(
+#             'id', 'authenticated_visitors_total',
+#             'election_day_text', 'entered_full_address',
+#             'friends_only_positions', 'friends_only_positions_with_comments', 'google_civic_election_id',
+#             'individuals_with_friends_only_positions', 'individuals_with_positions',
+#             'individuals_with_public_positions',
+#             'issues_followed',
+#             'organization_public_positions', 'organizations_auto_followed', 'organizations_followed',
+#             'organizations_signed_in', 'organizations_with_positions',
+#             'public_positions', 'public_positions_with_comments',
+#             'unique_voters_that_auto_followed_organizations', 'unique_voters_that_followed_organizations',
+#             'visitors_total', 'voter_guide_entries',
+#             'voter_guide_views', 'voter_guides_viewed',
+#         )
+#         if metrics_list_dict:
+#             metrics_list_raw = list(metrics_list_dict)
+#             if return_csv_format:
+#                 # Create the HttpResponse object with the appropriate CSV header.
+#                 filename = "sitewideElectionMetricsSyncOut"
+#                 filename += "-" + str(starting_date_as_integer)
+#                 filename += "-" + str(ending_date_as_integer)
+#                 filename += ".csv"
+#                 response = HttpResponse(content_type='text/csv')
+#                 response['Content-Disposition'] = 'attachment; filename="' + filename + '"'
+#
+#                 writer = csv.writer(response)
+#                 writer.writerow(
+#                     [
+#                         'id', 'authenticated_visitors_total',
+#                         'election_day_text', 'entered_full_address',
+#                         'friends_only_positions', 'friends_only_positions_with_comments', 'google_civic_election_id',
+#                         'individuals_with_friends_only_positions', 'individuals_with_positions',
+#                         'individuals_with_public_positions',
+#                         'issues_followed',
+#                         'organization_public_positions', 'organizations_auto_followed', 'organizations_followed',
+#                         'organizations_signed_in', 'organizations_with_positions',
+#                         'public_positions', 'public_positions_with_comments',
+#                         'unique_voters_that_auto_followed_organizations', 'unique_voters_that_followed_organizations',
+#                         'visitors_total', 'voter_guide_entries',
+#                         'voter_guide_views', 'voter_guides_viewed',
+#                     ])
+#                 for one_dict in metrics_list_raw:
+#                     one_row = list(one_dict.values())
+#                     writer.writerow(one_row)
+#
+#                 return response
+#             else:
+#                 analytics_action_list_json = []
+#                 for one_dict in metrics_list_raw:
+#                     analytics_action_list_json.append(one_dict)
+#                 return HttpResponse(json.dumps(analytics_action_list_json), content_type='application/json')
+#     except Exception as e:
+#         status += 'QUERY_FAILURE: ' + str(e) + ' '
+#         success = False
+#
+#     status += 'SITEWIDE_ELECTION_METRICS_LIST_EMPTY '
+#     json_data = {
+#         'success': success,
+#         'status': status,
+#     }
+#     return HttpResponse(json.dumps(json_data), content_type='application/json')
 
 def sitewide_voter_metrics_sync_out_view(request):  # sitewideVoterMetricsSyncOut
     status = ''
@@ -1423,19 +1447,75 @@ def sitewide_election_metrics_process_view(request):
     google_civic_election_id = convert_to_int(request.GET.get('google_civic_election_id', 0))
     state_code = request.GET.get('state_code', '')
 
-    if not positive_value_exists(google_civic_election_id):
-        messages.add_message(request, messages.ERROR, 'google_civic_election_id required.')
-        return HttpResponseRedirect(reverse('analytics:sitewide_election_metrics', args=()) +
-                                    "?google_civic_election_id=" + str(google_civic_election_id) +
-                                    "&state_code=" + str(state_code))
+    update_year_text = request.GET.get('update_year', '')
+    update_year = convert_to_int(update_year_text)
+    include_elections_with_no_data = request.GET.get('include_elections_with_no_data', '') == '1'
+    redirect_url = reverse('analytics:sitewide_election_metrics', args=()) + \
+        "?google_civic_election_id=" + str(google_civic_election_id) + "&state_code=" + str(state_code)
+    if include_elections_with_no_data:
+        redirect_url += '&include_elections_with_no_data=1'
 
-    results = save_sitewide_election_metrics(google_civic_election_id)  # DEBUG=1
-    messages.add_message(request, messages.INFO,
-                         ' NEED TO UPGRADE TO INCLUDE NATIONAL ELECTION TO INCLUDE STATE')
+    if update_year_text:
+        if not (len(update_year_text) == 4 and update_year_text.isdigit() and 1000 <= update_year <= 9999):
+            messages.error(request, 'Please select a valid year.')
+            return HttpResponseRedirect(redirect_url)
+        redirect_url += "&update_year=" + str(update_year)
+        election_results = ElectionManager().retrieve_elections_between_dates(
+            starting_date_as_integer=update_year * 10000 + 101,
+            ending_date_as_integer=update_year * 10000 + 1231)
+        if not election_results['success']:
+            messages.error(request, 'Unable to retrieve elections for ' + str(update_year) + '.')
+            return HttpResponseRedirect(redirect_url)
+        elections_by_id = {
+            convert_to_int(election.google_civic_election_id): election
+            for election in election_results['election_list']}
+        election_id_list = list(elections_by_id)
+        if not election_id_list:
+            messages.info(request, 'No eligible elections found for ' + str(update_year) + '.')
+            return HttpResponseRedirect(redirect_url)
+    elif positive_value_exists(google_civic_election_id):
+        election = Election.objects.using('readonly').filter(
+            google_civic_election_id=google_civic_election_id).first()
+        if election is None:
+            messages.error(request, 'Selected election was not found.')
+            return HttpResponseRedirect(redirect_url)
+        elections_by_id = {google_civic_election_id: election}
+        election_id_list = [google_civic_election_id]
+    else:
+        messages.error(request, 'Please select an election or a year before updating election metrics.')
+        return HttpResponseRedirect(redirect_url)
 
-    return HttpResponseRedirect(reverse('analytics:sitewide_election_metrics', args=()) +
-                                "?google_civic_election_id=" + str(google_civic_election_id) +
-                                "&state_code=" + str(state_code))
+    updated_count = 0
+    failed_election_ids = []
+    for election_id in election_id_list:
+        try:
+            results = save_sitewide_election_metrics(
+                election_id, election_day_text=elections_by_id[election_id].election_day_text)
+            if results['success']:
+                updated_count += 1
+            else:
+                failed_election_ids.append(election_id)
+                logger.error('Election metrics update failed for %s: %s', election_id, results['status'])
+        except Exception:
+            failed_election_ids.append(election_id)
+            logger.exception('Election metrics update failed for %s', election_id)
+
+    summary = 'Election metrics updated: ' + str(updated_count) + '.'
+    if update_year_text:
+        summary += ' Update year: ' + str(update_year) + '.'
+    if failed_election_ids:
+        summary += ' Failed election IDs: ' + ', '.join(str(value) for value in failed_election_ids) + '.'
+        messages.error(request, summary)
+    else:
+        messages.info(request, summary)
+    if update_year_text and positive_value_exists(google_civic_election_id) and \
+            google_civic_election_id not in election_id_list:
+        messages.error(
+            request,
+            'Selected election ' + str(google_civic_election_id) + ' was not updated, '
+            'To update only this election, clear the selected year by choosing "Select a year" '
+            'in the "year" dropdown.')
+    return HttpResponseRedirect(redirect_url)
 
 
 @login_required
@@ -1452,19 +1532,43 @@ def sitewide_election_metrics_view(request):
     google_civic_election_id = convert_to_int(request.GET.get('google_civic_election_id', 0))
     state_code = request.GET.get('state_code', '')
 
-    sitewide_election_metrics_list = []
+    sitewide_election_metrics_query = SitewideElectionMetrics.objects.using('analytics').order_by(
+        '-election_day_text', '-id')
+    include_elections_with_no_data = request.GET.get('include_elections_with_no_data', '') == '1'
+    displayed_metric_fields = (
+        'visitors_total', 'authenticated_visitors_total', 'voter_guides_viewed',
+        'public_positions', 'public_positions_with_comments',
+        'friends_only_positions', 'friends_only_positions_with_comments',
+        'unique_voters_that_followed_organizations', 'unique_voters_that_auto_followed_organizations',
+    )
+    if not include_elections_with_no_data:
+        has_data = Q()
+        for field in displayed_metric_fields:
+            has_data |= Q(**{field + '__gt': 0})
+        sitewide_election_metrics_query = sitewide_election_metrics_query.filter(has_data)
+    paginator = Paginator(sitewide_election_metrics_query, SITEWIDE_ELECTION_METRICS_PER_PAGE)
+    metrics_page = paginator.get_page(request.GET.get('page', 1))
+    sitewide_election_metrics_list = list(metrics_page.object_list)
+    page_parameters = request.GET.copy()
+    page_parameters.pop('page', None)
+    page_parameters.pop('csrfmiddlewaretoken', None)
+    pagination_query = page_parameters.urlencode()
 
-    try:
-        sitewide_election_metrics_query = SitewideElectionMetrics.objects.using('analytics').\
-            order_by('-election_day_text')
-        sitewide_election_metrics_list = list(sitewide_election_metrics_query)
-    except SitewideElectionMetrics.DoesNotExist:
-        # This is fine
-        pass
-
-    election_list = Election.objects.order_by('-election_day_text')
+    election_list = list(Election.objects.using('readonly').order_by('-election_day_text'))
+    elections_by_id = {convert_to_int(election.google_civic_election_id): election for election in election_list}
+    for metrics in sitewide_election_metrics_list:
+        # Reuse the dropdown's election objects instead of querying once per table row.
+        metrics.election = elections_by_id.get(metrics.google_civic_election_id)
 
     messages_on_stage = get_messages(request)
+
+    update_year = convert_to_int(request.GET.get('update_year', 0))
+    update_year_list = sorted({
+        convert_to_int(election.election_day_text[:4]) for election in election_list
+        if election.election_day_text and len(election.election_day_text) >= 4
+        and election.election_day_text[:4].isdigit()
+        and 1000 <= convert_to_int(election.election_day_text[:4]) <= 9999
+    }, reverse=True)
 
     template_values = {
         'messages_on_stage':                messages_on_stage,
@@ -1472,6 +1576,12 @@ def sitewide_election_metrics_view(request):
         'google_civic_election_id':         google_civic_election_id,
         'state_code':                       state_code,
         'election_list':                    election_list,
+        'update_year':                      update_year,
+        'update_year_list':                 update_year_list,
+        'include_elections_with_no_data':   include_elections_with_no_data,
+        'metrics_page':                    metrics_page,
+        'pagination_query':                pagination_query,
+        'metrics_row_offset':              max(0, metrics_page.start_index() - 1),
     }
     return render(request, 'analytics/sitewide_election_metrics.html', template_values)
 

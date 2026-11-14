@@ -3,16 +3,16 @@
 # -*- coding: UTF-8 -*-
 
 
-from .models import BatchDescription, BatchManager, BatchProcessManager, BatchProcessRepresentativesChunk, \
+from .models import BatchManager, BatchProcessManager, BatchProcessRepresentativesChunk, \
     RETRIEVE_REPRESENTATIVES_FROM_POLLING_LOCATIONS
 # REFRESH_REPRESENTATIVES_FROM_POLLING_LOCATIONS, REFRESH_REPRESENTATIVES_FROM_VOTERS
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.db.models import Q
-from django.utils.timezone import localtime, now
+from django.utils.timezone import now
 from exception.models import handle_exception
 from office_held.models import OfficesHeldForLocation
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, positive_value_exists
+from wevote_functions.functions import positive_value_exists
 import wevote_functions.admin
 
 logger = wevote_functions.admin.get_logger(__name__)

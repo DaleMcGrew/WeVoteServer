@@ -1,0 +1,43 @@
+name: ruff
+
+on:
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  ruff:
+    name: Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed Python files
+        id: changed-files
+        run: |
+          git diff --name-only -z --diff-filter=ACMR \
+            "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" \
+            -- '*.py' > changed_python_files.txt
+          if [ -s changed_python_files.txt ]; then
+            echo "any_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.changed-files.outputs.any_changed == 'true'
+        with:
+          python-version: "3.13"
+
+      - name: Install ruff
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: pip install ruff
+
+      - name: Lint changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: xargs -0 ruff check --force-exclude --output-format=github < changed_python_files.txt
+
+      - name: Format check changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: xargs -0 ruff format --force-exclude --check < changed_python_files.txt

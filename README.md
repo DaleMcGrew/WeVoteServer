@@ -14,14 +14,17 @@ To get started as a We Vote developer, <a href="https://www.clahub.com/agreement
 ## Installing Python/Django API Server
 
 To install and develop the WeVote API server, follow the instructions below based on your preferred environment. 
+**We strongly recommend using Docker**, it handles all of the installation automatically, and with the same versions of tools (Node, Postgres, etc) that are used in production.
 
-1. Use these [Simplified Instructions for Mac](docs/README_MAC_SIMPLIFIED_INSTALL.md) leveraging the free (and powerful) PyCharm IDE and debugger (**recommended!**) 
+1. Use [Docker](docs/README_API_INSTALL_DOCKER.md)
 
 2. [Install directly](docs/README_API_INSTALL.md) on your Linux machine, or use WSL (Windows Subsystem for Linux) on Windows
 
-3. Use [Docker](docs/README_API_INSTALL_DOCKER.md)
+3. Or use these [Simplified Instructions for Mac](docs/README_MAC_SIMPLIFIED_INSTALL.md) leveraging the free (and powerful) PyCharm IDE and debugger 
 
-## Installing We Vote Mobile Web Application (React/Flux)
+
+
+## Installing We Vote Mobile Web Application for iOS and Android
 
 The website front end application is powered by the [We Vote WebApp](https://github.com/wevote/WebApp)
 
@@ -31,31 +34,29 @@ See the iOS [We Vote 2018 Ballot, @WeVote](https://itunes.apple.com/us/app/we-vo
 
 See the Android [We Vote 2018 Ballot, @WeVote](https://play.google.com/store/apps/details?id=org.wevote.cordova&hl=en_US) in the Google Play store for most Android phone and tablet devices.
 
-We also have a [ReactNative for iOS and Android](https://github.com/wevote/WeVoteReactNative) that is currently on hold.
-
 
 ## After Installation: Working with WeVoteServer Day-to-Day
 
 [Read about working with WeVoteServer on a daily basis](docs/README_WORKING_WITH_WE_VOTE_SERVER.md)
 
-Need to upgrade Python?
-
-3a. [Install Python/Django on Mac](docs/README_API_INSTALL_PYTHON_MAC.md)
-
-3b. [Install Python/Django on Linux](docs/README_API_INSTALL_PYTHON_LINUX.md)
-
-
-If you need to test donations and have not updated your openssl and pyopenssl during install and setup, you will need
-[to update your local](docs/README_DONATION_SETUP.md).
-
-See [Instructions for Scheduled Tasks](docs/README_SCHEDULED_TASKS.md)
+[//]: # (Became obsolete in 2026 when we switched to Docker)
+[//]: # (Need to upgrade Python?)
+[//]: # ()
+[//]: # (3a. [Install Python/Django on Mac]&#40;docs/README_API_INSTALL_PYTHON_MAC.md&#41;)
+[//]: # ()
+[//]: # (3b. [Install Python/Django on Linux]&#40;docs/README_API_INSTALL_PYTHON_LINUX.md&#41;)
+[//]: # ()
+[//]: # (If you need to test donations and have not updated your openssl and pyopenssl during install and setup, you will need)
+[//]: # ([to update your local]&#40;docs/README_DONATION_SETUP.md&#41;.)
+[//]: # ()
+[//]: # (See [Instructions for Scheduled Tasks]&#40;docs/README_SCHEDULED_TASKS.md&#41;)
 
 [How to run the WeVoteServer tests](docs/README_DJANGO_TESTS.md)
 
 [How to run the WeVoteServer Locust Load Tests](loadtest/README.md)
 
+Maintaining clean code: [Linting and Formatting](docs/README_LINTING_AND_FORMATTING.md)
+
 ## Join Us
 
 We meet weekly on Google hangouts, and on a team Slack. Please contact Dale.McGrew@WeVote.US for more information.
-
-

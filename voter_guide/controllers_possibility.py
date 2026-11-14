@@ -3,7 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 import copy
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from candidate.controllers import find_candidate_endorsements_on_one_candidate_web_page, \
     find_organization_endorsements_of_candidates_on_one_web_page, \
     retrieve_candidate_list_for_all_upcoming_elections
@@ -1140,11 +1140,7 @@ def process_organization_endorsing_candidates_input_form(
 
     # Now look for candidate possibilities that have states attached, so we can add them to the database
     if len(possible_endorsement_list):
-        try:
-            current_year = get_current_year_as_integer()
-        except Exception as e:
-            status += "FAILED_TO_GET_CURRENT_YEAR: " + str(e) + " "
-            current_year = 2024
+        current_year = get_current_year_as_integer()
         adjusted_possible_endorsement_list = []
         for one_possible_endorsement in possible_endorsement_list:
             if 'candidate_we_vote_id' in one_possible_endorsement \

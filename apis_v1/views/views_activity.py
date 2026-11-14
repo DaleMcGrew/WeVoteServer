@@ -14,7 +14,7 @@ from activity.models import ActivityManager, \
     NOTICE_CAMPAIGNX_SUPPORTER_INITIAL_RESPONSE, \
     NOTICE_FRIEND_ACTIVITY_POSTS, NOTICE_FRIEND_ENDORSEMENTS, \
     NOTICE_FRIEND_ENDORSEMENTS_SEED
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from friend.models import FriendManager
 from google_firebase_api.cloud_messaging import send_single_message
 from twitter.models import TwitterUserManager

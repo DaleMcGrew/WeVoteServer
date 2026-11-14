@@ -1,0 +1,72 @@
+{# templates/election/adjust_election_names.html #}
+{% extends "template_base.html" %}
+
+{% block title %}Adjust Election Names{% endblock %}
+
+{% block content %}
+  {% load template_filters %}
+  
+  <a href="{% url 'election:election_list' %}">< Back to Elections</a>
+
+  <h1>Adjust Election Names</h1>
+  <p>Use this tool to adjust/clean the names of upcoming elections in the database.</p>
+
+  <form action="{% url 'election:adjust_election_names' %}"
+        method="post"
+        style="max-width: 800px; display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+    {% csrf_token %}
+
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 15px; margin-bottom: 15px;">
+      <div style="flex: 1 1 200px; font-weight: bold; padding-top: 4px; max-width: 200px; min-width: 150px;">Cleaning Options</div>
+      <div style="flex: 2 1 300px; display: flex; flex-direction: column; gap: 8px; min-width: 250px;">
+        <label for="remove_date_id" style="font-weight: normal; cursor: pointer;">
+          <input type="checkbox"
+                 name="remove_date"
+                 id="remove_date_id"
+                 value="1"
+                 {% if remove_date %}checked{% endif %} />
+          Remove date (e.g. year, month, day patterns)
+        </label>
+        <label for="remove_state_name_id" style="font-weight: normal; cursor: pointer;">
+          <input type="checkbox"
+                 name="remove_state_name"
+                 id="remove_state_name_id"
+                 value="1"
+                 {% if remove_state_name %}checked{% endif %} />
+          Remove State name
+        </label>
+        <label for="remove_party_id" style="font-weight: normal; cursor: pointer;">
+          <input type="checkbox"
+                 name="remove_party"
+                 id="remove_party_id"
+                 value="1"
+                 {% if remove_party %}checked{% endif %} />
+          Remove Party (ex/ “Democratic Party”, “Republican Party”)
+        </label>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 15px;">
+      <label for="google_civic_election_id_id" style="flex: 1 1 200px; font-weight: bold; max-width: 200px; min-width: 150px; margin-bottom: 0;">Select Upcoming Election</label>
+      <div style="flex: 2 1 300px; min-width: 250px;">
+        <select id="google_civic_election_id_id" name="google_civic_election_id" class="form-control" style="width: 100%; max-width: 600px; height: auto; padding: 6px 12px;">
+          <option value="">-- Apply to ALL Upcoming Elections --</option>
+          {% for election in upcoming_election_list %}
+            <option value="{{ election.google_civic_election_id }}">{{ election.election_name }} ({{ election.election_day_text }}) - {{ election.google_civic_election_id }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-top: 10px;">
+      <div style="flex: 1 1 200px; max-width: 200px; min-width: 150px;">
+        <a href="{% url 'election:election_list' %}">cancel</a>
+      </div>
+      <div style="flex: 2 1 300px; min-width: 250px;">
+        <input type="submit" class="btn btn-success" value="Change now" />
+      </div>
+    </div>
+
+  </form>
+
+{% endblock %}

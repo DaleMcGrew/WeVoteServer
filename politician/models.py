@@ -21,6 +21,16 @@ from wevote_functions.functions import candidate_party_display, convert_to_int, 
 from wevote_functions.functions_date import convert_date_to_date_as_integer
 from wevote_settings.models import fetch_next_we_vote_id_politician_integer, fetch_site_unique_id_prefix
 
+
+MANUAL_ENTRY = 'MANUAL_ENTRY'
+IMPORT_FROM_CSV = 'IMPORT_FROM_CSV'
+IMPORT_FROM_TEXT_LIST = 'IMPORT_FROM_TEXT_LIST'
+ADDED_VIA_OPTIONS = (
+    (IMPORT_FROM_CSV,       'CSV import'),
+    (IMPORT_FROM_TEXT_LIST, 'Text import'),
+    (MANUAL_ENTRY, 'Manual entry'),
+)
+
 FEMALE = 'F'
 GENDER_NEUTRAL = 'N'
 MALE = 'M'
@@ -83,6 +93,10 @@ POLITICIAN_UNIQUE_IDENTIFIERS = [
     'is_battleground_race_2024',
     'is_battleground_race_2025',
     'is_battleground_race_2026',
+    'is_battleground_race_2027',
+    'is_battleground_race_2028',
+    'is_battleground_race_2029',
+    'is_battleground_race_2030',
     'is_claimed_profile',
     'last_name',
     'linked_campaignx_we_vote_id',
@@ -320,9 +334,9 @@ class Politician(models.Model):
     twitter_user_id = models.BigIntegerField(verbose_name="twitter id", null=True, blank=True)
     vote_usa_politician_id = models.CharField(
         verbose_name="Vote USA permanent id for this politician", max_length=64, default=None, null=True, blank=True)
-    # Image URL on Vote USA's servers. See vote_usa_profile_image_url_https, the master image cached on We Vote servers.
+    # Image URL on Vote-USA's servers. See vote_usa_profile_image_url_https, the master image cached on We Vote servers.
     photo_url_from_vote_usa = models.TextField(null=True, blank=True)
-    # This is the master image url cached on We Vote servers. See photo_url_from_vote_usa for Vote USA URL.
+    # This is the master image url cached on We Vote servers. See photo_url_from_vote_usa for Vote-USA URL.
     vote_usa_profile_image_url_https = models.TextField(null=True, blank=True, default=None)
 
     # Which politician image is currently active?
@@ -349,7 +363,7 @@ class Politician(models.Model):
     we_vote_hosted_profile_uploaded_image_url_large = models.TextField(blank=True, null=True)
     we_vote_hosted_profile_uploaded_image_url_medium = models.TextField(blank=True, null=True)
     we_vote_hosted_profile_uploaded_image_url_tiny = models.TextField(blank=True, null=True)
-    # Image for politician from Vote USA, cached on We Vote's servers. See local master vote_usa_profile_image_url_https
+    # Image for politician from Vote-USA, cached on We Vote's servers. See local master vote_usa_profile_image_url_https
     we_vote_hosted_profile_vote_usa_image_url_large = models.TextField(blank=True, null=True)
     we_vote_hosted_profile_vote_usa_image_url_medium = models.TextField(blank=True, null=True)
     we_vote_hosted_profile_vote_usa_image_url_tiny = models.TextField(blank=True, null=True)
@@ -375,6 +389,10 @@ class Politician(models.Model):
     is_battleground_race_2024 = models.BooleanField(default=False, null=False)
     is_battleground_race_2025 = models.BooleanField(default=False, null=False)
     is_battleground_race_2026 = models.BooleanField(default=False, null=False)
+    is_battleground_race_2027 = models.BooleanField(default=False, null=False)
+    is_battleground_race_2028 = models.BooleanField(default=False, null=False)
+    is_battleground_race_2029 = models.BooleanField(default=False, null=False)
+    is_battleground_race_2030 = models.BooleanField(default=False, null=False)
     # Politician has claimed this profile - This is the master value, and is_claimed_profile in candidate table is copy
     is_claimed_profile = models.BooleanField(default=False, null=False)
     is_claimed_profile_analysis_complete = models.BooleanField(default=False)
@@ -406,6 +424,7 @@ class Politician(models.Model):
     politician_email = models.CharField(max_length=255, null=True, unique=False)
     politician_email2 = models.CharField(max_length=255, null=True, unique=False)
     politician_email3 = models.CharField(max_length=255, null=True, unique=False)
+    politician_email_subscription_secret_key = models.CharField(max_length=255, null=True, blank=True, unique=True)
     # The date of the last election this candidate relates to, converted to integer, ex/ 20201103
     politician_ultimate_election_date = models.PositiveIntegerField(default=None, null=True)
     bluesky_handle = models.TextField(blank=True, null=True)
@@ -572,10 +591,14 @@ class PoliticianSupporter(models.Model):
     def __unicode__(self):
         return "PoliticianSupporter"
 
+    added_by_name = models.CharField(default=None, max_length=255, null=True)
+    added_by_voter_we_vote_id = models.CharField(max_length=255, null=True, db_index=True)
+    added_via = models.CharField(max_length=24, choices=ADDED_VIA_OPTIONS, default=MANUAL_ENTRY, db_index=True)
     email = models.EmailField(max_length=255, null=True)
     date_email_invite_sent = models.DateTimeField(null=True, db_index=True)
     date_imported = models.DateTimeField(null=True, auto_now_add=True, db_index=True)
     date_sms_invite_sent = models.DateTimeField(null=True, db_index=True)
+    date_supporter_opted_out = models.DateTimeField(null=True, db_index=True)
     email_invite_sent = models.BooleanField(default=False)
     # This "email_ownership_is_verified" is a copy of the master data in EmailAddress.email_ownership_is_verified
     email_ownership_is_verified = models.BooleanField(default=False)
@@ -588,8 +611,15 @@ class PoliticianSupporter(models.Model):
     sms_ownership_is_verified = models.BooleanField(default=False)
     sms_we_vote_id = models.CharField(max_length=255, null=True, blank=True, unique=True, db_index=True)
     stance = models.CharField(max_length=15, choices=POSITION_CHOICES, default=INFORMATION_ONLY, db_index=True)
-    supporter_name = models.CharField(default=None, max_length=255, null=True)
+    # Subscription secret key for this supporter, when we don't have a voter record yet.
+    supporter_email_subscription_secret_key = models.CharField(max_length=255, null=True)
     supporter_endorsement = models.TextField(null=True)
+    supporter_name = models.CharField(default=None, max_length=255, null=True)
+    supporter_opted_out = models.BooleanField(default=False)
+    # Voter subscription secret key for this supporter, once we have tied the supporter to a Voter record.
+    # When PoliticianSupporter is tied to a Voter, we use voter_subscription_secret_key
+    #  instead of supporter_email_subscription_secret_key
+    voter_email_subscription_secret_key = models.CharField(max_length=255, null=True)
     voter_we_vote_id = models.CharField(max_length=255, null=True, db_index=True)
     we_vote_hosted_profile_image_url_medium = models.TextField(null=True)
     we_vote_hosted_profile_image_url_tiny = models.TextField(null=True)
@@ -1337,22 +1367,32 @@ class PoliticianManager(models.Manager):
             for facebook_url in facebook_url_list:
                 filter_set = True
                 if positive_value_exists(facebook_url):
-                    new_filter = (
-                        Q(facebook_url__iexact=facebook_url) |
-                        Q(facebook_url2__iexact=facebook_url) |
-                        Q(facebook_url3__iexact=facebook_url)
-                    )
-                    filters.append(new_filter)
+                    # Strip down to e.g. "facebook.com/RobynFrierHD40"
+                    stripped_facebook_url = facebook_url.strip().lower()
+                    stripped_facebook_url = re.sub(r'^https?://', '', stripped_facebook_url)
+                    stripped_facebook_url = re.sub(r'^(www\.|m\.)', '', stripped_facebook_url)
+                    stripped_facebook_url = stripped_facebook_url.rstrip('/')
+                    if positive_value_exists(stripped_facebook_url):
+                        # Matches "facebook.com/x", "www.facebook.com/x/", "https://www.facebook.com/x/", etc.
+                        facebook_url_regex = \
+                            r'^(https?://)?(www\.|m\.)?' + re.escape(stripped_facebook_url) + r'/?$'
+                        new_filter = (
+                            Q(facebook_url__iregex=facebook_url_regex) |
+                            Q(facebook_url2__iregex=facebook_url_regex) |
+                            Q(facebook_url3__iregex=facebook_url_regex)
+                        )
+                        filters.append(new_filter)
 
             if positive_value_exists(instagram_handle):
                 new_filter = Q(instagram_handle__iexact=instagram_handle)
                 filter_set = True
                 filters.append(new_filter)
 
-            if positive_value_exists(maplight_id):
-                new_filter = Q(maplight_id__iexact=maplight_id)
-                filter_set = True
-                filters.append(new_filter)
+            # No longer actively used
+            # if positive_value_exists(maplight_id):
+            #     new_filter = Q(maplight_id__iexact=maplight_id)
+            #     filter_set = True
+            #     filters.append(new_filter)
 
             for twitter_handle in twitter_handle_list:
                 if positive_value_exists(twitter_handle):
@@ -1381,10 +1421,11 @@ class PoliticianManager(models.Manager):
                         filters.append(final_search_filters)
                     # queryset = filter_results['queryset']
 
-            if positive_value_exists(vote_smart_id):
-                new_filter = Q(vote_smart_id__iexact=vote_smart_id)
-                filter_set = True
-                filters.append(new_filter)
+            # No longer actively used
+            # if positive_value_exists(vote_smart_id):
+            #     new_filter = Q(vote_smart_id__iexact=vote_smart_id)
+            #     filter_set = True
+            #     filters.append(new_filter)
 
             if positive_value_exists(vote_usa_politician_id):
                 new_filter = Q(vote_usa_politician_id__iexact=vote_usa_politician_id)

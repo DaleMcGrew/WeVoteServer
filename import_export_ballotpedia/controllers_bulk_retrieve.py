@@ -3,15 +3,11 @@ from django.db.models import Q
 from candidate.models import CandidateCampaign, CandidateListManager
 from candidate.controllers import fetch_ballotpedia_urls_to_retrieve_for_links_count, \
     fetch_ballotpedia_urls_to_retrieve_for_photos_count
-from wevote_functions.functions import convert_to_int, is_valid_state_code, positive_value_exists
 import wevote_functions.admin
-from wevote_functions.functions import convert_to_int, is_valid_state_code, positive_value_exists
-from wevote_settings.models import RemoteRequestHistory, RemoteRequestHistoryManager
-from .controllers import attach_ballotpedia_election_by_district_from_api, get_photo_url_from_ballotpedia, \
-    retrieve_ballot_items_from_polling_location, \
-    retrieve_ballotpedia_candidates_by_district_from_api, retrieve_ballotpedia_measures_by_district_from_api, \
-    retrieve_ballotpedia_district_id_list_for_polling_location, retrieve_ballotpedia_offices_by_district_from_api, \
-    get_candidate_links_from_ballotpedia
+from wevote_functions.functions import positive_value_exists
+from wevote_functions.functions_date import get_current_year_as_integer
+from wevote_settings.models import RemoteRequestHistoryManager
+from .controllers import get_photo_url_from_ballotpedia, get_candidate_links_from_ballotpedia
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -34,10 +30,11 @@ def retrieve_ballotpedia_links_in_bulk(
     if not candidate_we_vote_id_list or len(candidate_we_vote_id_list) == 0:
         # #############################################################
         # Get candidates in the elections we care about - used below
+        this_year = get_current_year_as_integer()
         candidate_list_manager = CandidateListManager()
         # Only look at candidates for this year
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(
-            year_list=[2024])
+            year_list=[this_year])
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
 
     try:
@@ -99,10 +96,11 @@ def retrieve_ballotpedia_photos_in_bulk(
     if not candidate_we_vote_id_list or len(candidate_we_vote_id_list) == 0:
         # #############################################################
         # Get candidates in the elections we care about - used below
+        this_year = get_current_year_as_integer()
         candidate_list_manager = CandidateListManager()
         # Only look at candidates for this year
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(
-            year_list=[2024])
+            year_list=[this_year])
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
 
     candidate_list = []
@@ -174,10 +172,11 @@ def retrieve_links_and_photos_from_ballotpedia_batch_process():
 
     # #############################################################
     # Get candidates in the elections we care about - used below
+    this_year = get_current_year_as_integer()
     candidate_list_manager = CandidateListManager()
     # Only look at candidates for this year
     results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(
-        year_list=[2024])
+        year_list=[this_year])
     candidate_we_vote_id_list = results['candidate_we_vote_id_list']
 
     photos_to_retrieve = fetch_ballotpedia_urls_to_retrieve_for_photos_count(

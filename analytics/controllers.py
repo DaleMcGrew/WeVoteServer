@@ -4,23 +4,19 @@
 
 from .models import AnalyticsAction, AnalyticsCountManager, AnalyticsManager, \
     ACTIONS_THAT_REQUIRE_ORGANIZATION_IDS
-from candidate.models import CandidateManager
-from config.base import get_environment_variable
+from .candidate_metrics import calculate_candidate_metrics
+from candidate.models import CandidateListManager, CandidateManager
+from config.environment_variable_functions import get_environment_variable
 from datetime import date, datetime, timedelta
 from django.db.models import Q
-from django.utils.timezone import localtime, now
+from django.utils.timezone import now
 from exception.models import print_to_log
 from follow.models import FollowMetricsManager, FollowOrganizationList
 from import_export_batches.models import AUGMENT_ANALYTICS_ACTION_WITH_ELECTION_ID, \
     AUGMENT_ANALYTICS_ACTION_WITH_FIRST_VISIT, \
     BatchProcessManager, \
-    CALCULATE_ORGANIZATION_DAILY_METRICS, \
-    CALCULATE_ORGANIZATION_ELECTION_METRICS, \
-    CALCULATE_SITEWIDE_DAILY_METRICS, \
-    CALCULATE_SITEWIDE_ELECTION_METRICS, \
     CALCULATE_SITEWIDE_VOTER_METRICS
 from measure.models import ContestMeasureManager
-from office.models import ContestOfficeManager
 from politician.models import Politician
 from position.models import PositionMetricsManager
 from share.models import ShareManager
@@ -1202,6 +1198,24 @@ def calculate_sitewide_election_metrics(google_civic_election_id):
     voter_metrics_manager = VoterMetricsManager()
 
     google_civic_election_id = convert_to_int(google_civic_election_id)
+    candidate_results = CandidateListManager().retrieve_candidate_count_for_election_and_state(
+        google_civic_election_id_list=[google_civic_election_id])
+    status += candidate_results['status']
+    if not candidate_results['success']:
+        return {
+            'status': status,
+            'success': False,
+            'sitewide_election_metrics_values': {},
+        }
+    candidate_count = candidate_results['candidate_count']
+    try:
+        candidate_metrics = calculate_candidate_metrics(google_civic_election_id)
+    except Exception as e:
+        return {
+            'status': status + 'CANDIDATE_METRICS_FAILED: ' + str(e) + ' ',
+            'success': False,
+            'sitewide_election_metrics_values': {},
+        }
     visitors_total = analytics_count_manager.fetch_visitors(google_civic_election_id)
     voter_guide_entries = None
     voter_guide_views = None
@@ -1230,6 +1244,8 @@ def calculate_sitewide_election_metrics(google_civic_election_id):
     success = True
 
     sitewide_election_metrics_values = {
+        'candidate_count':                         candidate_count,
+        **candidate_metrics,
         'google_civic_election_id':                 google_civic_election_id,
         'visitors_total':                           visitors_total,
         'voter_guide_entries':                      voter_guide_entries,
@@ -1622,7 +1638,7 @@ def save_sitewide_daily_metrics(date_as_integer, through_date_as_integer=0):
     return results
 
 
-def save_sitewide_election_metrics(google_civic_election_id):
+def save_sitewide_election_metrics(google_civic_election_id, election_day_text=None):
     status = ""
     success = False
 
@@ -1630,6 +1646,8 @@ def save_sitewide_election_metrics(google_civic_election_id):
     status += results['status']
     if results['success']:
         sitewide_election_metrics_values = results['sitewide_election_metrics_values']
+        if election_day_text is not None:
+            sitewide_election_metrics_values['election_day_text'] = election_day_text
 
         analytics_manager = AnalyticsManager()
         update_results = \

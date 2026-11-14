@@ -1,25 +1,24 @@
 # admin_tools/views.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-import os
-import sys
 
-from django.shortcuts import render
+import requests
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
 from django.db.models import Q
 from django.http import HttpResponseRedirect
-from django.urls import reverse
+from django.shortcuts import render
 from django.template.response import TemplateResponse
-import requests
+from django.urls import reverse
 
 import wevote_functions
 from ballot.models import BallotReturned, VoterBallotSaved
 from candidate.controllers import candidates_import_from_sample_file
 from candidate.models import CandidateCampaign, CandidateManager
-from config.base import get_environment_variable, LOGIN_URL, BASE_DIR, PROJECT_PATH
+from config.base import LOGIN_URL
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from election.controllers import elections_import_from_sample_file
 from election.models import Election
 from email_outbound.models import EmailAddress
@@ -45,9 +44,9 @@ from voter.models import Voter, VoterAddress, VoterAddressManager, VoterDeviceLi
     VoterManager, VoterMetricsManager, \
     voter_has_authority, voter_setup
 from wevote_functions.functions import convert_to_int, delete_voter_api_device_id_cookie, generate_voter_device_id, \
-    get_voter_api_device_id, positive_value_exists, set_voter_api_device_id, STATE_CODE_MAP
-from wevote_functions.utils import get_node_version, get_postgres_version, get_python_version, get_git_commit_hash, \
-    get_git_commit_date, get_pg_dump_version
+    get_voter_api_device_id, positive_value_exists, set_voter_api_device_id, set_redirect_url, get_redirect_url, delete_redirect_url, STATE_CODE_MAP
+from wevote_functions.utils import get_node_version, get_postgres_version, get_python_version, \
+    get_pg_dump_version, get_git_params
 
 BALLOT_ITEMS_SYNC_URL = get_environment_variable("BALLOT_ITEMS_SYNC_URL")  # ballotItemsSyncOut
 BALLOT_RETURNED_SYNC_URL = get_environment_variable("BALLOT_RETURNED_SYNC_URL")  # ballotReturnedSyncOut
@@ -131,13 +130,14 @@ def admin_home_view(request):
     shared_links_click_without_reclick_count = \
         share_manager.fetch_shared_link_clicked_shared_links_click_without_reclick_count()
 
+    git_params = get_git_params()
     template_values = {
         'google_civic_election_id':           google_civic_election_id,
         'python_version':                     get_python_version(),
         'node_version':                       get_node_version(),
-        'git_commit_hash':                    get_git_commit_hash(False),
-        'git_commit_hash_url':                get_git_commit_hash(True),
-        'git_commit_date':                    get_git_commit_date(),
+        'git_commit_hash':                    git_params['sha'],
+        'git_commit_hash_url':                git_params['link'],
+        'git_commit_date':                    git_params['date'],
         'postgres_version':                   get_postgres_version(),
         'pg_dump_version':                    get_pg_dump_version(),
         'SERVER_IS_SOURCE_OF_TRUTH':          SERVER_IS_SOURCE_OF_TRUTH,
@@ -1729,7 +1729,7 @@ def login_we_vote(request):
     :param request:
     :return:
     """
-    from wevote_tokens.enums import TokenResponse, TokenHeaders, TokenTypes
+    from wevote_tokens.enums import TokenResponse
     from wevote_tokens.utils import TokensManager
     from wevote_tokens.models.single_use_tokens import Scope
 
@@ -1821,7 +1821,7 @@ def login_we_vote(request):
                     if request_token_info['create_token']:
                         request_token_info['user_id'] = user.we_vote_id
                         token_manager = TokensManager(token_types=[request_token_info['token_type']], scope=Scope.BACKUP_ONE_TABLE_TO_S3.value, expiration_seconds=300)
-                        token_response['token_creation'] = token_manager.token_creation(request_token_info) 
+                        token_response['token_creation'] = token_manager.token_creation(request_token_info)
                 except Exception as e:
                     pass
 
@@ -1863,22 +1863,6 @@ def login_we_vote(request):
     if positive_value_exists(info_message):
         messages.add_message(request, messages.INFO, info_message)
 
-    messages_on_stage = get_messages(request)
-    template_values = {
-        'request':              request,
-        'username':             username,
-        'next':                 '.',
-        'voter_signed_in':      voter_signed_in,
-        'messages_on_stage':    messages_on_stage,
-    }
-    response = render(request, 'registration/login_we_vote.html', template_values)
-
-    # TODO: Add logging and remove error handling
-    try:
-        response = TokensManager.add_response_token_info_headers(response, token_response)
-    except Exception as e:
-        pass
-
     # If login with facebook then save facebook details in facebookAuthResponse and facebookLinkToVoter
     if facebook_data:
         facebook_user_data = getattr(facebook_data, 'user', None)
@@ -1898,6 +1882,34 @@ def login_we_vote(request):
         if positive_value_exists(facebook_user_id) and positive_value_exists(facebook_user_we_vote_id):
             facebook_link_results = facebook_user_manager.create_facebook_link_to_voter(facebook_user_id,
                                                                                         facebook_user_we_vote_id)
+
+    redirect_url = get_redirect_url(request)
+    if not positive_value_exists(redirect_url) or redirect_url == '.' or '/login' in redirect_url:
+        redirect_url = request.POST.get('next', '') or request.GET.get('next', '')
+        if not positive_value_exists(redirect_url) or redirect_url == '.' or '/login' in redirect_url:
+            redirect_url = ''
+
+    if voter_signed_in and positive_value_exists(redirect_url):
+        response = HttpResponseRedirect(redirect_url)
+        delete_redirect_url(response)
+    else:
+        messages_on_stage = get_messages(request)
+        template_values = {
+            'request':              request,
+            'username':             username,
+            'next':                 redirect_url if positive_value_exists(redirect_url) else '.',
+            'voter_signed_in':      voter_signed_in,
+            'messages_on_stage':    messages_on_stage,
+        }
+        response = render(request, 'registration/login_we_vote.html', template_values)
+        if not voter_signed_in and positive_value_exists(redirect_url) and not get_redirect_url(request):
+            set_redirect_url(response, redirect_url)
+
+    # TODO: Add logging and remove error handling
+    try:
+        response = TokensManager.add_response_token_info_headers(response, token_response)
+    except Exception as e:
+        pass
 
     # We want to store the voter_api_device_id cookie if it is new
     if positive_value_exists(voter_api_device_id) and positive_value_exists(store_new_voter_api_device_id_in_cookie):
@@ -1919,6 +1931,8 @@ def logout_we_vote(request):
         'messages_on_stage':    messages_on_stage,
     }
     response = render(request, 'registration/login_we_vote.html', template_values)
+
+    delete_redirect_url(response)
 
     # Find current voter_api_device_id
     voter_api_device_id = get_voter_api_device_id(request)
@@ -2017,7 +2031,7 @@ def statistics_summary_view(request):
 
 def sync_data_with_master_servers_view(request):
     from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
-    from wevote_tokens.enums import TokenHeaders, TokenCookies, TokenTypes
+    from wevote_tokens.enums import TokenCookies, TokenTypes
     from wevote_tokens.utils import TokensManager
 
     # admin, analytics_admin, partner_organization, political_data_manager, political_data_viewer, verified_volunteer

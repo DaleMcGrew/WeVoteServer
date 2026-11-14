@@ -10,9 +10,8 @@ from .models import attach_defaults_values_to_representative_object, Representat
 from exception.models import handle_record_not_found_exception, handle_record_found_more_than_one_exception, \
     print_to_log, handle_record_not_saved_exception
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import datetime, timedelta
-import pytz
 from django.http import HttpResponse, HttpResponseRedirect
 from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse
@@ -32,10 +31,9 @@ from voter.models import voter_has_authority
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists, STATE_CODE_MAP, \
     extract_instagram_handle_from_text_string, extract_twitter_handle_from_text_string, \
-    convert_to_political_party_constant, \
     extract_first_name_from_full_name, \
     extract_last_name_from_full_name, extract_state_from_ocd_division_id
-from wevote_functions.functions_date import generate_localized_datetime_from_obj, DATE_FORMAT_YMD_HMS
+from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
 from wevote_settings.constants import IS_BATTLEGROUND_YEARS_AVAILABLE, OFFICE_HELD_YEARS_AVAILABLE
 
 OFFICES_SYNC_URL = get_environment_variable("OFFICES_SYNC_URL")  # officesSyncOut
@@ -251,8 +249,7 @@ def find_duplicate_representative_view(request, representative_id):
               "{number_of_duplicate_representatives_processed} duplicates processed, " \
               "{number_of_duplicate_representatives_failed} duplicate merges failed, " \
               "{number_of_duplicates_could_not_process} could not be processed " \
-              "".format(election_id=google_civic_election_id,
-                        number_of_duplicate_representatives_processed=number_of_duplicate_representatives_processed,
+              "".format(number_of_duplicate_representatives_processed=number_of_duplicate_representatives_processed,
                         number_of_duplicate_representatives_failed=number_of_duplicate_representatives_failed,
                         number_of_duplicates_could_not_process=number_of_duplicates_could_not_process)
 
@@ -1091,6 +1088,7 @@ def representative_edit_view(request, representative_id):
         'show_this_year':                   show_this_year,
         'TWITTER_API_ON':                   TWITTER_API_ON,
         'web_app_root_url':                 web_app_root_url,
+        'years_available':                  OFFICE_HELD_YEARS_AVAILABLE,
     }
     return render(request, 'representative/representative_edit.html', template_values)
 
@@ -1220,6 +1218,9 @@ def representative_edit_process_view(request):
     if twitter_handle2_updates_failing is not None:
         defaults['twitter_handle2_updates_failing'] = positive_value_exists(twitter_handle2_updates_failing)
         twitter_handle2_updates_failing = positive_value_exists(twitter_handle2_updates_failing)
+    vote_usa_politician_id = request.POST.get('vote_usa_politician_id', False)
+    if vote_usa_politician_id is not False:
+        defaults['vote_usa_politician_id'] = vote_usa_politician_id
     wikipedia_url = request.POST.get('wikipedia_url', False)
     if wikipedia_url is not False:
         defaults['wikipedia_url'] = wikipedia_url
@@ -1583,6 +1584,10 @@ def representatives_sync_out_view(request):  # representativesSyncOut
             'is_battleground_race_2024',
             'is_battleground_race_2025',
             'is_battleground_race_2026',
+            'is_battleground_race_2027',
+            'is_battleground_race_2028',
+            'is_battleground_race_2029',
+            'is_battleground_race_2030',
             'linkedin_url',
             'ocd_division_id',
             'office_held_district_name',
@@ -1645,6 +1650,10 @@ def representatives_sync_out_view(request):  # representativesSyncOut
             'year_in_office_2024',
             'year_in_office_2025',
             'year_in_office_2026',
+            'year_in_office_2027',
+            'year_in_office_2028',
+            'year_in_office_2029',
+            'year_in_office_2030',
             'youtube_url',
         )
         if representative_list_dict:

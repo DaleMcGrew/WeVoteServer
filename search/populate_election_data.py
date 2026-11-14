@@ -136,5 +136,6 @@ for row in rows:
 
 logging.info("Bulk indexing election data")
 bulk_data_json = "\n".join(map(json.dumps,bulk_data))
-if bulk_data_json: es.bulk(body = bulk_data_json)
+if bulk_data_json:
+    es.bulk(body = bulk_data_json)
 bulk_data = []
