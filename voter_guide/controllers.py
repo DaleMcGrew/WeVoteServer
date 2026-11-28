@@ -17,7 +17,7 @@ from ballot.models import OFFICE, CANDIDATE, MEASURE
 from candidate.controllers import retrieve_candidate_list_for_all_prior_elections_this_year, \
     retrieve_candidate_list_for_all_upcoming_elections
 from candidate.models import CandidateManager, CandidateListManager
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from election.controllers import retrieve_this_and_next_years_election_id_list, retrieve_upcoming_election_id_list
 from election.models import ElectionManager
 from exception.models import handle_record_not_found_exception

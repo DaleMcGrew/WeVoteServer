@@ -1,4 +1,3 @@
-from config.base import get_environment_variable
 from django.core.management.base import BaseCommand
 from geopy.geocoders import get_geocoder_for_service
 from geopy.exc import GeocoderQuotaExceeded

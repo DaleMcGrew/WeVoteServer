@@ -3,9 +3,10 @@
 # -*- coding: UTF-8 -*-
 
 from datetime import datetime
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from office_held.models import OfficeHeldManager
-from wevote_functions.functions import positive_value_exists, process_request_from_master
+from wevote_functions.functions import candidate_party_display, positive_value_exists, process_request_from_master, \
+    convert_to_int
 
 OFFICE_HELD_SYNC_URL = "https://api.wevoteusa.org/apis/v1/officeHeldSyncOut/"
 # OFFICE_HELD_SYNC_URL = "http://localhost:8001/apis/v1/officeHeldSyncOut/"
@@ -19,20 +20,7 @@ def generate_office_held_dict_list_from_office_held_object_list(office_held_list
     status = ""
     success = True
     for office_held in office_held_list:
-        one_office_dict = {
-            'district_id':                  office_held.district_id,
-            'district_name':                office_held.district_name,
-            'ocd_division_id':              office_held.ocd_division_id,
-            'office_held_id':               office_held.id,
-            'office_held_description':      office_held.office_held_description,
-            'office_held_facebook_url':     office_held.office_held_facebook_url,
-            'office_held_name':             office_held.office_held_name,
-            'office_held_twitter_handle':   office_held.office_held_twitter_handle,
-            'office_held_url':              office_held.office_held_url,
-            'office_held_we_vote_id':       office_held.we_vote_id,
-            'race_office_level':            office_held.race_office_level,
-            'state_code':                   office_held.state_code,
-        }
+        one_office_dict = generate_office_held_dict_from_office_held_object(office_held)
         office_held_dict_list.append(one_office_dict)
 
     results = {
@@ -41,6 +29,34 @@ def generate_office_held_dict_list_from_office_held_object_list(office_held_list
         'success':                  success,
     }
     return results
+
+
+def generate_office_held_dict_from_office_held_object(office_held):
+    if isinstance(office_held, dict):
+        get_field = lambda name: office_held.get(name, '')
+        primary_party = candidate_party_display(get_field('primary_party'))
+    else:
+        get_field = lambda name: getattr(office_held, name, '')
+        primary_party = office_held.political_party_display()
+
+    one_office_dict = {
+        'district_id':                  get_field('district_id'),
+        'district_name':                get_field('district_name'),
+        'ocd_division_id':              get_field('ocd_division_id'),
+        'office_explanation_we_vote_id': get_field('office_explanation_we_vote_id'),
+        'office_held_description':      get_field('office_held_description'),
+        'office_held_facebook_url':     get_field('office_held_facebook_url'),
+        'office_held_id':               get_field('id'),
+        'office_held_name':             get_field('office_held_name'),
+        'office_held_twitter_handle':   get_field('office_held_twitter_handle'),
+        'office_held_url':              get_field('office_held_url'),
+        'office_held_we_vote_id':       get_field('we_vote_id') or get_field('office_held_we_vote_id'),
+        'primary_party':                primary_party,
+        'race_office_level':            get_field('race_office_level'),
+        'state_code':                   get_field('state_code'),
+        'vote_usa_office_id':           get_field('vote_usa_office_id'),
+    }
+    return one_office_dict
 
 
 def generate_office_held_dict_list_from_office_held_we_vote_id_list(
@@ -85,11 +101,19 @@ def office_held_import_from_structured_json(structured_json):
         'is_battleground_race_2024',
         'is_battleground_race_2025',
         'is_battleground_race_2026',
+        'is_battleground_race_2027',
+        'is_battleground_race_2028',
+        'is_battleground_race_2029',
+        'is_battleground_race_2030',
         'office_held_is_partisan',
         'year_with_data_2023',
         'year_with_data_2024',
         'year_with_data_2025',
         'year_with_data_2026',
+        'year_with_data_2027',
+        'year_with_data_2028',
+        'year_with_data_2029',
+        'year_with_data_2030',
     ]
     character_fields = [
         'district_id',
@@ -197,6 +221,10 @@ def offices_held_for_location_import_from_structured_json(structured_json):  # o
         'year_with_data_2024',
         'year_with_data_2025',
         'year_with_data_2026',
+        'year_with_data_2027',
+        'year_with_data_2028',
+        'year_with_data_2029',
+        'year_with_data_2030',
     ]
     character_fields = [
         'office_held_name_01',
@@ -267,6 +295,13 @@ def offices_held_for_location_import_from_structured_json(structured_json):  # o
         'date_last_retrieved',
         'date_last_updated',
     ]
+    integer_fields = [
+        'date_as_integer',
+    ]
+    float_fields = [
+        'latitude',
+        'longitude',
+    ]
     for offices_held_for_location in structured_json:
         offices_held_for_location_values = {}
         polling_location_we_vote_id = offices_held_for_location.get('polling_location_we_vote_id', '')
@@ -283,6 +318,14 @@ def offices_held_for_location_import_from_structured_json(structured_json):  # o
             if one_field in offices_held_for_location and positive_value_exists(offices_held_for_location[one_field]):
                 date_field_trimmed = offices_held_for_location[one_field].replace(" 00:00:00", "")
                 offices_held_for_location_values[one_field] = datetime.strptime(date_field_trimmed, '%Y-%m-%d').date()
+            else:
+                offices_held_for_location_values[one_field] = None
+        for one_field in float_fields:
+            offices_held_for_location_values[one_field] = float(offices_held_for_location[one_field]) \
+                if one_field in offices_held_for_location else None
+        for one_field in integer_fields:
+            if one_field in offices_held_for_location:
+                offices_held_for_location_values[one_field] = convert_to_int(offices_held_for_location[one_field])
             else:
                 offices_held_for_location_values[one_field] = None
         results = office_held_manager.update_or_create_offices_held_for_location(

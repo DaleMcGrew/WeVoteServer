@@ -1,14 +1,14 @@
 # import_export_ballotpedia/views_admin.py
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
-from candidate.models import CandidateCampaign, CandidateListManager
+from candidate.models import CandidateListManager
 from wevote_settings.models import RemoteRequestHistoryManager
 from .controllers import attach_ballotpedia_election_by_district_from_api, \
     retrieve_ballot_items_from_polling_location, \
     retrieve_ballotpedia_candidates_by_district_from_api, retrieve_ballotpedia_measures_by_district_from_api, \
     retrieve_ballotpedia_district_id_list_for_polling_location, retrieve_ballotpedia_offices_by_district_from_api
 from admin_tools.views import redirect_to_sign_in_page
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from datetime import date
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -23,6 +23,7 @@ from volunteer_task.models import VOLUNTEER_ACTION_PHOTO_BULK_RETRIEVE, Voluntee
 from voter.models import voter_has_authority
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, is_valid_state_code, positive_value_exists
+from wevote_functions.functions_date import get_current_year_as_integer
 
 logger = wevote_functions.admin.get_logger(__name__)
 
@@ -86,8 +87,9 @@ def bulk_retrieve_ballotpedia_photos_view(request):
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
     else:
         # Only look at candidates for this year
+        this_year = get_current_year_as_integer()
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(
-            year_list=[2024])
+            year_list=[this_year])
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
 
     from import_export_ballotpedia.controllers_bulk_retrieve import retrieve_ballotpedia_photos_in_bulk
@@ -163,8 +165,9 @@ def bulk_retrieve_candidate_links_from_ballotpedia_view(request):
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
     else:
         # Only look at candidates for this year
+        this_year = get_current_year_as_integer()
         results = candidate_list_manager.retrieve_candidate_we_vote_id_list_from_year_list(
-            year_list=[2024])
+            year_list=[this_year])
         candidate_we_vote_id_list = results['candidate_we_vote_id_list']
 
     from import_export_ballotpedia.controllers_bulk_retrieve import retrieve_ballotpedia_links_in_bulk

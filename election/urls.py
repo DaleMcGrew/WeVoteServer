@@ -28,6 +28,6 @@ urlpatterns = [
     re_path(r'^import/$',
         views_admin.elections_import_from_master_server_view, name='elections_import_from_master_server'),
     re_path(r'^nationwide_election_list/$', views_admin.nationwide_election_list_view, name='nationwide_election_list'),
-    re_path(r'^test/$',
-        views_admin.test_view, name='test'),
+    re_path(r'^adjust_election_names/$', views_admin.adjust_election_names_view, name='adjust_election_names'),
+    re_path(r'^test/$', views_admin.test_view, name='test'),
 ]

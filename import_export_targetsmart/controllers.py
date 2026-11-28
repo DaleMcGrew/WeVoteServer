@@ -3,8 +3,8 @@
 # -*- coding: UTF-8 -*-
 
 from .models import TargetSmartApiCounterManager
-from config.base import get_environment_variable
-from exception.models import handle_exception, handle_record_found_more_than_one_exception
+from config.environment_variable_functions import get_environment_variable
+from exception.models import handle_exception
 import json
 import requests
 import wevote_functions.admin

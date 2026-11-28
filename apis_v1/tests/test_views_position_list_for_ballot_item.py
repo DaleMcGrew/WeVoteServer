@@ -1,5 +1,3 @@
-from datetime import time
-from logging import error
 from django.urls import reverse
 from django.test import TestCase
 from django.utils import timezone
@@ -69,7 +67,7 @@ class WeVoteAPIsV1TestsPositionListForBallotItem(TestCase):
 
         # "position_list": []
         self.assertEqual(len(json_data["position_list"]), len(expected["position_list"]),
-                         f"Expected failed response to return empty position_list")
+                         "Expected failed response to return empty position_list")
 
     def test_retrieve_with_invalid_kind_of_ballot_item(self):
         """
@@ -159,7 +157,7 @@ class WeVoteAPIsV1TestsPositionListForBallotItem(TestCase):
         # "position_list": []
         self.assertEqual(len(json_data["position_list"]),
                          len(expected["position_list"]),
-                         f"Expected failed response to return empty position_list")
+                         "Expected failed response to return empty position_list")
 
     def test_retrieve_valid_but_wrong_kind_of_ballot_item(self):
         """
@@ -235,7 +233,7 @@ class WeVoteAPIsV1TestsPositionListForBallotItem(TestCase):
         # "position_list": []
         self.assertEqual(len(json_data["position_list"]),
                          len(expected["position_list"]),
-                         f"Expected failed response to return empty position_list")
+                         "Expected failed response to return empty position_list")
 
     def test_retrieve_valid_parameters_for_measure(self):
         """

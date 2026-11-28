@@ -2,7 +2,7 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from django.views.decorators.csrf import csrf_exempt
 from reaction.controllers import reaction_like_count_for_api, voter_reaction_like_off_save_for_api, \
     voter_reaction_like_on_save_for_api, reaction_like_status_retrieve_for_api

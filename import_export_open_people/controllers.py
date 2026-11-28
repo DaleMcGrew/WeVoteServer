@@ -9,7 +9,7 @@ import requests
 from requests.structures import CaseInsensitiveDict
 
 import wevote_functions.admin
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 from exception.models import handle_exception
 from voter.controllers_contacts import assemble_contact_display_name
 from voter.models import VoterContactEmail

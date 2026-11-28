@@ -2,12 +2,9 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from candidate.models import CandidateCampaign, ContestOffice
 from datetime import datetime
 from django.db import models
-from exception.models import handle_record_found_more_than_one_exception, handle_record_not_saved_exception
-import json
-from office.models import ContestOfficeManager
+from exception.models import handle_record_found_more_than_one_exception
 import wevote_functions.admin
 
 

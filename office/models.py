@@ -969,6 +969,56 @@ class ContestOfficeManager(models.Manager):
         return results
 
     @staticmethod
+    def retrieve_office_explanation(
+            contest_office_we_vote_id='',
+            office_explanation_we_vote_id='',
+            read_only=True):
+        office_explanation_found = False
+        exception_does_not_exist = False
+        exception_multiple_object_returned = False
+        office_explanation = OfficeExplanation()
+        status = ""
+        success = True
+
+        try:
+            # TODO Allow retrieve from contest_office_we_vote_id
+            if positive_value_exists(office_explanation_we_vote_id):
+                if positive_value_exists(read_only):
+                    office_explanation = OfficeExplanation.objects.using('readonly').get(
+                        we_vote_id=office_explanation_we_vote_id)  # Removed __iexact
+                else:
+                    office_explanation = OfficeExplanation.objects.get(
+                        we_vote_id=office_explanation_we_vote_id)  # Removed __iexact
+                office_explanation_we_vote_id = office_explanation.we_vote_id
+                office_explanation_found = True
+                status += "RETRIEVE_OFFICE_EXPLANATION_FOUND_BY_WE_VOTE_ID "
+            else:
+                status += "RETRIEVE_OFFICE_EXPLANATION_SEARCH_INDEX_MISSING "
+                success = False
+        except OfficeExplanation.MultipleObjectsReturned as e:
+            handle_record_found_more_than_one_exception(e, logger=logger)
+            exception_multiple_object_returned = True
+            status += "RETRIEVE_OFFICE_EXPLANATION_MULTIPLE_OBJECTS_RETURNED: " + str(e) + " "
+            success = False
+        except OfficeExplanation.DoesNotExist:
+            exception_does_not_exist = True
+            status += "RETRIEVE_OFFICE_EXPLANATION_NOT_FOUND "
+        except Exception as e:
+            status += "FAILURE_RETRIEVING_OFFICE_EXPLANATION: " + str(e) + " "
+            success = False
+
+        results = {
+            'success':                          success,
+            'status':                           status,
+            'DoesNotExist':                     exception_does_not_exist,
+            'MultipleObjectsReturned':          exception_multiple_object_returned,
+            'office_explanation_found':         office_explanation_found,
+            'office_explanation_we_vote_id':    office_explanation_we_vote_id,
+            'office_explanation':               office_explanation,
+        }
+        return results
+
+    @staticmethod
     def fetch_contest_office_id_from_we_vote_id(contest_office_we_vote_id):
         """
         Take in contest_office_we_vote_id and return internal/local-to-this-database contest_office_id
@@ -1043,11 +1093,11 @@ class ContestOfficeManager(models.Manager):
             state_code='',
             defaults={}):
         """
-        Create ContestOffice table entry with ContestOffice details 
-        :param contest_office_name: 
+        Create ContestOffice table entry with ContestOffice details
+        :param contest_office_name:
         :param contest_office_votes_allowed:
         :param contest_office_number_elected:
-        :param google_civic_election_id: 
+        :param google_civic_election_id:
         :param state_code:
         :param defaults:
         :return:
@@ -1144,10 +1194,10 @@ class ContestOfficeManager(models.Manager):
             state_code,
             defaults):
         """
-        Update ContestOffice table entry with matching we_vote_id 
-        :param contest_office_name: 
+        Update ContestOffice table entry with matching we_vote_id
+        :param contest_office_name:
         :param contest_office_votes_allowed:
-        :param ctcl_uuid: 
+        :param ctcl_uuid:
         :param contest_office_number_elected:
         :param contest_office_we_vote_id:
         :param google_civic_election_id:
@@ -1244,8 +1294,8 @@ class ContestOfficeManager(models.Manager):
     def count_contest_offices_for_election(google_civic_election_id):
         """
         Return count of contest offices found for a given election
-        :param google_civic_election_id: 
-        :return: 
+        :param google_civic_election_id:
+        :return:
         """
         contest_offices_count = 0
         success = False

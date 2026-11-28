@@ -4,9 +4,8 @@
 
 from ballot.models import BallotItem
 from election.models import ElectionManager
-from exception.models import handle_exception
 from office.models import ContestOffice
-from office_held.models import OfficeHeld, OfficeHeldManager
+from office_held.models import OfficeHeldManager
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists
 
@@ -53,6 +52,7 @@ def generate_ballot_data_from_offices_held(
             'substituted_address_state':    substituted_address_state,
             'substituted_address_zip':      substituted_address_zip,
             'text_for_map_search':          text_for_map_search,
+            'use_election_without_ballot_data': False,
             'use_office_held_ballot':       False,
             'voter_ballot_saved':           None,
             'voter_ballot_saved_found':     False,
@@ -105,6 +105,7 @@ def generate_ballot_data_from_offices_held(
             'substituted_address_state':    substituted_address_state,
             'substituted_address_zip':      substituted_address_zip,
             'text_for_map_search':          text_for_map_search,
+            'use_election_without_ballot_data': False,
             'use_office_held_ballot':       False,
             'voter_ballot_saved_found':     False,
             'voter_ballot_saved':           None,
@@ -120,9 +121,21 @@ def generate_ballot_data_from_offices_held(
         pass
 
     use_office_held_ballot = False
+    latitude = None
+    longitude = None
+    state_code = None
+    try:
+        latitude = voter_address.latitude
+        longitude = voter_address.longitude
+        state_code = voter_address.get_state_code()
+    except Exception as e:
+        status += "COULD_NOT_GET_LAT_LONG_FROM_VOTER_ADDRESS: " + str(e) + " "
     results = find_closest_ballot_from_offices_held_data(
         # google_civic_election_id=google_civic_election_id,
+        latitude=latitude,
+        longitude=longitude,
         read_only=True,
+        state_code=state_code,
         text_for_map_search=text_for_map_search,  # Make this more robust
     )
     if positive_value_exists(results['offices_held_for_location_id']):
@@ -159,6 +172,7 @@ def generate_ballot_data_from_offices_held(
         'substituted_address_state':            substituted_address_state,
         'substituted_address_zip':              substituted_address_zip,
         'text_for_map_search':                  text_for_map_search,
+        'use_election_without_ballot_data':     False,
         'use_office_held_ballot':               use_office_held_ballot,
         'voter_ballot_saved':                   None,
         'voter_ballot_saved_found':             False,
@@ -168,17 +182,22 @@ def generate_ballot_data_from_offices_held(
 
 def find_closest_ballot_from_offices_held_data(
         google_civic_election_id=0,
+        latitude=None,
+        longitude=None,
         read_only=True,
+        state_code=None,
         text_for_map_search=''):
     offices_held_for_location = None
     offices_held_for_location_found = False
     offices_held_for_location_id = ''
     status = ""
-    success = True
-    office_held_manager = OfficeHeldManager()
-    results = office_held_manager.find_closest_offices_held_for_location(
+
+    from representative.controllers_representatives_retrieve import find_closest_offices_held_for_location
+    results = find_closest_offices_held_for_location(
+        latitude=latitude,
+        longitude=longitude,
+        state_code=state_code,
         text_for_map_search=text_for_map_search,
-        # google_civic_election_id=google_civic_election_id,
         read_only=read_only)
     if results['offices_held_for_location_found']:
         offices_held_for_location = results['offices_held_for_location']

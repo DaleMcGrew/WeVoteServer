@@ -4,7 +4,7 @@ import requests
 from time import time
 import json
 # import os
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 
 
 APPLE_PUBLIC_KEY_URL = "https://appleid.apple.com/auth/keys"

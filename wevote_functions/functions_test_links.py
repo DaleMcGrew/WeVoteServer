@@ -5,7 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from urllib.parse import urlparse
 from langdetect import detect, LangDetectException
-from config.base import get_environment_variable
+from config.environment_variable_functions import get_environment_variable
 # import DNS
 import tldextract
 # from ipwhois import IPWhois
@@ -110,10 +110,10 @@ def detect_language(text):
         return "unknown"
 
 
-# Function to toggle between http and https   
+# Function to toggle between http and https
 def toggle_http_https(url: str) -> str:
     if url.startswith("https://"):
-       return  url.replace("https://", "http://", 1)  
+       return  url.replace("https://", "http://", 1)
     elif url.startswith("http://"):
        return url.replace("http://", "https://", 1)
     return url
@@ -207,7 +207,7 @@ def check_url_status(url: str, politician_name: str, result: dict) -> dict:
     expired_site_keywords = [
         'notfound', 'this page could not be found', 'sorry', 'flywheel', 'godaddy', 'site paused', 'lapsed',
         'unknown domain',
-        'denied', 'error', "this account doesn’t exist", 'website expired', "4d", "casino", "betting", "gambling", 
+        'denied', 'error', "this account doesn’t exist", 'website expired', "4d", "casino", "betting", "gambling",
         "loan", "bitcoin", "crypto", "pharmacy", "hack","Daftar","game", "javascript is not available",
         "something went wrong", "log into facebook",
     ]
@@ -239,7 +239,7 @@ def check_url_status(url: str, politician_name: str, result: dict) -> dict:
             result["is_redirect_ssl"] = is_ssl_redirect(url, response.url) or is_domain_alias_redirect(url, response.url)
             result["is_redirect"] = not result["is_redirect_ssl"]
 
-        # Extract and clean the contents of the webpage    
+        # Extract and clean the contents of the webpage
         soup =  BeautifulSoup(response.content, "html.parser")
         content_cleaned = ' '.join(soup.get_text().lower().split())
         # Check for expired keywords
@@ -264,7 +264,7 @@ def check_url_status(url: str, politician_name: str, result: dict) -> dict:
                 if url.startswith("http://"):
                     result["status_code_http"] = response.status_code
                     result["status_description_http"] = "This link is NOT available to the public"
-                else:   
+                else:
                     result["status_code_https"] = response.status_code
                     result["status_description_https"] = "This link is NOT available to the public"
                 result["success"] = False
@@ -280,7 +280,7 @@ def check_url_status(url: str, politician_name: str, result: dict) -> dict:
                 ]
                 if matched_words:
                     matched_words = [word for word in url_matching_words if word in content_cleaned]
-                    result["status"] = "Success" 
+                    result["status"] = "Success"
                     result["is_valid"] = True
                     if url.startswith("http://"):
                         result["status_code_http"] = response.status_code
@@ -292,7 +292,7 @@ def check_url_status(url: str, politician_name: str, result: dict) -> dict:
                         result["status_description_https"] = "This link works fine"
                         result["status_code_http"] = 0
                         result["status_description_http"] = ""
-                    result["success"] = True 
+                    result["success"] = True
                     return result
                 
         if response.status_code == 200:
@@ -307,11 +307,11 @@ def check_url_status(url: str, politician_name: str, result: dict) -> dict:
             else:
                 result["status_code_https"] = response.status_code
                 result["status_description_https"] = "Valid URL"
-            result["success"] = True              
+            result["success"] = True
             if "twitter.com" in url and "x.com" in result["final_url"]:
                 result["status"] = "Success"
                 status_description = "Twitter link works fine"
-                result["success"] = True               
+                result["success"] = True
             elif normalize_url(url) != normalize_url(result["final_url"]):
                 result["is_redirct"] = True
                 result["is_valid"] = False
@@ -319,14 +319,14 @@ def check_url_status(url: str, politician_name: str, result: dict) -> dict:
                 if result["is_social_account"]:
                     result["social_account_does_not_exist"] = True
                 status_description = "Redirected to an unexpected domain"
-                result["success"] = False                            
+                result["success"] = False
             elif matching_keywords or  language != "en":
                 result["status"] = "Failed"
                 result["is_valid"] = False
                 if result["is_social_account"]:
                     result["social_account_does_not_exist"] = True
                 status_description = "Parked domain or spam"
-                result["success"] = False 
+                result["success"] = False
             if status_description:
                 if url.startswith("http://"):
                     result["status_code_http"] = response.status_code

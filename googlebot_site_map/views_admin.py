@@ -3,6 +3,7 @@
 # -*- coding: UTF-8 -*-
 
 import datetime
+import ipaddress
 import re
 import subprocess
 
@@ -45,9 +46,17 @@ def log_request(request):
 def googlebot_reverse_dns(ip):
     host = 'localhost'
     # ip = '66.249.66.9'
-    if ip != '127.0.0.1':
-        run_cmd = 'host ' + ip
-        process = subprocess.run([run_cmd], shell=True, stdout=subprocess.PIPE)
+    # The ip originates from the client-controlled X-Forwarded-For header, so only run the
+    # lookup when it is a syntactically valid IP address. Combined with shell=False and an
+    # argument list below, this closes the command-injection path (a value like ';sleep 8'
+    # is rejected here, and could never reach a shell even if it weren't).
+    try:
+        ipaddress.ip_address(ip)
+        valid_ip = True
+    except (ValueError, TypeError):
+        valid_ip = False
+    if valid_ip and ip != '127.0.0.1':
+        process = subprocess.run(['host', ip], shell=False, stdout=subprocess.PIPE)
         output_raw = process.stdout
         host = output_raw.decode("utf-8")
         if positive_value_exists(host):

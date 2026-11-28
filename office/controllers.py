@@ -7,12 +7,10 @@ from ballot.controllers import move_ballot_items_to_another_office
 from ballot.models import OFFICE
 from bookmark.models import BookmarkItemList
 from candidate.controllers import move_candidates_to_another_office
-from config.base import get_environment_variable
-from django.contrib import messages
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 import json
 from position.controllers import move_positions_to_another_office, update_all_position_details_from_contest_office
-import requests
 import wevote_functions.admin
 from wevote_functions.functions import convert_to_int, positive_value_exists, process_request_from_master
 from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS
@@ -828,6 +826,18 @@ def office_retrieve_for_api(office_id, office_we_vote_id):
         date_last_updated = ''
         if positive_value_exists(contest_office.date_last_updated):
             date_last_updated = contest_office.date_last_updated.strftime(DATE_FORMAT_YMD_HMS)  # '%Y-%m-%d %H:%M:%S'
+        # Office Explanation
+        office_explanation_text = ''
+        video_url_horizontal = ''
+        video_url_vertical = ''
+        results = office_manager.retrieve_office_explanation(
+            office_explanation_we_vote_id=contest_office.office_explanation_we_vote_id)
+        status = results['status']
+        if positive_value_exists(results['success']) and positive_value_exists(results['office_explanation_found']):
+            office_explanation = results['office_explanation']
+            office_explanation_text = office_explanation.office_explanation
+            video_url_horizontal = office_explanation.video_url_horizontal
+            video_url_vertical = office_explanation.video_url_vertical
         json_data = {
             'status':                   status,
             'success':                  True,
@@ -847,9 +857,12 @@ def office_retrieve_for_api(office_id, office_we_vote_id):
             'number_voting_for':        contest_office.number_voting_for,
             'number_elected':           contest_office.number_elected,
             'ocd_division_id':          contest_office.ocd_division_id,
+            'office_explanation_text':  office_explanation_text,
             'primary_party':            contest_office.primary_party,
             'race_office_level':        contest_office.ballotpedia_race_office_level,
             'state_code':               contest_office.state_code,
+            'video_url_horizontal':     video_url_horizontal,
+            'video_url_vertical':       video_url_vertical,
             'we_vote_id':               contest_office.we_vote_id,
             'wikipedia_id':             contest_office.wikipedia_id,
         }

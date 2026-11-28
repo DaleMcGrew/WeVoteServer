@@ -4,7 +4,6 @@
 
 from .models import SIGN_IN_CODE_SMS_TEMPLATE
 from django.template.loader import get_template
-from django.template import Context
 import json
 
 

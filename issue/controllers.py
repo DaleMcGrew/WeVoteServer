@@ -2,13 +2,13 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from .models import IssueListManager, Issue, IssueManager, MOST_LINKED_ORGANIZATIONS, OrganizationLinkToIssue
-from config.base import get_environment_variable
+from .models import IssueListManager, Issue, IssueManager, OrganizationLinkToIssue
+from config.environment_variable_functions import get_environment_variable
 from django.http import HttpResponse
 from exception.models import handle_exception
 import json
 from ballot.models import BallotReturnedManager
-from follow.models import FollowIssueList, FOLLOWING
+from follow.models import FollowIssueList
 from issue.models import OrganizationLinkToIssueList
 from position.models import ANY_STANCE, PositionListManager
 from voter.models import fetch_voter_we_vote_id_from_voter_device_link

@@ -12,17 +12,6 @@ from nameparser.config import CONSTANTS
 CONSTANTS.string_format = "{title} {first} {middle} \"{nickname}\" {last} {suffix}"
 
 
-def generate_date_as_integer():
-    # We want to store the day as an integer for extremely quick database indexing and lookup
-    datetime_now = localtime(now()).date()  # We Vote uses Pacific Time for TIME_ZONE
-    day_as_string = "{:d}{:02d}{:02d}".format(
-        datetime_now.year,
-        datetime_now.month,
-        datetime_now.day,
-    )
-    return convert_to_int(day_as_string)
-
-
 def convert_date_to_date_as_integer(date):
     day_as_string = "{:d}{:02d}{:02d}".format(
         date.year,
@@ -89,6 +78,17 @@ DATE_FORMAT_DAY_TWO_DIGIT = "%d"                                # 04
 #     date_time = datetime.strptime(date_string, date_format)
 #     return timezone.localize(date_time)
 
+# TODO this duplicates the functionality of get_current_date_as_integer -- we should standardize on get_current_date_as_integer
+def generate_date_as_integer():
+    # We want to store the day as an integer for extremely quick database indexing and lookup
+    datetime_now = localtime(now()).date()  # We Vote uses Pacific Time for TIME_ZONE
+    day_as_string = "{:d}{:02d}{:02d}".format(
+        datetime_now.year,
+        datetime_now.month,
+        datetime_now.day,
+    )
+    return convert_to_int(day_as_string)
+
 
 # retrieve the current datetime and timezone in the specified timezone
 def generate_localized_datetime_from_obj(timezone_name="America/Los_Angeles"):
@@ -101,8 +101,11 @@ def generate_localized_datetime_from_obj(timezone_name="America/Los_Angeles"):
 #     -import function into file
 #     -replace all instances when searching "pytz.timezone" with "date_today_as_integer = get_current_date_as_integer()"
 def get_current_date_as_integer(timezone_name="America/Los_Angeles"):
-    _, datetime_now = generate_localized_datetime_from_obj(timezone_name)
-    return convert_date_to_date_as_integer(datetime_now)
+    try:
+        _, datetime_now = generate_localized_datetime_from_obj(timezone_name)
+        return convert_date_to_date_as_integer(datetime_now)
+    except Exception as e:
+        return 20260101
 
 
 def get_current_year_as_integer():
@@ -110,5 +113,5 @@ def get_current_year_as_integer():
         datetime_now = localtime(now()).date()  # WeVote uses Pacific Time for TIME_ZONE
         current_year = convert_to_int(datetime_now.year)
     except Exception as e:
-        current_year = 2025
+        current_year = 2026  # Update manually 2024, 2025, 2026
     return current_year

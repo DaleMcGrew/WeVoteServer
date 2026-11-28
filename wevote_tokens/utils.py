@@ -1,11 +1,13 @@
-from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
-from wevote_tokens.enums import TokenTypes, TokenHeaders, TokenResponse, Prefixes
-from wevote_functions.functions import positive_value_exists
-from django.http import HttpResponse, StreamingHttpResponse
-import re
 import json
 import logging
 
+from django.http import HttpResponse, StreamingHttpResponse, HttpResponseForbidden, HttpResponseServerError
+
+from config.environment_variable_functions import get_environment_variable_default
+from wevote_functions.functions import positive_value_exists
+from wevote_tokens.enums import TokenTypes, TokenHeaders, TokenResponse
+from wevote_tokens.models.single_use_tokens import SingleUseTokenManager
+from wevote_tokens.enums import TokenResponseStatus
 
 class TokensManager():
 
@@ -30,7 +32,7 @@ class TokensManager():
                 if request_token_info['error_message']:
                     token_response['token_authentication'] = {
                         'success': False,
-                        'status': "",
+                        'status': TokenResponseStatus.ERROR_RETRIEVING_DATA.value,
                         'error_message': request_token_info['error_message'],
                         'token_info': None
                     }
@@ -38,14 +40,25 @@ class TokensManager():
                     TokensManager.test_log_to_cloudwatch('get_request_token_info',
                                                          request_token_info, process_success, token_response)
 
+                # If headers does not have needed info
+                if self.missing_minimum_required_headers(request_token_info):
+                    token_response['token_authentication'] = {
+                        'success': False,
+                        'status': TokenResponseStatus.INVALID_AUTHENTICATION_ARGUMENTS.value,
+                        'error_message': "Missing required headers",
+                        'token_info': None
+                    }
+
+                    TokensManager.test_log_to_cloudwatch('missing_minimum_required_headers', request_token_info, process_success, token_response)
+
                 # Check token type
                 if not request_token_info['error_message'] and \
                         (not request_token_info['token_type'] or
                          request_token_info['token_type'] not in self.token_types):
-                    # TODO: return 401 unauthorized
+
                     token_response['token_authentication'] = {
                         'success': False,
-                        'status': 'INVALID_TOKEN_TYPE',
+                        'status': TokenResponseStatus.INVALID_TOKEN_TYPE.value,
                         'error_message': "Invalid token type",
                         'token_info': None
                     }
@@ -53,8 +66,8 @@ class TokensManager():
                     TokensManager.test_log_to_cloudwatch('verify_token_type',
                                                          request_token_info, process_success, token_response)
                 
+                # And authenticate it with id, key, and scope
                 if not token_response['token_authentication']:
-                    # And authenticate it with id, key, and scope
                     token_response['token_authentication'] = self.token_authentication(request_token_info)
 
                     process_success = token_response['token_authentication']['success']
@@ -70,8 +83,24 @@ class TokensManager():
             except Exception as e:
                 token_response['exception_error_message'] = str(e)
                 TokensManager.test_log_to_cloudwatch('error_on_token_authentication_and_creation', request_token_info, False, token_response)
-                
-            response = view_func(request, *args, **kwargs)
+            
+            ## Handle response based on token authentication and creation status
+            # If the token authentication and creation was successful, call the view function
+            # If the token authentication and creation was not successful, return unauthorized
+            response = HttpResponseServerError()
+            if token_response['token_authentication']['success']:
+                response = view_func(request, *args, **kwargs)
+            else:
+                if token_response['token_authentication']['status'] == TokenResponseStatus.INVALID_TOKEN_TYPE.value:
+                    response = HttpResponse(status=401)
+                elif token_response['token_authentication']['status'] == TokenResponseStatus.INVALID_AUTHENTICATION_ARGUMENTS.value:
+                    response = HttpResponse(status=401)
+                elif token_response['token_authentication']['status'] == TokenResponseStatus.AUTHENTICATION_PROCESSING_ERROR.value:
+                    response = HttpResponseServerError()
+                elif token_response['token_authentication']['status'] == TokenResponseStatus.ERROR_RETRIEVING_DATA.value:
+                    response = HttpResponseServerError()
+                else:
+                    response = HttpResponseForbidden()
             
             try:
                 self.add_response_token_info_headers(response, token_response)
@@ -119,6 +148,13 @@ class TokensManager():
             'new_token_key': new_token_key,
             'error_message': None
         }
+
+    @staticmethod
+    def missing_minimum_required_headers(request_token_info):
+        return (not request_token_info['user_id'] and \
+        not request_token_info['token_type'] and \
+        not request_token_info['authorization'] and \
+        not request_token_info['token_key'])
 
     @staticmethod
     def format_request_headers(user_id=None, token_type=None, authorization=None, create_token=None, token_key=None, new_token_key=None):
@@ -203,9 +239,6 @@ class TokensManager():
         if token_type == TokenTypes.SINGLE_USE.value:
             # breakpoint()
             token_info = SingleUseTokenManager.authenticate_retrieve_token(token_id, token_key, scope)
-            if token_info['success']:
-                token_info['expiration_datetime'] = \
-                    token_info['expiration_datetime'].strftime('%Y-%m-%d %H:%M:%S')
 
             # This is for retries in case of faulty api connection
             # if the previous token key was used, its likely that
@@ -221,6 +254,10 @@ class TokensManager():
                         if temp_token_check_info['success']:
                             token_info = temp_token_check_info
                             break
+            
+            if token_info['success']:
+                token_info['expiration_datetime'] = \
+                    token_info['expiration_datetime'].strftime('%Y-%m-%d %H:%M:%S')
 
         else:
             token_auth_info['error_message'] = f"Invalid token type: {token_type}"
@@ -235,9 +272,11 @@ class TokensManager():
                 token_auth_info['token_info'] = token_info
             elif positive_value_exists(token_info['status']):
                 token_auth_info['error_message'] = token_info['status']
+                token_auth_info['status'] = TokenResponseStatus.INVALID_CREDENTIALS.value
             else:
+                token_auth_info['status'] = TokenResponseStatus.AUTHENTICATION_PROCESSING_ERROR.value
                 token_auth_info['error_message'] = "Unknown error"
-        
+
         return token_auth_info
 
     # something that takes a response, and adds needed token information to headers
@@ -324,8 +363,8 @@ class TokensManager():
 
         try:
             headers = dict(headers)
-        except:
-            raise ValueError("headers must be a dict or convertable to a dict")
+        except Exception as e:
+            raise ValueError(f"headers must be a dict or convertable to a dict: {e}")
 
         result = {}
 
@@ -355,4 +394,5 @@ class TokensManager():
         }
         
         # TODO: change level to info when possible. Add security tagging.
-        logging.warning("[TOKEN_MANAGER_TEST_WARNING]: " + json.dumps(result))
+        if not get_environment_variable_default("DEBUG_FASTLOAD_SINGLE_SERVER", False):
+            logging.warning("[TOKEN_MANAGER_TEST_WARNING]: " + json.dumps(result))

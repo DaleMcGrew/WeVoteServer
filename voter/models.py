@@ -19,7 +19,7 @@ from geopy import get_geocoder_for_service
 
 import wevote_functions.admin
 from apple.models import AppleUser
-from config.base import get_environment_variable, get_environment_variable_default
+from config.environment_variable_functions import get_environment_variable, get_environment_variable_default
 from exception.models import handle_exception, handle_record_found_more_than_one_exception, \
     handle_record_not_saved_exception
 from import_export_facebook.models import FacebookManager
@@ -71,6 +71,9 @@ NOTIFICATION_LOGIN_EMAIL = 16384  # Email: "Show me email login requests" - logi
 NOTIFICATION_LOGIN_SMS = 32768  # SMS: "Show me SMS login requests"
 NOTIFICATION_FRIEND_MESSAGES_EMAIL = 65536  # Email: "Show me messages from friends" - friendmessage
 NOTIFICATION_FRIEND_MESSAGES_SMS = 131072  # SMS: "Show me messages from friends"
+NOTIFICATION_WEVOTE_VOTING_REMINDER_EMAIL = 262144  # Email: "Remind me to vote on We Vote"
+NOTIFICATION_WEVOTE_POLITICIAN_CAMPAIGN_EMAIL = 524288  # Email: "As a politician, would you like to update your info?"
+# NEXT BITS AVAILABLE: 1048576, 2097152, 4194304, 8388608
 
 # Default to set for new voters
 NOTIFICATION_SETTINGS_FLAGS_DEFAULT = \
@@ -4690,6 +4693,16 @@ class VoterAddress(models.Model):
                 name='voter_id_type'),
         ]
 
+    def get_state_code(self):
+        if positive_value_exists(self.text_for_map_search):
+            state_code = extract_state_code_from_address_string(self.text_for_map_search)
+            if positive_value_exists(state_code):
+                return state_code
+        if positive_value_exists(self.normalized_state):
+            return self.normalized_state
+        else:
+            return ""
+
     def get_state_code_from_text_for_map_search(self):
         if positive_value_exists(self.text_for_map_search):
             return extract_state_code_from_address_string(self.text_for_map_search)
@@ -4706,6 +4719,7 @@ class VoterAddressManager(models.Manager):
         error_result = False
         exception_does_not_exist = False
         exception_multiple_object_returned = False
+        status = ''
         voter_address_on_stage = None
         voter_address_has_value = False
 
@@ -4718,7 +4732,7 @@ class VoterAddressManager(models.Manager):
                 voter_address_on_stage = VoterAddress.objects.get(id=voter_address_id)
                 voter_address_id = voter_address_on_stage.id
                 voter_address_found = True
-                status = "VOTER_ADDRESS_FOUND_BY_ID"
+                status += "VOTER_ADDRESS_FOUND_BY_ID "
                 success = True
                 voter_address_has_value = True if positive_value_exists(voter_address_on_stage.text_for_map_search) \
                     else False
@@ -4728,24 +4742,24 @@ class VoterAddressManager(models.Manager):
                 # If still here, we found an existing address
                 voter_address_id = voter_address_on_stage.id
                 voter_address_found = True
-                status = "VOTER_ADDRESS_FOUND_BY_VOTER_ID_AND_ADDRESS_TYPE"
+                status += "VOTER_ADDRESS_FOUND_BY_VOTER_ID_AND_ADDRESS_TYPE "
                 success = True
                 voter_address_has_value = True if positive_value_exists(voter_address_on_stage.text_for_map_search) \
                     else False
             else:
                 voter_address_found = False
-                status = "VOTER_ADDRESS_NOT_FOUND-MISSING_REQUIRED_VARIABLES"
+                status += "VOTER_ADDRESS_NOT_FOUND-MISSING_REQUIRED_VARIABLES "
                 success = False
         except VoterAddress.MultipleObjectsReturned as e:
             handle_record_found_more_than_one_exception(e, logger=logger)
             error_result = True
-            status = "VOTER_ADDRESS_MULTIPLE_OBJECTS_RETURNED"
+            status += "VOTER_ADDRESS_MULTIPLE_OBJECTS_RETURNED "
             exception_multiple_object_returned = True
             success = False
             voter_address_found = False
         except VoterAddress.DoesNotExist:
             error_result = True
-            status = "VOTER_ADDRESS_DOES_NOT_EXIST"
+            status += "VOTER_ADDRESS_DOES_NOT_EXIST "
             exception_does_not_exist = True
             success = True
             voter_address_found = False
@@ -4913,7 +4927,7 @@ class VoterAddressManager(models.Manager):
                 success = True
                 status += "UPDATE_OR_CREATE_SUCCESSFUL "
             except Exception as e:
-                status += f'CRASHING_GOOGLE_GEOCODER: '
+                status += 'CRASHING_GOOGLE_GEOCODER: '
 
             except VoterAddress.MultipleObjectsReturned as e:
                 handle_record_found_more_than_one_exception(e, logger=logger)

@@ -5,7 +5,7 @@
 from django.urls import reverse
 from django.test import TestCase
 import json
-from voter.models import VoterManager, Voter
+from voter.models import VoterManager
 from future.standard_library import install_aliases
 install_aliases()
 
