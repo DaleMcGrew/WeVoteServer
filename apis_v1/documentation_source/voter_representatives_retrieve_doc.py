@@ -47,6 +47,7 @@ def voter_representatives_retrieve_doc_template_values(url_root):
     }
 
     api_response = '{\n' \
+                   '  "distance_from_lat_long": integer (in miles if using substituted address),\n' \
                    '  "is_from_substituted_address": boolean,\n' \
                    '  "office_held_list_found": boolean,\n' \
                    '  "offices_held_for_location_found": boolean,\n' \
@@ -59,6 +60,7 @@ def voter_representatives_retrieve_doc_template_values(url_root):
                    '  "substituted_address_state": string,\n' \
                    '  "substituted_address_zip": string,\n' \
                    '  "text_for_map_search": string (if an error response),\n' \
+                   '  "text_for_map_search_too_short": boolean,\n' \
                    '  "voter_device_id": string (88 characters long),\n' \
                    '  "voter_device_id_not_valid": boolean,\n' \
                    '  "office_held_list": list\n' \

@@ -15,8 +15,11 @@ logger = wevote_functions.admin.get_logger(__name__)
 def generate_campaign_title_from_politician(
         politician_name='', state_code=''):
     # If politician_name is all caps, convert it to Title Case
-    if politician_name.isupper():
-        politician_name = display_full_name_with_correct_capitalization(politician_name)
+    try:
+        if politician_name.isupper():
+            politician_name = display_full_name_with_correct_capitalization(politician_name)
+    except Exception as e:
+        pass
     if positive_value_exists(state_code):
         state_suffix = ", Politician from {state_text}" \
                        "".format(state_text=convert_state_code_to_state_text(state_code))

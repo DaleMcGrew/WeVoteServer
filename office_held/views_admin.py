@@ -1017,8 +1017,11 @@ def offices_held_for_location_sync_out_view(request):  # officesHeldForLocationS
         queryset = OfficesHeldForLocation.objects.using('readonly').all()
         queryset = queryset.filter(state_code__iexact=state_code)
         offices_held_for_location_list_dict = queryset.values(
+            'date_as_integer',
             'date_last_retrieved',
             'date_last_updated',
+            'latitude',
+            'longitude',
             'office_held_name_01',
             'office_held_name_02',
             'office_held_name_03',

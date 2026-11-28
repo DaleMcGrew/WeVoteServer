@@ -1221,6 +1221,8 @@ def retrieve_remote_representatives_from_location_api(
         existing_offices_held_by_vote_usa_office_id_dict=None,
         existing_representatives_by_office_and_name_dict=None,
         existing_representative_to_office_held_links_dict=None,
+        latitude=None,
+        longitude=None,
         new_office_held_we_vote_ids_list=None,
         new_representative_we_vote_ids_list=None,
         polling_location_we_vote_id="",
@@ -1237,6 +1239,8 @@ def retrieve_remote_representatives_from_location_api(
     :param existing_offices_held_by_vote_usa_office_id_dict:
     :param existing_representatives_by_office_and_name_dict:
     :param existing_representative_to_office_held_links_dict:
+    :param latitude:
+    :param longitude:
     :param new_office_held_we_vote_ids_list:
     :param new_representative_we_vote_ids_list:
     :param polling_location_we_vote_id:
@@ -1249,7 +1253,7 @@ def retrieve_remote_representatives_from_location_api(
     """
     success = True
     status = ""
-    ballot_items_count = 0
+    office_held_count = 0
     date_as_integer = get_current_date_as_integer()
     offices_held_for_location = None
     offices_held_for_location_found = False
@@ -1275,7 +1279,7 @@ def retrieve_remote_representatives_from_location_api(
 
 
     error_results = {
-        'ballot_items_count':                       ballot_items_count,
+        'office_held_count':                       office_held_count,
         'offices_held_for_location':                None,
         'offices_held_for_location_found':          False,
         'offices_held_for_location_id':             None,
@@ -1301,8 +1305,9 @@ def retrieve_remote_representatives_from_location_api(
     if 'update_representatives' not in update_or_create_rules:
         update_or_create_rules['update_representatives'] = False
 
-    latitude = 0.0
-    longitude = 0.0
+    if not positive_value_exists(latitude) or not positive_value_exists(longitude):
+        latitude = 0.0
+        longitude = 0.0
     polling_location_manager = PollingLocationManager()
     if polling_location:
         polling_location_found = True
@@ -1444,6 +1449,7 @@ def retrieve_remote_representatives_from_location_api(
                     groom_results['existing_representative_to_office_held_links_dict']
                 new_office_held_we_vote_ids_list = groom_results['new_office_held_we_vote_ids_list']
                 new_representative_we_vote_ids_list = groom_results['new_representative_we_vote_ids_list']
+                office_held_count += 0
                 office_held_array_index += 1
                 offices_held_display_order += 1
                 successful_representatives_api_call = groom_results['success'] or \
@@ -1500,6 +1506,8 @@ def retrieve_remote_representatives_from_location_api(
 
                             if positive_value_exists(polling_location_we_vote_id):
                                 results = office_held_manager.create_offices_held_for_location_row_entry(
+                                    latitude=latitude,
+                                    longitude=longitude,
                                     polling_location_we_vote_id=polling_location_we_vote_id,
                                     state_code=state_code,
                                     defaults=defaults)
@@ -1508,6 +1516,8 @@ def retrieve_remote_representatives_from_location_api(
                                 offices_held_for_location_found = results['offices_held_for_location_found']
                             elif positive_value_exists(voter_we_vote_id):
                                 results = office_held_manager.create_offices_held_for_location_row_entry(
+                                    latitude=latitude,
+                                    longitude=longitude,
                                     state_code=state_code,
                                     text_for_map_search=text_for_map_search,
                                     voter_we_vote_id=voter_we_vote_id,
@@ -1621,7 +1631,7 @@ def retrieve_remote_representatives_from_location_api(
         status += 'RETRIEVE_REPRESENTATIVES_FROM_POLLING_LOCATIONS_VOTE_USA-ERROR: ' + str(e) + ' '
         handle_exception(e, logger=logger, exception_message=status)
     results = {
-        'ballot_items_count':                       ballot_items_count,
+        'office_held_count':                       office_held_count,
         'existing_offices_held_by_ocd_and_name_dict':   existing_offices_held_by_ocd_and_name_dict,
         'existing_offices_held_by_vote_usa_office_id_dict': existing_offices_held_by_vote_usa_office_id_dict,
         'existing_representatives_by_office_and_name_dict':     existing_representatives_by_office_and_name_dict,

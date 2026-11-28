@@ -2,13 +2,11 @@
 # Brought to you by We Vote. Be good.
 # -*- coding: UTF-8 -*-
 
-from config.environment_variable_functions import get_environment_variable
 from django.db import models
-from django.db.models import F, Q, FloatField, ExpressionWrapper, Func
-from geopy.geocoders import get_geocoder_for_service
-from geopy.exc import GeocoderQuotaExceeded
+from django.db.models import Q
 from exception.models import handle_exception, handle_record_found_more_than_one_exception
-import sys
+
+from config.environment_variable_functions import get_environment_variable
 from wevote_settings.constants import OFFICE_HELD_YEARS_AVAILABLE
 from wevote_settings.models import fetch_site_unique_id_prefix, fetch_next_we_vote_id_office_held_integer
 import wevote_functions.admin
@@ -16,27 +14,11 @@ from wevote_functions.functions import candidate_party_display, convert_to_int, 
     positive_value_exists
 from wevote_functions.functions_date import get_current_date_as_integer
 
-DEG_TO_RADS = 0.0174533
-DISTANCE_LIMIT_IN_MILES = 25
-GEOCODE_TIMEOUT = 10
 GOOGLE_CIVIC_API_KEY = get_environment_variable("GOOGLE_CIVIC_API_KEY")
 GOOGLE_MAPS_API_KEY = get_environment_variable("GOOGLE_MAPS_API_KEY")
-RADIUS_OF_EARTH_IN_MILES = 3958.756
 WE_VOTE_API_KEY = get_environment_variable("WE_VOTE_API_KEY")
 
 logger = wevote_functions.admin.get_logger(__name__)
-
-
-class Sin(Func):
-    function = 'SIN'
-
-
-class Cos(Func):
-    function = 'COS'
-
-
-class ACos(Func):
-    function = 'ACOS'
 
 
 def attach_defaults_values_to_office_held_object(office_held, defaults):
@@ -316,253 +298,6 @@ class OfficeHeldManager(models.Manager):
             return results['office_held_we_vote_id']
         return 0
 
-    def find_closest_offices_held_for_location(
-            self,
-            text_for_map_search='',
-            google_civic_election_id=0,
-            read_only=True):
-        """
-        We search for the closest address for this election in the OfficesHeldForLocation table.
-        :param text_for_map_search:
-        :param google_civic_election_id:
-        :param read_only:
-        :return:
-        """
-        offices_held_for_location_found = False
-        offices_held_for_location = None
-        location = None
-        # try_without_maps_key = False
-        status = ""
-        state_code = ""
-
-        if not positive_value_exists(text_for_map_search):
-            status += "FIND_CLOSEST_OFFICES_HELD_FOR_LOCATION-NO_TEXT_FOR_MAP_SEARCH "
-            return {
-                'status': status,
-                'geocoder_quota_exceeded': False,
-                'offices_held_for_location_found': offices_held_for_location_found,
-                'offices_held_for_location': offices_held_for_location,
-            }
-
-        if not hasattr(self, 'google_client') or not self.google_client:
-            self.google_client = get_geocoder_for_service('google')(GOOGLE_MAPS_API_KEY)
-        # Note April 2022:  If you get vague error messages from GeoPy that you can't figure out, it is easy to install
-        # Google's google-maps-services-python and then do the same query and get better messages.  I guess we want to
-        # keep using the GeoPy as a wrapper, in case some day we want to swap out google for geolocation, with a better
-        # competitor.  (GeoPy doesn't have much value in our use case.)
-        try:
-            location = self.google_client.geocode(text_for_map_search, sensor=False, timeout=GEOCODE_TIMEOUT)
-        except GeocoderQuotaExceeded:
-            # try_without_maps_key = True
-            status += "GEOCODER_QUOTA_EXCEEDED "
-        except Exception as e:
-            try_without_maps_key = True
-            status += 'GEOCODER_ERROR {error} [type: {error_type}] '.format(error=e, error_type=type(e))
-            # logger.info(status + " @ " + text_for_map_search + "  google_civic_election_id=" +
-            #             str(google_civic_election_id))
-
-        # Since July 2018 Google requires each request to have an API key.
-        # Pass a valid `api_key` to GoogleV3 geocoder to fix this error.
-        # See https://developers.google.com/maps/documentation/geocoding/usage-and-billing
-        # if try_without_maps_key:
-        #     # If we have exceeded our account, try without a maps key
-        #     try:
-        #         temp_google_client = get_geocoder_for_service('google')()
-        #         location = temp_google_client.geocode(text_for_map_search, sensor=False, timeout=GEOCODE_TIMEOUT)
-        #     except GeocoderQuotaExceeded:
-        #         status += "GEOCODER_QUOTA_EXCEEDED "
-        #         results = {
-        #             'status':                   status,
-        #             'geocoder_quota_exceeded':  True,
-        #             'offices_held_for_location_found':    offices_held_for_location_found,
-        #             'offices_held_for_location':          offices_held_for_location,
-        #         }
-        #         return results
-        #     except Exception as e:
-        #         status += "GEOCODER_ERROR: " + str(e) + ' '
-        #         location = None
-
-        offices_held_for_location = None
-        if location is None:
-            status += 'Geocoder could not find location matching "{}". Trying City, State. '.format(text_for_map_search)
-            # If Geocoder is not able to give us a location, look to see if their voter entered their address as
-            # "city_name, state_code" eg: "Sunnyvale, CA". If so, try to parse the entry and get ballot data
-            # for that location
-            if 'test' in sys.argv:
-                queryset = OfficesHeldForLocation.objects.all()
-            elif positive_value_exists(read_only):
-                queryset = OfficesHeldForLocation.objects.using('readonly').all()
-            else:
-                queryset = OfficesHeldForLocation.objects.all()
-            # Limit this query to entries stored for map points
-            queryset = queryset.exclude(
-                Q(polling_location_we_vote_id__isnull=True) | Q(polling_location_we_vote_id=""))
-
-            if "," in text_for_map_search:
-                address = text_for_map_search
-                state_code = address.split(', ')[-1]
-                state_code = state_code.upper()
-                city = address.split(', ')[-2]
-                city = city.lower()
-                if positive_value_exists(state_code):
-                    if positive_value_exists(state_code) and len(state_code) == 2:
-                        queryset = queryset.filter(state_code__iexact=state_code)
-
-            # if positive_value_exists(google_civic_election_id):
-            #     queryset = queryset.filter(google_civic_election_id=google_civic_election_id)
-            # else:
-            #     # If we have an active election coming up, including today
-            #     # fetch_next_upcoming_election_in_this_state returns next election with ballot items
-            #     upcoming_google_civic_election_id = self.fetch_next_upcoming_election_in_this_state(state_code)
-            #     if positive_value_exists(upcoming_google_civic_election_id):
-            #         queryset = queryset.filter(
-            #             google_civic_election_id=upcoming_google_civic_election_id)
-            #     else:
-            #         past_google_civic_election_id = self.fetch_last_election_in_this_state(state_code)
-            #         if positive_value_exists(past_google_civic_election_id):
-            #             # Limit the search to the most recent election with ballot items
-            #             queryset = queryset.filter(
-            #                 google_civic_election_id=past_google_civic_election_id)
-
-            try:
-                offices_held_for_location = queryset.first()
-            except Exception as e:
-                offices_held_for_location = None
-                status += "OFFICES_HELD_FOR_LOCATION_QUERY_FIRST_FAILED_LOCATION_NONE: " + str(e) + ' '
-            # offices_held_for_location_list = list(queryset)
-            # if len(offices_held_for_location_list):
-            #     offices_held_for_location = offices_held_for_location_list[0]
-        else:
-            # If here, then the geocoder successfully found the address
-            status += 'GEOCODER_FOUND_LOCATION '
-            address = location.address
-            # address has format "line_1, state zip, USA"
-
-            if 'test' in sys.argv:
-                queryset = OfficesHeldForLocation.objects.all()
-            elif positive_value_exists(read_only):
-                queryset = OfficesHeldForLocation.objects.using('readonly').all()
-            else:
-                queryset = OfficesHeldForLocation.objects.all()
-            # Limit this query to entries stored for map points
-            queryset = queryset.exclude(
-                Q(polling_location_we_vote_id__isnull=True) | Q(polling_location_we_vote_id=""))
-            if positive_value_exists(address) and "," in address:
-                raw_state_code = address.split(', ')
-                if positive_value_exists(raw_state_code):
-                    state_code = raw_state_code[-2][:2]
-            if positive_value_exists(state_code):
-                # This search for normalized_state is NOT redundant because some elections are in many states
-                queryset = queryset.filter(state_code__iexact=state_code)
-
-            try:
-                lat_rads_ploc = location.latitude * DEG_TO_RADS
-                lon_rads_ploc = location.longitude * DEG_TO_RADS
-                queryset = queryset.annotate(
-                    # Calculate the approximate great circle distance between two coordinates
-                    # https://medium.com/@petehouston/calculate-distance-of-two-locations-on-earth-using-python-1501b1944d97
-                    distance=ExpressionWrapper(
-                         (RADIUS_OF_EARTH_IN_MILES * (
-                             ACos(
-                                 (Sin(F('latitude') * DEG_TO_RADS) *
-                                  Sin(lat_rads_ploc)) +
-                                 (Cos(F('latitude') * DEG_TO_RADS) *
-                                  Cos(lat_rads_ploc) *
-                                  Cos((F('longitude') * DEG_TO_RADS) - lon_rads_ploc))
-                             )
-                           )),
-                         output_field=FloatField()))
-            except Exception as e:
-                status += "EXCEPTION_IN_ANNOTATE_CALCULATION1-" + str(e) + ' '
-
-            # Do not return ballots more than 25 miles away
-            queryset = queryset.filter(distance__lte=DISTANCE_LIMIT_IN_MILES)
-
-            queryset = queryset.order_by('distance')
-            try:
-                offices_held_for_location = queryset.first()
-                if offices_held_for_location is None:
-                    status += "OFFICES_HELD_FOR_LOCATION_QUERY_FIRST_FAILED-" \
-                              "HAS_LOCATION_AND_POSITIVE_GOOGLE_CIVIC_ID__BALLOT_NONE "
-                else:
-                    status += "SUBSTITUTED_BALLOT_DISTANCE1: " + str(offices_held_for_location.distance) + " "
-            except Exception as e:
-                offices_held_for_location = None
-                status += "OFFICES_HELD_FOR_LOCATION_QUERY_FIRST_FAILED_HAS_LOCATION_AND_POSITIVE_GOOGLE_CIVIC_ID: " + str(e) + ' '
-
-        if offices_held_for_location is not None:
-            offices_held_for_location_found = True
-            status += 'OFFICES_HELD_FOR_LOCATION_FOUND '
-        else:
-            status += 'NO_STORED_BALLOT_MATCHES_STATE: {}. '.format(state_code)
-            # Now Try the search again without the limitation of the state_code
-            if location is not None:
-                # If here, then the geocoder successfully found the address
-                status += 'GEOCODER_FOUND_LOCATION-ATTEMPT2 '
-                address = location.address
-                # address has format "line_1, state zip, USA"
-
-                if 'test' in sys.argv:
-                    queryset = OfficesHeldForLocation.objects.all()
-                elif positive_value_exists(read_only):
-                    queryset = OfficesHeldForLocation.objects.using('readonly').all()
-                else:
-                    queryset = OfficesHeldForLocation.objects.all()
-                # Limit this query to entries stored for map points
-                queryset = queryset.exclude(
-                    Q(polling_location_we_vote_id__isnull=True) | Q(polling_location_we_vote_id=""))
-
-                # Calculate the approximate great circle distance between two coordinates
-                # https://medium.com/@petehouston/calculate-distance-of-two-locations-on-earth-using-python-1501b1944d97
-                try:
-                    lat_rads_ploc = location.latitude * DEG_TO_RADS
-                    lon_rads_ploc = location.longitude * DEG_TO_RADS
-                    queryset = queryset.annotate(
-                        distance=ExpressionWrapper(
-                            (RADIUS_OF_EARTH_IN_MILES * (
-                                ACos(
-                                    (Sin(F('latitude') * DEG_TO_RADS) *
-                                     Sin(lat_rads_ploc)) +
-                                    (Cos(F('latitude') * DEG_TO_RADS) *
-                                     Cos(lat_rads_ploc) *
-                                     Cos((F('longitude') * DEG_TO_RADS) - lon_rads_ploc))
-                                )
-                            )),
-                            output_field=FloatField()))
-                except Exception as e:
-                    status += "EXCEPTION_IN_ANNOTATE_CALCULATION2-" + str(e) + ' '
-
-                # Do not return offices_held_for_locations more than 25 miles away
-                queryset = queryset.filter(distance__lte=DISTANCE_LIMIT_IN_MILES)
-
-                queryset = queryset.order_by('distance')
-
-                # status += "SEARCHING_BY_GOOGLE_CIVIC_ID-ATTEMPT2 "
-                # queryset = queryset.filter(
-                #     google_civic_election_id=google_civic_election_id)
-                try:
-                    offices_held_for_location = queryset.first()
-                    status += "SUBSTITUTED_BALLOT_DISTANCE4: " + str(offices_held_for_location.distance) + " "
-                except Exception as e:
-                    offices_held_for_location = None
-                    status += "OFFICES_HELD_FOR_LOCATION_QUERY_FIRST_FAILED-" \
-                              "HAS_BALLOT_LOCATION_AND_POSITIVE_GOOGLE_CIVIC_ID: " + str(e) + ' '
-                # offices_held_for_location_list = list(queryset)
-                # if len(offices_held_for_location_list):
-                #     offices_held_for_location = offices_held_for_location_list[0]
-                if offices_held_for_location is not None:
-                    offices_held_for_location_found = True
-                    status += 'OFFICES_HELD_FOR_LOCATION_FOUND-ATTEMPT2 '
-
-        status += 'END_OF_FIND_CLOSEST_OFFICES_HELD_FOR_LOCATION '
-
-        return {
-            'status':                           status,
-            'geocoder_quota_exceeded':          False,
-            'offices_held_for_location_found':  offices_held_for_location_found,
-            'offices_held_for_location':        offices_held_for_location,
-        }
-
     @staticmethod
     def retrieve_office_held(
             google_civic_office_held_name='',
@@ -751,6 +486,8 @@ class OfficeHeldManager(models.Manager):
     @staticmethod
     def create_offices_held_for_location_row_entry(
             date_as_integer=None,
+            latitude=None,
+            longitude=None,
             polling_location_we_vote_id=None,
             state_code=None,
             text_for_map_search=None,
@@ -760,6 +497,8 @@ class OfficeHeldManager(models.Manager):
         Create OfficesHeldForLocation table entry with information about the OfficeHeld entries associated
         with one location.
         :param date_as_integer:
+        :param latitude:
+        :param longitude:
         :param polling_location_we_vote_id:
         :param state_code:
         :param text_for_map_search:
@@ -767,7 +506,7 @@ class OfficeHeldManager(models.Manager):
         :param defaults:
         :return:
         """
-        if not positive_value_exists(date_as_integer):
+        if positive_value_exists(voter_we_vote_id) and not positive_value_exists(date_as_integer):
             date_as_integer = get_current_date_as_integer()
         status = ""
         offices_held_for_location = None
@@ -779,6 +518,8 @@ class OfficeHeldManager(models.Manager):
         try:
             if polling_location_we_vote_id:
                 offices_held_for_location = OfficesHeldForLocation.objects.create(
+                    latitude=latitude,
+                    longitude=longitude,
                     polling_location_we_vote_id=polling_location_we_vote_id,
                     state_code=state_code,
                 )
@@ -786,6 +527,8 @@ class OfficeHeldManager(models.Manager):
             elif positive_value_exists(voter_we_vote_id):
                 offices_held_for_location = OfficesHeldForLocation.objects.create(
                     date_as_integer=date_as_integer,
+                    latitude=latitude,
+                    longitude=longitude,
                     state_code=state_code,
                     text_for_map_search=text_for_map_search,
                     voter_we_vote_id=voter_we_vote_id,
@@ -1015,7 +758,7 @@ class OfficeHeldManager(models.Manager):
             'success':                          success,
             'status':                           status,
             'offices_held_for_location':        offices_held_for_location,
-            'offices_held_for_location_id':        offices_held_for_location_id,
+            'offices_held_for_location_id':     offices_held_for_location_id,
             'offices_held_for_location_found':  offices_held_for_location_found,
         }
         return results

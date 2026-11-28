@@ -10,6 +10,7 @@ from django.db.models import F, Q, Count, FloatField, ExpressionWrapper, Func
 from geopy.exc import GeocoderQuotaExceeded
 from geopy.geocoders import get_geocoder_for_service
 
+from .constants import GEOCODE_TIMEOUT, RADIUS_OF_EARTH_IN_MILES, DEG_TO_RADS, DISTANCE_LIMIT_IN_MILES
 import wevote_functions.admin
 from candidate.models import CandidateCampaign
 from config.environment_variable_functions import get_environment_variable
@@ -35,10 +36,6 @@ KIND_OF_BALLOT_ITEM_CHOICES = (
 )
 
 GOOGLE_MAPS_API_KEY = get_environment_variable("GOOGLE_MAPS_API_KEY")
-GEOCODE_TIMEOUT = 10
-RADIUS_OF_EARTH_IN_MILES = 3958.756
-DEG_TO_RADS = 0.0174533
-DISTANCE_LIMIT_IN_MILES = 25
 
 logger = wevote_functions.admin.get_logger(__name__)
 
