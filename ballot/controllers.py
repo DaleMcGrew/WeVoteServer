@@ -379,7 +379,10 @@ def ballot_returned_import_from_structured_json(structured_json):
                     logger.warning("Bad data received in ballot_returned_import_from_structured_json:" +
                                    str(one_ballot_returned))
                 else:
-                    latitude, longitude = heal_geo_coordinates(text_for_map_search)
+                    try:
+                        latitude, longitude = heal_geo_coordinates(text_for_map_search)
+                    except Exception as e:
+                        print('HEAL_GEO_COORDINATES_ERROR: ' + str(e) + ' ')
 
             results = ballot_returned_manager.update_or_create_ballot_returned(
                 polling_location_we_vote_id, voter_id, google_civic_election_id, election_day_text,
@@ -419,20 +422,20 @@ def ballot_returned_import_from_structured_json(structured_json):
     return ballot_returned_results
 
 
-def heal_geo_coordinates(text_for_map_search):
+def heal_geo_coordinates(text_for_map_search, google_client=None):
     longitude = None
     latitude = None
-    try:
+    # Note, we intentionally skip the try/except block here because we want to know if the geocode fails
+    #  We trap exceptions outside of this function
+    if not google_client:
         google_client = get_geocoder_for_service('google')(GOOGLE_MAPS_API_KEY)
-        location = google_client.geocode(text_for_map_search, sensor=False, timeout=GEOCODE_TIMEOUT)
-        if location is None:
-            status = 'Could not find location matching "{}" '.format(text_for_map_search)
-            logger.debug(status)
-        else:
-            latitude = location.latitude
-            longitude = location.longitude
-    except Exception as e:
-        pass
+    location = google_client.geocode(text_for_map_search, sensor=False, timeout=GEOCODE_TIMEOUT)
+    if location is None:
+        status = 'Could not find location matching "{}" '.format(text_for_map_search)
+        logger.debug(status)
+    else:
+        latitude = location.latitude
+        longitude = location.longitude
     return latitude, longitude
 
 

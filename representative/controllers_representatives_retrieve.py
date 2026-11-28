@@ -3,36 +3,231 @@
 # -*- coding: UTF-8 -*-
 
 from datetime import datetime
-from django.db.models import Q
+from django.db.models import F, Q, FloatField, ExpressionWrapper
 from django.http import HttpResponse
 from exception.models import handle_exception
 import json
 
-from candidate.models import PROFILE_IMAGE_TYPE_UNKNOWN, PROFILE_IMAGE_TYPE_UPLOADED
+from geopy.geocoders import get_geocoder_for_service
+from geopy.exc import GeocoderQuotaExceeded
+
+from ballot.constants import RADIUS_OF_EARTH_IN_MILES, DEG_TO_RADS, DISTANCE_LIMIT_IN_MILES
+from ballot.controllers import heal_geo_coordinates
+from ballot.models import ACos, Cos, Sin
 from config.environment_variable_functions import get_environment_variable
 from office_held.controllers import generate_office_held_dict_from_office_held_object, \
     generate_office_held_dict_list_from_office_held_we_vote_id_list
-from office_held.models import OfficeHeld, OfficeHeldManager
-from import_export_google_civic.controllers_representatives import REPRESENTATIVES_BY_ADDRESS_URL, \
-    retrieve_remote_representatives_from_location_api
+from office_held.models import OfficeHeld, OfficeHeldManager, OfficesHeldForLocation
+from import_export_google_civic.controllers_representatives import retrieve_remote_representatives_from_location_api
 from voter.constants import MINIMUM_ADDRESS_LENGTH_TO_HAVE_STREET_ADDRESS
-from voter.models import BALLOT_ADDRESS, VoterAddressManager, VoterDeviceLinkManager, VoterManager, \
+from voter.models import BALLOT_ADDRESS, VoterAddressManager, VoterDeviceLinkManager, \
     fetch_voter_we_vote_id_from_voter_id
-from wevote_settings.constants import IS_BATTLEGROUND_YEARS_AVAILABLE
 import wevote_functions.admin
-from wevote_functions.functions import add_period_to_middle_name_initial, add_period_to_name_prefix_and_suffix, \
-    convert_to_int, convert_to_political_party_constant, positive_value_exists, process_request_from_master, \
-    remove_period_from_middle_name_initial, remove_period_from_name_prefix_and_suffix
+from wevote_functions.functions import convert_to_int, positive_value_exists
 from wevote_functions.functions_date import DATE_FORMAT_YMD_HMS, get_current_date_as_integer, \
     get_current_year_as_integer
-from .models import Representative, RepresentativeManager, REPRESENTATIVE_UNIQUE_IDENTIFIERS
+from .models import RepresentativeManager
 
 logger = wevote_functions.admin.get_logger(__name__)
 
+GOOGLE_MAPS_API_KEY = get_environment_variable("GOOGLE_MAPS_API_KEY")
 REPRESENTATIVE_SYNC_URL = "https://api.wevoteusa.org/apis/v1/representativesSyncOut/"
 # REPRESENTATIVE_SYNC_URL = "http://localhost:8001/apis/v1/representativesSyncOut/"
 WE_VOTE_API_KEY = get_environment_variable("WE_VOTE_API_KEY")
 
+def build_existing_office_held_and_representatives_dicts(offices_held_for_location):
+    existing_offices_held_by_vote_usa_office_id_dict = {}
+    existing_representatives_by_office_and_name_dict = {}
+    year_as_integer = get_current_year_as_integer()
+    status = ''
+    success = True
+
+    office_held_we_vote_id_list = []
+    for index in range(1, 31):
+        office_held_we_vote_id = getattr(offices_held_for_location, f'office_held_we_vote_id_{index:02d}')
+        if positive_value_exists(office_held_we_vote_id):
+            office_held_we_vote_id_list.append(office_held_we_vote_id)
+    if positive_value_exists(len(office_held_we_vote_id_list)):
+        # Get OfficeHeld objects so we can use them to generate the voterRepresentativesRetrieve API
+        try:
+            queryset = OfficeHeld.objects.using('readonly').all()
+            queryset = queryset.filter(we_vote_id__in=office_held_we_vote_id_list)
+            office_held_list = list(queryset)
+            # Loop through office_held_list and create a dictionary
+            #  that uses office_held.vote_usa_office_id as the key and office_held as the value
+            for office_held in office_held_list:
+                existing_offices_held_by_vote_usa_office_id_dict[office_held.vote_usa_office_id] = office_held
+        except Exception as e:
+            status += "EXCEPTION_RETRIEVING_OFFICES_HELD: " + str(e) + " "
+            success = False
+
+        # Get Representatives objects so we can use them to generate the voterRepresentativesRetrieve API
+        try:
+            years_list = [year_as_integer]
+            representative_manager = RepresentativeManager()
+            rep_results = representative_manager.retrieve_representative_list(
+                office_held_we_vote_id_list=office_held_we_vote_id_list,
+                read_only=True,
+                years_list=years_list,
+            )
+            representative_list = []
+            if rep_results['representative_list_found']:
+                representative_list = rep_results['representative_list']
+
+            # Loop through representative_list and create a dictionary
+            #  that uses representative.office_held_we_vote_id as the first key and
+            #  representative.representative_name as the second key, with representative as the value
+            for representative in representative_list:
+                if representative.office_held_we_vote_id not in \
+                        existing_representatives_by_office_and_name_dict:
+                    existing_representatives_by_office_and_name_dict[representative.office_held_we_vote_id] = {}
+                if representative.representative_name not in \
+                        existing_representatives_by_office_and_name_dict[representative.office_held_we_vote_id]:
+                    existing_representatives_by_office_and_name_dict \
+                        [representative.office_held_we_vote_id][representative.representative_name] = \
+                        representative
+        except Exception as e:
+            status += "EXCEPTION_RETRIEVING_REPRESENTATIVES: " + str(e) + " "
+            success = False
+    return {
+        'existing_offices_held_by_vote_usa_office_id_dict': existing_offices_held_by_vote_usa_office_id_dict,
+        'existing_representatives_by_office_and_name_dict': existing_representatives_by_office_and_name_dict,
+        'status': status,
+        'success': success,
+    }
+
+def find_closest_offices_held_for_location(
+        latitude=None,
+        longitude=None,
+        read_only=True,
+        state_code=None,
+        text_for_map_search='',
+):
+    """
+    We search for the closest address for this voter in the OfficesHeldForLocation table.
+    :param latitude:
+    :param longitude:
+    :param read_only:
+    :param state_code:
+    :param text_for_map_search:
+    :return:
+    """
+    distance_from_lat_long = None
+    offices_held_for_location = None
+    offices_held_for_location_found = False
+    offices_held_for_location_id = None
+    try_without_maps_key = False
+    status = ""
+    success = True
+
+    if not positive_value_exists(text_for_map_search):
+        status += "FIND_CLOSEST_OFFICES_HELD-NO_TEXT_FOR_MAP_SEARCH "
+        return {
+            'distance_from_lat_long': distance_from_lat_long,
+            'geocoder_quota_exceeded': False,
+            'offices_held_for_location': offices_held_for_location,
+            'offices_held_for_location_found': offices_held_for_location_found,
+            'offices_held_for_location_id': offices_held_for_location_id,
+            'status': status,
+            'success': False,
+        }
+
+    if latitude is False or latitude is None or longitude is False or longitude is None:
+        try:
+            google_client = get_geocoder_for_service('google')(GOOGLE_MAPS_API_KEY)
+            latitude, longitude = heal_geo_coordinates(text_for_map_search, google_client)
+        except GeocoderQuotaExceeded:
+            try_without_maps_key = True
+            status += "GEOCODER_QUOTA_EXCEEDED "
+        except Exception as e:
+            try_without_maps_key = True
+            status += 'GEOCODER_ERROR {error} [type: {error_type}] '.format(error=e, error_type=type(e))
+            success = False
+
+    if try_without_maps_key:
+        # If we have exceeded our account, try without a maps key
+        if latitude is False or latitude is None or longitude is False or longitude is None:
+            try:
+                temp_google_client = get_geocoder_for_service('google')()
+                latitude, longitude = heal_geo_coordinates(text_for_map_search, temp_google_client)
+            except GeocoderQuotaExceeded:
+                status += "GEOCODER_QUOTA_EXCEEDED_NO_KEY "
+                results = {
+                    'distance_from_lat_long': distance_from_lat_long,
+                    'geocoder_quota_exceeded':          True,
+                    'offices_held_for_location':        offices_held_for_location,
+                    'offices_held_for_location_found':  offices_held_for_location_found,
+                    'offices_held_for_location_id':     offices_held_for_location_id,
+                    'status':                           status,
+                    'success':                          False,
+                }
+                return results
+            except Exception as e:
+                status += "GEOCODER_ERROR_NO_KEY: " + str(e) + ' '
+                success = False
+
+    if positive_value_exists(latitude) and positive_value_exists(longitude):
+        # If here, then we can find other nearby OfficesHeldForLocation
+        status += 'LAT_LONG_FOUND '
+
+        if positive_value_exists(read_only):
+            offices_held_query = OfficesHeldForLocation.objects.using('readonly').all()
+        else:
+            offices_held_query = OfficesHeldForLocation.objects.all()
+        # Limit this query to entries stored for map points
+        offices_held_query = offices_held_query.exclude(
+            Q(polling_location_we_vote_id__isnull=True) | Q(polling_location_we_vote_id=""))
+        if positive_value_exists(state_code):
+            offices_held_query = offices_held_query.filter(state_code__iexact=state_code)
+
+        try:
+            # Make sure latitude and longitude are float
+            latitude = float(latitude)
+            longitude = float(longitude)
+            lat_rads_ploc = latitude * DEG_TO_RADS
+            lon_rads_ploc = longitude * DEG_TO_RADS
+            offices_held_query = offices_held_query.annotate(
+                # Calculate the approximate great circle distance between two coordinates
+                # https://medium.com/@petehouston/calculate-distance-of-two-locations-on-earth-using-python-1501b1944d97
+                distance=ExpressionWrapper(
+                    (RADIUS_OF_EARTH_IN_MILES * (
+                        ACos(
+                            (Sin(F('latitude') * DEG_TO_RADS) *
+                             Sin(lat_rads_ploc)) +
+                            (Cos(F('latitude') * DEG_TO_RADS) *
+                             Cos(lat_rads_ploc) *
+                             Cos((F('longitude') * DEG_TO_RADS) - lon_rads_ploc))
+                        )
+                    )),
+                    output_field=FloatField()))
+
+            # Do not return ballots more than 25 miles away
+            offices_held_query = offices_held_query.filter(distance__lte=DISTANCE_LIMIT_IN_MILES)
+            offices_held_query = offices_held_query.order_by('distance')
+            offices_held_for_location = offices_held_query.first()
+            distance_from_lat_long = offices_held_for_location.distance if offices_held_for_location else None
+            offices_held_for_location_found = offices_held_for_location is not None
+            if offices_held_for_location_found:
+                offices_held_for_location_id = offices_held_for_location.id
+        except Exception as e:
+            status += "EXCEPTION_IN_ANNOTATE_CALCULATION1-" + str(e) + ' '
+            success = False
+    else:
+        # Consider searching for OfficesHeldForLocation found for a voter with an exact match
+        #  of the text_for_map_search retrieved today
+        pass
+
+    status += 'END_OF_FIND_CLOSEST_OFFICES_HELD '
+
+    return {
+        'distance_from_lat_long':           distance_from_lat_long,
+        'geocoder_quota_exceeded':          False,
+        'offices_held_for_location':        offices_held_for_location,
+        'offices_held_for_location_found':  offices_held_for_location_found,
+        'offices_held_for_location_id':     offices_held_for_location_id,
+        'status':                           status,
+        'success':                          success,
+    }
 
 
 def generate_representative_dict_list_from_representative_object_list(
@@ -272,15 +467,17 @@ def voter_representatives_retrieve_for_api(  # voterRepresentativesRetrieve
     text_for_map_search = ''
 
     default_dict_results = {
+        'distance_from_lat_long':               None,
+        'is_from_substituted_address':          False,
         'offices_held_for_location_found':      False,
         'offices_held_for_location_id':         offices_held_for_location_id,
         'office_held_list_found':               False,
         'office_held_list':                     [],
-        'is_from_substituted_address':          False,
         'state_code':                           state_code,
         'status':                               status,
         'success':                              False,
         'text_for_map_search':                  text_for_map_search,
+        'text_for_map_search_too_short':        True,
         'voter_device_id':                      voter_device_id,
         'voter_device_id_not_valid':            False,
     }
@@ -316,13 +513,18 @@ def voter_representatives_retrieve_for_api(  # voterRepresentativesRetrieve
         voter_we_vote_id,
     )
     json_data = default_dict_results
-    json_data['status'] = results['status']
-    json_data['success'] = results['success']
+    json_data['distance_from_lat_long'] = results['distance_from_lat_long']
+    json_data['is_from_substituted_address'] = results['is_from_substituted_address']
     json_data['offices_held_for_location_id'] = results['offices_held_for_location_id']
     json_data['offices_held_for_location_found'] = results['offices_held_for_location_found']
     existing_offices_held_by_vote_usa_office_id_dict = results['existing_offices_held_by_vote_usa_office_id_dict']
     existing_representatives_by_office_and_name_dict = results['existing_representatives_by_office_and_name_dict']
     offices_held_for_location = results['offices_held_for_location']
+    json_data['state_code'] = results['state_code']
+    json_data['status'] = results['status']
+    json_data['success'] = results['success']
+    json_data['text_for_map_search'] = results['text_for_map_search']
+    json_data['text_for_map_search_too_short'] = results['text_for_map_search_too_short']
 
     # Create the response package for voterRepresentativesRetrieve based on offices_held_for_location
     results = generate_office_held_list_from_object_list(
@@ -392,17 +594,19 @@ def retrieve_or_generate_offices_held_for_location_for_voter(
         voter_we_vote_id,
     ):
     date_as_integer = get_current_date_as_integer()
-    year_as_integer = get_current_year_as_integer()
-    offices_held_for_location = None
+    latitude = None
+    longitude = None
     offices_held_for_location_id = ''
-    offices_held_for_location_found = False
     state_code = ''
     status = ""
     text_for_map_search = ''
+    text_for_map_search_too_short = True
 
     default_dict_results = {
+        'distance_from_lat_long':           None,
         'existing_offices_held_by_vote_usa_office_id_dict': {},
         'existing_representatives_by_office_and_name_dict': {},
+        'is_from_substituted_address':      None,
         'offices_held_for_location':        None,
         'offices_held_for_location_id':     offices_held_for_location_id,
         'offices_held_for_location_found':  False,
@@ -410,6 +614,7 @@ def retrieve_or_generate_offices_held_for_location_for_voter(
         'status':                           status,
         'success':                          False,
         'text_for_map_search':              text_for_map_search,
+        'text_for_map_search_too_short':    text_for_map_search_too_short,
     }
 
     if not positive_value_exists(voter_we_vote_id):
@@ -430,11 +635,29 @@ def retrieve_or_generate_offices_held_for_location_for_voter(
         state_code = voter_address.get_state_code()
         dict_results['state_code'] = state_code
         text_for_map_search = voter_address.text_for_map_search
+        if positive_value_exists(voter_address.latitude) and positive_value_exists(voter_address.longitude):
+            latitude = voter_address.latitude
+            longitude = voter_address.longitude
         dict_results['text_for_map_search'] = text_for_map_search
-    if positive_value_exists(voter_address_results['voter_address_has_value']):
-        offices_held_based_on_voter_address = True
-    else:
-        offices_held_based_on_voter_address = False
+    lat_long_missing = not positive_value_exists(latitude) or not positive_value_exists(longitude)
+    if lat_long_missing:
+        if positive_value_exists(text_for_map_search):
+            try:
+                latitude, longitude = heal_geo_coordinates(text_for_map_search)
+            except GeocoderQuotaExceeded:
+                status += "GEOCODER_QUOTA_EXCEEDED "
+            except Exception as e:
+                status += 'HEAL_GEO_COORDINATES_ERROR: ' + str(e) + ' '
+            if positive_value_exists(latitude) and positive_value_exists(longitude):
+                if voter_address and hasattr(voter_address, 'text_for_map_search'):
+                    if not positive_value_exists(voter_address.latitude) and \
+                            not positive_value_exists(voter_address.longitude):
+                        try:
+                            voter_address.latitude = latitude
+                            voter_address.longitude = longitude
+                            voter_address.save()
+                        except Exception as e:
+                            status += "COULD_NOT_SAVE_VOTER_ADDRESS: " + str(e) + " "
 
     # This code finds representatives saved for this voter for today
     required_variables_to_find_representatives = \
@@ -450,8 +673,7 @@ def retrieve_or_generate_offices_held_for_location_for_voter(
         dict_results['status'] = status
         return dict_results
 
-    # See if we have already stored the representatives for this voter for today, and if so,
-    #  return those.
+    # See if we have already stored the representatives for this voter for today, and if so, return those.
     if positive_value_exists(date_as_integer) and positive_value_exists(state_code) \
             and positive_value_exists(voter_we_vote_id):
         office_held_manager = OfficeHeldManager()
@@ -464,83 +686,58 @@ def retrieve_or_generate_offices_held_for_location_for_voter(
         if results['offices_held_for_location_found']:
             # We need to generate the following two dictionaries
             offices_held_for_location = results['offices_held_for_location']
-            office_held_we_vote_id_list = []
-            for index in range(1, 31):
-                office_held_we_vote_id = getattr(offices_held_for_location, f'office_held_we_vote_id_{index:02d}')
-                if positive_value_exists(office_held_we_vote_id):
-                    office_held_we_vote_id_list.append(office_held_we_vote_id)
-            if positive_value_exists(len(office_held_we_vote_id_list)):
-                # Get OfficeHeld objects so we can use them to generate the voterRepresentativesRetrieve API
-                try:
-                    queryset = OfficeHeld.objects.using('readonly').all()
-                    queryset = queryset.filter(we_vote_id__in=office_held_we_vote_id_list)
-                    office_held_list = list(queryset)
-                    # Loop through office_held_list and create a dictionary
-                    #  that uses office_held.vote_usa_office_id as the key and office_held as the value
-                    existing_offices_held_by_vote_usa_office_id_dict = {}
-                    for office_held in office_held_list:
-                        existing_offices_held_by_vote_usa_office_id_dict[office_held.vote_usa_office_id] = office_held
-                    dict_results['existing_offices_held_by_vote_usa_office_id_dict'] = \
-                        existing_offices_held_by_vote_usa_office_id_dict
-                except Exception as e:
-                    status += "EXCEPTION_RETRIEVING_OFFICES_HELD: " + str(e) + " "
 
-                # Get Representatives objects so we can use them to generate the voterRepresentativesRetrieve API
-                try:
-                    years_list = [year_as_integer]
-                    representative_manager = RepresentativeManager()
-                    rep_results = representative_manager.retrieve_representative_list(
-                        office_held_we_vote_id_list=office_held_we_vote_id_list,
-                        read_only=True,
-                        years_list=years_list,
-                    )
-                    representative_list = []
-                    if rep_results['representative_list_found']:
-                        representative_list = rep_results['representative_list']
-
-                    # Loop through representative_list and create a dictionary
-                    #  that uses representative.office_held_we_vote_id as the first key and
-                    #  representative.representative_name as the second key, with representative as the value
-                    existing_representatives_by_office_and_name_dict = {}
-                    for representative in representative_list:
-                        if representative.office_held_we_vote_id not in \
-                                existing_representatives_by_office_and_name_dict:
-                            existing_representatives_by_office_and_name_dict[representative.office_held_we_vote_id] = {}
-                        if representative.representative_name not in \
-                                existing_representatives_by_office_and_name_dict[representative.office_held_we_vote_id]:
-                            existing_representatives_by_office_and_name_dict\
-                                [representative.office_held_we_vote_id][representative.representative_name] = \
-                                representative
-
-                    dict_results['existing_representatives_by_office_and_name_dict'] = \
-                        existing_representatives_by_office_and_name_dict
-                except Exception as e:
-                    status += "EXCEPTION_RETRIEVING_REPRESENTATIVES: " + str(e) + " "
+            existing_results = build_existing_office_held_and_representatives_dicts(offices_held_for_location)
+            status += existing_results['status']
+            dict_results['existing_offices_held_by_vote_usa_office_id_dict'] = \
+                existing_results['existing_offices_held_by_vote_usa_office_id_dict']
+            dict_results['existing_representatives_by_office_and_name_dict'] = \
+                existing_results['existing_representatives_by_office_and_name_dict']
 
             dict_results['offices_held_for_location'] = offices_held_for_location
             dict_results['offices_held_for_location_found'] = results['offices_held_for_location_found']
+            dict_results['offices_held_for_location_id'] = results['offices_held_for_location_id']
             dict_results['status'] = status
             dict_results['success'] = True
             return dict_results
 
     # If here, then we need to either:
     # 1) Retrieve representatives from Vote-USA, Ballotpedia or Google Civic for VoterAddress
-    #    if we have full address
+    #    if we have full address. If not, move on to option 2.
     # 2) Find representatives from a nearby map point address, previously retrieved and cached within We Vote
     # ...and generate local OfficesHeldForLocation entry for today for later retrieves.
     results = generate_offices_held_for_location_for_voter(
+        longitude=longitude,
+        latitude=latitude,
         state_code=state_code,
         text_for_map_search=text_for_map_search,
         voter_we_vote_id=voter_we_vote_id,
     )
     status += results['status']
+    dict_results['text_for_map_search'] = text_for_map_search
+    dict_results['text_for_map_search_too_short'] = results['text_for_map_search_too_short']
     if results['offices_held_for_location_found']:
-        dict_results['existing_offices_held_by_vote_usa_office_id_dict'] = \
-            results['existing_offices_held_by_vote_usa_office_id_dict']
-        dict_results['existing_representatives_by_office_and_name_dict'] = \
-            results['existing_representatives_by_office_and_name_dict']
-        dict_results['offices_held_for_location'] = results['offices_held_for_location']
+        dict_results['distance_from_lat_long'] = results['distance_from_lat_long']
+        dict_results['is_from_substituted_address'] = results['is_from_substituted_address']
+        offices_held_for_location = results['offices_held_for_location']
+
+        if not results['existing_offices_held_by_vote_usa_office_id_dict'] or \
+                not results['existing_representatives_by_office_and_name_dict']:
+            existing_results = build_existing_office_held_and_representatives_dicts(offices_held_for_location)
+            status += existing_results['status']
+            dict_results['existing_offices_held_by_vote_usa_office_id_dict'] = \
+                existing_results['existing_offices_held_by_vote_usa_office_id_dict']
+            dict_results['existing_representatives_by_office_and_name_dict'] = \
+                existing_results['existing_representatives_by_office_and_name_dict']
+        else:
+            dict_results['existing_offices_held_by_vote_usa_office_id_dict'] = \
+                results['existing_offices_held_by_vote_usa_office_id_dict']
+            dict_results['existing_representatives_by_office_and_name_dict'] = \
+                results['existing_representatives_by_office_and_name_dict']
+
+        dict_results['offices_held_for_location'] = offices_held_for_location
         dict_results['offices_held_for_location_found'] = results['offices_held_for_location_found']
+        dict_results['offices_held_for_location_id'] = results['offices_held_for_location_id']
         dict_results['status'] = status
         dict_results['success'] = True
         return dict_results
@@ -552,12 +749,16 @@ def retrieve_or_generate_offices_held_for_location_for_voter(
 
 
 def generate_offices_held_for_location_for_voter(
+        longitude=None,
+        latitude=None,
         state_code=None,
         text_for_map_search=None,
         voter_we_vote_id=None,
     ):
+    distance_from_lat_long = None
     existing_offices_held_by_vote_usa_office_id_dict = {}
     existing_representatives_by_office_and_name_dict = {}
+    is_from_substituted_address = None
     offices_held_for_location = None
     offices_held_for_location_id = ''
     offices_held_for_location_found = False
@@ -569,6 +770,7 @@ def generate_offices_held_for_location_for_voter(
     if isinstance(text_for_map_search, str):
         length_of_text_for_map_search = len(text_for_map_search)
     if length_of_text_for_map_search > MINIMUM_ADDRESS_LENGTH_TO_HAVE_STREET_ADDRESS:
+        text_for_map_search_too_short = False
         status += "TEXT_FOR_MAP_SEARCH_LONG_ENOUGH "
 
         update_or_create_rules = {
@@ -583,6 +785,8 @@ def generate_offices_held_for_location_for_voter(
         reps_returned_from_this_voter_we_vote_id = []
         successful_representatives_api_call = 0
         one_location_results = retrieve_remote_representatives_from_location_api(
+            latitude=latitude,
+            longitude=longitude,
             state_code=state_code,
             text_for_map_search=text_for_map_search,
             update_or_create_rules=update_or_create_rules,
@@ -593,15 +797,11 @@ def generate_offices_held_for_location_for_voter(
             offices_held_for_location = one_location_results['offices_held_for_location']
             offices_held_for_location_found = one_location_results['offices_held_for_location_found']
             offices_held_for_location_id = one_location_results['offices_held_for_location_id']
-            success = True
 
-        existing_offices_held_by_ocd_and_name_dict = \
-            one_location_results['existing_offices_held_by_ocd_and_name_dict']
         existing_offices_held_by_vote_usa_office_id_dict = \
             one_location_results['existing_offices_held_by_vote_usa_office_id_dict']
-        existing_representatives_by_office_and_name_dict = one_location_results['existing_representatives_by_office_and_name_dict']
-        new_office_held_we_vote_ids_list = one_location_results['new_office_held_we_vote_ids_list']
-        new_representative_we_vote_ids_list = one_location_results['new_representative_we_vote_ids_list']
+        existing_representatives_by_office_and_name_dict = \
+            one_location_results['existing_representatives_by_office_and_name_dict']
 
         if one_location_results['successful_representatives_api_call']:
             successful_representatives_api_call += 1
@@ -621,18 +821,37 @@ def generate_offices_held_for_location_for_voter(
         if positive_value_exists(len(reps_not_returned_from_this_voter_we_vote_id)):
             status += "reps_not_returned_from_this_voter_we_vote_id: " + \
                       str(reps_not_returned_from_this_voter_we_vote_id) + " "
+    else:
+        text_for_map_search_too_short = True
 
-    # #########################################################################
-    # 2) Find representatives from a nearby map point address, previously retrieved and cached within We Vote
-    # ...and generate local OfficesHeldForLocation entry for today for later retrieves.
+    if text_for_map_search_too_short or not offices_held_for_location_found:
+        # #########################################################################
+        # 2) Find representatives from a nearby map point address, previously retrieved and cached within We Vote
+        results = find_closest_offices_held_for_location(
+            latitude=latitude,
+            longitude=longitude,
+            state_code=state_code,
+            text_for_map_search=text_for_map_search)
+        status += results['status']
+        if results['offices_held_for_location_found']:
+            distance_from_lat_long = results['distance_from_lat_long']
+            is_from_substituted_address = True
+            offices_held_for_location = results['offices_held_for_location']
+            offices_held_for_location_id = results['offices_held_for_location_id']
+            offices_held_for_location_found = results['offices_held_for_location_found']
+
+        # ...and generate local OfficesHeldForLocation entry for today for later retrieves for this Voter.
 
     results = {
+        'distance_from_lat_long':           distance_from_lat_long,
         'existing_offices_held_by_vote_usa_office_id_dict': existing_offices_held_by_vote_usa_office_id_dict,
         'existing_representatives_by_office_and_name_dict': existing_representatives_by_office_and_name_dict,
-        'status':                           status,
-        'success':                          True,
+        'is_from_substituted_address':      is_from_substituted_address,
         'offices_held_for_location':        offices_held_for_location,
         'offices_held_for_location_id':     offices_held_for_location_id,
         'offices_held_for_location_found':  offices_held_for_location_found,
+        'status':                           status,
+        'success':                          True,
+        'text_for_map_search_too_short':    text_for_map_search_too_short,
     }
     return results

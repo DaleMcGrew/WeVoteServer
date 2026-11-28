@@ -5,7 +5,8 @@
 from datetime import datetime
 from config.environment_variable_functions import get_environment_variable
 from office_held.models import OfficeHeldManager
-from wevote_functions.functions import candidate_party_display, positive_value_exists, process_request_from_master
+from wevote_functions.functions import candidate_party_display, positive_value_exists, process_request_from_master, \
+    convert_to_int
 
 OFFICE_HELD_SYNC_URL = "https://api.wevoteusa.org/apis/v1/officeHeldSyncOut/"
 # OFFICE_HELD_SYNC_URL = "http://localhost:8001/apis/v1/officeHeldSyncOut/"
@@ -294,6 +295,13 @@ def offices_held_for_location_import_from_structured_json(structured_json):  # o
         'date_last_retrieved',
         'date_last_updated',
     ]
+    integer_fields = [
+        'date_as_integer',
+    ]
+    float_fields = [
+        'latitude',
+        'longitude',
+    ]
     for offices_held_for_location in structured_json:
         offices_held_for_location_values = {}
         polling_location_we_vote_id = offices_held_for_location.get('polling_location_we_vote_id', '')
@@ -310,6 +318,14 @@ def offices_held_for_location_import_from_structured_json(structured_json):  # o
             if one_field in offices_held_for_location and positive_value_exists(offices_held_for_location[one_field]):
                 date_field_trimmed = offices_held_for_location[one_field].replace(" 00:00:00", "")
                 offices_held_for_location_values[one_field] = datetime.strptime(date_field_trimmed, '%Y-%m-%d').date()
+            else:
+                offices_held_for_location_values[one_field] = None
+        for one_field in float_fields:
+            offices_held_for_location_values[one_field] = float(offices_held_for_location[one_field]) \
+                if one_field in offices_held_for_location else None
+        for one_field in integer_fields:
+            if one_field in offices_held_for_location:
+                offices_held_for_location_values[one_field] = convert_to_int(offices_held_for_location[one_field])
             else:
                 offices_held_for_location_values[one_field] = None
         results = office_held_manager.update_or_create_offices_held_for_location(

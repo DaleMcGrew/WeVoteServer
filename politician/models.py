@@ -1362,6 +1362,7 @@ class PoliticianManager(models.Manager):
                 queryset = Politician.objects.using('readonly').all()
             else:
                 queryset = Politician.objects.all()
+            queryset = queryset.filter(state_code__iexact=state_code)
 
             filters = []
             for facebook_url in facebook_url_list:

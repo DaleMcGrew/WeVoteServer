@@ -1155,6 +1155,7 @@ def representative_politician_match(representative):
         twitter_handle_list=twitter_handle_list,
         return_close_matches=False,
         state_code=representative.state_code,
+        vote_usa_politician_id=representative.vote_usa_politician_id,
     )
     status += results['status']
     if not results['success']:
